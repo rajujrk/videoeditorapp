@@ -6,6 +6,8 @@ add_library(tve_engine STATIC
     decode/AudioDecoder.cpp
     decode/Thumbnail.h
     decode/Thumbnail.cpp
+    encode/Mp4Writer.h
+    encode/Mp4Writer.cpp
     playback/FrameQueue.h
     playback/FrameSource.h
     playback/PlaybackClock.h

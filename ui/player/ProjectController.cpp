@@ -9,6 +9,7 @@
 #include "model/TimelineQuery.h"
 #include "gpu/EffectLibrary.h"
 #include "EffectInfo.h"
+#include "Exporter.h"
 #include "TitleRenderer.h"
 #include "model/TimelineQuery.h"
 #include "playback/TimelinePlayback.h"
@@ -174,6 +175,10 @@ ProjectController::ProjectController(QObject* parent)
 
 ProjectController::~ProjectController()
 {
+    // A running export is cancelled; its queued notifications die with this object.
+    m_cancelExport = true;
+    if (m_exportThread.joinable())
+        m_exportThread.join();
     m_audioOutput.reset(); // stop the device callback before the playback it reads from
 }
 
@@ -996,6 +1001,80 @@ void ProjectController::previewClipEffectParam(double clipId, int index, const Q
 {
     if (auto effects = effectsWithParam(toId(clipId), index, paramId, value); effects && m_view)
         m_view->setPreviewEffects(toId(clipId), std::move(*effects));
+}
+
+// --- Export ---
+
+Mp4Settings ProjectController::exportSettings(const QVariantMap& options) const
+{
+    Mp4Settings settings;
+    const auto even = [](int v) { return std::max(2, v - v % 2); };
+    const int width = options.value(QStringLiteral("width")).toInt();
+    const int height = options.value(QStringLiteral("height")).toInt();
+    settings.width = even(width > 0 ? width : m_project.settings.width);
+    settings.height = even(height > 0 ? height : m_project.settings.height);
+    settings.frameRate = m_project.settings.frameRate;
+    settings.codec = options.value(QStringLiteral("codec")).toString() == QLatin1String("hevc") ? VideoCodec::Hevc
+                                                                                             : VideoCodec::H264;
+    const QString quality = options.value(QStringLiteral("quality")).toString();
+    const double factor = quality == QLatin1String("high") ? 1.5 : quality == QLatin1String("small") ? 0.5 : 1.0;
+    settings.videoBitrate = std::int64_t(double(defaultVideoBitrate(settings)) * factor);
+    return settings;
+}
+
+double ProjectController::exportBitrate(const QVariantMap& options) const
+{
+    const Mp4Settings settings = exportSettings(options);
+    return double(settings.videoBitrate + settings.audioBitrate);
+}
+
+bool ProjectController::exportVideo(const QUrl& file, const QVariantMap& options)
+{
+    if (exporting()) {
+        reportError(QStringLiteral("An export is already running"));
+        return false;
+    }
+    if (m_project.duration() == 0) {
+        reportError(QStringLiteral("Add something to the timeline to export"));
+        return false;
+    }
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    if (path.isEmpty()) {
+        reportError(QStringLiteral("Choose where to save the video"));
+        return false;
+    }
+    pause();
+    m_cancelExport = false;
+    m_exportProgress = 0;
+    auto snapshot = std::make_shared<const Project>(m_project);
+    const Mp4Settings settings = exportSettings(options);
+    m_exportThread = std::thread([this, snapshot, path, settings] {
+        // Progress goes to the UI thread at most every 1 %.
+        double reported = 0;
+        const Exporter::Result result = Exporter::run(snapshot, path, settings, [&](double progress) {
+            if (progress - reported >= 0.01 || progress >= 1.0) {
+                reported = progress;
+                QMetaObject::invokeMethod(this, [this, progress] {
+                    m_exportProgress = progress;
+                    emit exportChanged();
+                }, Qt::QueuedConnection);
+            }
+            return !m_cancelExport.load();
+        });
+        QMetaObject::invokeMethod(this, [this, result, path] {
+            if (m_exportThread.joinable())
+                m_exportThread.join();
+            emit exportChanged();
+            emit exportFinished(result.ok, result.ok ? path : result.error);
+        }, Qt::QueuedConnection);
+    });
+    emit exportChanged();
+    return true;
+}
+
+void ProjectController::cancelExport()
+{
+    m_cancelExport = true;
 }
 
 // --- Transport ---

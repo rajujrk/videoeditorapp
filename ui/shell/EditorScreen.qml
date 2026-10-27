@@ -36,6 +36,7 @@ Rectangle {
             project: editor.project
             onHomeRequested: editor.homeRequested()
             onSaveRequested: editor.saveProject()
+            onExportRequested: exportDialog.open()
         }
 
         SplitView {
@@ -86,6 +87,12 @@ Rectangle {
         onAccepted: editor.project.importMedia(selectedFiles)
     }
 
+    ExportDialog {
+        id: exportDialog
+        objectName: "exportDialog"
+        project: editor.project
+    }
+
     FileDialog {
         id: saveDialog
         title: "Save project"
@@ -113,6 +120,11 @@ Rectangle {
     Shortcut { sequence: "Home"; enabled: editor.visible && !editor.typing; onActivated: editor.project.seek(0) }
     Shortcut { sequence: "End"; enabled: editor.visible && !editor.typing; onActivated: editor.project.seek(editor.project.duration) }
     Shortcut { sequences: [StandardKey.Undo]; enabled: editor.visible; onActivated: editor.project.undo() }
+    Shortcut {
+        sequence: "Ctrl+E"
+        enabled: editor.visible && editor.project.duration > 0
+        onActivated: exportDialog.open()
+    }
     Shortcut { sequences: [StandardKey.Redo]; enabled: editor.visible; onActivated: editor.project.redo() }
     Shortcut { sequences: [StandardKey.Save]; enabled: editor.visible; onActivated: editor.saveProject() }
     Shortcut { sequence: "Ctrl+I"; enabled: editor.visible; onActivated: editor.importMedia() }

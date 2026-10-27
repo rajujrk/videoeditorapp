@@ -113,7 +113,7 @@ Sizes are `Theme.size.*` tokens.
 
 | Region | File | Status |
 |---|---|---|
-| Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker, undo/redo with labels, save, theme toggle; export waits for Phase 1 slice 5 |
+| Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker, undo/redo with labels, save, theme toggle, Export (shows progress while exporting) opening `ExportDialog.qml` |
 | Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, stats overlay |
 | Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); Color tab shows the planned sections |
@@ -176,6 +176,11 @@ footage, playhead in the transition), dark and light:
 
 ![Transitions, dark](images/transitions-dark.png)
 ![Transitions, light](images/transitions-light.png)
+
+Export dialog (a modal `Popup` over a scrim), dark and light:
+
+![Export, dark](images/export-dark.png)
+![Export, light](images/export-light.png)
 
 Titles tab and a selected title over gradient footage, dark and light:
 

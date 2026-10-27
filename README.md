@@ -3,8 +3,8 @@
 A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
-**Status: Phase 1 (MVP editor), slices 1–4 done (4a transitions, 4b titles); slice 5
-next.** You can import video and audio files, arrange them on a multi-track timeline
+**Status: Phase 1 (MVP editor), slices 1–4 and 5a (export) done; autosave and crash
+recovery, proxies and voice-over (5b–5d) next.** You can import video and audio files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes, give each clip its own effects,
 put any of 21 transitions on the cuts between clips (with a constant-power sound
@@ -12,12 +12,15 @@ crossfade), add titles (font, size, colour, bold/italic, alignment, letter and l
 spacing, outline, shadow), change a clip's speed (0.1–10×), play it in reverse or insert
 freeze frames, hear and see their sound (waveforms, volume, fades, detach audio, track
 mute/hide/lock, meter), see thumbnails in the media bin and on the timeline, play and
-scrub, and save/open `.tve` projects. Not yet: voice-over, export.
+scrub, save/open `.tve` projects, and export MP4 files (H.264 or HEVC with AAC sound). Not
+yet: autosave and crash recovery, proxies, voice-over.
 
 What's in the repo:
 
 - `core/` — project model (tracks, clips, media), undoable edit commands (add, move, trim,
   split, delete/ripple delete), timeline queries, JSON project save/load. Plain C++20, no Qt.
+- `engine/encode/` — `Mp4Writer`: H.264/HEVC through VideoToolbox plus AAC, muxed to a
+  fast-start MP4 (LGPL FFmpeg encoders only).
 - `engine/` — FFmpeg video decoder (VideoToolbox, software fallback, frame-accurate and
   keyframe seek) and audio decoder (48 kHz stereo float, sample-accurate seek); timeline
   playback that stitches video across tracks and gaps, plays clips at any speed, in
@@ -32,9 +35,10 @@ What's in the repo:
 - `engine/gpu/` — effect library (manifests cross-checked against shader reflection), the
   GPU effect chain, and the compositor that places layers on the project canvas
   (fit, crop, scale, rotation, position, opacity, seven blend modes) on Qt RHI.
-- `ui/player/` — `VideoView` (zero-copy CVPixelBuffer → Metal textures, YUV → RGB per
-  layer, per-clip effects, compositor, output effects, aspect-fit, live preview of
-  uncommitted slider changes), `ProjectController`, which exposes the project, edits,
+- `ui/player/` — `FrameCompositor` (zero-copy CVPixelBuffer → Metal textures, YUV → RGB
+  per layer, per-clip effects, titles, transitions, compositor), shared by `VideoView`
+  (plus output effects, aspect-fit, live preview of uncommitted slider changes) and the
+  `Exporter`; `ProjectController`, which exposes the project, edits,
   transport and file I/O to QML, the title text renderer, and image providers for video
   thumbnails, transition previews and title previews.
 - `ui/theme/` — design system: color/type/spacing tokens (dark and light), original icon
@@ -73,6 +77,21 @@ presets) and direction; the clip gets shorter or longer and later clips on its t
 with it. Reversed clips play their sound backwards too. "Freeze frame at playhead" splits
 the clip there and inserts a 2-second still (silent; trim it to change its length). Clip
 labels show `2× ·`, `Reverse ·` or `Still ·` badges.
+
+**Export.** Click Export (⌘E) to save an MP4: choose the file, the size (the project's,
+or 4K/1440p/1080p/720p/480p smaller than it, same shape), H.264 (plays everywhere) or HEVC
+(smaller files), and quality (High, Standard, Small; the dialog estimates the file size).
+Export renders every frame at the project's frame rate with the same engine as the preview
+(transitions, titles, effects, sound) on an offscreen GPU device, converts to NV12 on the
+GPU, and encodes with VideoToolbox; you can keep editing while it runs (it uses a snapshot)
+or cancel it, which removes the partial file. From the command line:
+
+```bash
+build/macos-release/app/TechieVideoEditor.app/Contents/MacOS/TechieVideoEditor project.tve --export out.mp4 --export-size 1920x1080 --export-codec h264
+```
+
+On an M-series Mac, 20 s of 4K60 exports in about 17 s to 4K H.264, 8 s to 1080p and 25 s
+to 4K HEVC.
 
 **Titles.** Click a style in the library's Titles tab to add a 5-second title at the
 playhead (on the lowest free video track above the main one, or a new track on top), or

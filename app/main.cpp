@@ -14,6 +14,7 @@
 #include <QtQml/qqmlextensionplugin.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <memory>
 
@@ -103,8 +104,16 @@ int main(int argc, char* argv[])
     const QCommandLineOption playOption(QStringLiteral("play"), QStringLiteral("Start playing after loading."));
     const QCommandLineOption seekOption(QStringLiteral("seek"), QStringLiteral("Move the playhead to <seconds>."),
                                         QStringLiteral("seconds"));
+    const QCommandLineOption exportOption(QStringLiteral("export"),
+                                          QStringLiteral("Export the project to <file> (MP4), then quit."),
+                                          QStringLiteral("file"));
+    const QCommandLineOption exportSizeOption(QStringLiteral("export-size"),
+                                              QStringLiteral("Export size, e.g. 1280x720 (default: the canvas)."),
+                                              QStringLiteral("WxH"));
+    const QCommandLineOption exportCodecOption(QStringLiteral("export-codec"), QStringLiteral("h264 (default) or hevc."),
+                                               QStringLiteral("codec"), QStringLiteral("h264"));
     parser.addOptions({statsOption, quitOption, effectsOption, screenshotOption, screenshotAtOption, screenOption,
-                       themeOption, playOption, seekOption});
+                       themeOption, playOption, seekOption, exportOption, exportSizeOption, exportCodecOption});
     parser.addPositionalArgument(QStringLiteral("files"),
                                  QStringLiteral("A .tve project to open, or media files to add to a new project."),
                                  QStringLiteral("[files...]"));
@@ -152,6 +161,26 @@ int main(int argc, char* argv[])
         }
         if (parser.isSet(seekOption))
             project->seek(parser.value(seekOption).toDouble());
+        if (parser.isSet(exportOption)) {
+            QVariantMap options{{QStringLiteral("codec"), parser.value(exportCodecOption)}};
+            const QStringList size = parser.value(exportSizeOption).split(QLatin1Char('x'));
+            if (size.size() == 2) {
+                options[QStringLiteral("width")] = size[0].toInt();
+                options[QStringLiteral("height")] = size[1].toInt();
+            }
+            const auto started = std::chrono::steady_clock::now();
+            QObject::connect(project, &ProjectController::exportFinished, &app, [started](bool ok, const QString& message) {
+                const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+                std::printf("export: %s %s (%.1f s)\n", ok ? "done" : "FAILED", qPrintable(message), seconds);
+                std::fflush(stdout);
+                QCoreApplication::exit(ok ? 0 : 1);
+            });
+            const QUrl file = QUrl::fromLocalFile(QFileInfo(parser.value(exportOption)).absoluteFilePath());
+            if (!project->exportVideo(file, options)) {
+                std::printf("export: FAILED %s\n", qPrintable(project->lastError()));
+                return 1;
+            }
+        }
         if (parser.isSet(playOption) || (hasFile && parser.isSet(statsOption)))
             project->play();
         if (parser.isSet(statsOption)) {

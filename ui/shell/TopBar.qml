@@ -8,6 +8,7 @@ Rectangle {
     required property var project
     signal homeRequested()
     signal saveRequested()
+    signal exportRequested()
 
     implicitHeight: Theme.size.topBar
     color: Theme.color.surface
@@ -67,12 +68,14 @@ Rectangle {
             onClicked: Theme.dark = !Theme.dark
         }
         TextButton {
-            text: "Export"
+            objectName: "exportButton"
+            text: bar.project.exporting ? "Exporting " + Math.round(bar.project.exportProgress * 100) + " %" : "Export"
             iconName: "export"
             variant: "primary"
-            enabled: false
-            tip: "Export arrives later in Phase 1"
+            enabled: bar.project.duration > 0
+            tip: "Export the video as an MP4 file (⌘E)"
             Layout.leftMargin: Theme.space.s
+            onClicked: bar.exportRequested()
         }
     }
 
