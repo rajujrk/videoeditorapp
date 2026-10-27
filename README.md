@@ -3,8 +3,8 @@
 A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
-**Status: Phase 1 (MVP editor), slices 1–4 and 5a–5c (export, autosave and crash
-recovery, proxies) done; voice-over (5d) next.** You can import video and audio files, arrange them on a multi-track timeline
+**Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5d (export, autosave and
+crash recovery, proxies, voice-over).** You can import video and audio files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes, give each clip its own effects,
 put any of 21 transitions on the cuts between clips (with a constant-power sound
@@ -13,8 +13,8 @@ spacing, outline, shadow), change a clip's speed (0.1–10×), play it in revers
 freeze frames, hear and see their sound (waveforms, volume, fades, detach audio, track
 mute/hide/lock, meter), see thumbnails in the media bin and on the timeline, play and
 scrub, save/open `.tve` projects (unsaved work is autosaved and recoverable after a crash),
-edit heavy 4K media smoothly through proxies, and export MP4 files (H.264 or HEVC with AAC
-sound). Not yet: voice-over.
+edit heavy 4K media smoothly through proxies, record voice-overs from a microphone at the
+playhead, and export MP4 files (H.264 or HEVC with AAC sound).
 
 What's in the repo:
 
@@ -22,13 +22,15 @@ What's in the repo:
   split, delete/ripple delete), timeline queries, JSON project save/load. Plain C++20, no Qt.
 - `engine/encode/` — `Mp4Writer`: H.264/HEVC through VideoToolbox plus AAC (or video
   only), muxed to a fast-start MP4 (LGPL FFmpeg encoders only); `makeProxy`: 720p H.264
-  proxies with a keyframe every 10 frames, from 8- or 10-bit sources.
+  proxies with a keyframe every 10 frames, from 8- or 10-bit sources; `WavWriter`: float
+  WAV files whose header stays current, so a take cut short by a crash still opens.
 - `engine/` — FFmpeg video decoder (VideoToolbox, software fallback, frame-accurate and
   keyframe seek) and audio decoder (48 kHz stereo float, sample-accurate seek); timeline
   playback that stitches video across tracks and gaps, plays clips at any speed, in
   reverse (decoded a group of pictures at a time) or as freeze frames, and mixes all
   audible clips with volume, fades, speed and mute; miniaudio output slaved to the shared
-  play/pause/seek clock; waveform peak cache; thumbnail extraction.
+  play/pause/seek clock; `AudioRecorder`: miniaudio microphone capture to WAV through a
+  lock-free ring and a writer thread; waveform peak cache; thumbnail extraction.
 - `effects/` — built-in effect packages (manifest + GLSL shaders): color adjust, gaussian
   blur, vignette, RGB split, pixelate; and 21 original transition packages (dissolve, dips,
   flash, push, slide, reveal, squeeze, wipes, iris, zooms, spin, pixelate, blur, ripple,
@@ -54,7 +56,7 @@ What's in the repo:
 
 | Key | Action |
 |---|---|
-| Space | Play / pause |
+| Space | Play / pause (stops a voice-over take) |
 | ← / → | Previous / next frame |
 | Home / End | Go to start / end |
 | S | Split the selected clip (or the visible clip) at the playhead |
@@ -93,6 +95,21 @@ use the originals. On an M-series Mac a 20 s 4K60 video's proxy takes about 10 s
 played at 2× in reverse — beyond the hardware decoder with the original — holds 60 fps.
 Scripted runs never start proxies on their own; `--make-proxies` makes them and quits,
 `--no-proxies` plays the originals.
+
+**Voice-over.** Click the microphone in the timeline toolbar to open the voice-over panel:
+pick the microphone, check its level, and press the red button. After an optional
+3-second count-in, recording starts at the playhead and the timeline plays along (on past
+its end if you keep talking), muted by default so speakers aren't recorded too. Press the
+button again, or Space, to stop: the take lands where it started, on the topmost audio
+track with room for all of it, or on a new "Voice-over" track at the bottom, as one
+undoable step ("Record Voice-over"), and is selected. Seeking is ignored while recording;
+closing the panel or the project keeps the take. Takes are 48 kHz mono WAV files (played
+at full level on both sides) in "<project> Voice-overs" beside a saved project, or
+`~/Movies/TechieVideoEditor Voice-overs` before the first save; one device period of
+input latency is trimmed from the start so the voice lines up with the picture. macOS asks
+for microphone access the first time; if it was refused, the panel links to the privacy
+setting. `TVE_AUDIO_INPUT=null` records silence without a microphone and
+`TVE_RECORDING_DIR` moves the folder (the tests use both).
 
 **Autosave and recovery.** Unsaved changes are written to
 `~/Library/Application Support/TechieVideoEditor/Autosave` two seconds after edits settle

@@ -64,6 +64,13 @@ struct AudioDecoder::Impl {
         if (swr_alloc_set_opts2(&swr, &stereo, AV_SAMPLE_FMT_FLT, audio::kSampleRate, &codec->ch_layout,
                                 codec->sample_fmt, codec->sample_rate, 0, nullptr) < 0)
             return false;
+        // Mono plays at full level on both sides (a voice-over peaking at -6 dB meters at
+        // -6 dB), rather than FFmpeg's default of 3 dB down on each.
+        if (codec->ch_layout.nb_channels == 1) {
+            const double unity[2] = {1.0, 1.0};
+            if (swr_set_matrix(swr, unity, 1) < 0)
+                return false;
+        }
         return swr_init(swr) >= 0;
     }
 

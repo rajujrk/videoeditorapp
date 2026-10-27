@@ -152,6 +152,12 @@ void AudioOutput::render(float* out, int frames)
     cursor += audio::ticksFromSamples(frames - written);
     m_cursor = cursor;
 
+    if (m_muted) {
+        std::memset(out, 0, std::size_t(frames) * audio::kChannels * sizeof(float));
+        m_peakLeft = 0.0f;
+        m_peakRight = 0.0f;
+        return;
+    }
     float peakL = 0.0f;
     float peakR = 0.0f;
     for (int i = 0; i < frames; ++i) {

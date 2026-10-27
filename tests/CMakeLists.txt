@@ -9,6 +9,7 @@ add_executable(tve_core_tests
     core/test_time_model.cpp
     core/test_transitions.cpp
     core/test_titles.cpp
+    core/test_voiceover.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
@@ -21,6 +22,7 @@ add_executable(tve_engine_tests
     engine/test_audio.cpp
     engine/test_mp4_writer.cpp
     engine/test_proxy.cpp
+    engine/test_recorder.cpp
 )
 target_link_libraries(tve_engine_tests PRIVATE tve::engine tve::ffmpeg Catch2::Catch2WithMain)
 target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples")

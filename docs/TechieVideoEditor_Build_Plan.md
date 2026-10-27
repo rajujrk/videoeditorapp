@@ -2,8 +2,8 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phase 0 complete; Phase 1 slices 1–4 and 5a–5c (timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies) complete; 5d next — see §9.1
-**Date:** 2026-10-26
+**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 next
+**Date:** 2026-10-27
 
 ---
 
@@ -515,7 +515,7 @@ Phase 1 is delivered in five vertical slices, each usable on its own:
 | 5a. Export | MP4 export (H.264/HEVC via VideoToolbox, AAC), sizes, quality, progress and cancel, shared renderer with the preview, `--export` CLI | **Done** |
 | 5b. Autosave & recovery | Autosave of unsaved work (debounced, per document session), recovery from crashes, quits and project switches on Home, atomic project saves | **Done** (snapshot autosave; the command journal stays a later option) |
 | 5c. Proxies | 720p short-GOP proxies made in the background (automatic above 1080p, or on request), cached by source identity, used by the preview only; media-bin state and actions, player toggle | **Done** |
-| 5d. Voice-over | Voice-over recording | Next |
+| 5d. Voice-over | Microphone recording at the playhead with the timeline playing (count-in, optional mute, input picker and level), take placed on a free audio track or a new Voice-over track in one undo step, crash-safe WAV takes, macOS microphone permission | **Done** |
 
 ---
 

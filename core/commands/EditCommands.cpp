@@ -78,6 +78,54 @@ void ImportMediaCommand::undo(Project& project)
     std::erase_if(project.media, [&](const MediaItem& item) { return item.id == m_item.id; });
 }
 
+// --- AddVoiceOverCommand ---
+
+std::optional<std::string> AddVoiceOverCommand::redo(Project& project)
+{
+    if (m_item.path.empty() || m_item.duration <= 0 || !m_item.hasAudio)
+        return "the recording has no sound";
+    if (m_start < 0)
+        return "clip times are out of range";
+    Track* track = nullptr;
+    if (m_trackId != kNoId) {
+        track = project.findTrack(m_trackId);
+        if (auto error = checkEditable(track))
+            return error;
+        if (track->kind != TrackKind::Audio)
+            return "voice-overs go on audio tracks";
+        if (track->overlaps(m_start, m_item.duration))
+            return "clip overlaps an existing clip";
+    }
+
+    if (m_item.id == kNoId)
+        m_item.id = project.allocateId();
+    if (m_clipId == kNoId)
+        m_clipId = project.allocateId();
+    if (!track) {
+        // Tracks are stored bottom to top: the new one goes under everything.
+        if (m_newTrackId == kNoId)
+            m_newTrackId = project.allocateId();
+        const auto existing = std::ranges::count_if(
+            project.tracks, [](const Track& t) { return t.name.starts_with("Voice-over"); });
+        std::string name = existing == 0 ? "Voice-over" : "Voice-over " + std::to_string(existing + 1);
+        project.tracks.insert(project.tracks.begin(),
+                              Track{.id = m_newTrackId, .kind = TrackKind::Audio, .name = std::move(name)});
+        track = &project.tracks.front();
+    }
+    project.media.push_back(m_item);
+    track->insertClip(Clip{.id = m_clipId, .mediaId = m_item.id, .start = m_start, .duration = m_item.duration});
+    return std::nullopt;
+}
+
+void AddVoiceOverCommand::undo(Project& project)
+{
+    if (m_trackId == kNoId)
+        std::erase_if(project.tracks, [&](const Track& t) { return t.id == m_newTrackId; });
+    else
+        project.findTrack(m_trackId)->removeClip(m_clipId);
+    std::erase_if(project.media, [&](const MediaItem& item) { return item.id == m_item.id; });
+}
+
 // --- TrimClipCommand ---
 
 std::optional<std::string> TrimClipCommand::redo(Project& project)

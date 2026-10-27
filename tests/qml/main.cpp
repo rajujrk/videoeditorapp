@@ -24,6 +24,7 @@ public slots:
     {
         engine->rootContext()->setContextProperty(QStringLiteral("samplesDir"), QStringLiteral(TVE_SAMPLES_DIR));
         engine->rootContext()->setContextProperty(QStringLiteral("tempDir"), QDir::tempPath());
+        engine->rootContext()->setContextProperty(QStringLiteral("recordingsDir"), qEnvironmentVariable("TVE_RECORDING_DIR"));
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
         engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(TitlePreviewProvider::kId), new TitlePreviewProvider);
@@ -41,6 +42,11 @@ int main(int argc, char** argv)
     qputenv("TVE_AUTOSAVE_DIR", autosave.path().toLocal8Bit());
     QTemporaryDir proxies; // likewise proxies
     qputenv("TVE_PROXY_DIR", proxies.path().toLocal8Bit());
+    // Voice-overs record real-time silence (no microphone, no permission prompt) into a
+    // scratch folder.
+    qputenv("TVE_AUDIO_INPUT", "null");
+    QTemporaryDir recordings;
+    qputenv("TVE_RECORDING_DIR", recordings.path().toLocal8Bit());
     Setup setup;
     return quick_test_main_with_setup(argc, argv, "tve_qml_tests", TVE_QML_TESTS_DIR, &setup);
 }
