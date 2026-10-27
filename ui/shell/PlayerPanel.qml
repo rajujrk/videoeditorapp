@@ -136,6 +136,16 @@ Rectangle {
                     }
                 }
                 IconButton {
+                    objectName: "proxyToggle"
+                    iconName: "proxy"
+                    tip: panel.project.useProxies
+                         ? "Playing proxies of large media where ready (export uses the originals)"
+                         : "Playing the original media"
+                    checkable: true
+                    checked: panel.project.useProxies
+                    onToggled: panel.project.useProxies = checked
+                }
+                IconButton {
                     iconName: "stats"
                     tip: "Playback statistics"
                     checkable: true

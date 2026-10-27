@@ -115,7 +115,7 @@ Sizes are `Theme.size.*` tokens.
 |---|---|---|
 | Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker and "Autosaved hh:mm", undo/redo with labels, save, theme toggle, Export (shows progress while exporting) opening `ExportDialog.qml` |
 | Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
-| Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, stats overlay |
+| Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, proxy toggle, stats overlay |
 | Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); Color tab shows the planned sections |
 | Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges, title clips (purple, labelled with their text), transition markers over cuts (select, delete, drop target) |
 
@@ -178,6 +178,12 @@ footage, playhead in the transition), dark and light:
 ![Transitions, dark](images/transitions-dark.png)
 ![Transitions, light](images/transitions-light.png)
 
+Media bin with proxies ready for the 4K files (the 1080p one needs none), and the player's
+proxy toggle on, dark and light:
+
+![Proxies, dark](images/editor-proxies-dark.png)
+![Proxies, light](images/editor-proxies-light.png)
+
 Home after a crash, offering the unsaved work back, dark and light:
 
 ![Home with unsaved work, dark](images/home-recovery-dark.png)
@@ -195,7 +201,7 @@ Titles tab and a selected title over gradient footage, dark and light:
 
 ### Icons
 
-38 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+40 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.

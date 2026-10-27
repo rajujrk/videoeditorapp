@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ProxyManager.h"
 #include "TrackListModel.h"
 #include "VideoView.h"
 #include "commands/CommandStack.h"
@@ -76,6 +77,13 @@ class ProjectController : public QObject {
     // When this document was last autosaved (ms since epoch; 0: not since its last change).
     Q_PROPERTY(double lastAutosave READ lastAutosave NOTIFY recoveryChanged)
 
+    // Proxies: lighter copies of large media for the preview (export always uses the
+    // originals). useProxies plays them where ready; autoProxies makes them for imported
+    // video larger than 1080p. proxyStates: {media path: {state, progress, error}}.
+    Q_PROPERTY(bool useProxies READ useProxies WRITE setUseProxies NOTIFY proxiesChanged)
+    Q_PROPERTY(bool autoProxies READ autoProxies WRITE setAutoProxies NOTIFY proxiesChanged)
+    Q_PROPERTY(QVariantMap proxyStates READ proxyStates NOTIFY proxiesChanged)
+
     // Export: running, and how far (0–1).
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportChanged)
     Q_PROPERTY(double exportProgress READ exportProgress NOTIFY exportChanged)
@@ -125,6 +133,12 @@ public:
     void setAutosaveDirectory(const QString& directory);
     QVariantList recoverableProjects() const;
     double lastAutosave() const { return double(m_lastAutosave); }
+    bool useProxies() const { return m_useProxies; }
+    void setUseProxies(bool use);
+    bool autoProxies() const { return m_autoProxies; }
+    void setAutoProxies(bool automatic);
+    QVariantMap proxyStates() const;
+    ProxyManager& proxies() { return m_proxies; }
     bool exporting() const { return m_exportThread.joinable(); }
     double exportProgress() const { return m_exportProgress; }
     double levelLeft() const { return m_levelLeft; }
@@ -199,6 +213,10 @@ public:
     // Applies the text fields in `changes` to a title clip (one undo step).
     Q_INVOKABLE bool setClipText(double clipId, const QVariantMap& changes);
 
+    // Makes (in the background) or deletes the proxy of a video.
+    Q_INVOKABLE bool createProxy(double mediaId);
+    Q_INVOKABLE bool deleteProxy(double mediaId);
+
     // Writes unsaved work to the autosave folder now (normally done by a timer).
     Q_INVOKABLE void autosaveNow();
     // Opens recovered work as an unsaved project (saving goes to its original file, if it
@@ -244,6 +262,7 @@ signals:
     void errorOccurred(const QString& message);
     void exportChanged();
     void recoveryChanged();
+    void proxiesChanged();
     // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
     void exportFinished(bool ok, const QString& message);
 
@@ -281,6 +300,14 @@ private:
     bool m_canvasChosen = false; // false: the first video clip sets the canvas
     bool m_wasPlaying = false;
     QTimer m_playheadTimer;
+
+    // The project as playback sees it: with proxy paths where proxies are used and ready.
+    std::shared_ptr<const tve::Project> playbackSnapshot() const;
+    // Queues proxies for the project's large videos when autoProxies is on.
+    void requestAutoProxies();
+    ProxyManager m_proxies;
+    bool m_useProxies = true;
+    bool m_autoProxies = true;
 
     // Autosave: this document's files are <dir>/<session>.tve and .json. A new session id
     // starts with each document, so work left unsaved stays recoverable.

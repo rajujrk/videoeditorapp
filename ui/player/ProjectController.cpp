@@ -209,6 +209,11 @@ ProjectController::ProjectController(QObject* parent)
                         : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/Autosave");
     m_sessionId = newSessionId();
     liveSessions().insert(m_sessionId);
+    connect(&m_proxies, &ProxyManager::changed, this, [this](const QString&, bool ready) {
+        emit proxiesChanged();
+        if (ready && m_useProxies)
+            m_playback->setProject(playbackSnapshot()); // switch to it where it is on screen
+    });
     m_autosaveTimer.setSingleShot(true);
     m_autosaveTimer.setInterval(kAutosaveDelayMs);
     connect(&m_autosaveTimer, &QTimer::timeout, this, &ProjectController::autosaveNow);
@@ -459,6 +464,7 @@ bool ProjectController::open(const QUrl& file)
     const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
     try {
         resetProject(loadProject(path.toStdString()), path);
+        requestAutoProxies();
         return true;
     } catch (const std::exception& e) {
         reportError(QStringLiteral("Could not open %1: %2").arg(QFileInfo(path).fileName(), QString::fromUtf8(e.what())));
@@ -527,6 +533,7 @@ int ProjectController::importMedia(const QList<QUrl>& files)
         if (apply(std::make_unique<ImportMediaCommand>(std::move(item))))
             ++imported;
     }
+    requestAutoProxies();
     return imported;
 }
 
@@ -663,11 +670,89 @@ bool ProjectController::apply(std::unique_ptr<Command> command)
 
 void ProjectController::publish()
 {
-    m_playback->setProject(std::make_shared<const Project>(m_project));
+    m_playback->setProject(playbackSnapshot());
     m_trackModel.update(tracks());
     emit projectChanged();
     emit selectedClipInfoChanged();
     scheduleAutosave();
+}
+
+// --- Proxies ---
+
+namespace {
+// Videos whose short side is above this get proxies automatically.
+constexpr int kAutoProxyAbove = 1080;
+}
+
+std::shared_ptr<const Project> ProjectController::playbackSnapshot() const
+{
+    auto snapshot = std::make_shared<Project>(m_project);
+    if (m_useProxies) {
+        for (MediaItem& media : snapshot->media) {
+            if (media.hasVideo)
+                media.proxyPath = m_proxies.readyProxy(QString::fromStdString(media.path)).toStdString();
+        }
+    }
+    return snapshot;
+}
+
+void ProjectController::requestAutoProxies()
+{
+    if (!m_autoProxies)
+        return;
+    for (const MediaItem& media : m_project.media) {
+        if (media.hasVideo && std::min(media.width, media.height) > kAutoProxyAbove)
+            m_proxies.request(QString::fromStdString(media.path));
+    }
+}
+
+void ProjectController::setUseProxies(bool use)
+{
+    if (use == m_useProxies)
+        return;
+    m_useProxies = use;
+    m_playback->setProject(playbackSnapshot());
+    emit proxiesChanged();
+}
+
+void ProjectController::setAutoProxies(bool automatic)
+{
+    if (automatic == m_autoProxies)
+        return;
+    m_autoProxies = automatic;
+    requestAutoProxies();
+    emit proxiesChanged();
+}
+
+QVariantMap ProjectController::proxyStates() const
+{
+    QStringList paths;
+    for (const MediaItem& media : m_project.media) {
+        if (media.hasVideo)
+            paths << QString::fromStdString(media.path);
+    }
+    return m_proxies.states(paths);
+}
+
+bool ProjectController::createProxy(double mediaId)
+{
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    if (!media || !media->hasVideo) {
+        reportError(QStringLiteral("Only videos have proxies"));
+        return false;
+    }
+    m_proxies.request(QString::fromStdString(media->path));
+    return true;
+}
+
+bool ProjectController::deleteProxy(double mediaId)
+{
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    if (!media)
+        return false;
+    m_proxies.remove(QString::fromStdString(media->path));
+    m_playback->setProject(playbackSnapshot());
+    return true;
 }
 
 // --- Autosave and recovery ---

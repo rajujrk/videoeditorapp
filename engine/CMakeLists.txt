@@ -8,6 +8,8 @@ add_library(tve_engine STATIC
     decode/Thumbnail.cpp
     encode/Mp4Writer.h
     encode/Mp4Writer.cpp
+    encode/Proxy.h
+    encode/Proxy.cpp
     playback/FrameQueue.h
     playback/FrameSource.h
     playback/PlaybackClock.h

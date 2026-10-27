@@ -112,8 +112,13 @@ int main(int argc, char* argv[])
                                               QStringLiteral("WxH"));
     const QCommandLineOption exportCodecOption(QStringLiteral("export-codec"), QStringLiteral("h264 (default) or hevc."),
                                                QStringLiteral("codec"), QStringLiteral("h264"));
+    const QCommandLineOption makeProxiesOption(QStringLiteral("make-proxies"),
+                                               QStringLiteral("Make proxies of the given media, then quit."));
+    const QCommandLineOption noProxiesOption(QStringLiteral("no-proxies"),
+                                             QStringLiteral("Play the original media, not proxies."));
     parser.addOptions({statsOption, quitOption, effectsOption, screenshotOption, screenshotAtOption, screenOption,
-                       themeOption, playOption, seekOption, exportOption, exportSizeOption, exportCodecOption});
+                       themeOption, playOption, seekOption, exportOption, exportSizeOption, exportCodecOption,
+                       makeProxiesOption, noProxiesOption});
     parser.addPositionalArgument(QStringLiteral("files"),
                                  QStringLiteral("A .tve project to open, or media files to add to a new project."),
                                  QStringLiteral("[files...]"));
@@ -153,9 +158,14 @@ int main(int argc, char* argv[])
     auto* project = engine.rootObjects().constFirst()->findChild<ProjectController*>(QStringLiteral("project"));
     if (project) {
         // Scripted runs (measurements, screenshots, exports) leave no unsaved work behind.
+        // …nor start making proxies on their own (that would skew measurements).
         if (parser.isSet(statsOption) || parser.isSet(quitOption) || parser.isSet(screenshotOption)
-            || parser.isSet(exportOption))
+            || parser.isSet(exportOption) || parser.isSet(makeProxiesOption)) {
             project->setAutosaveEnabled(false);
+            project->setAutoProxies(false);
+        }
+        if (parser.isSet(noProxiesOption))
+            project->setUseProxies(false);
         for (const QString& argument : parser.positionalArguments()) {
             const QUrl url = QUrl::fromLocalFile(QFileInfo(argument).absoluteFilePath());
             if (argument.endsWith(QLatin1String(".tve")))
@@ -165,6 +175,25 @@ int main(int argc, char* argv[])
         }
         if (parser.isSet(seekOption))
             project->seek(parser.value(seekOption).toDouble());
+        if (parser.isSet(makeProxiesOption)) {
+            const auto started = std::chrono::steady_clock::now();
+            for (const QVariant& media : project->media())
+                project->createProxy(media.toMap().value(QStringLiteral("id")).toDouble());
+            // Quit once nothing is queued or being made.
+            QObject::connect(project, &ProjectController::proxiesChanged, &app, [project, started] {
+                const QVariantMap states = project->proxyStates();
+                for (const QVariant& state : states) {
+                    const QString name = state.toMap().value(QStringLiteral("state")).toString();
+                    if (name == QLatin1String("queued") || name == QLatin1String("making"))
+                        return;
+                }
+                const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+                std::printf("proxies: done (%.1f s) %s\n", seconds,
+                            qPrintable(QStringList(states.keys()).join(QLatin1Char(' '))));
+                std::fflush(stdout);
+                QCoreApplication::exit(0);
+            });
+        }
         if (parser.isSet(exportOption)) {
             QVariantMap options{{QStringLiteral("codec"), parser.value(exportCodecOption)}};
             const QStringList size = parser.value(exportSizeOption).split(QLatin1Char('x'));
