@@ -14,6 +14,7 @@ qt_add_qml_module(tve_shell
         TimelinePanel.qml
         ClipEffectCard.qml
         ParamControl.qml
+        ExportDialog.qml
     IMPORTS
         TechieVideoEditor.Theme
         TechieVideoEditor.Player

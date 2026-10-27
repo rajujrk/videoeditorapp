@@ -7,6 +7,10 @@ qt_add_qml_module(tve_player
     SOURCES
         VideoView.h
         VideoView.mm
+        FrameCompositor.h
+        FrameCompositor.mm
+        Exporter.h
+        Exporter.mm
         ProjectController.h
         ProjectController.cpp
         WaveformItem.h
@@ -29,6 +33,7 @@ qt_add_shaders(tve_player "tve_player_shaders"
         shaders/video.vert
         shaders/video.frag
         shaders/present.frag
+        shaders/export_yuv.frag
 )
 
 target_include_directories(tve_player PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -3,6 +3,7 @@
 #include "TrackListModel.h"
 #include "VideoView.h"
 #include "commands/CommandStack.h"
+#include "encode/Mp4Writer.h"
 #include "model/Project.h"
 
 #include <QObject>
@@ -12,8 +13,10 @@
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
+#include <atomic>
 #include <memory>
 #include <optional>
+#include <thread>
 
 namespace tve {
 class AudioOutput;
@@ -62,6 +65,10 @@ class ProjectController : public QObject {
     // Font families offered for titles.
     Q_PROPERTY(QStringList titleFonts READ titleFonts CONSTANT)
 
+    // Export: running, and how far (0–1).
+    Q_PROPERTY(bool exporting READ exporting NOTIFY exportChanged)
+    Q_PROPERTY(double exportProgress READ exportProgress NOTIFY exportChanged)
+
     // Output meters (0..1 peak per channel) and the audio device.
     Q_PROPERTY(double levelLeft READ levelLeft NOTIFY levelsChanged)
     Q_PROPERTY(double levelRight READ levelRight NOTIFY levelsChanged)
@@ -101,6 +108,8 @@ public:
     QVariantMap selectedTransitionInfo() const;
     QVariantList availableTransitions() const;
     QStringList titleFonts() const;
+    bool exporting() const { return m_exportThread.joinable(); }
+    double exportProgress() const { return m_exportProgress; }
     double levelLeft() const { return m_levelLeft; }
     double levelRight() const { return m_levelRight; }
     QString audioDevice() const;
@@ -173,6 +182,15 @@ public:
     // Applies the text fields in `changes` to a title clip (one undo step).
     Q_INVOKABLE bool setClipText(double clipId, const QVariantMap& changes);
 
+    // Renders the project to an MP4 file in the background; exportFinished reports the end.
+    // `options`: width and height (0 or missing: the canvas; made even), codec ("h264" or
+    // "hevc"), quality ("high", "standard" or "small": the bitrate). Returns false if it
+    // cannot start (an export is running, or the project is empty).
+    Q_INVOKABLE bool exportVideo(const QUrl& file, const QVariantMap& options = {});
+    Q_INVOKABLE void cancelExport();
+    // Bits per second an export with these options would use (for size estimates).
+    Q_INVOKABLE double exportBitrate(const QVariantMap& options) const;
+
     // Transport
     Q_INVOKABLE void play();
     Q_INVOKABLE void pause();
@@ -200,6 +218,9 @@ signals:
     void selectedClipInfoChanged();
     void levelsChanged();
     void errorOccurred(const QString& message);
+    void exportChanged();
+    // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
+    void exportFinished(bool ok, const QString& message);
 
 private:
     bool apply(std::unique_ptr<tve::Command> command);
@@ -216,6 +237,7 @@ private:
     std::optional<tve::Id> clipAtPlayhead() const;
     // The clip after the cut nearest `time` on `track` (a cut: a clip starting where another
     // ends), within `tolerance`.
+    tve::Mp4Settings exportSettings(const QVariantMap& options) const;
     std::optional<tve::Id> cutNear(const tve::Track& track, tve::Ticks time, tve::Ticks tolerance) const;
 
     tve::Project m_project;
@@ -234,4 +256,8 @@ private:
     bool m_canvasChosen = false; // false: the first video clip sets the canvas
     bool m_wasPlaying = false;
     QTimer m_playheadTimer;
+
+    std::thread m_exportThread;
+    std::atomic<bool> m_cancelExport{false};
+    double m_exportProgress = 0;
 };

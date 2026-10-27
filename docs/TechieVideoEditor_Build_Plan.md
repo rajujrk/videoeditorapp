@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phase 0 complete; Phase 1 slices 1–4 (timeline, audio, compositing, speed & thumbnails, transitions, titles) complete; slice 5 next — see §9.1
+**Status:** Phase 0 complete; Phase 1 slices 1–4 and 5a (timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export) complete; 5b next — see §9.1
 **Date:** 2026-10-26
 
 ---
@@ -512,7 +512,10 @@ Phase 1 is delivered in five vertical slices, each usable on its own:
 | 3b. Speed & thumbnails | Constant speed, reverse, freeze frame (video and audio), timeline and media-bin thumbnails | **Done** (4K60 reverse at 60 fps; 4K60 2× reverse is at the hardware decoder's ceiling until proxies) |
 | 4a. Transitions | Transition engine (handles, alignment, held edge frames, constant-power sound crossfade), 21 original transitions as shader packages, library with GPU previews, timeline markers, inspector | **Done** |
 | 4b. Titles | Text clips on video or title tracks: font, size, colour, bold/italic, alignment, letter/line spacing, outline, shadow, position; 8 original title styles with previews; inspector Text section | **Done** (Qt text layout rather than Skia; outline and shadow pulled forward from Phase 2) |
-| 5. Export & robustness | MP4 export, autosave and crash recovery, proxies, voice-over recording | Next |
+| 5a. Export | MP4 export (H.264/HEVC via VideoToolbox, AAC), sizes, quality, progress and cancel, shared renderer with the preview, `--export` CLI | **Done** |
+| 5b. Autosave & recovery | Autosave and crash recovery | Next |
+| 5c. Proxies | Proxy media for smooth editing of heavy sources | Planned |
+| 5d. Voice-over | Voice-over recording | Planned |
 
 ---
 
