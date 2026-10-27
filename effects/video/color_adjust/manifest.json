@@ -1,0 +1,15 @@
+{
+  "id": "tve.color.adjust",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["color"],
+  "title": { "en": "Color Adjust" },
+  "params": [
+    { "id": "brightness", "type": "float", "title": { "en": "Brightness" }, "min": -1, "max": 1, "default": 0, "keyframable": true },
+    { "id": "contrast", "type": "float", "title": { "en": "Contrast" }, "min": 0, "max": 3, "default": 1, "keyframable": true },
+    { "id": "saturation", "type": "float", "title": { "en": "Saturation" }, "min": 0, "max": 3, "default": 1, "keyframable": true },
+    { "id": "invert", "type": "bool", "title": { "en": "Invert" }, "default": false }
+  ],
+  "passes": [ { "fragment": "color_adjust.frag" } ],
+  "license": "TVE-Original"
+}

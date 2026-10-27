@@ -1,0 +1,12 @@
+{
+  "id": "tve.stylize.pixelate",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize"],
+  "title": { "en": "Pixelate" },
+  "params": [
+    { "id": "blockSize", "type": "int", "title": { "en": "Block Size (px)" }, "min": 1, "max": 200, "default": 24, "keyframable": true }
+  ],
+  "passes": [ { "fragment": "pixelate.frag" } ],
+  "license": "TVE-Original"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "test.broken.wrong_type",
+  "version": 1,
+  "kind": "video-effect",
+  "title": { "en": "Wrong Type" },
+  "params": [
+    { "id": "tint", "type": "color", "title": { "en": "Tint" }, "default": [1, 0, 0] }
+  ],
+  "passes": [ { "fragment": "tint.frag" } ],
+  "license": "TVE-Test"
+}

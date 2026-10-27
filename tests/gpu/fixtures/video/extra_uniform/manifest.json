@@ -1,0 +1,8 @@
+{
+  "id": "test.broken.extra_uniform",
+  "version": 1,
+  "kind": "video-effect",
+  "title": { "en": "Extra Uniform" },
+  "passes": [ { "fragment": "gain.frag" } ],
+  "license": "TVE-Test"
+}

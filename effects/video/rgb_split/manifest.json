@@ -1,0 +1,14 @@
+{
+  "id": "tve.glitch.rgb_split",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["glitch"],
+  "title": { "en": "RGB Split" },
+  "params": [
+    { "id": "amount", "type": "float", "title": { "en": "Amount (px)" }, "min": 0, "max": 60, "default": 10, "keyframable": true },
+    { "id": "angle", "type": "float", "title": { "en": "Angle" }, "min": 0, "max": 360, "default": 0, "keyframable": true },
+    { "id": "channels", "type": "enum", "title": { "en": "Channels" }, "values": ["red-blue", "red-green", "green-blue"], "default": "red-blue" }
+  ],
+  "passes": [ { "fragment": "rgb_split.frag" } ],
+  "license": "TVE-Original"
+}

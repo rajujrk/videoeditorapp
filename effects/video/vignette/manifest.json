@@ -1,0 +1,15 @@
+{
+  "id": "tve.stylize.vignette",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize", "light"],
+  "title": { "en": "Vignette" },
+  "params": [
+    { "id": "amount", "type": "float", "title": { "en": "Amount" }, "min": 0, "max": 1, "default": 0.6, "keyframable": true },
+    { "id": "size", "type": "float", "title": { "en": "Size" }, "min": 0, "max": 1.5, "default": 0.8, "keyframable": true },
+    { "id": "softness", "type": "float", "title": { "en": "Softness" }, "min": 0.01, "max": 1, "default": 0.5, "keyframable": true },
+    { "id": "color", "type": "color", "title": { "en": "Color" }, "default": [0, 0, 0] }
+  ],
+  "passes": [ { "fragment": "vignette.frag" } ],
+  "license": "TVE-Original"
+}

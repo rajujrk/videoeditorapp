@@ -1,0 +1,63 @@
+#pragma once
+
+#include <map>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include <nlohmann/json_fwd.hpp>
+
+namespace tve {
+
+enum class ParamType { Float, Int, Bool, Enum, Color };
+
+// One user-adjustable effect parameter. Values are held as floats: one component for
+// float/int/bool/enum (enum = index into enumValues), four (RGBA) for color.
+struct EffectParamSpec {
+    std::string id; // also the uniform member name in the effect's shaders
+    ParamType type = ParamType::Float;
+    std::map<std::string, std::string> title; // language → text, "en" required
+    double min = 0.0;
+    double max = 1.0;
+    std::vector<float> defaultValue;
+    std::vector<std::string> enumValues;
+    bool keyframable = false;
+
+    std::size_t componentCount() const { return type == ParamType::Color ? 4 : 1; }
+};
+
+struct EffectPassSpec {
+    std::string fragment; // shader file name inside the effect's folder, e.g. "blur_h.frag"
+};
+
+struct EffectManifest {
+    std::string id; // reverse-DNS style, e.g. "tve.blur.gaussian"
+    int version = 1;
+    std::string kind; // "video-effect"
+    std::vector<std::string> categories;
+    std::map<std::string, std::string> title;
+    std::vector<EffectParamSpec> params;
+    std::vector<EffectPassSpec> passes;
+    std::string license;
+
+    const EffectParamSpec* findParam(std::string_view paramId) const;
+    std::string displayTitle(const std::string& language = "en") const;
+};
+
+// Thrown when a manifest is invalid. Lists every problem found, not just the first.
+class EffectManifestError : public std::runtime_error {
+public:
+    explicit EffectManifestError(std::vector<std::string> problems);
+    const std::vector<std::string>& problems() const { return m_problems; }
+
+private:
+    std::vector<std::string> m_problems;
+};
+
+EffectManifest parseEffectManifest(const nlohmann::json& json);
+EffectManifest parseEffectManifest(std::string_view jsonText);
+
+std::string_view toString(ParamType type);
+
+} // namespace tve

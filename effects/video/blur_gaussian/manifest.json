@@ -1,0 +1,15 @@
+{
+  "id": "tve.blur.gaussian",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["blur"],
+  "title": { "en": "Gaussian Blur" },
+  "params": [
+    { "id": "radius", "type": "float", "title": { "en": "Radius" }, "min": 0, "max": 100, "default": 12, "keyframable": true }
+  ],
+  "passes": [
+    { "fragment": "blur_h.frag" },
+    { "fragment": "blur_v.frag" }
+  ],
+  "license": "TVE-Original"
+}

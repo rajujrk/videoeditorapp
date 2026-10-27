@@ -14,12 +14,14 @@ qt_add_shaders(tve_player "tve_player_shaders"
     FILES
         shaders/video.vert
         shaders/video.frag
+        shaders/present.frag
 )
 
 target_include_directories(tve_player PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tve_player
     PUBLIC
         Qt6::Quick
+        tve::gpu # VideoView.h exposes tve::EffectInstance
     PRIVATE
         Qt6::GuiPrivate
         tve::engine

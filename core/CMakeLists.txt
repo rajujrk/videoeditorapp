@@ -9,6 +9,8 @@ add_library(tve_core STATIC
     commands/EditCommands.cpp
     io/ProjectSerializer.h
     io/ProjectSerializer.cpp
+    content/EffectManifest.h
+    content/EffectManifest.cpp
 )
 add_library(tve::core ALIAS tve_core)
 

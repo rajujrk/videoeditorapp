@@ -75,7 +75,16 @@ int main(int argc, char* argv[])
     const QCommandLineOption statsOption(QStringLiteral("stats"), QStringLiteral("Print playback statistics every second."));
     const QCommandLineOption quitOption(QStringLiteral("quit-after"), QStringLiteral("Quit after <seconds>."),
                                         QStringLiteral("seconds"));
-    parser.addOptions({statsOption, quitOption});
+    const QCommandLineOption effectsOption(
+        QStringLiteral("effects"), QStringLiteral("Enable effects at their defaults: comma-separated ids, or \"all\"."),
+        QStringLiteral("ids"));
+    const QCommandLineOption screenshotOption(QStringLiteral("screenshot"),
+                                              QStringLiteral("Save a screenshot of the window to <file>."),
+                                              QStringLiteral("file"));
+    const QCommandLineOption screenshotAtOption(QStringLiteral("screenshot-at"),
+                                                QStringLiteral("When to take the screenshot (default 3)."),
+                                                QStringLiteral("seconds"), QStringLiteral("3"));
+    parser.addOptions({statsOption, quitOption, effectsOption, screenshotOption, screenshotAtOption});
     parser.addPositionalArgument(QStringLiteral("file"), QStringLiteral("Video file to play."), QStringLiteral("[file]"));
     parser.process(app);
 
@@ -86,11 +95,30 @@ int main(int argc, char* argv[])
     if (engine.rootObjects().isEmpty())
         return 1;
 
+    auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
     auto* view = engine.rootObjects().constFirst()->findChild<VideoView*>(QStringLiteral("player"));
     if (view && parser.isSet(statsOption))
         attachStatsPrinter(view, app);
+    if (view && parser.isSet(effectsOption)) {
+        const QString ids = parser.value(effectsOption);
+        for (const QVariant& effect : view->availableEffects()) {
+            const QString id = effect.toMap().value(QStringLiteral("id")).toString();
+            if (ids == QLatin1String("all") || ids.split(QLatin1Char(',')).contains(id))
+                view->setEffectEnabled(id, true);
+        }
+    }
     if (view && !parser.positionalArguments().isEmpty())
         view->setSource(QFileInfo(parser.positionalArguments().constFirst()).absoluteFilePath());
+
+    if (window && parser.isSet(screenshotOption)) {
+        const QString path = QFileInfo(parser.value(screenshotOption)).absoluteFilePath();
+        const double seconds = parser.value(screenshotAtOption).toDouble();
+        QTimer::singleShot(int(seconds * 1000), window, [window, path] {
+            const bool saved = window->grabWindow().save(path);
+            std::printf("screenshot: %s %s\n", saved ? "saved" : "FAILED", qPrintable(path));
+            std::fflush(stdout);
+        });
+    }
 
     if (parser.isSet(quitOption)) {
         bool ok = false;

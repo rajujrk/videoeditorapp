@@ -320,17 +320,17 @@ Target: **60 built-in effects at Phase 2, 150+ by Phase 5**, all original shader
   "category": ["blur"],
   "title": { "en": "Gaussian Blur" },
   "params": [
-    { "id": "radius", "type": "float", "min": 0, "max": 200, "default": 20, "keyframable": true },
-    { "id": "edgeMode", "type": "enum", "values": ["clamp", "mirror"], "default": "clamp" }
+    { "id": "radius", "type": "float", "title": { "en": "Radius" }, "min": 0, "max": 100, "default": 12, "keyframable": true }
   ],
   "passes": [
-    { "shader": "blur_h.frag", "uniforms": ["radius"] },
-    { "shader": "blur_v.frag", "uniforms": ["radius"] }
+    { "fragment": "blur_h.frag" },
+    { "fragment": "blur_v.frag" }
   ],
-  "thumbnail": "thumb.webp",
   "license": "TVE-Original"
 }
 ```
+
+Parameters reach shaders by name: each param id is a member of the pass's `EffectParams` uniform block, and the loader matches them through shader reflection (implemented in Phase 0 — see `effects/README.md` for the full shader contract and `core/content/EffectManifest.cpp` for validation). Thumbnails and previews are added with the content pipeline (§8).
 
 AI-backed effects declare `"requires": ["model:portrait-seg@1"]`; the AI runtime downloads and verifies models on first use, mirroring the module → model mapping the reference product keeps in `model_tree.json`.
 

@@ -3,7 +3,9 @@ qt_add_executable(TechieVideoEditor MACOSX_BUNDLE main.cpp)
 qt_add_qml_module(TechieVideoEditor
     URI TechieVideoEditor.App
     VERSION 1.0
-    QML_FILES Main.qml
+    QML_FILES
+        Main.qml
+        ParamControl.qml
 )
 
 set_target_properties(TechieVideoEditor PROPERTIES

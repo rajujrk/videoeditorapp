@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://techievideoeditor.local/schemas/effect-manifest.schema.json",
+  "title": "TechieVideoEditor effect manifest",
+  "description": "Editor help for effect authors. The C++ validator (core/content/EffectManifest.cpp) is authoritative and also checks defaults against ranges and enum values.",
+  "type": "object",
+  "required": ["id", "version", "kind", "title", "passes", "license"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(\\.[a-z0-9_]+)+$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "kind": { "const": "video-effect" },
+    "category": { "type": "array", "items": { "type": "string" } },
+    "title": { "$ref": "#/$defs/localized" },
+    "params": { "type": "array", "items": { "$ref": "#/$defs/param" } },
+    "passes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["fragment"],
+        "properties": { "fragment": { "type": "string", "pattern": "^[A-Za-z0-9_\\-]+\\.frag$" } },
+        "additionalProperties": false
+      }
+    },
+    "license": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "localized": {
+      "type": "object",
+      "required": ["en"],
+      "additionalProperties": { "type": "string" }
+    },
+    "param": {
+      "type": "object",
+      "required": ["id", "type", "title", "default"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^(?!tve_)[A-Za-z_][A-Za-z0-9_]*$" },
+        "type": { "enum": ["float", "int", "bool", "enum", "color"] },
+        "title": { "$ref": "#/$defs/localized" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "values": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "keyframable": { "type": "boolean" },
+        "default": {}
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "enum": ["float", "int"] } } },
+          "then": { "required": ["min", "max"], "properties": { "default": { "type": "number" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "bool" } } },
+          "then": { "properties": { "default": { "type": "boolean" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "enum" } } },
+          "then": { "required": ["values"], "properties": { "default": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "color" } } },
+          "then": {
+            "properties": {
+              "default": { "type": "array", "minItems": 3, "maxItems": 4, "items": { "type": "number", "minimum": 0, "maximum": 1 } }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
