@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a) done, curves & speed ramping (6b) next — see §9.2
+**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a) and curves & effect keyframes (6b) done, speed ramping (6c) next — see §9.2
 **Date:** 2026-10-27
 
 ---
@@ -525,8 +525,9 @@ pulled forward into Phase 1 (5c).
 
 | Slice | Scope | Status |
 |---|---|---|
-| 6a. Keyframes | Keyframes on clip placement (position, scale, rotation), opacity, crop and volume; linear, ease in/out and hold; inspector keyframe toggles, add/remove, step between, easing, clear; auto-key while animated; timeline keyframe marks (click to go, drag to move); keyframes follow trims, splits, speed changes and freeze frames; preview, export and mix evaluate them | **Done** (effect parameters are keyframed in 6b) |
-| 6b. Curves & speed ramping | Bezier curve editor for keyframes, keyframed effect parameters, speed ramps with curve presets and pitch-preserving audio | Next |
+| 6a. Keyframes | Keyframes on clip placement (position, scale, rotation), opacity, crop and volume; linear, ease in/out and hold; inspector keyframe toggles, add/remove, step between, easing, clear; auto-key while animated; timeline keyframe marks (click to go, drag to move); keyframes follow trims, splits, speed changes and freeze frames; preview, export and mix evaluate them | **Done** (effect parameters followed in 6b) |
+| 6b. Curves & effect keyframes | Custom cubic-Bezier timing curve per keyframe with an inspector curve editor (drag the handles; overshoot, anticipate and snap presets; values clamped to their range), keyframes on effects' keyframable parameters (stored with the effect, so they follow reordering and removal), one keyframe model for clip properties and effect parameters | **Done** |
+| 6c. Speed ramping | Speed ramps with curve presets (bullet time, flash in/out, hero moment, …), pitch-preserving audio | Next |
 | 7a. Color | RGB/luma and hue curves, colour wheels, HSL qualifier, `.cube`/`.3dl` LUT import, colour presets and copy grade | Planned |
 | 7b. Looks & scopes | Filters with intensity, overlays, our own LUT library, adjustment layers; waveform, vectorscope, histogram, parade | Planned |
 | 8a. Masks & keying | Shape and pen masks (feather, invert), track matte, chroma key, PiP and split-screen layouts | Planned |

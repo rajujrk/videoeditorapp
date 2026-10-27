@@ -8,6 +8,8 @@ import TechieVideoEditor.Theme
 ColumnLayout {
     id: control
     required property var param
+    property string keyState // for an animatable parameter: "key", "animated" or "none"; empty otherwise
+    signal keyframeToggled()
     signal valueEdited(var value)    // while dragging (preview)
     signal valueCommitted(var value) // on release / toggle / pick (one undo step)
 
@@ -17,6 +19,12 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: control.param.type !== "bool"
 
+        KeyframeToggle {
+            objectName: control.objectName + ":keyframe"
+            visible: control.keyState !== ""
+            keyState: control.keyState || "none"
+            onClicked: control.keyframeToggled()
+        }
         Text {
             text: control.param.title
             color: Theme.color.textSecondary

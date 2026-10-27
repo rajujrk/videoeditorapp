@@ -14,7 +14,23 @@ const Keyframes* Clip::keyframesOf(std::string_view propertyId) const
 float Clip::gainDbAt(Ticks time) const
 {
     const Keyframes* animated = keyframesOf(property::kVolume);
-    return animated ? float(evaluate(*animated, time - start, gainDb)) : gainDb;
+    if (!animated)
+        return gainDb;
+    // A curve may overshoot its keyframes; stay in range.
+    return float(std::clamp(evaluate(*animated, time - start, gainDb), double(kMinGainDb), double(kMaxGainDb)));
+}
+
+std::vector<ClipEffect> Clip::effectsAt(Ticks time) const
+{
+    std::vector<ClipEffect> evaluated = effects;
+    for (ClipEffect& effect : evaluated) {
+        for (const auto& [param, keys] : effect.keyframes) {
+            if (!keys.empty())
+                effect.values[param] = {float(evaluate(keys, time - start, 0.0))};
+        }
+        effect.keyframes.clear();
+    }
+    return evaluated;
 }
 
 ClipVisual Clip::visualAt(Ticks time) const
@@ -24,8 +40,10 @@ ClipVisual Clip::visualAt(Ticks time) const
     ClipVisual v = visual;
     const Ticks local = time - start;
     const auto apply = [&](std::string_view id, double& value) {
-        if (const Keyframes* animated = keyframesOf(id))
-            value = evaluate(*animated, local, value);
+        if (const Keyframes* animated = keyframesOf(id)) {
+            const AnimatableProperty* p = findAnimatable(id);
+            value = std::clamp(evaluate(*animated, local, value), p->min, p->max); // curves may overshoot
+        }
     };
     apply(property::kX, v.transform.x);
     apply(property::kY, v.transform.y);

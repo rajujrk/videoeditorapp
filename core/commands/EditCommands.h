@@ -321,6 +321,9 @@ public:
     {
     }
 
+    // Replaces the effect stack in the same step (e.g. its parameters' keyframes).
+    void setEffects(std::vector<ClipEffect> effects) { m_effects = std::move(effects); }
+
     std::string label() const override { return m_label; }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
@@ -328,11 +331,15 @@ public:
 private:
     Id m_clipId;
     std::map<std::string, Keyframes> m_changes;
+    std::optional<std::vector<ClipEffect>> m_effects;
     std::string m_label;
     std::optional<ClipVisual> m_visual;
     std::optional<float> m_gainDb;
     Clip m_previous;
 };
+
+// Checks effect ids and their keyframes' order; returns why they are invalid.
+std::optional<std::string> validateEffects(const std::vector<ClipEffect>& effects);
 
 // Checks a picture's scale, opacity and crop; returns why it is invalid.
 std::optional<std::string> validateVisual(const ClipVisual& visual);

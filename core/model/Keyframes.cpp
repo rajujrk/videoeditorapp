@@ -19,8 +19,50 @@ double ease(Easing easing, double t)
         return t < 0.5 ? 4.0 * t * t * t : 1.0 - std::pow(-2.0 * t + 2.0, 3.0) / 2.0;
     case Easing::Hold:
         return 0.0;
+    case Easing::Curve:
+        break;
     }
     return t;
+}
+
+EasingCurve curveFor(Easing easing)
+{
+    // Cubic-Bezier stand-ins for the named easings (close to their exact curves).
+    switch (easing) {
+    case Easing::EaseIn:
+        return {0.32, 0.0, 0.67, 0.0};
+    case Easing::EaseOut:
+        return {0.33, 1.0, 0.68, 1.0};
+    case Easing::EaseInOut:
+        return {0.65, 0.0, 0.35, 1.0};
+    case Easing::Linear:
+    case Easing::Hold:
+    case Easing::Curve:
+        break;
+    }
+    return {0.0, 0.0, 1.0, 1.0};
+}
+
+double evaluateCurve(const EasingCurve& c, double t)
+{
+    t = std::clamp(t, 0.0, 1.0);
+    const auto bezier = [](double p1, double p2, double s) {
+        const double u = 1.0 - s;
+        return 3.0 * u * u * s * p1 + 3.0 * u * s * s * p2 + s * s * s;
+    };
+    // x(s) rises monotonically (x1, x2 in 0..1): bisect for the s where x(s) = t.
+    double lo = 0.0;
+    double hi = 1.0;
+    for (int i = 0; i < 40; ++i) {
+        const double mid = (lo + hi) / 2.0;
+        (bezier(c.x1, c.x2, mid) < t ? lo : hi) = mid;
+    }
+    return bezier(c.y1, c.y2, (lo + hi) / 2.0);
+}
+
+double ease(const Keyframe& from, double t)
+{
+    return from.easing == Easing::Curve ? evaluateCurve(from.curve, t) : ease(from.easing, t);
 }
 
 double evaluate(const Keyframes& keyframes, Ticks time, double fallback)
@@ -35,7 +77,7 @@ double evaluate(const Keyframes& keyframes, Ticks time, double fallback)
     const Keyframe& a = *(next - 1);
     const Keyframe& b = *next;
     const double t = double(time - a.time) / double(b.time - a.time);
-    return a.value + (b.value - a.value) * ease(a.easing, t);
+    return a.value + (b.value - a.value) * ease(a, t);
 }
 
 const Keyframe* keyframeAt(const Keyframes& keyframes, Ticks time)
@@ -74,12 +116,26 @@ std::optional<std::string> validateKeyframes(std::string_view propertyId, const 
     const AnimatableProperty* property = findAnimatable(propertyId);
     if (!property)
         return "\"" + std::string(propertyId) + "\" cannot be animated";
-    for (std::size_t i = 0; i < keyframes.size(); ++i) {
-        const Keyframe& k = keyframes[i];
+    for (const Keyframe& k : keyframes) {
         if (!std::isfinite(k.value) || k.value < property->min || k.value > property->max)
             return "a keyframe of " + std::string(propertyId) + " is out of range";
+    }
+    return validateKeyframeTimes(keyframes);
+}
+
+std::optional<std::string> validateKeyframeTimes(const Keyframes& keyframes)
+{
+    for (std::size_t i = 0; i < keyframes.size(); ++i) {
+        const Keyframe& k = keyframes[i];
+        if (!std::isfinite(k.value))
+            return "a keyframe has no value";
         if (i > 0 && k.time <= keyframes[i - 1].time)
             return "keyframes must be in order, one per time";
+        const EasingCurve& c = k.curve;
+        const auto inside = [](double v, double lo, double hi) { return std::isfinite(v) && v >= lo && v <= hi; };
+        if (!inside(c.x1, 0.0, 1.0) || !inside(c.x2, 0.0, 1.0) || !inside(c.y1, kMinCurveY, kMaxCurveY)
+            || !inside(c.y2, kMinCurveY, kMaxCurveY))
+            return "a keyframe's curve is out of range";
     }
     return std::nullopt;
 }

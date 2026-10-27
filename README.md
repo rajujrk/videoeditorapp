@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5d (export, autosave and
-crash recovery, proxies, voice-over). Phase 2: keyframes (6a) done.** You can import video and audio files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over). Phase 2: keyframes (6a) and curves with effect keyframes (6b) done.** You can import video and audio files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), give each clip its own effects,
@@ -105,7 +105,13 @@ animates just that one: filled when it has a keyframe at the playhead, outlined 
 animated. While a value is animated, changing it sets its keyframe at the playhead (adding
 one if needed). Step between keyframes with the arrows, choose how a keyframe eases to the
 next (linear, ease in, ease out, ease in and out, hold), remove one, or Clear to stop
-animating (each value keeps what it was at the playhead). Selected clips show their
+animating (each value keeps what it was at the playhead). For a custom timing, choose Custom curve
+(or drag a handle in the curve editor that appears under the easing): it draws how the
+value travels to the next keyframe, time left to right, progress bottom to top, and may
+overshoot (Overshoot, Anticipate and Snap are one click; values stay inside their range).
+Effects animate too: the ◆ beside an effect's slider in the Effects tab keys that parameter
+(blur radius, pixelate size, colour adjustments, vignette, RGB split amount and angle), and
+those keyframes travel with the effect when it is reordered or removed. Selected clips show their
 keyframes as diamonds along the bottom: click one to go there, drag it to move it in time.
 The timeline toolbar's ◆ adds or removes a keyframe for the selected clip. Keyframes stay
 on the same moments when a clip is trimmed, split or sped up; a freeze frame holds the

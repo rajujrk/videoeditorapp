@@ -116,7 +116,7 @@ Sizes are `Theme.size.*` tokens.
 | Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker and "Autosaved hh:mm", undo/redo with labels, save, theme toggle, Export (shows progress while exporting) opening `ExportDialog.qml` |
 | Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, proxy toggle, stats overlay |
-| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (a Keyframes section — add/remove at the playhead, step between, easing, clear — and a ◆ toggle beside every animatable value; placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); Color tab shows the planned sections |
+| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (a Keyframes section — add/remove at the playhead, step between, easing, clear — and a ◆ toggle beside every animatable value, a curve editor for the keyframe at the playhead, ◆ on keyframable effect parameters; placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); Color tab shows the planned sections |
 | Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; keyframe button for the selected clip and keyframe diamonds along clips (click to go, drag to move); voice-over button opening `VoiceOverPanel.qml` (a red range marks the take being recorded); move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges, title clips (purple, labelled with their text), transition markers over cuts (select, delete, drop target) |
 
 ### Home
@@ -190,6 +190,19 @@ clip's keyframe diamonds on the timeline, dark and light:
 
 ![Keyframes, dark](images/keyframes-dark.png)
 ![Keyframes, light](images/keyframes-light.png)
+
+The curve editor (`CurveEditor.qml`): an Overshoot curve on the keyframe at the playhead
+— time left to right, progress bottom to top, the unit square marking this keyframe's value
+and the next one's — with presets below, dark and light:
+
+![Curve editor, dark](images/curves-dark.png)
+![Curve editor, light](images/curves-light.png)
+
+An animated effect parameter: the blur radius between two keyframes, its ◆ outlined
+(animated, no keyframe at the playhead), dark and light:
+
+![Effect keyframes, dark](images/effect-keyframes-dark.png)
+![Effect keyframes, light](images/effect-keyframes-light.png)
 
 Voice-over panel (a non-modal `Popup` above the timeline toolbar's microphone button)
 mid-take, with the take's range in red on the timeline, dark and light:
