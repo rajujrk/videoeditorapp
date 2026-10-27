@@ -2,6 +2,8 @@ add_library(tve_core STATIC
     model/Time.h
     model/Project.h
     model/Project.cpp
+    model/TimelineQuery.h
+    model/TimelineQuery.cpp
     commands/Command.h
     commands/CommandStack.h
     commands/CommandStack.cpp

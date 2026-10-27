@@ -113,11 +113,11 @@ Sizes are `Theme.size.*` tokens.
 
 | Region | File | Status |
 |---|---|---|
-| Top bar | `ui/shell/TopBar.qml` | Layout; theme toggle works; undo/redo/export wait for Phase 1 |
-| Library | `ui/shell/LibraryPanel.qml` | Tabs and search layout; **Effects tab is live**; other tabs show placeholders naming their phase |
-| Player | `ui/shell/PlayerPanel.qml` | **Live** playback with stats overlay; transport controls wait for Phase 1 |
+| Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker, undo/redo with labels, save, theme toggle; export waits for Phase 1 slice 5 |
+| Library | `ui/shell/LibraryPanel.qml` | **Media and Effects tabs are live** (import, drop, drag to timeline); other tabs show placeholders naming their phase |
+| Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback, play/pause, frame step, timecode, stats overlay |
 | Inspector | `ui/shell/InspectorPanel.qml` | **Effects tab is live**; Video/Audio/Color tabs show the planned sections with disabled controls |
-| Timeline | `ui/shell/TimelinePanel.qml` | Visual language with sample clips; Phase 1 binds it to the project model |
+| Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; move (with snapping and track changes), trim, split, delete, scrub, zoom; lock/hide/mute wait for a later slice |
 
 ### Home
 

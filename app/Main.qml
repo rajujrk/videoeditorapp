@@ -1,7 +1,9 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
+import TechieVideoEditor.Player
 import TechieVideoEditor.Shell
 
 ApplicationWindow {
@@ -14,7 +16,8 @@ ApplicationWindow {
     minimumWidth: 1180
     minimumHeight: 700
     visible: true
-    title: screen === "editor" ? editorScreen.projectName + " — TechieVideoEditor" : "TechieVideoEditor"
+    title: screen === "editor" ? project.name + (project.modified ? " (edited)" : "") + " — TechieVideoEditor"
+                               : "TechieVideoEditor"
     color: Theme.color.canvas
 
     // Stock controls (Slider, Switch, ComboBox, ToolTip…) pick their colors up from here.
@@ -43,26 +46,47 @@ ApplicationWindow {
     }
     font: Theme.type.body
 
+    ProjectController {
+        id: project
+        objectName: "project"
+        view: editorScreen.player
+    }
+
     StackLayout {
         anchors.fill: parent
         currentIndex: root.screen === "editor" ? 1 : 0
 
         HomeScreen {
             onNewProject: (name, w, h) => {
-                editorScreen.projectName = name
-                editorScreen.canvasWidth = w
-                editorScreen.canvasHeight = h
+                project.newProject(w, h, name)
                 root.screen = "editor"
             }
+            onOpenRequested: openDialog.open()
             onMediaDropped: (file) => {
-                editorScreen.player.source = file
+                project.newProject(1920, 1080)
+                project.importAndAppend(file)
                 root.screen = "editor"
             }
         }
 
         EditorScreen {
             id: editorScreen
-            onHomeRequested: root.screen = "home"
+            project: project
+            onHomeRequested: {
+                project.pause()
+                root.screen = "home"
+            }
+        }
+    }
+
+    FileDialog {
+        id: openDialog
+        title: "Open project"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["TechieVideoEditor projects (*.tve)", "All files (*)"]
+        onAccepted: {
+            if (project.open(selectedFile))
+                root.screen = "editor"
         }
     }
 }

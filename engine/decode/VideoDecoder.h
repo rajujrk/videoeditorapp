@@ -37,6 +37,10 @@ public:
 
     bool seekToStart();
 
+    // Frame-accurate seek: the next frame returned is the one on screen at `target`
+    // (the last frame starting at or before it), not merely the nearest keyframe.
+    bool seek(Ticks target);
+
 private:
     struct Impl;
     explicit VideoDecoder(std::unique_ptr<Impl> impl);

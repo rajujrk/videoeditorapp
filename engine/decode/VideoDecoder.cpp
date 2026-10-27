@@ -1,5 +1,8 @@
 #include "decode/VideoDecoder.h"
 
+#include <algorithm>
+#include <mutex>
+
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -103,6 +106,7 @@ struct VideoDecoder::Impl {
     std::int64_t startTime = 0;
     bool inputDone = false;
     Ticks lastPts = 0;
+    Ticks discardBefore = -1; // after a seek: drop frames that end at or before this time
     VideoStreamInfo info;
 
     ~Impl()
@@ -117,19 +121,22 @@ struct VideoDecoder::Impl {
         avformat_close_input(&format);
     }
 
-    std::optional<DecodedFrame> takeFrame();
+    Ticks framePts() const;
+    std::optional<DecodedFrame> takeFrame(Ticks pts);
     CVPixelBufferRef convertToNv12();
 };
 
-std::optional<DecodedFrame> VideoDecoder::Impl::takeFrame()
+Ticks VideoDecoder::Impl::framePts() const
 {
     std::int64_t timestamp = frame->best_effort_timestamp;
     if (timestamp == AV_NOPTS_VALUE)
         timestamp = frame->pts;
-    const Ticks pts = timestamp == AV_NOPTS_VALUE
-        ? lastPts + frameDuration(info.frameRate)
-        : av_rescale_q(timestamp - startTime, timeBase, kTickTimeBase);
-    lastPts = pts;
+    return timestamp == AV_NOPTS_VALUE ? lastPts + frameDuration(info.frameRate)
+                                       : av_rescale_q(timestamp - startTime, timeBase, kTickTimeBase);
+}
+
+std::optional<DecodedFrame> VideoDecoder::Impl::takeFrame(Ticks pts)
+{
 
     if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
         info.hardwareAccelerated = true;
@@ -193,6 +200,10 @@ std::unique_ptr<VideoDecoder> VideoDecoder::open(const std::string& path, std::s
             *error = std::move(message);
         return nullptr;
     };
+
+    // FFmpeg logs warnings (e.g. about JPEG-range pixel formats) to stderr by default.
+    static std::once_flag quietLogs;
+    std::call_once(quietLogs, [] { av_log_set_level(AV_LOG_ERROR); });
 
     auto d = std::make_unique<Impl>();
     if (int rc = avformat_open_input(&d->format, path.c_str(), nullptr, nullptr); rc < 0)
@@ -258,7 +269,17 @@ std::optional<DecodedFrame> VideoDecoder::nextFrame()
     while (true) {
         const int rc = avcodec_receive_frame(d.codec, d.frame);
         if (rc == 0) {
-            auto decoded = d.takeFrame();
+            const Ticks pts = d.framePts();
+            d.lastPts = pts;
+            // After a seek, frames before the target are decoded (they are needed as
+            // references) but not returned. A frame is kept if it is still on screen at
+            // the target time.
+            if (d.discardBefore >= 0 && pts + frameDuration(d.info.frameRate) <= d.discardBefore) {
+                av_frame_unref(d.frame);
+                continue;
+            }
+            d.discardBefore = -1;
+            auto decoded = d.takeFrame(pts);
             av_frame_unref(d.frame);
             if (decoded)
                 return decoded;
@@ -280,12 +301,21 @@ std::optional<DecodedFrame> VideoDecoder::nextFrame()
 
 bool VideoDecoder::seekToStart()
 {
+    return seek(0);
+}
+
+bool VideoDecoder::seek(Ticks target)
+{
     Impl& d = *m_impl;
-    if (av_seek_frame(d.format, d.streamIndex, d.startTime, AVSEEK_FLAG_BACKWARD) < 0)
+    target = std::max<Ticks>(target, 0);
+    const std::int64_t timestamp = d.startTime + av_rescale_q(target, kTickTimeBase, d.timeBase);
+    // Land on the keyframe at or before the target, then decode forward to it.
+    if (av_seek_frame(d.format, d.streamIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0)
         return false;
     avcodec_flush_buffers(d.codec);
     d.inputDone = false;
-    d.lastPts = 0;
+    d.lastPts = target;
+    d.discardBefore = target > 0 ? target : -1;
     return true;
 }
 

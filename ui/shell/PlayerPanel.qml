@@ -6,8 +6,9 @@ import TechieVideoEditor.Player
 // Center panel: the live preview and its transport bar.
 Rectangle {
     id: panel
+    required property var project // ProjectController
     property alias player: video
-    property bool showStats: true
+    property bool showStats: false
 
     color: Theme.color.surfaceSunken
 
@@ -28,19 +29,20 @@ Rectangle {
 
             DropArea {
                 anchors.fill: parent
+                keys: ["text/uri-list"]
                 onDropped: (drop) => {
-                    if (drop.hasUrls)
-                        video.source = drop.urls[0]
+                    for (const url of drop.urls)
+                        panel.project.importAndAppend(url)
                 }
             }
 
             Column {
                 anchors.centerIn: parent
-                visible: video.source === ""
+                visible: panel.project.duration === 0
                 spacing: Theme.space.s
                 Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "media"; size: 32; color: Theme.color.textDisabled }
                 Text {
-                    text: "Drop a video file here to preview it"
+                    text: "Drop video files here, or import them in the media library"
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                 }
@@ -48,7 +50,7 @@ Rectangle {
 
             Rectangle {
                 anchors { left: parent.left; top: parent.top; margins: Theme.space.m + Theme.space.s }
-                visible: panel.showStats && video.source !== ""
+                visible: panel.showStats
                 color: Theme.color.overlay
                 radius: Theme.radius.m
                 width: stats.implicitWidth + Theme.space.l
@@ -84,21 +86,29 @@ Rectangle {
                 spacing: Theme.space.xs
 
                 Text {
-                    text: "00:00:00:00"
+                    objectName: "playheadTimecode"
+                    text: panel.project.timecode(panel.project.playhead)
                     font: Theme.type.mono
                     color: Theme.color.textPrimary
                 }
                 Text {
-                    text: "/ 00:00:20:00"
+                    text: "/ " + panel.project.timecode(panel.project.duration)
                     font: Theme.type.mono
                     color: Theme.color.textSecondary
                 }
 
                 Item { Layout.fillWidth: true }
 
-                IconButton { iconName: "skip-back"; tip: "Previous frame (Phase 1)"; enabled: false }
-                IconButton { iconName: "pause"; tip: "Play / pause (Phase 1)"; enabled: false; buttonSize: Theme.size.control + 4 }
-                IconButton { iconName: "skip-forward"; tip: "Next frame (Phase 1)"; enabled: false }
+                IconButton { iconName: "skip-back"; tip: "Previous frame (←)"; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(-1) }
+                IconButton {
+                    objectName: "playButton"
+                    iconName: panel.project.playing ? "pause" : "play"
+                    tip: panel.project.playing ? "Pause (Space)" : "Play (Space)"
+                    enabled: panel.project.duration > 0
+                    buttonSize: Theme.size.control + 4
+                    onClicked: panel.project.togglePlay()
+                }
+                IconButton { iconName: "skip-forward"; tip: "Next frame (→)"; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(1) }
 
                 Item { Layout.fillWidth: true }
 

@@ -25,18 +25,37 @@ private:
 
 class ImportMediaCommand final : public Command {
 public:
-    ImportMediaCommand(std::string path, Ticks duration) : m_path(std::move(path)), m_duration(duration) {}
+    // `item` carries the probed facts; its id is assigned by the command.
+    explicit ImportMediaCommand(MediaItem item) : m_item(std::move(item)) {}
+    ImportMediaCommand(std::string path, Ticks duration) : m_item{.path = std::move(path), .duration = duration} {}
 
     std::string label() const override { return "Import Media"; }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
-    Id mediaId() const { return m_mediaId; }
+    Id mediaId() const { return m_item.id; }
 
 private:
-    std::string m_path;
-    Ticks m_duration;
-    Id m_mediaId = kNoId;
+    MediaItem m_item;
+};
+
+// Moves one edge of a clip. Trimming the start also moves the source in-point, so the
+// frames under the remaining part of the clip stay where they were.
+class TrimClipCommand final : public Command {
+public:
+    enum class Edge { Start, End };
+    TrimClipCommand(Id clipId, Edge edge, Ticks newTime) : m_clipId(clipId), m_edge(edge), m_newTime(newTime) {}
+
+    std::string label() const override { return "Trim Clip"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    Edge m_edge;
+    Ticks m_newTime;
+    Id m_trackId = kNoId;
+    Clip m_original;
 };
 
 class AddClipCommand final : public Command {

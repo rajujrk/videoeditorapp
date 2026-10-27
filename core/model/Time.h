@@ -29,6 +29,18 @@ constexpr double toSeconds(Ticks ticks)
     return static_cast<double>(ticks) / static_cast<double>(kTicksPerSecond);
 }
 
+// Exact: 705.6 ticks per microsecond. (Dividing kTicksPerSecond by 1'000'000 first would
+// truncate to 705 and drift 0.6 ms per second.) Safe for spans up to ~40 years.
+constexpr Ticks ticksFromMicros(std::int64_t micros)
+{
+    return micros * 7056 / 10;
+}
+
+constexpr std::int64_t microsFromTicks(Ticks ticks)
+{
+    return ticks * 10 / 7056;
+}
+
 inline Ticks fromSeconds(double seconds)
 {
     return static_cast<Ticks>(std::llround(seconds * static_cast<double>(kTicksPerSecond)));

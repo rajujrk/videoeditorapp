@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 
@@ -12,13 +13,19 @@ import TechieVideoEditor.Theme
 // All dividers are draggable; sizes come from Theme.size.
 Rectangle {
     id: editor
-    property string projectName: "Untitled project"
-    property int canvasWidth: 1920
-    property int canvasHeight: 1080
+    required property var project // ProjectController
     property alias player: playerPanel.player
     signal homeRequested()
 
     color: Theme.color.canvas
+
+    function importMedia() { importDialog.open() }
+    function saveProject() {
+        if (project.filePath !== "")
+            project.save("")
+        else
+            saveDialog.open()
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -26,9 +33,9 @@ Rectangle {
 
         TopBar {
             Layout.fillWidth: true
-            projectName: editor.projectName
-            canvasDescription: editor.canvasWidth + " × " + editor.canvasHeight + " · 30 fps"
+            project: editor.project
             onHomeRequested: editor.homeRequested()
+            onSaveRequested: editor.saveProject()
         }
 
         SplitView {
@@ -46,11 +53,14 @@ Rectangle {
                     SplitView.preferredWidth: Theme.size.libraryWidth
                     SplitView.minimumWidth: Theme.size.libraryMinWidth
                     player: playerPanel.player
+                    project: editor.project
+                    onImportRequested: editor.importMedia()
                 }
                 PlayerPanel {
                     id: playerPanel
                     SplitView.fillWidth: true
                     SplitView.minimumWidth: Theme.size.playerMinWidth
+                    project: editor.project
                 }
                 InspectorPanel {
                     SplitView.preferredWidth: Theme.size.inspectorWidth
@@ -62,6 +72,77 @@ Rectangle {
             TimelinePanel {
                 SplitView.preferredHeight: Theme.size.timelineHeight
                 SplitView.minimumHeight: Theme.size.timelineMinHeight
+                project: editor.project
+            }
+        }
+    }
+
+    FileDialog {
+        id: importDialog
+        title: "Import media"
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["Video files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts)", "All files (*)"]
+        onAccepted: editor.project.importMedia(selectedFiles)
+    }
+
+    FileDialog {
+        id: saveDialog
+        title: "Save project"
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "tve"
+        nameFilters: ["TechieVideoEditor projects (*.tve)"]
+        onAccepted: editor.project.save(selectedFile)
+    }
+
+    // Keyboard shortcuts. Single-key ones are off while a text field has focus.
+    readonly property bool typing: Window.activeFocusItem !== null
+                                   && Window.activeFocusItem.hasOwnProperty("cursorPosition")
+    Shortcut { sequence: "Space"; enabled: editor.visible && !editor.typing; onActivated: editor.project.togglePlay() }
+    Shortcut { sequence: "S"; enabled: editor.visible && !editor.typing; onActivated: editor.project.splitAtPlayhead() }
+    Shortcut {
+        sequences: ["Delete", "Backspace"]
+        enabled: editor.visible && !editor.typing && editor.project.selectedClip > 0
+        onActivated: editor.project.deleteClip(editor.project.selectedClip)
+    }
+    Shortcut { sequence: "Left"; enabled: editor.visible && !editor.typing; onActivated: editor.project.stepFrames(-1) }
+    Shortcut { sequence: "Right"; enabled: editor.visible && !editor.typing; onActivated: editor.project.stepFrames(1) }
+    Shortcut { sequence: "Home"; enabled: editor.visible && !editor.typing; onActivated: editor.project.seek(0) }
+    Shortcut { sequence: "End"; enabled: editor.visible && !editor.typing; onActivated: editor.project.seek(editor.project.duration) }
+    Shortcut { sequences: [StandardKey.Undo]; enabled: editor.visible; onActivated: editor.project.undo() }
+    Shortcut { sequences: [StandardKey.Redo]; enabled: editor.visible; onActivated: editor.project.redo() }
+    Shortcut { sequences: [StandardKey.Save]; enabled: editor.visible; onActivated: editor.saveProject() }
+    Shortcut { sequence: "Ctrl+I"; enabled: editor.visible; onActivated: editor.importMedia() }
+
+    // Error toast: explains why an edit was refused.
+    Rectangle {
+        id: toast
+        objectName: "errorToast"
+        property string message
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Theme.space.xl
+        width: toastText.implicitWidth + Theme.space.xl
+        height: toastText.implicitHeight + Theme.space.m
+        radius: Theme.radius.m
+        color: Theme.color.surfaceRaised
+        border.color: Theme.color.danger
+        opacity: message !== "" ? 1 : 0
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: Theme.motion.normal } }
+
+        Text {
+            id: toastText
+            anchors.centerIn: parent
+            text: toast.message
+            font: Theme.type.body
+            color: Theme.color.textPrimary
+        }
+        Timer { id: toastTimer; interval: 3500; onTriggered: toast.message = "" }
+        Connections {
+            target: editor.project
+            function onErrorOccurred(message) {
+                toast.message = message
+                toastTimer.restart()
             }
         }
     }

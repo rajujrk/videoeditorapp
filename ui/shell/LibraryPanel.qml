@@ -6,13 +6,15 @@ import TechieVideoEditor.Theme
 // Left panel: a vertical tab rail of content types and the selected type's browser.
 Rectangle {
     id: library
-    required property var player // VideoView, for the live effects list
+    required property var player  // VideoView, for the live effects list
+    required property var project // ProjectController
     property int currentTab: 0
+    signal importRequested()
 
     color: Theme.color.surface
 
     readonly property var tabs: [
-        { icon: "media", label: "Media", phase: "Import and bins arrive in Phase 1" },
+        { icon: "media", label: "Media", phase: "" },
         { icon: "audio", label: "Audio", phase: "Music and sound library — Phase 4" },
         { icon: "titles", label: "Titles", phase: "Title templates — Phase 2" },
         { icon: "transitions", label: "Transitions", phase: "Transition library — Phase 1–2" },
@@ -86,7 +88,13 @@ Rectangle {
             PanelHeader {
                 Layout.fillWidth: true
                 title: library.tabs[library.currentTab].label
-                IconButton { iconName: "import"; tip: "Import media (Phase 1)"; enabled: false; visible: library.currentTab === 0 }
+                IconButton {
+                    objectName: "importButton"
+                    iconName: "import"
+                    tip: "Import media (⌘I)"
+                    visible: library.currentTab === 0
+                    onClicked: library.importRequested()
+                }
             }
 
             SearchField {
@@ -153,8 +161,135 @@ Rectangle {
                 }
             }
 
+            // Media tab: the project's media bin
             Item {
-                visible: !effectsGrid.visible
+                id: mediaBin
+                visible: library.currentTab === 0
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                GridView {
+                    id: mediaGrid
+                    anchors.fill: parent
+                    anchors.leftMargin: Theme.space.m
+                    clip: true
+                    cellWidth: Math.floor(width / 2)
+                    cellHeight: 118
+                    model: library.project.media
+
+                    delegate: Item {
+                        id: mediaTile
+                        required property var modelData
+                        readonly property double mediaId: modelData.id // read by timeline drop targets
+                        objectName: "media:" + modelData.name
+                        width: mediaGrid.cellWidth
+                        height: mediaGrid.cellHeight
+
+                        Drag.active: tileMouse.drag.active
+                        Drag.dragType: Drag.Automatic
+                        Drag.supportedActions: Qt.CopyAction
+                        Drag.keys: ["application/x-tve-media"]
+                        Drag.mimeData: { "application/x-tve-media": String(modelData.id) }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.rightMargin: Theme.space.m
+                            anchors.bottomMargin: Theme.space.m
+                            radius: Theme.radius.m
+                            color: Theme.color.surfaceRaised
+                            border.color: tileMouse.containsMouse ? Theme.color.borderStrong : Theme.color.borderSubtle
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: Theme.space.xs
+                                spacing: Theme.space.xxs
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    radius: Theme.radius.s
+                                    color: Theme.color.surfaceSunken
+                                    Icon { anchors.centerIn: parent; name: "media"; color: Theme.color.textDisabled }
+                                    Text {
+                                        anchors { right: parent.right; bottom: parent.bottom; margins: Theme.space.xs }
+                                        text: library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
+                                        font: Theme.type.caption
+                                        color: Theme.color.textSecondary
+                                    }
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: Theme.space.xs
+                                    text: mediaTile.modelData.name
+                                    font: Theme.type.label
+                                    color: Theme.color.textPrimary
+                                    elide: Text.ElideMiddle
+                                }
+                                Text {
+                                    Layout.leftMargin: Theme.space.xs
+                                    Layout.bottomMargin: Theme.space.xxs
+                                    text: mediaTile.modelData.width + "×" + mediaTile.modelData.height
+                                          + " · " + mediaTile.modelData.frameRate.toFixed(mediaTile.modelData.frameRate % 1 ? 2 : 0) + " fps"
+                                    font: Theme.type.caption
+                                    color: Theme.color.textSecondary
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: tileMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            drag.target: dragProxy
+                            onDoubleClicked: library.project.addClip(mediaTile.modelData.id)
+                            onPressed: mediaTile.grabToImage((result) => mediaTile.Drag.imageSource = result.url, Qt.size(120, 90))
+                        }
+                        Item { id: dragProxy }
+
+                        ToolTip.visible: tileMouse.containsMouse && !tileMouse.drag.active
+                        ToolTip.delay: 800
+                        ToolTip.text: "Double-click to add to the timeline, or drag onto a track"
+                    }
+                }
+
+                Column {
+                    anchors.centerIn: parent
+                    visible: library.project.media.length === 0
+                    spacing: Theme.space.s
+                    width: parent.width - Theme.space.xl * 2
+
+                    Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "import"; size: 28 }
+                    Text {
+                        width: parent.width
+                        text: "Import or drop video files here"
+                        font: Theme.type.heading
+                        color: Theme.color.textPrimary
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                    }
+                    TextButton {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "Import media…"
+                        iconName: "import"
+                        variant: "primary"
+                        onClicked: library.importRequested()
+                    }
+                }
+
+                DropArea {
+                    anchors.fill: parent
+                    keys: ["text/uri-list"]
+                    onDropped: (drop) => {
+                        if (drop.hasUrls) {
+                            library.project.importMedia(drop.urls)
+                            drop.accept(Qt.CopyAction)
+                        }
+                    }
+                }
+            }
+
+            Item {
+                visible: !effectsGrid.visible && !mediaBin.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 

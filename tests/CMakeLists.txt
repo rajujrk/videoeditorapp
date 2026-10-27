@@ -3,6 +3,7 @@ add_executable(tve_core_tests
     core/test_commands.cpp
     core/test_serializer.cpp
     core/test_effect_manifest.cpp
+    core/test_timeline_query.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
@@ -11,6 +12,7 @@ add_executable(tve_engine_tests
     engine/test_ffmpeg_license.cpp
     engine/test_decoder.cpp
     engine/test_frame_queue.cpp
+    engine/test_timeline_playback.cpp
 )
 target_link_libraries(tve_engine_tests PRIVATE tve::engine tve::ffmpeg Catch2::Catch2WithMain)
 target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples")
@@ -40,7 +42,9 @@ if(TARGET tve_shell)
     find_package(Qt6 REQUIRED COMPONENTS QuickTest)
     qt_add_executable(tve_qml_tests qml/main.cpp)
     set_target_properties(tve_qml_tests PROPERTIES MACOSX_BUNDLE OFF)
-    target_compile_definitions(tve_qml_tests PRIVATE TVE_QML_TESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    target_compile_definitions(tve_qml_tests PRIVATE
+        TVE_QML_TESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
+        TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples")
     target_link_libraries(tve_qml_tests PRIVATE Qt6::QuickTest Qt6::QuickControls2 tve_shellplugin)
     add_test(NAME tve_qml_tests COMMAND tve_qml_tests)
 endif()

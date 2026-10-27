@@ -93,12 +93,6 @@ QMatrix4x4 yuvToRgbMatrix(CVPixelBufferRef buffer, bool fullRange)
                       0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-tve::Ticks ticksSince(std::chrono::steady_clock::time_point origin)
-{
-    const auto micros = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::steady_clock::now() - origin).count();
-    return micros * (tve::kTicksPerSecond / 1'000'000);
-}
 
 
 // Rendering happens in three stages:
@@ -164,13 +158,11 @@ private:
     std::array<InFlight, 3> m_inFlight;
     std::size_t m_nextSlot = 0;
 
-    std::shared_ptr<tve::PlaybackSession> m_session;
+    std::shared_ptr<tve::FrameSource> m_source;
     bool m_hasFrame = false;
     bool m_needsProcessing = false;
     QSize m_videoSize;
     QMatrix4x4 m_colorMatrix;
-    bool m_clockStarted = false;
-    std::chrono::steady_clock::time_point m_clockOrigin;
 };
 
 void VideoRenderer::release(InFlight& slot)
@@ -301,10 +293,9 @@ bool VideoRenderer::bindPresentInput(QRhiTexture* image)
 void VideoRenderer::synchronize(QQuickRhiItem* item)
 {
     auto* view = static_cast<VideoView*>(item);
-    auto session = view->session();
-    if (session != m_session) {
-        m_session = std::move(session);
-        m_clockStarted = false;
+    auto source = view->frameSource();
+    if (source != m_source) {
+        m_source = std::move(source);
         m_hasFrame = false;
     }
     if (m_chain && view->effectsRevision() != m_effectsRevision) {
@@ -359,23 +350,26 @@ bool VideoRenderer::showFrame(tve::DecodedFrame frame)
 void VideoRenderer::render(QRhiCommandBuffer* cb)
 {
     float playbackSeconds = 0.0f;
-    if (m_session && m_presentPipeline) {
-        auto& queue = m_session->queue();
-        if (!m_clockStarted) {
+    if (m_source && m_presentPipeline) {
+        auto& queue = m_source->queue();
+        auto& clock = m_source->clock();
+        if (m_source->startsOnFirstFrame() && !clock.started()) {
             if (auto firstPts = queue.frontPts()) {
-                m_clockOrigin = std::chrono::steady_clock::now()
-                    - std::chrono::microseconds(*firstPts / (tve::kTicksPerSecond / 1'000'000));
-                m_clockStarted = true;
+                clock.seek(*firstPts);
+                clock.play();
             }
         }
-        if (m_clockStarted) {
-            const tve::Ticks now = ticksSince(m_clockOrigin);
+        if (clock.started()) {
+            const tve::Ticks now = clock.now();
             playbackSeconds = float(tve::toSeconds(now));
             int skipped = 0;
             if (auto frame = queue.takeLatestDue(now, skipped)) {
-                m_session->counters().skipped += skipped;
-                if (showFrame(std::move(*frame)))
-                    ++m_session->counters().presented;
+                m_source->counters().skipped += skipped;
+                if (!frame->pixelBuffer()) {
+                    m_hasFrame = false; // a gap: show black
+                } else if (showFrame(std::move(*frame))) {
+                    ++m_source->counters().presented;
+                }
             }
         }
         CVMetalTextureCacheFlush(m_textureCache, 0);
@@ -422,8 +416,8 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
     }
     cb->endPass();
 
-    if (m_session)
-        update(); // keep presenting on every vsync while a video is loaded
+    if (m_source)
+        update(); // keep presenting on every vsync while there is something to play
 }
 
 } // namespace
@@ -440,63 +434,81 @@ VideoView::VideoView(QQuickItem* parent) : QQuickRhiItem(parent)
 
 VideoView::~VideoView()
 {
-    if (m_session)
-        m_session->stop();
+    if (m_stopFileSession)
+        m_stopFileSession();
 }
 
-void VideoView::setSource(const QString& source)
+void VideoView::setFrameSource(std::shared_ptr<tve::FrameSource> source, const QString& description)
 {
-    if (source == m_source)
-        return;
-    m_source = source;
-
-    if (m_session)
-        m_session->stop();
-    m_session.reset();
-    m_statsTimer.stop();
+    if (m_stopFileSession) {
+        m_stopFileSession();
+        m_stopFileSession = nullptr;
+    }
+    m_source.clear();
+    m_frameSource = std::move(source);
     m_error.clear();
-    m_description.clear();
+    m_description = description;
     m_decodeFps = m_presentFps = 0;
     m_skipped = m_lastDecoded = m_lastPresented = 0;
-
-    if (!source.isEmpty()) {
-        const QString path = source.startsWith(QLatin1String("file:")) ? QUrl(source).toLocalFile() : source;
-        std::string error;
-        m_session = tve::PlaybackSession::open(path.toStdString(), &error);
-        if (!m_session) {
-            m_error = QString::fromStdString(error);
-        } else {
-            const tve::VideoStreamInfo info = m_session->info();
-            m_description = QStringLiteral("%1×%2 %3 @ %4 fps")
-                                .arg(info.width)
-                                .arg(info.height)
-                                .arg(QString::fromStdString(info.codecName))
-                                .arg(double(info.frameRate.num) / info.frameRate.den, 0, 'f', 2);
-            m_session->start();
-            m_lastSampleMs = QDateTime::currentMSecsSinceEpoch();
-            m_statsTimer.start();
-        }
+    m_statsTimer.stop();
+    if (m_frameSource) {
+        m_lastDecoded = m_frameSource->counters().decoded;
+        m_lastPresented = m_frameSource->counters().presented;
+        m_lastSampleMs = QDateTime::currentMSecsSinceEpoch();
+        m_statsTimer.start();
     }
     emit sourceChanged();
     emit statsChanged();
     update();
 }
 
+void VideoView::setSource(const QString& source)
+{
+    if (source == m_source)
+        return;
+
+    std::shared_ptr<tve::PlaybackSession> session;
+    QString description;
+    QString error;
+    if (!source.isEmpty()) {
+        const QString path = source.startsWith(QLatin1String("file:")) ? QUrl(source).toLocalFile() : source;
+        std::string message;
+        session = tve::PlaybackSession::open(path.toStdString(), &message);
+        if (!session) {
+            error = QString::fromStdString(message);
+        } else {
+            const tve::VideoStreamInfo info = session->info();
+            description = QStringLiteral("%1×%2 %3 @ %4 fps")
+                              .arg(info.width)
+                              .arg(info.height)
+                              .arg(QString::fromStdString(info.codecName))
+                              .arg(double(info.frameRate.num) / info.frameRate.den, 0, 'f', 2);
+            session->start();
+        }
+    }
+    setFrameSource(session, description);
+    if (session)
+        m_stopFileSession = [session] { session->stop(); };
+    m_source = source;
+    m_error = error;
+    emit sourceChanged();
+}
+
 void VideoView::sampleStats()
 {
-    if (!m_session)
+    if (!m_frameSource)
         return;
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
     const double seconds = double(now - m_lastSampleMs) / 1000.0;
     if (seconds <= 0)
         return;
-    auto& counters = m_session->counters();
+    auto& counters = m_frameSource->counters();
     const qint64 decoded = counters.decoded;
     const qint64 presented = counters.presented;
     m_decodeFps = double(decoded - m_lastDecoded) / seconds;
     m_presentFps = double(presented - m_lastPresented) / seconds;
     m_skipped = counters.skipped;
-    m_hardware = m_session->hardwareAccelerated();
+    m_hardware = m_frameSource->hardwareAccelerated();
     m_lastDecoded = decoded;
     m_lastPresented = presented;
     m_lastSampleMs = now;

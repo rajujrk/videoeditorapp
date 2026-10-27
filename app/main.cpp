@@ -1,3 +1,4 @@
+#include "ProjectController.h"
 #include "VideoView.h"
 
 #include <QCommandLineParser>
@@ -96,9 +97,14 @@ int main(int argc, char* argv[])
                                           QStringLiteral("name"));
     const QCommandLineOption themeOption(QStringLiteral("theme"), QStringLiteral("\"dark\" (default) or \"light\"."),
                                          QStringLiteral("name"), QStringLiteral("dark"));
+    const QCommandLineOption playOption(QStringLiteral("play"), QStringLiteral("Start playing after loading."));
+    const QCommandLineOption seekOption(QStringLiteral("seek"), QStringLiteral("Move the playhead to <seconds>."),
+                                        QStringLiteral("seconds"));
     parser.addOptions({statsOption, quitOption, effectsOption, screenshotOption, screenshotAtOption, screenOption,
-                       themeOption});
-    parser.addPositionalArgument(QStringLiteral("file"), QStringLiteral("Video file to play."), QStringLiteral("[file]"));
+                       themeOption, playOption, seekOption});
+    parser.addPositionalArgument(QStringLiteral("files"),
+                                 QStringLiteral("A .tve project to open, or media files to add to a new project."),
+                                 QStringLiteral("[files...]"));
     parser.process(app);
 
     QQmlApplicationEngine engine;
@@ -127,8 +133,22 @@ int main(int argc, char* argv[])
                 view->setEffectEnabled(id, true);
         }
     }
-    if (view && !parser.positionalArguments().isEmpty())
-        view->setSource(QFileInfo(parser.positionalArguments().constFirst()).absoluteFilePath());
+    // Files on the command line: a .tve project is opened; media files are imported and
+    // appended to the main track in order.
+    auto* project = engine.rootObjects().constFirst()->findChild<ProjectController*>(QStringLiteral("project"));
+    if (project) {
+        for (const QString& argument : parser.positionalArguments()) {
+            const QUrl url = QUrl::fromLocalFile(QFileInfo(argument).absoluteFilePath());
+            if (argument.endsWith(QLatin1String(".tve")))
+                project->open(url);
+            else
+                project->importAndAppend(url);
+        }
+        if (parser.isSet(seekOption))
+            project->seek(parser.value(seekOption).toDouble());
+        if (parser.isSet(playOption) || (hasFile && parser.isSet(statsOption)))
+            project->play();
+    }
 
     if (window && parser.isSet(screenshotOption)) {
         const QString path = QFileInfo(parser.value(screenshotOption)).absoluteFilePath();

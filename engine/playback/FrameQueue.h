@@ -64,6 +64,14 @@ public:
         m_notFull.notify_all();
     }
 
+    // Empties a stopped queue and accepts frames again (used when playback seeks).
+    void restart()
+    {
+        std::lock_guard lock(m_mutex);
+        m_frames.clear();
+        m_stopped = false;
+    }
+
 private:
     const std::size_t m_capacity;
     mutable std::mutex m_mutex;
