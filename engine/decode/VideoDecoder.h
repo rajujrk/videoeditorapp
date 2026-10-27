@@ -41,6 +41,13 @@ public:
     // (the last frame starting at or before it), not merely the nearest keyframe.
     bool seek(Ticks target);
 
+    // Seeks to the keyframe at or before `target`: the next frame returned is that keyframe.
+    // Cheaper than seek() when the frames before the target are wanted too (reverse play).
+    bool seekToKeyframe(Ticks target);
+
+    // Time of the keyframe at or before `target` from the container's index, if it has one.
+    std::optional<Ticks> keyframeBefore(Ticks target) const;
+
 private:
     struct Impl;
     explicit VideoDecoder(std::unique_ptr<Impl> impl);

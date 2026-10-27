@@ -18,6 +18,7 @@ qt_add_qml_module(tve_theme
         Divider.qml
         Section.qml
         PlaceholderBox.qml
+        ToggleSwitch.qml
     RESOURCES
         ${TVE_THEME_ICONS}
 )

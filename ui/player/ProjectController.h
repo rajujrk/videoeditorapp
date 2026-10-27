@@ -129,6 +129,12 @@ public:
     Q_INVOKABLE void cancelPreview(double clipId);
     Q_INVOKABLE bool resetClipVisual(double clipId);
 
+    // Speed (0.1–10) and direction; the clip's length changes and later clips follow.
+    Q_INVOKABLE bool setClipSpeed(double clipId, double speed, bool reversed);
+    // Inserts a still of the frame at the playhead into the clip under it (or the selected
+    // clip) for `holdSeconds`.
+    Q_INVOKABLE bool freezeFrame(double holdSeconds = 2.0);
+
     // Per-clip effects (by index in the clip's stack).
     Q_INVOKABLE bool addClipEffect(double clipId, const QString& effectId);
     Q_INVOKABLE bool removeClipEffect(double clipId, int index);

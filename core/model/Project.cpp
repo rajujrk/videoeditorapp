@@ -19,6 +19,23 @@ float Clip::gainAt(Ticks time) const
     return gain;
 }
 
+Ticks Clip::sourceSpan() const
+{
+    return freeze ? 0 : Ticks(std::llround(double(duration) * speed));
+}
+
+Ticks Clip::sourceTimeAt(Ticks time) const
+{
+    if (freeze)
+        return sourceIn;
+    const Ticks offset = Ticks(std::llround(double(time - start) * speed));
+    if (!reversed)
+        return sourceIn + offset;
+    // Backwards from the end of the span; one tick inside it so the frame shown at the
+    // clip's start is the span's last frame, not the first frame after it.
+    return std::max(sourceIn, sourceIn + sourceSpan() - offset - 1);
+}
+
 const Clip* Track::findClip(Id clipId) const
 {
     auto it = std::ranges::find(clips, clipId, &Clip::id);

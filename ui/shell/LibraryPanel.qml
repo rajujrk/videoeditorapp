@@ -217,11 +217,32 @@ Rectangle {
                                     radius: Theme.radius.s
                                     color: Theme.color.surfaceSunken
                                     Icon { anchors.centerIn: parent; name: mediaTile.modelData.hasVideo ? "media" : "audio"; color: Theme.color.textDisabled }
-                                    Text {
+                                    Image {
+                                        objectName: "mediaThumb:" + mediaTile.modelData.name
+                                        visible: mediaTile.modelData.hasVideo
+                                        anchors.fill: parent
+                                        anchors.margins: 1
+                                        asynchronous: true
+                                        fillMode: Image.PreserveAspectFit
+                                        source: mediaTile.modelData.hasVideo && height >= 4
+                                                ? "image://tvethumb/!" + encodeURIComponent(mediaTile.modelData.path) + "@"
+                                                  + (mediaTile.modelData.duration * 0.1).toFixed(2) + "@" + Math.round(height * 2)
+                                                : ""
+                                    }
+                                    // Duration on a scrim so it reads over the thumbnail.
+                                    Rectangle {
                                         anchors { right: parent.right; bottom: parent.bottom; margins: Theme.space.xs }
-                                        text: library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
-                                        font: Theme.type.caption
-                                        color: Theme.color.textSecondary
+                                        width: durationText.implicitWidth + Theme.space.s
+                                        height: durationText.implicitHeight + Theme.space.xxs
+                                        radius: Theme.radius.s
+                                        color: Theme.color.overlay
+                                        Text {
+                                            id: durationText
+                                            anchors.centerIn: parent
+                                            text: library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
+                                            font: Theme.type.caption
+                                            color: "#FFFFFF"
+                                        }
                                     }
                                 }
                                 Text {

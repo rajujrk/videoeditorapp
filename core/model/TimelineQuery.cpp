@@ -15,7 +15,7 @@ std::optional<VisibleClip> visibleVideoAt(const Project& project, Ticks time)
             continue;
         --clip; // last clip starting at or before `time`
         if (time < clip->end())
-            return VisibleClip{&*track, &*clip, clip->sourceIn + (time - clip->start)};
+            return VisibleClip{&*track, &*clip, clip->sourceTimeAt(time)};
     }
     return std::nullopt;
 }
@@ -31,7 +31,7 @@ std::vector<VisibleClip> visibleVideoLayersAt(const Project& project, Ticks time
             continue;
         --clip;
         if (time < clip->end())
-            layers.push_back(VisibleClip{&track, &*clip, clip->sourceIn + (time - clip->start)});
+            layers.push_back(VisibleClip{&track, &*clip, clip->sourceTimeAt(time)});
     }
     return layers;
 }

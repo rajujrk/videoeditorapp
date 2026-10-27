@@ -289,3 +289,66 @@ TEST_CASE("waveform peaks follow the sound")
     REQUIRE(cache.peaks(sample("test_clicks.wav")));
     CHECK(cache.peaks(sample("test_clicks.wav"))->peaks == peaks.peaks);
 }
+
+namespace {
+
+int zeroCrossings(const std::vector<float>& stereo, std::size_t from, std::size_t to)
+{
+    int crossings = 0;
+    for (std::size_t i = from + 1; i < std::min(to, stereo.size() / 2); ++i) {
+        if ((stereo[(i - 1) * 2] < 0.0f) != (stereo[i * 2] < 0.0f))
+            ++crossings;
+    }
+    return crossings;
+}
+
+} // namespace
+
+TEST_CASE("double speed raises a tone by an octave")
+{
+    requireSamples();
+    AudioProject p;
+    const Id toneMedia = p.importAudio("test_tone_440.wav", 3 * kSec);
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, toneMedia, 0, 3 * kSec).clipId();
+    p.push<SetClipSpeedCommand>(clip, 2.0, false); // now 1.5 s long
+
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    const auto mix = drainMix(mixer);
+    // 880 Hz → 1760 zero crossings per second; measure over 1 s.
+    CHECK(zeroCrossings(mix, 4800, 52800) == Catch::Approx(1760).margin(6));
+    CHECK(peak(mix, 4800, 52800) == Catch::Approx(0.5f).margin(0.01));
+    CHECK(peak(mix, 74000, 96000) == 0.0f); // ends at 1.5 s
+}
+
+TEST_CASE("reversed audio plays the clicks backwards")
+{
+    requireSamples();
+    AudioProject p;
+    const Id clicks = p.importAudio("test_clicks.wav", 3 * kSec);
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, clicks, 0, 3 * kSec).clipId();
+    p.push<SetClipSpeedCommand>(clip, 1.0, true);
+
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    const auto mix = drainMix(mixer);
+    // Source bursts at [2.5, 2.51) s play at timeline [0.49, 0.5): first loud sample ≈ 23 520.
+    CHECK(std::llabs(firstLoud(mix) - 23520) <= 2);
+    CHECK(peak(mix, 0, 23400) == 0.0f);
+}
+
+TEST_CASE("freeze frames are silent")
+{
+    requireSamples();
+    AudioProject p;
+    const Id av = p.importAudio("test_av_1080p30.mp4", 2 * kSec, true);
+    const Id clip = p.push<AddClipCommand>(p.videoTrack, av, 0, 2 * kSec).clipId();
+    p.push<FreezeFrameCommand>(clip, kSec, kSec); // still at 1–2 s, clip resumes at 2–3 s
+
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    const auto mix = drainMix(mixer);
+    CHECK(peak(mix, 4800, 47000) == Catch::Approx(0.5f).margin(0.05)); // before the still
+    CHECK(peak(mix, 49000, 95000) == 0.0f);                            // during the still
+    CHECK(peak(mix, 97000, 140000) == Catch::Approx(0.5f).margin(0.05)); // after it
+}

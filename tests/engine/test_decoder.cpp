@@ -63,3 +63,70 @@ TEST_CASE("reports a useful error for missing files")
     CHECK_FALSE(VideoDecoder::open("/nonexistent/file.mp4", &error));
     CHECK(error.find("/nonexistent/file.mp4") != std::string::npos);
 }
+
+TEST_CASE("keyframe seeks return the keyframe; the index knows where they are")
+{
+    // The 4K60 sample has a keyframe every 0.2 s.
+    const std::string path = samplePath("4k60_h264.mp4");
+    if (!std::filesystem::exists(path))
+        SKIP("sample missing: " << path);
+    auto decoder = VideoDecoder::open(path);
+    REQUIRE(decoder);
+    const Ticks gop = kTicksPerSecond / 5;
+    CHECK(decoder->keyframeBefore(gop * 3 + gop / 2) == gop * 3);
+    CHECK(decoder->keyframeBefore(gop * 3) == gop * 3);
+    REQUIRE(decoder->seekToKeyframe(gop * 3 + gop / 2));
+    auto frame = decoder->nextFrame();
+    REQUIRE(frame);
+    CHECK(frame->pts() == gop * 3);
+    // A frame-accurate seek to the same time still lands on the frame shown there.
+    REQUIRE(decoder->seek(gop * 3 + gop / 2));
+    frame = decoder->nextFrame();
+    REQUIRE(frame);
+    CHECK(frame->pts() == gop * 3 + gop / 2);
+}
+
+#include "decode/Thumbnail.h"
+
+TEST_CASE("thumbnails keep the aspect ratio and the picture's colours")
+{
+    const std::string path = samplePath("test_1080p30_h264.mp4");
+    if (!std::filesystem::exists(path))
+        SKIP("sample missing: " << path);
+    auto thumb = extractThumbnail(path, kTicksPerSecond / 2, 90);
+    REQUIRE(thumb);
+    CHECK(thumb->width == 160);
+    CHECK(thumb->height == 90);
+    REQUIRE(thumb->pixels.size() == 160u * 90u * 4u);
+    // The test pattern's first colour bar is red, its second green.
+    const auto pixel = [&](int x, int y) { return &thumb->pixels[std::size_t((y * 160 + x) * 4)]; };
+    CHECK(pixel(12, 45)[0] > 180);
+    CHECK(pixel(12, 45)[1] < 80);
+    CHECK(pixel(38, 45)[1] > 150);
+    CHECK(pixel(38, 45)[0] < 80);
+}
+
+TEST_CASE("thumbnails work for 10-bit sources")
+{
+    const std::string path = samplePath("4k60_hevc_10bit.mp4");
+    if (!std::filesystem::exists(path))
+        SKIP("sample missing: " << path);
+    auto thumb = extractThumbnail(path, 3 * kTicksPerSecond, 72);
+    REQUIRE(thumb);
+    CHECK(thumb->width == 128);
+    CHECK(thumb->pixels[std::size_t((36 * 128 + 10) * 4)] > 180); // red bar
+}
+
+TEST_CASE("thumbnails past the end show the last frame")
+{
+    const std::string path = samplePath("test_1080p30_h264.mp4");
+    if (!std::filesystem::exists(path))
+        SKIP("sample missing: " << path);
+    CHECK(extractThumbnail(path, 2 * kTicksPerSecond, 36));
+    CHECK(extractThumbnail(path, 60 * kTicksPerSecond, 36));
+}
+
+TEST_CASE("thumbnails fail cleanly for missing files")
+{
+    CHECK_FALSE(extractThumbnail("/nonexistent.mp4", 0, 90));
+}

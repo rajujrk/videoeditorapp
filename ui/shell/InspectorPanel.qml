@@ -9,14 +9,14 @@ Rectangle {
     id: inspector
     required property var player
     required property var project
-    property int currentTab: 3
+    property int currentTab: 4
     readonly property var clipInfo: project.selectedClipInfo
     readonly property bool clipIsVideo: clipInfo.trackKind === "video"
     readonly property var visual: clipInfo.visual || ({})
 
     color: Theme.color.surface
 
-    readonly property var tabs: ["Video", "Audio", "Color", "Effects"]
+    readonly property var tabs: ["Video", "Speed", "Audio", "Color", "Effects"]
 
     ColumnLayout {
         anchors.fill: parent
@@ -145,7 +145,78 @@ Rectangle {
                             }
                         }
                     }
-                    Section { title: "Speed"; expanded: false; PlannedRow { label: "Constant / reverse / freeze"; detail: "Slice 3b" } }
+                }
+            }
+
+            // Speed: constant speed, direction and freeze frames of the selected clip
+            InspectorPage {
+                Text {
+                    visible: inspector.clipInfo.id === undefined
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.space.l
+                    text: "Select a clip to change its speed."
+                    font: Theme.type.body
+                    color: Theme.color.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+
+                Section {
+                    id: speedSection
+                    visible: inspector.clipInfo.id !== undefined
+                    Layout.topMargin: Theme.space.s
+                    title: "Speed"
+                    readonly property bool still: inspector.clipInfo.freeze === true
+
+                    Text {
+                        visible: speedSection.still
+                        Layout.fillWidth: true
+                        text: "A freeze frame holds one frame; trim it to change how long."
+                        font: Theme.type.label
+                        color: Theme.color.textSecondary
+                        wrapMode: Text.WordWrap
+                    }
+                    // Logarithmic: the slider runs from log10(0.1) to log10(10).
+                    AudioSlider {
+                        objectName: "speedSlider"
+                        visible: !speedSection.still
+                        label: "Speed"
+                        from: -1
+                        to: 1
+                        value: Math.log10(inspector.clipInfo.speed || 1)
+                        format: (v) => Math.pow(10, v).toFixed(2) + "×"
+                        onCommitted: (v) => inspector.project.setClipSpeed(inspector.clipInfo.id, Math.pow(10, v),
+                                                                           inspector.clipInfo.reversed === true)
+                    }
+                    RowLayout {
+                        visible: !speedSection.still
+                        spacing: Theme.space.xs
+                        Repeater {
+                            model: [0.5, 1, 2, 4]
+                            delegate: TextButton {
+                                required property real modelData
+                                objectName: "speedPreset:" + modelData
+                                text: modelData + "×"
+                                variant: Math.abs((inspector.clipInfo.speed || 1) - modelData) < 0.001 ? "primary" : "secondary"
+                                onClicked: inspector.project.setClipSpeed(inspector.clipInfo.id, modelData,
+                                                                          inspector.clipInfo.reversed === true)
+                            }
+                        }
+                    }
+                    ToggleSwitch {
+                        objectName: "reverseSwitch"
+                        visible: !speedSection.still
+                        text: "Reverse"
+                        checked: inspector.clipInfo.reversed === true
+                        onToggled: inspector.project.setClipSpeed(inspector.clipInfo.id, inspector.clipInfo.speed || 1, checked)
+                    }
+                    TextButton {
+                        objectName: "freezeFrameButton"
+                        visible: inspector.clipIsVideo
+                        text: "Freeze frame at playhead"
+                        iconName: "pause"
+                        tip: "Insert a 2-second still of the frame under the playhead"
+                        onClicked: inspector.project.freezeFrame(2)
+                    }
                 }
             }
 
