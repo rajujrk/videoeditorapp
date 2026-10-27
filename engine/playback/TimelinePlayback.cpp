@@ -50,64 +50,76 @@ void TimelinePlayback::restartAt(Ticks time)
     m_audio->restart(m_project, time);
 }
 
-VideoDecoder* TimelinePlayback::decoderFor(const MediaItem& media)
+TimelinePlayback::Size TimelinePlayback::canvasSize() const
 {
-    auto it = m_decoders.find(media.id);
-    if (it != m_decoders.end() && m_decoderPaths[media.id] == media.path)
-        return it->second.get();
-    auto decoder = VideoDecoder::open(media.path);
-    if (!decoder)
-        return nullptr; // missing or unreadable media plays as black
-    m_decoderPaths[media.id] = media.path;
-    return (m_decoders[media.id] = std::move(decoder)).get();
+    std::lock_guard lock(m_control);
+    if (!m_project)
+        return {1920, 1080};
+    return {m_project->settings.width, m_project->settings.height};
+}
+
+const DecodedFrame* TimelinePlayback::frameAt(LayerState& state, const MediaItem& media, Ticks sourceTime)
+{
+    if (!state.decoder || state.path != media.path) {
+        state = LayerState{VideoDecoder::open(media.path), media.path, std::nullopt, std::nullopt};
+        if (!state.decoder)
+            return nullptr; // missing or unreadable media is left out (shows what is below)
+    }
+    // Seek when going backwards or jumping far ahead; otherwise decode forward.
+    constexpr Ticks kMaxDecodeAhead = kTicksPerSecond;
+    const bool behind = !state.current || sourceTime < state.current->pts();
+    const bool farAhead = state.current && sourceTime - state.current->pts() > kMaxDecodeAhead;
+    if (behind || farAhead) {
+        if (!state.decoder->seek(sourceTime))
+            return nullptr;
+        state.current = state.decoder->nextFrame();
+        state.next = state.decoder->nextFrame();
+    }
+    while (state.next && state.next->pts() <= sourceTime) {
+        state.current = std::move(state.next);
+        state.next = state.decoder->nextFrame();
+        if (state.next)
+            ++m_counters.decoded;
+    }
+    if (state.current)
+        m_hardware = state.decoder->info().hardwareAccelerated;
+    return state.current ? &*state.current : nullptr;
 }
 
 void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
 {
     const Ticks end = project->duration();
-    const std::vector<Ticks> edits = editPoints(*project);
+    const Ticks frameTicks = frameDuration(project->settings.frameRate);
     Ticks time = start;
 
     while (!m_stop && time < end) {
-        const auto visible = visibleVideoAt(*project, time);
-        if (!visible) {
-            // Gap: one black frame, then continue at the next clip.
-            if (!m_queue.push(DecodedFrame(nullptr, time)))
-                return;
+        const auto visible = visibleVideoLayersAt(*project, time);
+        CompositeFrame composite{time, {}};
+        for (const VisibleClip& layer : visible) {
+            const MediaItem* media = project->findMedia(layer.clip->mediaId);
+            if (!media)
+                continue;
+            if (const DecodedFrame* frame = frameAt(m_layers[layer.clip->id], *media, layer.sourceTime))
+                composite.layers.push_back(
+                    VideoLayer{layer.clip->id, frame->share(), layer.clip->visual, layer.clip->effects});
+        }
+        if (!m_queue.push(std::move(composite)))
+            return;
+
+        if (visible.empty()) {
+            // Gap: the black frame stays up until the next clip starts.
             const auto next = nextVideoClipStart(*project, time);
             if (!next)
                 break;
             time = *next;
-            continue;
+        } else {
+            time = (time / frameTicks + 1) * frameTicks; // next point on the project's frame grid
         }
 
-        // Play this clip until the next edit anywhere, since an edit on another track can
-        // change which clip is on top.
-        const Clip clip = *visible->clip;
-        const auto nextEdit = std::ranges::upper_bound(edits, time);
-        const Ticks segmentEnd = std::min(clip.end(), nextEdit == edits.end() ? end : *nextEdit);
-        const MediaItem* media = project->findMedia(clip.mediaId);
-        VideoDecoder* decoder = media ? decoderFor(*media) : nullptr;
-        if (!decoder || !decoder->seek(visible->sourceTime)) {
-            if (!m_queue.push(DecodedFrame(nullptr, time)))
-                return;
-            time = segmentEnd;
-            continue;
-        }
-
-        const Ticks sourceEnd = clip.sourceIn + (segmentEnd - clip.start);
-        while (!m_stop) {
-            auto frame = decoder->nextFrame();
-            if (!frame || frame->pts() >= sourceEnd)
-                break;
-            // The first frame after a seek may have started before `time`; show it from `time`.
-            frame->setPts(std::max(time, clip.start + (frame->pts() - clip.sourceIn)));
-            m_hardware = decoder->info().hardwareAccelerated;
-            ++m_counters.decoded;
-            if (!m_queue.push(std::move(*frame)))
-                return;
-        }
-        time = segmentEnd;
+        // Release decoders of clips that are no longer on screen.
+        std::erase_if(m_layers, [&](const auto& entry) {
+            return std::ranges::none_of(visible, [&](const VisibleClip& v) { return v.clip->id == entry.first; });
+        });
     }
     m_finished = true;
 }

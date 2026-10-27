@@ -1,23 +1,47 @@
 #pragma once
 
 #include "gpu/EffectChain.h"
+#include "model/Project.h"
 
 #include <QQuickRhiItem>
 #include <QTimer>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
+#include <atomic>
 #include <functional>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace tve {
 class FrameSource;
 }
 
-// Plays a video file through the TVE engine: FFmpeg/VideoToolbox decode on a worker
-// thread, zero-copy CVPixelBuffer → Metal textures, YUV→RGB in a shader, then the GPU
-// effect stack, then aspect-fit into the item.
+// Live, uncommitted picture changes (e.g. while an inspector slider is dragged), shared
+// with the render thread. An override disappears by itself once rendered frames carry the
+// same values, i.e. once the edit has been committed and played back.
+class PreviewOverrides {
+public:
+    void setVisual(tve::Id clipId, const tve::ClipVisual& visual);
+    void setEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects);
+    void clear(tve::Id clipId);
+    quint64 revision() const { return m_revision.load(); }
+
+    // Replaces `visual`/`effects` with any overrides for `clipId` (render thread).
+    void apply(tve::Id clipId, tve::ClipVisual& visual, std::vector<tve::ClipEffect>& effects);
+
+private:
+    std::mutex m_mutex;
+    std::map<tve::Id, tve::ClipVisual> m_visual;
+    std::map<tve::Id, std::vector<tve::ClipEffect>> m_effects;
+    std::atomic<quint64> m_revision{1};
+};
+
+// Shows composite frames from a FrameSource (the timeline, or a single file via `source`):
+// zero-copy CVPixelBuffer → Metal textures, YUV→RGB per layer, per-clip effects, the
+// compositor onto the project canvas, output effects, then aspect-fit into the item.
 class VideoView : public QQuickRhiItem {
     Q_OBJECT
     QML_ELEMENT
@@ -59,8 +83,14 @@ public:
     // property and this are alternatives; setting one replaces the other.
     void setFrameSource(std::shared_ptr<tve::FrameSource> source, const QString& description);
 
+    // Live preview of uncommitted clip changes; see PreviewOverrides.
+    void setPreviewVisual(tve::Id clipId, const tve::ClipVisual& visual);
+    void setPreviewEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects);
+    void clearPreview(tve::Id clipId);
+
     // Read by the renderer on the render thread during synchronize().
     std::shared_ptr<tve::FrameSource> frameSource() const { return m_frameSource; }
+    std::shared_ptr<PreviewOverrides> previewOverrides() const { return m_previewOverrides; }
     const std::vector<tve::EffectInstance>& effects() const { return m_effects; }
     quint64 effectsRevision() const { return m_effectsRevision; }
 
@@ -81,6 +111,7 @@ private:
     QString m_error;
     QString m_description;
     std::shared_ptr<tve::FrameSource> m_frameSource;
+    std::shared_ptr<PreviewOverrides> m_previewOverrides = std::make_shared<PreviewOverrides>();
     std::function<void()> m_stopFileSession; // set while playing a file via `source`
 
     std::vector<tve::EffectInstance> m_effects;

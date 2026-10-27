@@ -12,7 +12,7 @@ qt_add_qml_module(tve_shell
         PlayerPanel.qml
         InspectorPanel.qml
         TimelinePanel.qml
-        EffectCard.qml
+        ClipEffectCard.qml
         ParamControl.qml
     IMPORTS
         TechieVideoEditor.Theme

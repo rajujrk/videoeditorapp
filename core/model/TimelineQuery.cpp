@@ -20,6 +20,22 @@ std::optional<VisibleClip> visibleVideoAt(const Project& project, Ticks time)
     return std::nullopt;
 }
 
+std::vector<VisibleClip> visibleVideoLayersAt(const Project& project, Ticks time)
+{
+    std::vector<VisibleClip> layers;
+    for (const Track& track : project.tracks) {
+        if (track.kind != TrackKind::Video || track.hidden)
+            continue;
+        auto clip = std::ranges::upper_bound(track.clips, time, {}, &Clip::start);
+        if (clip == track.clips.begin())
+            continue;
+        --clip;
+        if (time < clip->end())
+            layers.push_back(VisibleClip{&track, &*clip, clip->sourceIn + (time - clip->start)});
+    }
+    return layers;
+}
+
 std::optional<Ticks> nextVideoClipStart(const Project& project, Ticks time)
 {
     std::optional<Ticks> next;

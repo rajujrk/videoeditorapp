@@ -114,9 +114,9 @@ Sizes are `Theme.size.*` tokens.
 | Region | File | Status |
 |---|---|---|
 | Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker, undo/redo with labels, save, theme toggle; export waits for Phase 1 slice 5 |
-| Library | `ui/shell/LibraryPanel.qml` | **Media and Effects tabs are live** (import, drop, drag to timeline); other tabs show placeholders naming their phase |
+| Library | `ui/shell/LibraryPanel.qml` | **Media and Effects tabs are live** (import, drop, drag to timeline; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, stats overlay |
-| Inspector | `ui/shell/InspectorPanel.qml` | **Effects and Audio tabs are live** (volume, fades, detach audio for the selected clip); Video/Color tabs show the planned sections with disabled controls |
+| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Audio and Effects tabs are live** for the selected clip (placement/crop/opacity/blend, volume/fades/detach, effect stack); Color tab shows the planned sections |
 | Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, waveforms, fade handles |
 
 ### Home
@@ -140,6 +140,10 @@ Module `TechieVideoEditor.Theme` (`ui/theme/`):
 | `Section` | Collapsible inspector section |
 | `Divider` | 1 px separator |
 | `PlaceholderBox` | Dashed wireframe box naming the phase that fills it |
+
+Buttons own their tooltips (`ToolTip { }` children) rather than using Qt's attached
+`ToolTip`, which is one shared popup: if its button is destroyed while showing it, it stays
+open and swallows the next click.
 
 Stock Qt Quick Controls (Slider, Switch, ComboBox, ToolTip) use the **Basic** style, and
 `Main.qml` maps the theme tokens onto their palette, so they follow the theme too.

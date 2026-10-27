@@ -58,10 +58,18 @@ Item {
                 last = p
                 return stable
             }, 3000, name + " never settled")
+            // A layout that has not run yet leaves positions stale but "stable"; wait for
+            // the layout (polish) pass of the item and everything above it.
+            for (let a = item; a && a !== root; a = a.parent)
+                verify(waitForPolish(a), "layout never ran for " + name)
             return item
         }
+        // Move there first, like a real cursor: leaving the previous control closes its
+        // tooltip, which would otherwise take this click.
         function clickWhenSettled(editor, name) {
-            mouseClick(settled(editor, name))
+            const item = settled(editor, name)
+            mouseMove(item)
+            mouseClick(item)
         }
 
         function test_import_probes_sound() {
@@ -103,6 +111,7 @@ Item {
 
             // Releasing the volume slider commits exactly one edit.
             const slider = settled(f.editor, "volumeSlider")
+            mouseMove(slider, slider.width * 0.9, slider.height - 8)
             const before = p.undoText
             mouseClick(slider, slider.width * 0.9, slider.height - 8)
             verify(p.selectedClipInfo.gainDb > 0)

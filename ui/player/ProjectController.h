@@ -121,6 +121,21 @@ public:
     // flag: "locked", "hidden" or "muted".
     Q_INVOKABLE bool setTrackFlag(double trackId, const QString& flag, bool value);
 
+    // Picture. `visual` keys: x, y (canvas fractions), scale, rotation (degrees), cropLeft,
+    // cropTop, cropRight, cropBottom (fractions), opacity (0..1), blend (name). Missing keys
+    // keep the clip's current value. preview* shows a change live without committing it.
+    Q_INVOKABLE bool setClipVisual(double clipId, const QVariantMap& visual);
+    Q_INVOKABLE void previewClipVisual(double clipId, const QVariantMap& visual);
+    Q_INVOKABLE void cancelPreview(double clipId);
+    Q_INVOKABLE bool resetClipVisual(double clipId);
+
+    // Per-clip effects (by index in the clip's stack).
+    Q_INVOKABLE bool addClipEffect(double clipId, const QString& effectId);
+    Q_INVOKABLE bool removeClipEffect(double clipId, int index);
+    Q_INVOKABLE bool setClipEffectEnabled(double clipId, int index, bool enabled);
+    Q_INVOKABLE bool setClipEffectParam(double clipId, int index, const QString& paramId, const QVariant& value);
+    Q_INVOKABLE void previewClipEffectParam(double clipId, int index, const QString& paramId, const QVariant& value);
+
     // Transport
     Q_INVOKABLE void play();
     Q_INVOKABLE void pause();
@@ -156,6 +171,10 @@ private:
     void resetProject(tve::Project project, const QString& filePath);
     void updatePlayhead();
     tve::Id mainTrackId() const;
+    const tve::Clip* findClip(tve::Id clipId) const;
+    std::optional<tve::ClipVisual> visualFrom(tve::Id clipId, const QVariantMap& values) const;
+    std::optional<std::vector<tve::ClipEffect>> effectsWithParam(tve::Id clipId, int index, const QString& paramId,
+                                                                 const QVariant& value) const;
     tve::Ticks frameTicks() const;
     std::optional<tve::Id> clipAtPlayhead() const;
 
@@ -171,6 +190,7 @@ private:
     QString m_lastError;
     tve::Id m_selectedClip = tve::kNoId;
     double m_playhead = 0;
+    bool m_canvasChosen = false; // false: the first video clip sets the canvas
     bool m_wasPlaying = false;
     QTimer m_playheadTimer;
 };

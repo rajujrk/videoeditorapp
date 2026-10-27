@@ -54,13 +54,12 @@ Item {
             compare(editor.player.enabledEffectCount, 0)
         }
 
-        function test_inspector_switch_enables_effect() {
+        function test_effects_tab_asks_for_a_clip() {
             const editor = createScreen(editorComponent)
-            const toggle = findChild(editor, "effect:tve.color.adjust")
-            verify(toggle, "Color Adjust switch exists in the inspector")
-            mouseClick(toggle)
-            verify(editor.player.isEffectEnabled("tve.color.adjust"))
-            compare(editor.player.enabledEffectCount, 1)
+            mouseClick(findChild(editor, "inspectorTab:Effects"))
+            // No clip selected: no effect controls, so nothing can be applied by accident.
+            const picker = findChild(editor, "effectPicker")
+            verify(!picker || !picker.visible)
         }
 
         function test_library_tabs_switch() {

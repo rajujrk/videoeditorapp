@@ -5,6 +5,7 @@ add_executable(tve_core_tests
     core/test_effect_manifest.cpp
     core/test_timeline_query.cpp
     core/test_audio_model.cpp
+    core/test_visual_model.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
@@ -21,7 +22,7 @@ target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_S
 catch_discover_tests(tve_engine_tests)
 
 if(TARGET tve_gpu)
-    qt_add_executable(tve_gpu_tests gpu/test_effects.cpp)
+    qt_add_executable(tve_gpu_tests gpu/test_effects.cpp gpu/test_compositor.cpp)
     # Deliberately broken effect packages for the loader's error checks.
     file(GLOB TVE_TEST_EFFECT_SHADERS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} gpu/fixtures/video/*/*.frag)
     file(GLOB TVE_TEST_EFFECT_MANIFESTS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} gpu/fixtures/video/*/manifest.json)

@@ -3,12 +3,13 @@
 A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
-**Status: Phase 1 (MVP editor), slices 1–2 of 5 done.** You can import video and audio
-files, arrange them on a multi-track timeline (move, trim, split, delete with ripple on
-the main track, undo/redo), hear and see their sound (waveforms, per-clip volume and
-fades, detach audio, track mute/hide/lock, level meter), play and scrub the timeline,
-apply GPU effects to the output, and save/open `.tve` projects. Not yet: transitions,
-titles, clip transforms, voice-over, export.
+**Status: Phase 1 (MVP editor), slices 1, 2 and 3a of 5 done.** You can import video and
+audio files, arrange them on a multi-track timeline (move, trim, split, delete with ripple
+on the main track, undo/redo), layer clips with position, scale, rotation, crop, opacity
+and blend modes, give each clip its own effects, hear and see their sound (waveforms,
+volume, fades, detach audio, track mute/hide/lock, meter), play and scrub, and save/open
+`.tve` projects. Not yet: speed/reverse/freeze and thumbnails (slice 3b), transitions,
+titles, voice-over, export.
 
 What's in the repo:
 
@@ -21,11 +22,13 @@ What's in the repo:
 - `effects/` — built-in effect packages (manifest + GLSL shaders): color adjust, gaussian
   blur, vignette, RGB split, pixelate. See [effects/README.md](effects/README.md) for the
   manifest format and shader contract.
-- `engine/gpu/` — effect library (manifests cross-checked against shader reflection) and
-  the GPU effect chain on Qt RHI.
-- `ui/player/` — `VideoView` (zero-copy CVPixelBuffer → Metal textures, YUV → RGB, effect
-  chain, aspect-fit) and `ProjectController`, which exposes the project, edits, transport
-  and file I/O to QML.
+- `engine/gpu/` — effect library (manifests cross-checked against shader reflection), the
+  GPU effect chain, and the compositor that places layers on the project canvas
+  (fit, crop, scale, rotation, position, opacity, seven blend modes) on Qt RHI.
+- `ui/player/` — `VideoView` (zero-copy CVPixelBuffer → Metal textures, YUV → RGB per
+  layer, per-clip effects, compositor, output effects, aspect-fit, live preview of
+  uncommitted slider changes) and `ProjectController`, which exposes the project, edits,
+  transport and file I/O to QML.
 - `ui/theme/` — design system: color/type/spacing tokens (dark and light), original icon
   set and base components. See [docs/design-system.md](docs/design-system.md).
 - `ui/shell/` — Home screen and Editor workspace: media bin, player with transport,
@@ -44,6 +47,12 @@ What's in the repo:
 | ⌘Z / ⇧⌘Z | Undo / redo |
 | ⌘S | Save project |
 | ⌘I | Import media |
+
+Clips on higher video tracks are drawn over lower ones. Select a clip and use the
+inspector's Video tab for position, scale, rotation, crop, opacity and blend mode, and its
+Effects tab (or click an effect in the library) for the clip's effect stack. Sliders
+preview live and commit one undo step on release. The first clip added to an untouched
+project sets the canvas size and frame rate; a canvas picked on Home is kept.
 
 Drag a clip to move it (it snaps to clip edges and the playhead and can change tracks);
 drag its left or right edge to trim; drag the round knobs at its top corners to set fade
@@ -87,7 +96,7 @@ build/macos-release/app/TechieVideoEditor.app/Contents/MacOS/TechieVideoEditor -
 build/macos-release/tools/tve_decode_bench samples/4k60_h264.mp4
 ```
 
-`--effects` takes `all` or comma-separated effect ids; `--screenshot` saves the window
+`--effects` applies output effects to the whole canvas (all, or comma-separated ids); `--screenshot` saves the window
 after `--screenshot-at` seconds (default 3); `--screen home|editor` picks the start
 screen; `--theme dark|light` picks the theme; `--play` starts playback; `--seek <s>` moves the
 playhead.

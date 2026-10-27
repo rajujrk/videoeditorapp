@@ -1,6 +1,6 @@
 #pragma once
 
-#include "playback/FrameQueue.h"
+#include "playback/CompositeFrame.h"
 #include "playback/PlaybackClock.h"
 
 #include <atomic>
@@ -15,9 +15,9 @@ struct PlaybackCounters {
     std::atomic<std::int64_t> skipped{0};   // frames that became due but were never shown
 };
 
-// What the renderer pulls frames from: a queue of frames stamped with presentation times
-// and the clock that says which one is due. A frame without a pixel buffer means "show
-// black" (a gap in the timeline).
+// What the renderer pulls frames from: a queue of composite frames stamped with
+// presentation times, the clock that says which one is due, and the canvas they are
+// composed on.
 class FrameSource {
 public:
     virtual ~FrameSource() = default;
@@ -26,6 +26,12 @@ public:
     virtual PlaybackClock& clock() = 0;
     virtual PlaybackCounters& counters() = 0;
     virtual bool hardwareAccelerated() const = 0;
+
+    struct Size {
+        int width = 0;
+        int height = 0;
+    };
+    virtual Size canvasSize() const = 0;
 
     // A free-running source starts its clock when its first frame arrives; a controlled
     // source (the timeline) is started and stopped by the UI.
