@@ -3,8 +3,8 @@
 A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
-**Status: Phase 1 (MVP editor), slices 1–4, 5a (export) and 5b (autosave and crash
-recovery) done; proxies and voice-over (5c–5d) next.** You can import video and audio files, arrange them on a multi-track timeline
+**Status: Phase 1 (MVP editor), slices 1–4 and 5a–5c (export, autosave and crash
+recovery, proxies) done; voice-over (5d) next.** You can import video and audio files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes, give each clip its own effects,
 put any of 21 transitions on the cuts between clips (with a constant-power sound
@@ -13,14 +13,16 @@ spacing, outline, shadow), change a clip's speed (0.1–10×), play it in revers
 freeze frames, hear and see their sound (waveforms, volume, fades, detach audio, track
 mute/hide/lock, meter), see thumbnails in the media bin and on the timeline, play and
 scrub, save/open `.tve` projects (unsaved work is autosaved and recoverable after a crash),
-and export MP4 files (H.264 or HEVC with AAC sound). Not yet: proxies, voice-over.
+edit heavy 4K media smoothly through proxies, and export MP4 files (H.264 or HEVC with AAC
+sound). Not yet: voice-over.
 
 What's in the repo:
 
 - `core/` — project model (tracks, clips, media), undoable edit commands (add, move, trim,
   split, delete/ripple delete), timeline queries, JSON project save/load. Plain C++20, no Qt.
-- `engine/encode/` — `Mp4Writer`: H.264/HEVC through VideoToolbox plus AAC, muxed to a
-  fast-start MP4 (LGPL FFmpeg encoders only).
+- `engine/encode/` — `Mp4Writer`: H.264/HEVC through VideoToolbox plus AAC (or video
+  only), muxed to a fast-start MP4 (LGPL FFmpeg encoders only); `makeProxy`: 720p H.264
+  proxies with a keyframe every 10 frames, from 8- or 10-bit sources.
 - `engine/` — FFmpeg video decoder (VideoToolbox, software fallback, frame-accurate and
   keyframe seek) and audio decoder (48 kHz stereo float, sample-accurate seek); timeline
   playback that stitches video across tracks and gaps, plays clips at any speed, in
@@ -78,6 +80,20 @@ with it. Reversed clips play their sound backwards too. "Freeze frame at playhea
 the clip there and inserts a 2-second still (silent; trim it to change its length). Clip
 labels show `2× ·`, `Reverse ·` or `Still ·` badges.
 
+**Proxies.** A proxy is a lighter copy of a video for the preview: 720p H.264 with a
+keyframe every 10 frames (cheap to seek and play backwards), the same frames at the same
+times, no sound. Videos larger than 1080p get one automatically on import (or opening a
+project); any video can get one from its tile in the media bin (hover: Make proxy / Remove
+proxy), which shows "Proxy 45%" while it is made and "Proxy" when ready. Proxies are made in
+the background one at a time and kept in `~/Library/Caches/TechieVideoEditor/…/Proxies`
+(`TVE_PROXY_DIR` moves it), named from the source's path, size and modification time, so
+a changed source gets a new one; they are never saved in the project. The player's
+proxy button switches between proxies and originals; sound, thumbnails and export always
+use the originals. On an M-series Mac a 20 s 4K60 video's proxy takes about 10 s, and 4K60
+played at 2× in reverse — beyond the hardware decoder with the original — holds 60 fps.
+Scripted runs never start proxies on their own; `--make-proxies` makes them and quits,
+`--no-proxies` plays the originals.
+
 **Autosave and recovery.** Unsaved changes are written to
 `~/Library/Application Support/TechieVideoEditor/Autosave` two seconds after edits settle
 (at least every 30 s while they keep coming); the top bar shows "Autosaved hh:mm". The copy
@@ -128,8 +144,8 @@ On an M-series Mac a 4K60 H.264 clip plays at 60 fps forwards, in reverse and at
 through any transition between two 4K60 clips (about 59–60 fps; the second the incoming
 clip's decoder opens can dip to the low 50s), and with titles over it; 4K30
 plays at 2× in reverse at 30 fps. 4K60 at 2× in reverse needs about 120 hardware decodes
-a second, the decoder's ceiling, so it can drop frames under load; proxies (slice 5) are
-the answer there. `tve_engine_tests "[perf]"` runs the playback throughput benchmarks.
+a second, the decoder's ceiling, so with the original it can drop frames under load; with
+its proxy it holds 60 fps. `tve_engine_tests "[perf]"` runs the playback throughput benchmarks.
 
 Set `TVE_AUDIO=null` to render audio without a sound card (used by the tests), or
 `TVE_AUDIO=none` to disable audio output.

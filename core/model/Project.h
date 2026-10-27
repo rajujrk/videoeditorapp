@@ -30,6 +30,10 @@ struct MediaItem {
     std::int32_t audioSampleRate = 0;
     std::int32_t audioChannels = 0;
 
+    // A lighter copy of the pictures for the preview to decode instead (same frames and
+    // times). Set only in the snapshots handed to playback; never saved.
+    std::string proxyPath;
+
     friend bool operator==(const MediaItem&, const MediaItem&) = default;
 };
 

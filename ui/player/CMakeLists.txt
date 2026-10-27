@@ -11,6 +11,8 @@ qt_add_qml_module(tve_player
         FrameCompositor.mm
         Exporter.h
         Exporter.mm
+        ProxyManager.h
+        ProxyManager.cpp
         ProjectController.h
         ProjectController.cpp
         WaveformItem.h

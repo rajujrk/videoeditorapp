@@ -495,6 +495,57 @@ Rectangle {
                             delay: 800
                             text: "Double-click to add to the timeline, or drag onto a track"
                         }
+
+                        // Proxy: its state, and (on hover) making or removing one.
+                        readonly property var proxy: library.project.proxyStates[modelData.path] || ({ state: "none" })
+                        Rectangle {
+                            objectName: "proxyBadge:" + mediaTile.modelData.name
+                            visible: mediaTile.proxy.state !== "none"
+                            x: Theme.space.s
+                            y: Theme.space.s
+                            width: proxyLabel.implicitWidth + Theme.space.s
+                            height: proxyLabel.implicitHeight + Theme.space.xxs
+                            radius: Theme.radius.s
+                            color: mediaTile.proxy.state === "ready" ? Theme.color.accent
+                                 : mediaTile.proxy.state === "failed" ? Theme.color.danger : Theme.color.overlay
+                            Text {
+                                id: proxyLabel
+                                anchors.centerIn: parent
+                                text: mediaTile.proxy.state === "making" ? "Proxy " + Math.round(mediaTile.proxy.progress * 100) + "%"
+                                    : mediaTile.proxy.state === "queued" ? "Proxy queued"
+                                    : mediaTile.proxy.state === "failed" ? "Proxy failed" : "Proxy"
+                                font: Theme.type.caption
+                                color: "#FFFFFF"
+                            }
+                            ToolTip {
+                                visible: proxyBadgeMouse.containsMouse
+                                text: mediaTile.proxy.state === "ready" ? "A lighter copy plays in the preview; export uses the original"
+                                    : mediaTile.proxy.state === "failed" ? mediaTile.proxy.error : "Making a lighter copy for the preview"
+                            }
+                            MouseArea { id: proxyBadgeMouse; anchors.fill: parent; hoverEnabled: true }
+                        }
+                        AbstractButton {
+                            objectName: "proxyAction:" + mediaTile.modelData.name
+                            visible: mediaTile.modelData.hasVideo && (tileMouse.containsMouse || hovered)
+                                     && (mediaTile.proxy.state === "none" || mediaTile.proxy.state === "ready"
+                                         || mediaTile.proxy.state === "failed")
+                            anchors { right: parent.right; top: parent.top; rightMargin: Theme.space.m + Theme.space.s; topMargin: Theme.space.s }
+                            hoverEnabled: true
+                            padding: Theme.space.xxs
+                            leftPadding: Theme.space.s
+                            rightPadding: Theme.space.s
+                            onClicked: mediaTile.proxy.state === "ready" ? library.project.deleteProxy(mediaTile.modelData.id)
+                                                                         : library.project.createProxy(mediaTile.modelData.id)
+                            background: Rectangle {
+                                radius: Theme.radius.s
+                                color: parent.hovered ? Theme.color.accent : Theme.color.overlay
+                            }
+                            contentItem: Text {
+                                text: mediaTile.proxy.state === "ready" ? "Remove proxy" : "Make proxy"
+                                font: Theme.type.caption
+                                color: "#FFFFFF"
+                            }
+                        }
                     }
                 }
 

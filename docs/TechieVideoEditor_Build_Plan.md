@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phase 0 complete; Phase 1 slices 1–4, 5a and 5b (timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery) complete; 5c next — see §9.1
+**Status:** Phase 0 complete; Phase 1 slices 1–4 and 5a–5c (timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies) complete; 5d next — see §9.1
 **Date:** 2026-10-26
 
 ---
@@ -514,8 +514,8 @@ Phase 1 is delivered in five vertical slices, each usable on its own:
 | 4b. Titles | Text clips on video or title tracks: font, size, colour, bold/italic, alignment, letter/line spacing, outline, shadow, position; 8 original title styles with previews; inspector Text section | **Done** (Qt text layout rather than Skia; outline and shadow pulled forward from Phase 2) |
 | 5a. Export | MP4 export (H.264/HEVC via VideoToolbox, AAC), sizes, quality, progress and cancel, shared renderer with the preview, `--export` CLI | **Done** |
 | 5b. Autosave & recovery | Autosave of unsaved work (debounced, per document session), recovery from crashes, quits and project switches on Home, atomic project saves | **Done** (snapshot autosave; the command journal stays a later option) |
-| 5c. Proxies | Proxy media for smooth editing of heavy sources | Next |
-| 5d. Voice-over | Voice-over recording | Planned |
+| 5c. Proxies | 720p short-GOP proxies made in the background (automatic above 1080p, or on request), cached by source identity, used by the preview only; media-bin state and actions, player toggle | **Done** |
+| 5d. Voice-over | Voice-over recording | Next |
 
 ---
 

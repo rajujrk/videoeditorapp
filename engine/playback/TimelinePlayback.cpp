@@ -60,9 +60,11 @@ TimelinePlayback::Size TimelinePlayback::canvasSize() const
 
 bool TimelinePlayback::openDecoder(LayerState& state, const MediaItem& media)
 {
-    if (state.decoder && state.path == media.path)
+    // The proxy when there is one: the same frames at the same times, cheaper to decode.
+    const std::string& path = media.proxyPath.empty() ? media.path : media.proxyPath;
+    if (state.decoder && state.path == path)
         return true;
-    state = LayerState{VideoDecoder::open(media.path), media.path, std::nullopt, std::nullopt, {}};
+    state = LayerState{VideoDecoder::open(path), path, std::nullopt, std::nullopt, {}};
     return state.decoder != nullptr; // missing or unreadable media is left out (shows what is below)
 }
 

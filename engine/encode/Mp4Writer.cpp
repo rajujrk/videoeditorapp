@@ -139,7 +139,9 @@ std::unique_ptr<Mp4Writer> Mp4Writer::open(const std::string& path, const Mp4Set
     d->video->time_base = AVRational{settings.frameRate.den, settings.frameRate.num};
     d->video->framerate = AVRational{settings.frameRate.num, settings.frameRate.den};
     d->video->bit_rate = settings.videoBitrate > 0 ? settings.videoBitrate : defaultVideoBitrate(settings);
-    d->video->gop_size = std::max(1, 2 * settings.frameRate.num / std::max(1, settings.frameRate.den)); // 2 s
+    d->video->gop_size = settings.keyframeInterval > 0
+                             ? settings.keyframeInterval
+                             : std::max(1, 2 * settings.frameRate.num / std::max(1, settings.frameRate.den)); // 2 s
     d->video->color_primaries = AVCOL_PRI_BT709;
     d->video->color_trc = AVCOL_TRC_BT709;
     d->video->colorspace = AVCOL_SPC_BT709;
@@ -157,6 +159,7 @@ std::unique_ptr<Mp4Writer> Mp4Writer::open(const std::string& path, const Mp4Set
     d->videoStream->avg_frame_rate = d->video->framerate;
 
     // Audio
+    if (settings.audio) {
     const AVCodec* audioCodec = avcodec_find_encoder(AV_CODEC_ID_AAC);
     if (!audioCodec)
         return fail("no AAC encoder");
@@ -173,6 +176,7 @@ std::unique_ptr<Mp4Writer> Mp4Writer::open(const std::string& path, const Mp4Set
     d->audioStream = avformat_new_stream(d->format, nullptr);
     avcodec_parameters_from_context(d->audioStream->codecpar, d->audio);
     d->audioStream->time_base = d->audio->time_base;
+    }
 
     // Frames
     d->videoFrame = av_frame_alloc();
@@ -183,13 +187,17 @@ std::unique_ptr<Mp4Writer> Mp4Writer::open(const std::string& path, const Mp4Set
     d->videoFrame->colorspace = AVCOL_SPC_BT709;
     d->videoFrame->color_primaries = AVCOL_PRI_BT709;
     d->videoFrame->color_trc = AVCOL_TRC_BT709;
-    d->audioFrame = av_frame_alloc();
-    d->audioFrame->format = AV_SAMPLE_FMT_FLTP;
-    d->audioFrame->sample_rate = audio::kSampleRate;
-    d->audioFrame->nb_samples = kAudioFrameSize;
-    av_channel_layout_copy(&d->audioFrame->ch_layout, &d->audio->ch_layout);
-    if (av_frame_get_buffer(d->videoFrame, 0) < 0 || av_frame_get_buffer(d->audioFrame, 0) < 0)
+    if (av_frame_get_buffer(d->videoFrame, 0) < 0)
         return fail("out of memory");
+    if (settings.audio) {
+        d->audioFrame = av_frame_alloc();
+        d->audioFrame->format = AV_SAMPLE_FMT_FLTP;
+        d->audioFrame->sample_rate = audio::kSampleRate;
+        d->audioFrame->nb_samples = kAudioFrameSize;
+        av_channel_layout_copy(&d->audioFrame->ch_layout, &d->audio->ch_layout);
+        if (av_frame_get_buffer(d->audioFrame, 0) < 0)
+            return fail("out of memory");
+    }
     d->packet = av_packet_alloc();
 
     if (int rc = avio_open(&d->format->pb, path.c_str(), AVIO_FLAG_WRITE); rc < 0)
@@ -233,6 +241,8 @@ bool Mp4Writer::writeAudio(const float* samples, int frames)
     Impl& d = *m_impl;
     if (d.finished)
         return d.fail("the file is already finished");
+    if (!d.audio)
+        return d.fail("this file has no sound track");
     d.pendingAudio.insert(d.pendingAudio.end(), samples, samples + std::ptrdiff_t(frames) * audio::kChannels);
     std::size_t used = 0;
     const std::size_t frameFloats = std::size_t(kAudioFrameSize) * audio::kChannels;
@@ -258,7 +268,7 @@ bool Mp4Writer::finish()
             return false;
         d.pendingAudio.clear();
     }
-    if (!d.encode(d.video, d.videoStream, nullptr) || !d.encode(d.audio, d.audioStream, nullptr))
+    if (!d.encode(d.video, d.videoStream, nullptr) || (d.audio && !d.encode(d.audio, d.audioStream, nullptr)))
         return false;
     if (int rc = av_write_trailer(d.format); rc < 0)
         return d.fail("cannot finish the file: " + avError(rc));

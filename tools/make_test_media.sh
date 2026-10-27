@@ -43,6 +43,10 @@ make 4k60_h264.mp4 -f lavfi -i testsrc2=size=3840x2160:rate=60 -t 20 \
 make 4k60_hevc_10bit.mp4 -f lavfi -i testsrc2=size=3840x2160:rate=60 -t 20 \
     -c:v hevc_videotoolbox -profile:v main10 -b:v 80M -pix_fmt p010le -tag:v hvc1
 
+# Short 10-bit HEVC (P010 frames) for code that converts decoded pictures, e.g. proxies.
+make test_hevc10_1080p30.mp4 -f lavfi -i testsrc2=size=1920x1080:rate=30 -frames:v 60 \
+    -c:v hevc_videotoolbox -profile:v main10 -b:v 8M -pix_fmt p010le -tag:v hvc1
+
 # Footage that looks unlike the test pattern, so transitions between the two are visible
 # (screenshots, manual checks): 10 s of slowly moving colour gradients.
 make gradients_1080p30_h264.mp4 -f lavfi -i gradients=size=1920x1080:rate=30:speed=0.02:nb_colors=4 -t 10 \

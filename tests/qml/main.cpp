@@ -39,6 +39,8 @@ int main(int argc, char** argv)
     // Autosaves go to a scratch folder that is removed afterwards, never the user's own.
     QTemporaryDir autosave;
     qputenv("TVE_AUTOSAVE_DIR", autosave.path().toLocal8Bit());
+    QTemporaryDir proxies; // likewise proxies
+    qputenv("TVE_PROXY_DIR", proxies.path().toLocal8Bit());
     Setup setup;
     return quick_test_main_with_setup(argc, argv, "tve_qml_tests", TVE_QML_TESTS_DIR, &setup);
 }
