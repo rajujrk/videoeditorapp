@@ -209,7 +209,7 @@ Rectangle {
                                     Layout.fillHeight: true
                                     radius: Theme.radius.s
                                     color: Theme.color.surfaceSunken
-                                    Icon { anchors.centerIn: parent; name: "media"; color: Theme.color.textDisabled }
+                                    Icon { anchors.centerIn: parent; name: mediaTile.modelData.hasVideo ? "media" : "audio"; color: Theme.color.textDisabled }
                                     Text {
                                         anchors { right: parent.right; bottom: parent.bottom; margins: Theme.space.xs }
                                         text: library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
@@ -226,10 +226,16 @@ Rectangle {
                                     elide: Text.ElideMiddle
                                 }
                                 Text {
+                                    Layout.fillWidth: true
                                     Layout.leftMargin: Theme.space.xs
+                                    Layout.rightMargin: Theme.space.xs
                                     Layout.bottomMargin: Theme.space.xxs
-                                    text: mediaTile.modelData.width + "×" + mediaTile.modelData.height
-                                          + " · " + mediaTile.modelData.frameRate.toFixed(mediaTile.modelData.frameRate % 1 ? 2 : 0) + " fps"
+                                    elide: Text.ElideRight
+                                    text: !mediaTile.modelData.hasVideo
+                                          ? "Audio only"
+                                          : mediaTile.modelData.width + "×" + mediaTile.modelData.height
+                                            + " · " + mediaTile.modelData.frameRate.toFixed(mediaTile.modelData.frameRate % 1 ? 2 : 0) + " fps"
+                                            + (mediaTile.modelData.hasAudio ? " · sound" : "")
                                     font: Theme.type.caption
                                     color: Theme.color.textSecondary
                                 }

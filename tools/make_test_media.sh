@@ -24,6 +24,17 @@ make test_1080p30_h264.mp4 -f lavfi -i testsrc2=size=1920x1080:rate=30 -frames:v
 make test_720p30_mjpeg.mov -f lavfi -i testsrc2=size=1280x720:rate=30 -frames:v 60 \
     -c:v mjpeg -q:v 4 -pix_fmt yuvj420p
 
+# Audio test media (48 kHz stereo, exact amplitudes so mixing can be checked numerically).
+make test_tone_440.wav -f lavfi -i "aevalsrc=0.5*sin(2*PI*440*t)|0.5*sin(2*PI*440*t):s=48000:d=3" \
+    -c:a pcm_s16le
+# 10 ms full-scale bursts starting exactly at 0.5 s, 1.5 s and 2.5 s: timing markers.
+make test_clicks.wav -f lavfi -i "aevalsrc=if(between(mod(t\,1)\,0.5\,0.51)\,0.9\,0)|if(between(mod(t\,1)\,0.5\,0.51)\,0.9\,0):s=48000:d=3" \
+    -c:a pcm_s16le
+# Video with sound: 2 s of test pattern plus a 1 kHz tone.
+make test_av_1080p30.mp4 -f lavfi -i testsrc2=size=1920x1080:rate=30 \
+    -f lavfi -i "aevalsrc=0.5*sin(2*PI*1000*t)|0.5*sin(2*PI*1000*t):s=48000:d=2" \
+    -frames:v 60 -c:v h264_videotoolbox -b:v 8M -pix_fmt yuv420p -c:a aac -b:a 192k -shortest
+
 # 20-second 4K clips for the playback spike.
 make 4k30_h264.mp4 -f lavfi -i testsrc2=size=3840x2160:rate=30 -t 20 \
     -c:v h264_videotoolbox -b:v 60M -pix_fmt yuv420p

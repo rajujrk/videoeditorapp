@@ -103,7 +103,7 @@ digits don't jitter as they change.
 │ toolbar 36:  select split delete │ magnet snap keyframe   zoom −/+   │
 ├──────────────┬───────────────────────────────────────────────────────┤
 │ track header │ ruler 28                                              │
-│     168      │ title lane 40 · video lanes 56 · audio lanes 40       │
+│     168      │ title lane 52 · video lanes 56 · audio lanes 52       │
 │              │                    (timeline 300, min 180)            │
 └──────────────┴───────────────────────────────────────────────────────┘
 ```
@@ -115,9 +115,9 @@ Sizes are `Theme.size.*` tokens.
 |---|---|---|
 | Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker, undo/redo with labels, save, theme toggle; export waits for Phase 1 slice 5 |
 | Library | `ui/shell/LibraryPanel.qml` | **Media and Effects tabs are live** (import, drop, drag to timeline); other tabs show placeholders naming their phase |
-| Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback, play/pause, frame step, timecode, stats overlay |
-| Inspector | `ui/shell/InspectorPanel.qml` | **Effects tab is live**; Video/Audio/Color tabs show the planned sections with disabled controls |
-| Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; move (with snapping and track changes), trim, split, delete, scrub, zoom; lock/hide/mute wait for a later slice |
+| Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, stats overlay |
+| Inspector | `ui/shell/InspectorPanel.qml` | **Effects and Audio tabs are live** (volume, fades, detach audio for the selected clip); Video/Color tabs show the planned sections with disabled controls |
+| Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, waveforms, fade handles |
 
 ### Home
 

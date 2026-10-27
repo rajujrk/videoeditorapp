@@ -112,6 +112,29 @@ Rectangle {
 
                 Item { Layout.fillWidth: true }
 
+                // Output level meter (peak, per channel)
+                Column {
+                    objectName: "levelMeter"
+                    spacing: 2
+                    Layout.rightMargin: Theme.space.s
+                    Repeater {
+                        model: [panel.project.levelLeft, panel.project.levelRight]
+                        delegate: Rectangle {
+                            required property real modelData
+                            width: 64
+                            height: 4
+                            radius: 2
+                            color: Theme.color.surfaceSunken
+                            Rectangle {
+                                width: parent.width * Math.min(1, parent.modelData)
+                                height: parent.height
+                                radius: 2
+                                color: parent.modelData > 0.98 ? Theme.color.danger
+                                     : parent.modelData > 0.7 ? Theme.color.warning : Theme.color.success
+                            }
+                        }
+                    }
+                }
                 IconButton {
                     iconName: "stats"
                     tip: "Playback statistics"

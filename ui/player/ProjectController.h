@@ -1,5 +1,6 @@
 #pragma once
 
+#include "TrackListModel.h"
 #include "VideoView.h"
 #include "commands/CommandStack.h"
 #include "model/Project.h"
@@ -15,6 +16,7 @@
 #include <optional>
 
 namespace tve {
+class AudioOutput;
 class TimelinePlayback;
 }
 
@@ -36,6 +38,8 @@ class ProjectController : public QObject {
     Q_PROPERTY(double frameRate READ frameRate NOTIFY projectChanged)
     Q_PROPERTY(double duration READ duration NOTIFY projectChanged)
     Q_PROPERTY(QVariantList tracks READ tracks NOTIFY projectChanged) // top to bottom
+    // The same tracks as a model whose rows survive edits (use this for delegates).
+    Q_PROPERTY(QAbstractListModel* trackModel READ trackModel CONSTANT)
     Q_PROPERTY(QVariantList media READ media NOTIFY projectChanged)
 
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY projectChanged)
@@ -47,6 +51,13 @@ class ProjectController : public QObject {
     Q_PROPERTY(bool playing READ playing NOTIFY playingChanged)
     Q_PROPERTY(double selectedClip READ selectedClip WRITE setSelectedClip NOTIFY selectionChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY errorOccurred)
+    // The selected clip's details for the inspector (empty map when nothing is selected).
+    Q_PROPERTY(QVariantMap selectedClipInfo READ selectedClipInfo NOTIFY selectedClipInfoChanged)
+
+    // Output meters (0..1 peak per channel) and the audio device.
+    Q_PROPERTY(double levelLeft READ levelLeft NOTIFY levelsChanged)
+    Q_PROPERTY(double levelRight READ levelRight NOTIFY levelsChanged)
+    Q_PROPERTY(QString audioDevice READ audioDevice CONSTANT)
 
 public:
     explicit ProjectController(QObject* parent = nullptr);
@@ -63,6 +74,7 @@ public:
     double frameRate() const;
     double duration() const;
     QVariantList tracks() const;
+    QAbstractListModel* trackModel() { return &m_trackModel; }
     QVariantList media() const;
 
     bool canUndo() const { return m_stack->canUndo(); }
@@ -75,6 +87,10 @@ public:
     double selectedClip() const { return double(m_selectedClip); }
     void setSelectedClip(double clipId);
     QString lastError() const { return m_lastError; }
+    QVariantMap selectedClipInfo() const;
+    double levelLeft() const { return m_levelLeft; }
+    double levelRight() const { return m_levelRight; }
+    QString audioDevice() const;
 
     // Project lifecycle
     Q_INVOKABLE void newProject(int width, int height, const QString& name = {});
@@ -98,6 +114,13 @@ public:
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
 
+    // Audio. Times in seconds; gain in dB (-60 = silent … +12).
+    Q_INVOKABLE bool setClipAudio(double clipId, double gainDb, double fadeIn, double fadeOut);
+    // Moves a video clip's sound to the first audio track that is free at its position.
+    Q_INVOKABLE bool detachAudio(double clipId);
+    // flag: "locked", "hidden" or "muted".
+    Q_INVOKABLE bool setTrackFlag(double trackId, const QString& flag, bool value);
+
     // Transport
     Q_INVOKABLE void play();
     Q_INVOKABLE void pause();
@@ -108,6 +131,9 @@ public:
     // Nearest edit point or playhead within `tolerance` seconds of `seconds`, ignoring the
     // edges of `ignoreClipId`; returns `seconds` when nothing is close enough.
     Q_INVOKABLE double snap(double seconds, double tolerance, double ignoreClipId = 0) const;
+    // {device, running, latencyMs, underruns} for diagnostics and --stats.
+    Q_INVOKABLE QVariantMap audioStats() const;
+
     // HH:MM:SS:FF at the project frame rate.
     Q_INVOKABLE QString timecode(double seconds) const;
 
@@ -119,6 +145,8 @@ signals:
     void playheadChanged();
     void playingChanged();
     void selectionChanged();
+    void selectedClipInfoChanged();
+    void levelsChanged();
     void errorOccurred(const QString& message);
 
 private:
@@ -133,7 +161,11 @@ private:
 
     tve::Project m_project;
     std::unique_ptr<tve::CommandStack> m_stack;
+    TrackListModel m_trackModel;
     std::shared_ptr<tve::TimelinePlayback> m_playback;
+    std::unique_ptr<tve::AudioOutput> m_audioOutput;
+    double m_levelLeft = 0;
+    double m_levelRight = 0;
     QPointer<VideoView> m_view;
     QString m_filePath;
     QString m_lastError;

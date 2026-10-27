@@ -17,6 +17,22 @@ std::optional<std::string> checkEditable(const Track* track)
     return std::nullopt;
 }
 
+std::optional<std::string> checkMediaFitsTrack(const MediaItem& media, const Track& track)
+{
+    if (track.kind == TrackKind::Audio && !media.hasAudio)
+        return "this media has no sound for an audio track";
+    if (track.kind == TrackKind::Video && !media.hasVideo)
+        return "audio-only media goes on an audio track";
+    return std::nullopt;
+}
+
+// Keeps fades inside the clip after its duration changes, shortening the fade-out first.
+void clampFades(Clip& clip)
+{
+    clip.fadeIn = std::min(clip.fadeIn, clip.duration);
+    clip.fadeOut = std::min(clip.fadeOut, clip.duration - clip.fadeIn);
+}
+
 // Shifts every clip on the track that starts at or after `from` by `delta`.
 void shiftClipsFrom(Track& track, Ticks from, Ticks delta)
 {
@@ -87,6 +103,7 @@ std::optional<std::string> TrimClipCommand::redo(Project& project)
     }
     if (trimmed.duration <= 0)
         return "trim would leave the clip empty";
+    clampFades(trimmed);
     if (trimmed.start < 0 || trimmed.sourceIn < 0 || trimmed.sourceIn + trimmed.duration > media->duration)
         return "trim goes past the media's start or end";
     if (location->track->overlaps(trimmed.start, trimmed.duration, m_clipId))
@@ -121,6 +138,8 @@ std::optional<std::string> AddClipCommand::redo(Project& project)
         return "clip times are out of range";
     if (m_sourceIn + m_duration > media->duration)
         return "clip extends past the end of its media";
+    if (auto error = checkMediaFitsTrack(*media, *track))
+        return error;
     if (track->overlaps(m_start, m_duration))
         return "clip overlaps an existing clip";
 
@@ -201,7 +220,13 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
         .duration = clip.duration - leftDuration,
         .sourceIn = clip.sourceIn + leftDuration,
     };
+    right.audioEnabled = clip.audioEnabled;
+    right.gainDb = clip.gainDb;
+    right.fadeOut = clip.fadeOut;
     clip.duration = leftDuration;
+    clip.fadeOut = 0;
+    clampFades(clip);
+    clampFades(right);
     location->track->insertClip(std::move(right));
     return std::nullopt;
 }
@@ -238,6 +263,118 @@ void DeleteClipCommand::undo(Project& project)
     if (m_ripple)
         shiftClipsFrom(*track, m_removed.start, m_removed.duration);
     track->insertClip(m_removed);
+}
+
+// --- SetClipAudioCommand ---
+
+std::optional<std::string> SetClipAudioCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    Clip& clip = *location->clip;
+    if (m_audio.gainDb < kMinGainDb || m_audio.gainDb > kMaxGainDb)
+        return "volume is out of range";
+    if (m_audio.fadeIn < 0 || m_audio.fadeOut < 0 || m_audio.fadeIn + m_audio.fadeOut > clip.duration)
+        return "fades must fit inside the clip";
+    m_previous = {clip.gainDb, clip.fadeIn, clip.fadeOut};
+    clip.gainDb = m_audio.gainDb;
+    clip.fadeIn = m_audio.fadeIn;
+    clip.fadeOut = m_audio.fadeOut;
+    return std::nullopt;
+}
+
+void SetClipAudioCommand::undo(Project& project)
+{
+    Clip& clip = *project.locateClip(m_clipId)->clip;
+    clip.gainDb = m_previous.gainDb;
+    clip.fadeIn = m_previous.fadeIn;
+    clip.fadeOut = m_previous.fadeOut;
+}
+
+// --- SetTrackFlagCommand ---
+
+std::string SetTrackFlagCommand::label() const
+{
+    switch (m_flag) {
+    case Flag::Locked: return m_value ? "Lock Track" : "Unlock Track";
+    case Flag::Hidden: return m_value ? "Hide Track" : "Show Track";
+    case Flag::Muted: return m_value ? "Mute Track" : "Unmute Track";
+    }
+    return "Change Track";
+}
+
+namespace {
+
+bool& trackFlag(Track& track, SetTrackFlagCommand::Flag flag)
+{
+    switch (flag) {
+    case SetTrackFlagCommand::Flag::Locked: return track.locked;
+    case SetTrackFlagCommand::Flag::Hidden: return track.hidden;
+    case SetTrackFlagCommand::Flag::Muted: return track.muted;
+    }
+    return track.locked;
+}
+
+} // namespace
+
+std::optional<std::string> SetTrackFlagCommand::redo(Project& project)
+{
+    Track* track = project.findTrack(m_trackId);
+    if (!track)
+        return "track not found";
+    if (m_flag == Flag::Hidden && track->kind == TrackKind::Audio)
+        return "audio tracks can be muted, not hidden";
+    bool& flag = trackFlag(*track, m_flag);
+    m_previous = flag;
+    flag = m_value;
+    return std::nullopt;
+}
+
+void SetTrackFlagCommand::undo(Project& project)
+{
+    trackFlag(*project.findTrack(m_trackId), m_flag) = m_previous;
+}
+
+// --- DetachAudioCommand ---
+
+std::optional<std::string> DetachAudioCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    Track* audioTrack = project.findTrack(m_audioTrackId);
+    if (auto error = checkEditable(audioTrack))
+        return error;
+    const Clip& clip = *location->clip;
+    const MediaItem* media = project.findMedia(clip.mediaId);
+    if (location->track->kind != TrackKind::Video || audioTrack->kind != TrackKind::Audio)
+        return "detach moves sound from a video clip to an audio track";
+    if (!media || !media->hasAudio)
+        return "this clip has no sound";
+    if (!clip.audioEnabled)
+        return "this clip's sound is already detached";
+    if (audioTrack->overlaps(clip.start, clip.duration))
+        return "the audio track is not free at this clip's position";
+
+    if (m_audioClipId == kNoId)
+        m_audioClipId = project.allocateId();
+    Clip audio = clip;
+    audio.id = m_audioClipId;
+    location->clip->audioEnabled = false;
+    audioTrack->insertClip(std::move(audio));
+    return std::nullopt;
+}
+
+void DetachAudioCommand::undo(Project& project)
+{
+    for (Track& track : project.tracks)
+        track.removeClip(m_audioClipId);
+    project.locateClip(m_clipId)->clip->audioEnabled = true;
 }
 
 } // namespace tve

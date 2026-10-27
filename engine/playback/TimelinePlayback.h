@@ -3,6 +3,7 @@
 #include "decode/VideoDecoder.h"
 #include "model/Project.h"
 #include "playback/FrameSource.h"
+#include "playback/TimelineAudio.h"
 
 #include <atomic>
 #include <map>
@@ -36,6 +37,9 @@ public:
     // True once the producer has queued everything up to the end of the timeline.
     bool producerFinished() const { return m_finished.load(); }
 
+    // The timeline's mixed sound; restarted together with the video on every seek/edit.
+    std::shared_ptr<TimelineAudio> audio() const { return m_audio; }
+
     FrameQueue& queue() override { return m_queue; }
     PlaybackClock& clock() override { return m_clock; }
     PlaybackCounters& counters() override { return m_counters; }
@@ -50,6 +54,7 @@ private:
     mutable std::mutex m_control; // serializes setProject/seek from the UI thread
     std::shared_ptr<const Project> m_project;
 
+    std::shared_ptr<TimelineAudio> m_audio = std::make_shared<TimelineAudio>();
     FrameQueue m_queue{12};
     PlaybackClock m_clock;
     PlaybackCounters m_counters;

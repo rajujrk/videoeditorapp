@@ -148,6 +148,16 @@ int main(int argc, char* argv[])
             project->seek(parser.value(seekOption).toDouble());
         if (parser.isSet(playOption) || (hasFile && parser.isSet(statsOption)))
             project->play();
+        if (parser.isSet(statsOption)) {
+            const QVariantMap audio = project->audioStats();
+            std::printf("audio: device=\"%s\" running=%d latency=%.1f ms\n", qPrintable(audio[QStringLiteral("device")].toString()),
+                        audio[QStringLiteral("running")].toBool(), audio[QStringLiteral("latencyMs")].toDouble());
+            std::fflush(stdout);
+            QObject::connect(&app, &QCoreApplication::aboutToQuit, project, [project] {
+                std::printf("audio: underruns=%lld\n", project->audioStats()[QStringLiteral("underruns")].toLongLong());
+                std::fflush(stdout);
+            });
+        }
     }
 
     if (window && parser.isSet(screenshotOption)) {
