@@ -3,8 +3,8 @@
 A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
-**Status: Phase 1 (MVP editor), slices 1–4 and 5a (export) done; autosave and crash
-recovery, proxies and voice-over (5b–5d) next.** You can import video and audio files, arrange them on a multi-track timeline
+**Status: Phase 1 (MVP editor), slices 1–4, 5a (export) and 5b (autosave and crash
+recovery) done; proxies and voice-over (5c–5d) next.** You can import video and audio files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes, give each clip its own effects,
 put any of 21 transitions on the cuts between clips (with a constant-power sound
@@ -12,8 +12,8 @@ crossfade), add titles (font, size, colour, bold/italic, alignment, letter and l
 spacing, outline, shadow), change a clip's speed (0.1–10×), play it in reverse or insert
 freeze frames, hear and see their sound (waveforms, volume, fades, detach audio, track
 mute/hide/lock, meter), see thumbnails in the media bin and on the timeline, play and
-scrub, save/open `.tve` projects, and export MP4 files (H.264 or HEVC with AAC sound). Not
-yet: autosave and crash recovery, proxies, voice-over.
+scrub, save/open `.tve` projects (unsaved work is autosaved and recoverable after a crash),
+and export MP4 files (H.264 or HEVC with AAC sound). Not yet: proxies, voice-over.
 
 What's in the repo:
 
@@ -77,6 +77,18 @@ presets) and direction; the clip gets shorter or longer and later clips on its t
 with it. Reversed clips play their sound backwards too. "Freeze frame at playhead" splits
 the clip there and inserts a 2-second still (silent; trim it to change its length). Clip
 labels show `2× ·`, `Reverse ·` or `Still ·` badges.
+
+**Autosave and recovery.** Unsaved changes are written to
+`~/Library/Application Support/TechieVideoEditor/Autosave` two seconds after edits settle
+(at least every 30 s while they keep coming); the top bar shows "Autosaved hh:mm". The copy
+is deleted once the work is safe: saved, undone back to the saved state, or discarded. It
+is kept when the app crashes, quits with unsaved changes, or switches to another project,
+and Home then lists it under "Unsaved work": Recover opens it as an unsaved project that
+still saves to its original file (if it had one); Discard deletes it. Work still open in
+another running copy of the app is not listed. Project files themselves are written to a
+temporary file and renamed, so a crash mid-save never leaves a half-written project.
+`TVE_AUTOSAVE_DIR` moves the folder (the tests use a scratch one); scripted runs
+(`--stats`, `--quit-after`, `--screenshot`, `--export`) do not autosave.
 
 **Export.** Click Export (⌘E) to save an MP4: choose the file, the size (the project's,
 or 4K/1440p/1080p/720p/480p smaller than it, same shape), H.264 (plays everywhere) or HEVC

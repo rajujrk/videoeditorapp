@@ -65,6 +65,17 @@ class ProjectController : public QObject {
     // Font families offered for titles.
     Q_PROPERTY(QStringList titleFonts READ titleFonts CONSTANT)
 
+    // Autosave: unsaved work is written to `autosaveDirectory` a moment after edits settle
+    // (default: Application Support/…/Autosave; TVE_AUTOSAVE_DIR overrides). Work left
+    // there by a session that crashed, quit, or moved on without saving is listed in
+    // recoverableProjects: [{id, name, originalPath, savedAt (ms since epoch), clipCount}],
+    // newest first.
+    Q_PROPERTY(bool autosaveEnabled READ autosaveEnabled WRITE setAutosaveEnabled NOTIFY recoveryChanged)
+    Q_PROPERTY(QString autosaveDirectory READ autosaveDirectory WRITE setAutosaveDirectory NOTIFY recoveryChanged)
+    Q_PROPERTY(QVariantList recoverableProjects READ recoverableProjects NOTIFY recoveryChanged)
+    // When this document was last autosaved (ms since epoch; 0: not since its last change).
+    Q_PROPERTY(double lastAutosave READ lastAutosave NOTIFY recoveryChanged)
+
     // Export: running, and how far (0–1).
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportChanged)
     Q_PROPERTY(double exportProgress READ exportProgress NOTIFY exportChanged)
@@ -108,6 +119,12 @@ public:
     QVariantMap selectedTransitionInfo() const;
     QVariantList availableTransitions() const;
     QStringList titleFonts() const;
+    bool autosaveEnabled() const { return m_autosaveEnabled; }
+    void setAutosaveEnabled(bool enabled);
+    QString autosaveDirectory() const { return m_autosaveDir; }
+    void setAutosaveDirectory(const QString& directory);
+    QVariantList recoverableProjects() const;
+    double lastAutosave() const { return double(m_lastAutosave); }
     bool exporting() const { return m_exportThread.joinable(); }
     double exportProgress() const { return m_exportProgress; }
     double levelLeft() const { return m_levelLeft; }
@@ -182,6 +199,13 @@ public:
     // Applies the text fields in `changes` to a title clip (one undo step).
     Q_INVOKABLE bool setClipText(double clipId, const QVariantMap& changes);
 
+    // Writes unsaved work to the autosave folder now (normally done by a timer).
+    Q_INVOKABLE void autosaveNow();
+    // Opens recovered work as an unsaved project (saving goes to its original file, if it
+    // had one) and removes it from the list. discardRecovery deletes it.
+    Q_INVOKABLE bool recoverProject(const QString& id);
+    Q_INVOKABLE void discardRecovery(const QString& id);
+
     // Renders the project to an MP4 file in the background; exportFinished reports the end.
     // `options`: width and height (0 or missing: the canvas; made even), codec ("h264" or
     // "hevc"), quality ("high", "standard" or "small": the bitrate). Returns false if it
@@ -219,6 +243,7 @@ signals:
     void levelsChanged();
     void errorOccurred(const QString& message);
     void exportChanged();
+    void recoveryChanged();
     // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
     void exportFinished(bool ok, const QString& message);
 
@@ -256,6 +281,18 @@ private:
     bool m_canvasChosen = false; // false: the first video clip sets the canvas
     bool m_wasPlaying = false;
     QTimer m_playheadTimer;
+
+    // Autosave: this document's files are <dir>/<session>.tve and .json. A new session id
+    // starts with each document, so work left unsaved stays recoverable.
+    void scheduleAutosave();
+    void removeAutosave();
+    QString autosavePath(const QString& id, const char* suffix) const;
+    QString m_autosaveDir;
+    QString m_sessionId;
+    bool m_autosaveEnabled = true;
+    qint64 m_unsavedSince = 0; // ms since epoch of the first edit not yet autosaved; 0 = none
+    qint64 m_lastAutosave = 0;
+    QTimer m_autosaveTimer;
 
     std::thread m_exportThread;
     std::atomic<bool> m_cancelExport{false};

@@ -31,6 +31,8 @@ public:
     // "Clean" marks the state that matches the saved file.
     bool isClean() const { return m_cleanIndex == m_index; }
     void setClean() { m_cleanIndex = m_index; }
+    // No state matches a saved file (e.g. a project recovered from an autosave).
+    void setUnsaved() { m_cleanIndex.reset(); }
 
 private:
     Project& m_project;

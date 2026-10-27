@@ -57,6 +57,11 @@ ApplicationWindow {
         currentIndex: root.screen === "editor" ? 1 : 0
 
         HomeScreen {
+            project: project
+            onRecoverRequested: (id) => {
+                if (project.recoverProject(id))
+                    root.screen = "editor"
+            }
             onNewProject: (name, w, h) => {
                 project.newProject(w, h, name)
                 root.screen = "editor"

@@ -29,6 +29,13 @@ Rectangle {
             color: Theme.color.textPrimary
             Layout.leftMargin: Theme.space.xs
         }
+        Text {
+            objectName: "autosaveStatus"
+            visible: bar.project.modified && bar.project.lastAutosave > 0
+            text: "Autosaved " + new Date(bar.project.lastAutosave).toLocaleTimeString(Qt.locale(), Locale.ShortFormat)
+            font: Theme.type.caption
+            color: Theme.color.textSecondary
+        }
         Rectangle {
             implicitWidth: canvas.implicitWidth + Theme.space.m
             implicitHeight: 20

@@ -113,7 +113,7 @@ Sizes are `Theme.size.*` tokens.
 
 | Region | File | Status |
 |---|---|---|
-| Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker, undo/redo with labels, save, theme toggle, Export (shows progress while exporting) opening `ExportDialog.qml` |
+| Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker and "Autosaved hh:mm", undo/redo with labels, save, theme toggle, Export (shows progress while exporting) opening `ExportDialog.qml` |
 | Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, stats overlay |
 | Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); Color tab shows the planned sections |
@@ -121,7 +121,8 @@ Sizes are `Theme.size.*` tokens.
 
 ### Home
 
-A 220 px navigation rail, then: "Start creating", one card per canvas shape (16:9, 9:16,
+A 220 px navigation rail, then: "Start creating"; "Unsaved work" (only when there is
+some: one warning-bordered card per recoverable project, Discard and Recover); one card per canvas shape (16:9, 9:16,
 1:1, 4:3, 21:9; each card draws its own aspect), quick actions, and the recent-projects
 area (empty state with drop target until Phase 1 saves projects).
 
@@ -176,6 +177,11 @@ footage, playhead in the transition), dark and light:
 
 ![Transitions, dark](images/transitions-dark.png)
 ![Transitions, light](images/transitions-light.png)
+
+Home after a crash, offering the unsaved work back, dark and light:
+
+![Home with unsaved work, dark](images/home-recovery-dark.png)
+![Home with unsaved work, light](images/home-recovery-light.png)
 
 Export dialog (a modal `Popup` over a scrim), dark and light:
 

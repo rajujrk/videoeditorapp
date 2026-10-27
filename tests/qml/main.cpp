@@ -1,5 +1,6 @@
 // Runs the tst_*.qml files in this folder against the app's static QML modules.
 #include <QDir>
+#include <QTemporaryDir>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickStyle>
@@ -35,6 +36,9 @@ int main(int argc, char** argv)
     QQuickStyle::setStyle(QStringLiteral("Basic"));
     // Real-time audio callbacks without a sound card: meters work, nothing is heard.
     qputenv("TVE_AUDIO", "null");
+    // Autosaves go to a scratch folder that is removed afterwards, never the user's own.
+    QTemporaryDir autosave;
+    qputenv("TVE_AUTOSAVE_DIR", autosave.path().toLocal8Bit());
     Setup setup;
     return quick_test_main_with_setup(argc, argv, "tve_qml_tests", TVE_QML_TESTS_DIR, &setup);
 }
