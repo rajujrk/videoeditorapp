@@ -1,0 +1,292 @@
+#include "decode/VideoDecoder.h"
+
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/pixdesc.h>
+#include <libswscale/swscale.h>
+}
+
+namespace tve {
+
+namespace {
+
+constexpr AVRational kTickTimeBase{1, static_cast<int>(kTicksPerSecond)};
+
+std::string avError(int code)
+{
+    char buffer[AV_ERROR_MAX_STRING_SIZE]{};
+    av_strerror(code, buffer, sizeof buffer);
+    return buffer;
+}
+
+AVPixelFormat pickPixelFormat(AVCodecContext* context, const AVPixelFormat* formats)
+{
+    if (context->hw_device_ctx) {
+        for (const AVPixelFormat* f = formats; *f != AV_PIX_FMT_NONE; ++f) {
+            if (*f == AV_PIX_FMT_VIDEOTOOLBOX)
+                return *f;
+        }
+    }
+    // VideoToolbox cannot decode this stream (profile, bit depth…): use software.
+    for (const AVPixelFormat* f = formats; *f != AV_PIX_FMT_NONE; ++f) {
+        if (!(av_pix_fmt_desc_get(*f)->flags & AV_PIX_FMT_FLAG_HWACCEL))
+            return *f;
+    }
+    return AV_PIX_FMT_NONE;
+}
+
+CFStringRef matrixAttachment(AVColorSpace space, int height)
+{
+    switch (space) {
+    case AVCOL_SPC_BT709:
+        return kCVImageBufferYCbCrMatrix_ITU_R_709_2;
+    case AVCOL_SPC_BT2020_NCL:
+    case AVCOL_SPC_BT2020_CL:
+        return kCVImageBufferYCbCrMatrix_ITU_R_2020;
+    case AVCOL_SPC_BT470BG:
+    case AVCOL_SPC_SMPTE170M:
+        return kCVImageBufferYCbCrMatrix_ITU_R_601_4;
+    default:
+        return height > 576 ? kCVImageBufferYCbCrMatrix_ITU_R_709_2 : kCVImageBufferYCbCrMatrix_ITU_R_601_4;
+    }
+}
+
+int swsColorspace(CFStringRef matrix)
+{
+    if (CFEqual(matrix, kCVImageBufferYCbCrMatrix_ITU_R_709_2))
+        return SWS_CS_ITU709;
+    if (CFEqual(matrix, kCVImageBufferYCbCrMatrix_ITU_R_2020))
+        return SWS_CS_BT2020;
+    return SWS_CS_ITU601;
+}
+
+CVPixelBufferPoolRef createNv12Pool(int width, int height)
+{
+    const int pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
+    CFNumberRef format = CFNumberCreate(nullptr, kCFNumberIntType, &pixelFormat);
+    CFNumberRef w = CFNumberCreate(nullptr, kCFNumberIntType, &width);
+    CFNumberRef h = CFNumberCreate(nullptr, kCFNumberIntType, &height);
+    CFDictionaryRef ioSurface = CFDictionaryCreate(nullptr, nullptr, nullptr, 0, &kCFTypeDictionaryKeyCallBacks,
+                                                   &kCFTypeDictionaryValueCallBacks);
+    const void* keys[] = {kCVPixelBufferPixelFormatTypeKey, kCVPixelBufferWidthKey, kCVPixelBufferHeightKey,
+                          kCVPixelBufferIOSurfacePropertiesKey, kCVPixelBufferMetalCompatibilityKey};
+    const void* values[] = {format, w, h, ioSurface, kCFBooleanTrue};
+    CFDictionaryRef attributes = CFDictionaryCreate(nullptr, keys, values, 5, &kCFTypeDictionaryKeyCallBacks,
+                                                    &kCFTypeDictionaryValueCallBacks);
+    CVPixelBufferPoolRef pool = nullptr;
+    CVPixelBufferPoolCreate(nullptr, nullptr, attributes, &pool);
+    CFRelease(attributes);
+    CFRelease(ioSurface);
+    CFRelease(h);
+    CFRelease(w);
+    CFRelease(format);
+    return pool;
+}
+
+} // namespace
+
+struct VideoDecoder::Impl {
+    AVFormatContext* format = nullptr;
+    AVCodecContext* codec = nullptr;
+    AVBufferRef* hwDevice = nullptr;
+    AVPacket* packet = nullptr;
+    AVFrame* frame = nullptr;
+    SwsContext* sws = nullptr;
+    CVPixelBufferPoolRef pool = nullptr;
+    int poolWidth = 0;
+    int poolHeight = 0;
+
+    int streamIndex = -1;
+    AVRational timeBase{};
+    std::int64_t startTime = 0;
+    bool inputDone = false;
+    Ticks lastPts = 0;
+    VideoStreamInfo info;
+
+    ~Impl()
+    {
+        sws_freeContext(sws);
+        if (pool)
+            CVPixelBufferPoolRelease(pool);
+        av_frame_free(&frame);
+        av_packet_free(&packet);
+        avcodec_free_context(&codec);
+        av_buffer_unref(&hwDevice);
+        avformat_close_input(&format);
+    }
+
+    std::optional<DecodedFrame> takeFrame();
+    CVPixelBufferRef convertToNv12();
+};
+
+std::optional<DecodedFrame> VideoDecoder::Impl::takeFrame()
+{
+    std::int64_t timestamp = frame->best_effort_timestamp;
+    if (timestamp == AV_NOPTS_VALUE)
+        timestamp = frame->pts;
+    const Ticks pts = timestamp == AV_NOPTS_VALUE
+        ? lastPts + frameDuration(info.frameRate)
+        : av_rescale_q(timestamp - startTime, timeBase, kTickTimeBase);
+    lastPts = pts;
+
+    if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
+        info.hardwareAccelerated = true;
+        auto buffer = reinterpret_cast<CVPixelBufferRef>(frame->data[3]);
+        CVPixelBufferRetain(buffer);
+        return DecodedFrame(buffer, pts);
+    }
+
+    info.hardwareAccelerated = false;
+    CVPixelBufferRef buffer = convertToNv12();
+    if (!buffer)
+        return std::nullopt;
+    return DecodedFrame(buffer, pts);
+}
+
+CVPixelBufferRef VideoDecoder::Impl::convertToNv12()
+{
+    if (!pool || poolWidth != frame->width || poolHeight != frame->height) {
+        if (pool)
+            CVPixelBufferPoolRelease(pool);
+        pool = createNv12Pool(frame->width, frame->height);
+        poolWidth = frame->width;
+        poolHeight = frame->height;
+        if (!pool)
+            return nullptr;
+    }
+
+    const CFStringRef matrix = matrixAttachment(frame->colorspace, frame->height);
+    sws = sws_getCachedContext(sws, frame->width, frame->height, static_cast<AVPixelFormat>(frame->format),
+                               frame->width, frame->height, AV_PIX_FMT_NV12, SWS_BILINEAR, nullptr, nullptr, nullptr);
+    if (!sws)
+        return nullptr;
+    const int* coefficients = sws_getCoefficients(swsColorspace(matrix));
+    const int sourceFullRange = frame->color_range == AVCOL_RANGE_JPEG ? 1 : 0;
+    sws_setColorspaceDetails(sws, coefficients, sourceFullRange, coefficients, 0, 0, 1 << 16, 1 << 16);
+
+    CVPixelBufferRef buffer = nullptr;
+    if (CVPixelBufferPoolCreatePixelBuffer(nullptr, pool, &buffer) != kCVReturnSuccess)
+        return nullptr;
+
+    CVPixelBufferLockBaseAddress(buffer, 0);
+    std::uint8_t* planes[] = {static_cast<std::uint8_t*>(CVPixelBufferGetBaseAddressOfPlane(buffer, 0)),
+                              static_cast<std::uint8_t*>(CVPixelBufferGetBaseAddressOfPlane(buffer, 1))};
+    const int strides[] = {static_cast<int>(CVPixelBufferGetBytesPerRowOfPlane(buffer, 0)),
+                           static_cast<int>(CVPixelBufferGetBytesPerRowOfPlane(buffer, 1))};
+    sws_scale(sws, frame->data, frame->linesize, 0, frame->height, planes, strides);
+    CVPixelBufferUnlockBaseAddress(buffer, 0);
+
+    CVBufferSetAttachment(buffer, kCVImageBufferYCbCrMatrixKey, matrix, kCVAttachmentMode_ShouldPropagate);
+    return buffer;
+}
+
+VideoDecoder::VideoDecoder(std::unique_ptr<Impl> impl) : m_impl(std::move(impl)) {}
+
+VideoDecoder::~VideoDecoder() = default;
+
+std::unique_ptr<VideoDecoder> VideoDecoder::open(const std::string& path, std::string* error)
+{
+    auto fail = [&](std::string message) -> std::unique_ptr<VideoDecoder> {
+        if (error)
+            *error = std::move(message);
+        return nullptr;
+    };
+
+    auto d = std::make_unique<Impl>();
+    if (int rc = avformat_open_input(&d->format, path.c_str(), nullptr, nullptr); rc < 0)
+        return fail("cannot open " + path + ": " + avError(rc));
+    if (int rc = avformat_find_stream_info(d->format, nullptr); rc < 0)
+        return fail("cannot read stream info: " + avError(rc));
+
+    const AVCodec* decoder = nullptr;
+    d->streamIndex = av_find_best_stream(d->format, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
+    if (d->streamIndex < 0 || !decoder)
+        return fail("no decodable video stream in " + path);
+
+    AVStream* stream = d->format->streams[d->streamIndex];
+    d->timeBase = stream->time_base;
+    d->startTime = stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time;
+
+    d->codec = avcodec_alloc_context3(decoder);
+    if (!d->codec || avcodec_parameters_to_context(d->codec, stream->codecpar) < 0)
+        return fail("cannot configure decoder");
+
+    for (int i = 0;; ++i) {
+        const AVCodecHWConfig* config = avcodec_get_hw_config(decoder, i);
+        if (!config)
+            break;
+        if (config->device_type == AV_HWDEVICE_TYPE_VIDEOTOOLBOX
+            && (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX)) {
+            if (av_hwdevice_ctx_create(&d->hwDevice, AV_HWDEVICE_TYPE_VIDEOTOOLBOX, nullptr, nullptr, 0) >= 0)
+                d->codec->hw_device_ctx = av_buffer_ref(d->hwDevice);
+            break;
+        }
+    }
+    d->codec->get_format = pickPixelFormat;
+    d->codec->thread_count = 0; // software fallback: one thread per core
+
+    if (int rc = avcodec_open2(d->codec, decoder, nullptr); rc < 0)
+        return fail("cannot open decoder: " + avError(rc));
+
+    d->packet = av_packet_alloc();
+    d->frame = av_frame_alloc();
+
+    const AVRational rate = av_guess_frame_rate(d->format, stream, nullptr);
+    d->info.width = d->codec->width;
+    d->info.height = d->codec->height;
+    d->info.frameRate = rate.num > 0 && rate.den > 0 ? FrameRate{rate.num, rate.den} : FrameRate{30, 1};
+    if (stream->duration != AV_NOPTS_VALUE)
+        d->info.duration = av_rescale_q(stream->duration, d->timeBase, kTickTimeBase);
+    else if (d->format->duration != AV_NOPTS_VALUE)
+        d->info.duration = av_rescale_q(d->format->duration, AV_TIME_BASE_Q, kTickTimeBase);
+    d->info.codecName = decoder->name;
+    d->info.hardwareAccelerated = d->codec->hw_device_ctx != nullptr;
+
+    return std::unique_ptr<VideoDecoder>(new VideoDecoder(std::move(d)));
+}
+
+const VideoStreamInfo& VideoDecoder::info() const
+{
+    return m_impl->info;
+}
+
+std::optional<DecodedFrame> VideoDecoder::nextFrame()
+{
+    Impl& d = *m_impl;
+    while (true) {
+        const int rc = avcodec_receive_frame(d.codec, d.frame);
+        if (rc == 0) {
+            auto decoded = d.takeFrame();
+            av_frame_unref(d.frame);
+            if (decoded)
+                return decoded;
+            continue;
+        }
+        if (rc != AVERROR(EAGAIN) || d.inputDone)
+            return std::nullopt; // end of stream or decoder error
+
+        if (av_read_frame(d.format, d.packet) < 0) {
+            d.inputDone = true;
+            avcodec_send_packet(d.codec, nullptr); // drain buffered frames
+            continue;
+        }
+        if (d.packet->stream_index == d.streamIndex)
+            avcodec_send_packet(d.codec, d.packet); // a corrupt packet is skipped, not fatal
+        av_packet_unref(d.packet);
+    }
+}
+
+bool VideoDecoder::seekToStart()
+{
+    Impl& d = *m_impl;
+    if (av_seek_frame(d.format, d.streamIndex, d.startTime, AVSEEK_FLAG_BACKWARD) < 0)
+        return false;
+    avcodec_flush_buffers(d.codec);
+    d.inputDone = false;
+    d.lastPts = 0;
+    return true;
+}
+
+} // namespace tve

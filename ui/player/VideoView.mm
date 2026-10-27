@@ -1,0 +1,395 @@
+#include "VideoView.h"
+
+#include "playback/PlaybackSession.h"
+
+#include <QDateTime>
+#include <QFile>
+#include <QMatrix4x4>
+#include <QUrl>
+#include <rhi/qrhi.h>
+#include <rhi/qrhi_platform.h>
+
+#import <CoreVideo/CVMetalTextureCache.h>
+#import <Metal/Metal.h>
+
+#include <array>
+#include <chrono>
+
+namespace {
+
+QShader loadShader(const QString& name)
+{
+    QFile file(name);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning("VideoView: missing shader %s", qPrintable(name));
+        return {};
+    }
+    return QShader::fromSerialized(file.readAll());
+}
+
+struct PlaneFormats {
+    bool supported = false;
+    bool fullRange = false;
+    QRhiTexture::Format luma = QRhiTexture::R8;
+    QRhiTexture::Format chroma = QRhiTexture::RG8;
+    MTLPixelFormat metalLuma = MTLPixelFormatR8Unorm;
+    MTLPixelFormat metalChroma = MTLPixelFormatRG8Unorm;
+};
+
+PlaneFormats planeFormats(OSType pixelFormat)
+{
+    switch (pixelFormat) {
+    case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
+        return {.supported = true};
+    case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+        return {.supported = true, .fullRange = true};
+    case kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange:
+    case kCVPixelFormatType_420YpCbCr10BiPlanarFullRange:
+        // 10-bit samples sit in the high bits of 16-bit words, so normalized values
+        // match the 8-bit ones closely enough for the same matrix.
+        return {.supported = true,
+                .fullRange = pixelFormat == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange,
+                .luma = QRhiTexture::R16,
+                .chroma = QRhiTexture::RG16,
+                .metalLuma = MTLPixelFormatR16Unorm,
+                .metalChroma = MTLPixelFormatRG16Unorm};
+    default:
+        return {};
+    }
+}
+
+// Maps normalized (Y, Cb, Cr, 1) samples to RGB, folding the range expansion in.
+QMatrix4x4 yuvToRgbMatrix(CVPixelBufferRef buffer, bool fullRange)
+{
+    double kr = 0.2126;
+    double kb = 0.0722; // BT.709 unless the buffer says otherwise
+    if (CFTypeRef matrix = CVBufferCopyAttachment(buffer, kCVImageBufferYCbCrMatrixKey, nullptr)) {
+        if (CFEqual(matrix, kCVImageBufferYCbCrMatrix_ITU_R_601_4)) {
+            kr = 0.299;
+            kb = 0.114;
+        } else if (CFEqual(matrix, kCVImageBufferYCbCrMatrix_ITU_R_2020)) {
+            kr = 0.2627;
+            kb = 0.0593;
+        }
+        CFRelease(matrix);
+    }
+    const double kg = 1.0 - kr - kb;
+
+    const double ys = fullRange ? 1.0 : 255.0 / 219.0;
+    const double yo = fullRange ? 0.0 : -16.0 / 219.0;
+    const double cs = fullRange ? 1.0 : 255.0 / 224.0;
+    const double co = fullRange ? -128.0 / 255.0 : -128.0 / 224.0;
+
+    const double rCr = 2.0 * (1.0 - kr);
+    const double bCb = 2.0 * (1.0 - kb);
+    const double gCb = 2.0 * kb * (1.0 - kb) / kg;
+    const double gCr = 2.0 * kr * (1.0 - kr) / kg;
+
+    auto f = [](double v) { return static_cast<float>(v); };
+    return QMatrix4x4(f(ys), 0.0f, f(rCr * cs), f(yo + rCr * co),
+                      f(ys), f(-gCb * cs), f(-gCr * cs), f(yo - (gCb + gCr) * co),
+                      f(ys), f(bCb * cs), 0.0f, f(yo + bCb * co),
+                      0.0f, 0.0f, 0.0f, 1.0f);
+}
+
+tve::Ticks ticksSince(std::chrono::steady_clock::time_point origin)
+{
+    const auto micros = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - origin).count();
+    return micros * (tve::kTicksPerSecond / 1'000'000);
+}
+
+class VideoRenderer final : public QQuickRhiItemRenderer {
+public:
+    ~VideoRenderer() override
+    {
+        for (InFlight& slot : m_inFlight)
+            release(slot);
+        if (m_textureCache)
+            CFRelease(m_textureCache);
+    }
+
+protected:
+    void initialize(QRhiCommandBuffer*) override;
+    void synchronize(QQuickRhiItem* item) override;
+    void render(QRhiCommandBuffer* cb) override;
+
+private:
+    // A frame's Metal textures stay alive for a few renders because the GPU may still be
+    // sampling them after the frame has been replaced.
+    struct InFlight {
+        tve::DecodedFrame frame;
+        CVMetalTextureRef luma = nullptr;
+        CVMetalTextureRef chroma = nullptr;
+    };
+
+    static void release(InFlight& slot);
+    bool showFrame(tve::DecodedFrame frame);
+
+    QRhi* m_rhi = nullptr;
+    std::unique_ptr<QRhiBuffer> m_uniforms;
+    std::unique_ptr<QRhiSampler> m_sampler;
+    std::unique_ptr<QRhiTexture> m_luma;
+    std::unique_ptr<QRhiTexture> m_chroma;
+    std::unique_ptr<QRhiShaderResourceBindings> m_bindings;
+    std::unique_ptr<QRhiGraphicsPipeline> m_pipeline;
+    CVMetalTextureCacheRef m_textureCache = nullptr;
+
+    std::array<InFlight, 3> m_inFlight;
+    std::size_t m_nextSlot = 0;
+
+    std::shared_ptr<tve::PlaybackSession> m_session;
+    bool m_hasFrame = false;
+    QSize m_videoSize;
+    QMatrix4x4 m_colorMatrix;
+    bool m_clockStarted = false;
+    std::chrono::steady_clock::time_point m_clockOrigin;
+};
+
+void VideoRenderer::release(InFlight& slot)
+{
+    if (slot.luma)
+        CFRelease(slot.luma);
+    if (slot.chroma)
+        CFRelease(slot.chroma);
+    slot.luma = slot.chroma = nullptr;
+    slot.frame.reset();
+}
+
+void VideoRenderer::initialize(QRhiCommandBuffer*)
+{
+    if (m_rhi != rhi()) {
+        m_pipeline.reset();
+        m_rhi = rhi();
+    }
+    if (m_pipeline)
+        return;
+    if (m_rhi->backend() != QRhi::Metal) {
+        qWarning("VideoView: zero-copy playback needs the Metal backend, got %s", m_rhi->backendName());
+        return;
+    }
+
+    auto* handles = static_cast<const QRhiMetalNativeHandles*>(m_rhi->nativeHandles());
+    if (!m_textureCache
+        && CVMetalTextureCacheCreate(kCFAllocatorDefault, nullptr, (id<MTLDevice>)(void*)handles->dev, nullptr,
+                                     &m_textureCache) != kCVReturnSuccess) {
+        qWarning("VideoView: cannot create CVMetalTextureCache");
+        return;
+    }
+
+    m_uniforms.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, 80));
+    m_uniforms->create();
+    m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
+                                      QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
+    m_sampler->create();
+    m_luma.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(1, 1)));
+    m_luma->create();
+    m_chroma.reset(m_rhi->newTexture(QRhiTexture::RG8, QSize(1, 1)));
+    m_chroma->create();
+
+    m_bindings.reset(m_rhi->newShaderResourceBindings());
+    m_bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(
+            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, m_uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, m_luma.get(),
+                                                  m_sampler.get()),
+        QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, m_chroma.get(),
+                                                  m_sampler.get()),
+    });
+    m_bindings->create();
+
+    m_pipeline.reset(m_rhi->newGraphicsPipeline());
+    m_pipeline->setTopology(QRhiGraphicsPipeline::TriangleStrip);
+    m_pipeline->setShaderStages({
+        {QRhiShaderStage::Vertex, loadShader(QStringLiteral(":/shaders/video.vert.qsb"))},
+        {QRhiShaderStage::Fragment, loadShader(QStringLiteral(":/shaders/video.frag.qsb"))},
+    });
+    m_pipeline->setVertexInputLayout({});
+    m_pipeline->setShaderResourceBindings(m_bindings.get());
+    m_pipeline->setRenderPassDescriptor(renderTarget()->renderPassDescriptor());
+    m_pipeline->setSampleCount(renderTarget()->sampleCount());
+    if (!m_pipeline->create()) {
+        qWarning("VideoView: cannot create graphics pipeline");
+        m_pipeline.reset();
+    }
+}
+
+void VideoRenderer::synchronize(QQuickRhiItem* item)
+{
+    auto session = static_cast<VideoView*>(item)->session();
+    if (session != m_session) {
+        m_session = std::move(session);
+        m_clockStarted = false;
+        m_hasFrame = false;
+    }
+}
+
+bool VideoRenderer::showFrame(tve::DecodedFrame frame)
+{
+    CVPixelBufferRef buffer = frame.pixelBuffer();
+    const PlaneFormats formats = planeFormats(CVPixelBufferGetPixelFormatType(buffer));
+    if (!formats.supported)
+        return false;
+
+    InFlight& slot = m_inFlight[m_nextSlot];
+    m_nextSlot = (m_nextSlot + 1) % m_inFlight.size();
+    release(slot);
+
+    const size_t lumaWidth = CVPixelBufferGetWidthOfPlane(buffer, 0);
+    const size_t lumaHeight = CVPixelBufferGetHeightOfPlane(buffer, 0);
+    const size_t chromaWidth = CVPixelBufferGetWidthOfPlane(buffer, 1);
+    const size_t chromaHeight = CVPixelBufferGetHeightOfPlane(buffer, 1);
+    if (CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, m_textureCache, buffer, nullptr,
+                                                  formats.metalLuma, lumaWidth, lumaHeight, 0, &slot.luma)
+            != kCVReturnSuccess
+        || CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, m_textureCache, buffer, nullptr,
+                                                     formats.metalChroma, chromaWidth, chromaHeight, 1, &slot.chroma)
+            != kCVReturnSuccess) {
+        release(slot);
+        return false;
+    }
+
+    id<MTLTexture> luma = CVMetalTextureGetTexture(slot.luma);
+    id<MTLTexture> chroma = CVMetalTextureGetTexture(slot.chroma);
+    m_luma->setFormat(formats.luma);
+    m_luma->setPixelSize(QSize(int(lumaWidth), int(lumaHeight)));
+    m_luma->createFrom({quint64(quintptr((void*)luma)), 0});
+    m_chroma->setFormat(formats.chroma);
+    m_chroma->setPixelSize(QSize(int(chromaWidth), int(chromaHeight)));
+    m_chroma->createFrom({quint64(quintptr((void*)chroma)), 0});
+
+    m_colorMatrix = yuvToRgbMatrix(buffer, formats.fullRange);
+    m_videoSize = QSize(int(CVPixelBufferGetWidth(buffer)), int(CVPixelBufferGetHeight(buffer)));
+    slot.frame = std::move(frame);
+    m_hasFrame = true;
+    return true;
+}
+
+void VideoRenderer::render(QRhiCommandBuffer* cb)
+{
+    QRhiResourceUpdateBatch* updates = m_rhi->nextResourceUpdateBatch();
+
+    if (m_session && m_pipeline) {
+        auto& queue = m_session->queue();
+        if (!m_clockStarted) {
+            if (auto firstPts = queue.frontPts()) {
+                m_clockOrigin = std::chrono::steady_clock::now()
+                    - std::chrono::microseconds(*firstPts / (tve::kTicksPerSecond / 1'000'000));
+                m_clockStarted = true;
+            }
+        }
+        if (m_clockStarted) {
+            int skipped = 0;
+            if (auto frame = queue.takeLatestDue(ticksSince(m_clockOrigin), skipped)) {
+                m_session->counters().skipped += skipped;
+                if (showFrame(std::move(*frame)))
+                    ++m_session->counters().presented;
+            }
+        }
+        CVMetalTextureCacheFlush(m_textureCache, 0);
+    }
+
+    const QSize outputSize = renderTarget()->pixelSize();
+    if (m_hasFrame) {
+        // Aspect-fit the video inside the item.
+        float scale[4] = {1.0f, 1.0f, m_rhi->isYUpInNDC() ? 1.0f : 0.0f, 0.0f};
+        const float videoAspect = float(m_videoSize.width()) / float(m_videoSize.height());
+        const float viewAspect = float(outputSize.width()) / float(outputSize.height());
+        if (videoAspect > viewAspect)
+            scale[1] = viewAspect / videoAspect;
+        else
+            scale[0] = videoAspect / viewAspect;
+        updates->updateDynamicBuffer(m_uniforms.get(), 0, 64, m_colorMatrix.constData());
+        updates->updateDynamicBuffer(m_uniforms.get(), 64, 16, scale);
+    }
+
+    cb->beginPass(renderTarget(), QColor(Qt::black), {1.0f, 0}, updates);
+    if (m_hasFrame) {
+        cb->setGraphicsPipeline(m_pipeline.get());
+        cb->setViewport({0, 0, float(outputSize.width()), float(outputSize.height())});
+        cb->setShaderResources();
+        cb->draw(4);
+    }
+    cb->endPass();
+
+    if (m_session)
+        update(); // keep presenting on every vsync while a video is loaded
+}
+
+} // namespace
+
+VideoView::VideoView(QQuickItem* parent) : QQuickRhiItem(parent)
+{
+    m_statsTimer.setInterval(1000);
+    connect(&m_statsTimer, &QTimer::timeout, this, &VideoView::sampleStats);
+}
+
+VideoView::~VideoView()
+{
+    if (m_session)
+        m_session->stop();
+}
+
+void VideoView::setSource(const QString& source)
+{
+    if (source == m_source)
+        return;
+    m_source = source;
+
+    if (m_session)
+        m_session->stop();
+    m_session.reset();
+    m_statsTimer.stop();
+    m_error.clear();
+    m_description.clear();
+    m_decodeFps = m_presentFps = 0;
+    m_skipped = m_lastDecoded = m_lastPresented = 0;
+
+    if (!source.isEmpty()) {
+        const QString path = source.startsWith(QLatin1String("file:")) ? QUrl(source).toLocalFile() : source;
+        std::string error;
+        m_session = tve::PlaybackSession::open(path.toStdString(), &error);
+        if (!m_session) {
+            m_error = QString::fromStdString(error);
+        } else {
+            const tve::VideoStreamInfo info = m_session->info();
+            m_description = QStringLiteral("%1×%2 %3 @ %4 fps")
+                                .arg(info.width)
+                                .arg(info.height)
+                                .arg(QString::fromStdString(info.codecName))
+                                .arg(double(info.frameRate.num) / info.frameRate.den, 0, 'f', 2);
+            m_session->start();
+            m_lastSampleMs = QDateTime::currentMSecsSinceEpoch();
+            m_statsTimer.start();
+        }
+    }
+    emit sourceChanged();
+    emit statsChanged();
+    update();
+}
+
+void VideoView::sampleStats()
+{
+    if (!m_session)
+        return;
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const double seconds = double(now - m_lastSampleMs) / 1000.0;
+    if (seconds <= 0)
+        return;
+    auto& counters = m_session->counters();
+    const qint64 decoded = counters.decoded;
+    const qint64 presented = counters.presented;
+    m_decodeFps = double(decoded - m_lastDecoded) / seconds;
+    m_presentFps = double(presented - m_lastPresented) / seconds;
+    m_skipped = counters.skipped;
+    m_hardware = m_session->hardwareAccelerated();
+    m_lastDecoded = decoded;
+    m_lastPresented = presented;
+    m_lastSampleMs = now;
+    emit statsChanged();
+}
+
+QQuickRhiItemRenderer* VideoView::createRenderer()
+{
+    return new VideoRenderer;
+}

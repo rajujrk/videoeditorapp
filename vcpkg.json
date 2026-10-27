@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "techievideoeditor",
+  "version": "0.0.1",
+  "description": "TechieVideoEditor desktop video editor",
+  "builtin-baseline": "0e5030f583a5427123cd3b714255e5ae62faa3ba",
+  "dependencies": [
+    {
+      "name": "ffmpeg",
+      "default-features": false,
+      "features": ["avcodec", "avformat", "swscale", "swresample"]
+    },
+    "nlohmann-json",
+    "catch2"
+  ]
+}
