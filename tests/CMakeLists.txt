@@ -10,6 +10,7 @@ add_executable(tve_core_tests
     core/test_transitions.cpp
     core/test_titles.cpp
     core/test_voiceover.cpp
+    core/test_keyframes.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)

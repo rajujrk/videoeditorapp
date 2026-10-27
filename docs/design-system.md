@@ -116,8 +116,8 @@ Sizes are `Theme.size.*` tokens.
 | Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker and "Autosaved hh:mm", undo/redo with labels, save, theme toggle, Export (shows progress while exporting) opening `ExportDialog.qml` |
 | Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, proxy toggle, stats overlay |
-| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); Color tab shows the planned sections |
-| Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; voice-over button opening `VoiceOverPanel.qml` (a red range marks the take being recorded); move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges, title clips (purple, labelled with their text), transition markers over cuts (select, delete, drop target) |
+| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (a Keyframes section — add/remove at the playhead, step between, easing, clear — and a ◆ toggle beside every animatable value; placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); Color tab shows the planned sections |
+| Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; keyframe button for the selected clip and keyframe diamonds along clips (click to go, drag to move); voice-over button opening `VoiceOverPanel.qml` (a red range marks the take being recorded); move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges, title clips (purple, labelled with their text), transition markers over cuts (select, delete, drop target) |
 
 ### Home
 
@@ -183,6 +183,13 @@ proxy toggle on, dark and light:
 
 ![Proxies, dark](images/editor-proxies-dark.png)
 ![Proxies, light](images/editor-proxies-light.png)
+
+Keyframes: the background clip animated from 1 s to 4 s (eased) and fading out by 7 s,
+playhead on its middle keyframe; the inspector's Keyframes section and ◆ toggles, and the
+clip's keyframe diamonds on the timeline, dark and light:
+
+![Keyframes, dark](images/keyframes-dark.png)
+![Keyframes, light](images/keyframes-light.png)
 
 Voice-over panel (a non-modal `Popup` above the timeline toolbar's microphone button)
 mid-take, with the take's range in red on the timeline, dark and light:

@@ -51,9 +51,17 @@ NLOHMANN_JSON_SERIALIZE_ENUM(TextAlignment, {
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipText, text, fontFamily, size, bold, italic, color, alignment,
                                                 lineSpacing, letterSpacing, outlineColor, outlineWidth, shadow)
+NLOHMANN_JSON_SERIALIZE_ENUM(Easing, {
+    {Easing::Linear, "linear"},
+    {Easing::EaseIn, "easeIn"},
+    {Easing::EaseOut, "easeOut"},
+    {Easing::EaseInOut, "easeInOut"},
+    {Easing::Hold, "hold"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Keyframe, time, value, easing)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
-                                                transitionIn, text)
+                                                transitionIn, text, keyframes)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Track, id, kind, name, locked, hidden, muted, clips)
 
 nlohmann::json projectToJson(const Project& project)

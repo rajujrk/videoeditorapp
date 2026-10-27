@@ -53,6 +53,22 @@ Id toId(double value)
     return value > 0 ? Id(std::llround(value)) : kNoId;
 }
 
+// Times of a clip's keyframes inside it (any property), seconds from its start, unique.
+QVariantList keyframeTimes(const Clip& clip)
+{
+    std::set<Ticks> times;
+    for (const auto& [id, keys] : clip.keyframes) {
+        for (const Keyframe& k : keys) {
+            if (k.time >= 0 && k.time <= clip.duration)
+                times.insert(k.time);
+        }
+    }
+    QVariantList list;
+    for (Ticks t : times)
+        list << seconds(t);
+    return list;
+}
+
 QString fileName(const std::string& path)
 {
     return QFileInfo(QString::fromStdString(path)).fileName();
@@ -98,6 +114,23 @@ AudioRecorder::Backend inputBackend()
     return mode == "null"   ? AudioRecorder::Backend::Null
          : mode == "none" ? AudioRecorder::Backend::None
                           : AudioRecorder::Backend::System;
+}
+
+QString easingName(Easing easing)
+{
+    switch (easing) {
+    case Easing::Linear:
+        break;
+    case Easing::EaseIn:
+        return QStringLiteral("easeIn");
+    case Easing::EaseOut:
+        return QStringLiteral("easeOut");
+    case Easing::EaseInOut:
+        return QStringLiteral("easeInOut");
+    case Easing::Hold:
+        return QStringLiteral("hold");
+    }
+    return QStringLiteral("linear");
 }
 
 const char* const kBlendNames[] = {"normal", "multiply", "screen", "overlay", "add", "darken", "lighten"};
@@ -356,6 +389,7 @@ QVariantList ProjectController::tracks() const
                 {QStringLiteral("speed"), clip.speed},
                 {QStringLiteral("reversed"), clip.reversed},
                 {QStringLiteral("freeze"), clip.freeze},
+                {QStringLiteral("keyframeTimes"), keyframeTimes(clip)},
                 {QStringLiteral("mediaWidth"), media ? media->width : 0},
                 {QStringLiteral("mediaHeight"), media ? media->height : 0},
                 {QStringLiteral("transition"), transitionMap(*track, clip)},
@@ -970,6 +1004,20 @@ bool ProjectController::setClipAudio(double clipId, double gainDb, double fadeIn
 {
     ClipAudio audio{float(std::clamp(gainDb, double(kMinGainDb), double(kMaxGainDb))), ticks(std::max(fadeIn, 0.0)),
                     ticks(std::max(fadeOut, 0.0))};
+    // Animated volume: the gain becomes a keyframe at the playhead; fades stay static.
+    if (const Clip* clip = findClip(toId(clipId)); clip && clip->keyframesOf(property::kVolume)) {
+        const float now = clip->gainDbAt(ticks(m_playhead));
+        audio.gainDb = clip->gainDb;
+        if (std::abs(float(gainDb) - now) > 1e-4f) {
+            std::map<std::string, Keyframes> changes;
+            changes.emplace(std::string(property::kVolume), withKey(*clip, property::kVolume, gainDb));
+            if (audio.fadeIn == clip->fadeIn && audio.fadeOut == clip->fadeOut)
+                return apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Change Audio"));
+            // Rare: both at once (two steps).
+            if (!apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Change Audio")))
+                return false;
+        }
+    }
     return apply(std::make_unique<SetClipAudioCommand>(toId(clipId), audio));
 }
 
@@ -1010,6 +1058,29 @@ QVariantMap ProjectController::selectedClipInfo() const
         if (!clip)
             continue;
         const MediaItem* media = m_project.findMedia(clip->mediaId);
+        const Ticks now = ticks(m_playhead);
+        const Ticks local = keyTime(*clip);
+        QVariantMap keyframes;
+        QVariantMap states;
+        QString easingAtPlayhead;
+        for (const auto& [id, keys] : clip->keyframes) {
+            if (keys.empty())
+                continue;
+            QVariantList list;
+            bool here = false;
+            for (const Keyframe& k : keys) {
+                list << QVariantMap{{QStringLiteral("time"), seconds(k.time)},
+                                    {QStringLiteral("value"), k.value},
+                                    {QStringLiteral("easing"), easingName(k.easing)}};
+                if (std::llabs(k.time - local) <= frameTolerance()) {
+                    here = true;
+                    easingAtPlayhead = easingName(k.easing);
+                }
+            }
+            const QString name = QString::fromStdString(id);
+            keyframes.insert(name, list);
+            states.insert(name, here ? QStringLiteral("key") : QStringLiteral("animated"));
+        }
         return {
             {QStringLiteral("id"), double(clip->id)},
             {QStringLiteral("label"), clip->text ? QStringLiteral("Title") : media ? fileName(media->path) : QString()},
@@ -1020,10 +1091,14 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("duration"), seconds(clip->duration)},
             {QStringLiteral("hasAudio"), media && media->hasAudio},
             {QStringLiteral("audioEnabled"), clip->audioEnabled},
-            {QStringLiteral("gainDb"), double(clip->gainDb)},
+            {QStringLiteral("gainDb"), double(clip->gainDbAt(now))},
             {QStringLiteral("fadeIn"), seconds(clip->fadeIn)},
             {QStringLiteral("fadeOut"), seconds(clip->fadeOut)},
-            {QStringLiteral("visual"), visualMap(clip->visual)},
+            {QStringLiteral("visual"), visualMap(clip->visualAt(now))},
+            {QStringLiteral("keyframes"), keyframes},
+            {QStringLiteral("keyframeStates"), states},
+            {QStringLiteral("keyframeEasing"), easingAtPlayhead},
+            {QStringLiteral("localTime"), seconds(local)},
             {QStringLiteral("effects"), effectsList(clip->effects)},
             {QStringLiteral("speed"), clip->speed},
             {QStringLiteral("reversed"), clip->reversed},
@@ -1049,7 +1124,7 @@ std::optional<ClipVisual> ProjectController::visualFrom(Id clipId, const QVarian
     const Clip* clip = findClip(clipId);
     if (!clip)
         return std::nullopt;
-    ClipVisual v = clip->visual;
+    ClipVisual v = clip->visualAt(ticks(m_playhead));
     auto take = [&](const char* key, double& target) {
         const auto it = values.constFind(QLatin1String(key));
         if (it != values.constEnd())
@@ -1081,7 +1156,36 @@ bool ProjectController::setClipVisual(double clipId, const QVariantMap& visual)
         reportError(QStringLiteral("Select a video clip"));
         return false;
     }
-    const bool ok = apply(std::make_unique<SetClipVisualCommand>(toId(clipId), *v));
+    const Clip* clip = findClip(toId(clipId));
+    std::map<std::string, Keyframes> changes;
+    ClipVisual staticVisual = *v;
+    if (clip && !clip->keyframes.empty()) {
+        // Animated properties take the new value as a keyframe at the playhead and keep
+        // their (unused) static value.
+        const ClipVisual now = clip->visualAt(ticks(m_playhead));
+        const auto route = [&](std::string_view id, double next, double current, double& target, double original) {
+            if (!clip->keyframesOf(id))
+                return;
+            target = original;
+            if (next != current)
+                changes.emplace(std::string(id), withKey(*clip, id, next));
+        };
+        const ClipVisual& s = clip->visual;
+        route(property::kX, v->transform.x, now.transform.x, staticVisual.transform.x, s.transform.x);
+        route(property::kY, v->transform.y, now.transform.y, staticVisual.transform.y, s.transform.y);
+        route(property::kScale, v->transform.scale, now.transform.scale, staticVisual.transform.scale, s.transform.scale);
+        route(property::kRotation, v->transform.rotation, now.transform.rotation, staticVisual.transform.rotation,
+              s.transform.rotation);
+        route(property::kOpacity, v->opacity, now.opacity, staticVisual.opacity, s.opacity);
+        route(property::kCropLeft, v->crop.left, now.crop.left, staticVisual.crop.left, s.crop.left);
+        route(property::kCropTop, v->crop.top, now.crop.top, staticVisual.crop.top, s.crop.top);
+        route(property::kCropRight, v->crop.right, now.crop.right, staticVisual.crop.right, s.crop.right);
+        route(property::kCropBottom, v->crop.bottom, now.crop.bottom, staticVisual.crop.bottom, s.crop.bottom);
+    }
+    const bool ok = changes.empty()
+                        ? apply(std::make_unique<SetClipVisualCommand>(toId(clipId), staticVisual))
+                        : apply(std::make_unique<SetClipKeyframesCommand>(toId(clipId), std::move(changes),
+                                                                          "Change Picture", staticVisual));
     if (!ok && m_view)
         m_view->clearPreview(toId(clipId)); // the refused value must not stay on screen
     return ok;
@@ -1101,7 +1205,272 @@ void ProjectController::cancelPreview(double clipId)
 
 bool ProjectController::resetClipVisual(double clipId)
 {
-    return apply(std::make_unique<SetClipVisualCommand>(toId(clipId), ClipVisual{}));
+    // Picture keyframes go too; volume ones stay.
+    std::map<std::string, Keyframes> cleared;
+    if (const Clip* clip = findClip(toId(clipId))) {
+        for (const auto& [id, keys] : clip->keyframes) {
+            if (const AnimatableProperty* p = findAnimatable(id); p && p->picture)
+                cleared.emplace(id, Keyframes{});
+        }
+    }
+    if (cleared.empty())
+        return apply(std::make_unique<SetClipVisualCommand>(toId(clipId), ClipVisual{}));
+    return apply(std::make_unique<SetClipKeyframesCommand>(toId(clipId), std::move(cleared), "Change Picture", ClipVisual{}));
+}
+
+// --- Keyframes ---
+
+Ticks ProjectController::keyTime(const Clip& clip) const
+{
+    const Ticks frame = frameTicks();
+    const Ticks snapped = (ticks(m_playhead) + frame / 2) / frame * frame;
+    return std::clamp<Ticks>(snapped - clip.start, 0, clip.duration);
+}
+
+Keyframes ProjectController::withKey(const Clip& clip, std::string_view id, double value) const
+{
+    const Ticks at = keyTime(clip);
+    Keyframes keys = clip.keyframesOf(id) ? *clip.keyframesOf(id) : Keyframes{};
+    const AnimatableProperty* property = findAnimatable(id);
+    value = std::clamp(value, property->min, property->max);
+    for (Keyframe& k : keys) {
+        if (std::llabs(k.time - at) <= frameTolerance()) {
+            k.value = value;
+            return keys;
+        }
+    }
+    keys.insert(std::ranges::upper_bound(keys, at, {}, &Keyframe::time), Keyframe{at, value, Easing::Linear});
+    return keys;
+}
+
+namespace {
+
+double currentValue(const Clip& clip, std::string_view id, Ticks time)
+{
+    if (id == property::kVolume)
+        return clip.gainDbAt(time);
+    const ClipVisual v = clip.visualAt(time);
+    const std::pair<std::string_view, double> values[] = {
+        {property::kX, v.transform.x},       {property::kY, v.transform.y},
+        {property::kScale, v.transform.scale}, {property::kRotation, v.transform.rotation},
+        {property::kOpacity, v.opacity},     {property::kCropLeft, v.crop.left},
+        {property::kCropTop, v.crop.top},    {property::kCropRight, v.crop.right},
+        {property::kCropBottom, v.crop.bottom},
+    };
+    for (const auto& [name, value] : values) {
+        if (name == id)
+            return value;
+    }
+    return 0.0;
+}
+
+} // namespace
+
+bool ProjectController::addKeyframes(double clipId, const QStringList& properties)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip) {
+        reportError(QStringLiteral("Select a clip to animate"));
+        return false;
+    }
+    const auto location = m_project.locateClip(clip->id);
+    const bool picture = location->track->kind == TrackKind::Video;
+    std::vector<std::string> ids;
+    for (const QString& p : properties)
+        ids.push_back(p.toStdString());
+    if (ids.empty()) {
+        if (picture)
+            ids = {"x", "y", "scale", "rotation", "opacity"};
+        else
+            ids = {"volume"};
+    }
+    const Ticks at = clip->start + keyTime(*clip);
+    std::map<std::string, Keyframes> changes;
+    for (const std::string& id : ids) {
+        if (!findAnimatable(id)) {
+            reportError(QStringLiteral("%1 cannot be animated").arg(QString::fromStdString(id)));
+            return false;
+        }
+        changes.emplace(id, withKey(*clip, id, currentValue(*clip, id, at)));
+    }
+    return apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Add Keyframe"));
+}
+
+bool ProjectController::removeKeyframes(double clipId, const QStringList& properties)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return false;
+    const Ticks at = keyTime(*clip);
+    std::map<std::string, Keyframes> changes;
+    for (const auto& [id, keys] : clip->keyframes) {
+        if (!properties.isEmpty() && !properties.contains(QString::fromStdString(id)))
+            continue;
+        Keyframes kept = keys;
+        std::erase_if(kept, [&](const Keyframe& k) { return std::llabs(k.time - at) <= frameTolerance(); });
+        if (kept.size() != keys.size())
+            changes.emplace(id, std::move(kept));
+    }
+    if (changes.empty()) {
+        reportError(QStringLiteral("No keyframe at the playhead"));
+        return false;
+    }
+    // A property whose last keyframe goes keeps the value it had there.
+    std::optional<ClipVisual> visual;
+    std::optional<float> gain;
+    const Ticks now = clip->start + at;
+    for (const auto& [id, kept] : changes) {
+        if (!kept.empty())
+            continue;
+        if (id == property::kVolume) {
+            gain = clip->gainDbAt(now);
+            continue;
+        }
+        if (!visual)
+            visual = clip->visual;
+        const ClipVisual evaluated = clip->visualAt(now);
+        if (id == property::kX) visual->transform.x = evaluated.transform.x;
+        else if (id == property::kY) visual->transform.y = evaluated.transform.y;
+        else if (id == property::kScale) visual->transform.scale = evaluated.transform.scale;
+        else if (id == property::kRotation) visual->transform.rotation = evaluated.transform.rotation;
+        else if (id == property::kOpacity) visual->opacity = evaluated.opacity;
+        else if (id == property::kCropLeft) visual->crop.left = evaluated.crop.left;
+        else if (id == property::kCropTop) visual->crop.top = evaluated.crop.top;
+        else if (id == property::kCropRight) visual->crop.right = evaluated.crop.right;
+        else if (id == property::kCropBottom) visual->crop.bottom = evaluated.crop.bottom;
+    }
+    if (visual && validateVisual(*visual))
+        visual = std::nullopt; // edges keyed apart may not fit as static values; keep the old ones
+    return apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Remove Keyframe", visual, gain));
+}
+
+bool ProjectController::clearKeyframes(double clipId, const QStringList& properties)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || clip->keyframes.empty())
+        return false;
+    // Every keyframe of these properties goes; each keeps its value at the playhead.
+    const Ticks now = clip->start + keyTime(*clip);
+    std::map<std::string, Keyframes> changes;
+    ClipVisual visual = clip->visual;
+    float gain = clip->gainDb;
+    const ClipVisual evaluated = clip->visualAt(now);
+    for (const auto& [id, keys] : clip->keyframes) {
+        if (!properties.isEmpty() && !properties.contains(QString::fromStdString(id)))
+            continue;
+        changes.emplace(id, Keyframes{});
+        if (id == property::kVolume) gain = clip->gainDbAt(now);
+        else if (id == property::kX) visual.transform.x = evaluated.transform.x;
+        else if (id == property::kY) visual.transform.y = evaluated.transform.y;
+        else if (id == property::kScale) visual.transform.scale = evaluated.transform.scale;
+        else if (id == property::kRotation) visual.transform.rotation = evaluated.transform.rotation;
+        else if (id == property::kOpacity) visual.opacity = evaluated.opacity;
+        else if (id == property::kCropLeft) visual.crop.left = evaluated.crop.left;
+        else if (id == property::kCropTop) visual.crop.top = evaluated.crop.top;
+        else if (id == property::kCropRight) visual.crop.right = evaluated.crop.right;
+        else if (id == property::kCropBottom) visual.crop.bottom = evaluated.crop.bottom;
+    }
+    if (changes.empty())
+        return false;
+    const auto location = m_project.locateClip(clip->id);
+    std::optional<ClipVisual> newVisual;
+    if (location->track->kind == TrackKind::Video && !validateVisual(visual))
+        newVisual = visual;
+    std::optional<float> newGain;
+    if (changes.contains(std::string(property::kVolume)))
+        newGain = gain;
+    return apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Clear Keyframes", newVisual, newGain));
+}
+
+bool ProjectController::setKeyframeEasing(double clipId, const QString& easing)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return false;
+    std::optional<Easing> chosen;
+    for (Easing e : {Easing::Linear, Easing::EaseIn, Easing::EaseOut, Easing::EaseInOut, Easing::Hold}) {
+        if (easingName(e) == easing)
+            chosen = e;
+    }
+    if (!chosen) {
+        reportError(QStringLiteral("Unknown easing %1").arg(easing));
+        return false;
+    }
+    const Ticks at = keyTime(*clip);
+    std::map<std::string, Keyframes> changes;
+    for (const auto& [id, keys] : clip->keyframes) {
+        Keyframes changed = keys;
+        bool any = false;
+        for (Keyframe& k : changed) {
+            if (std::llabs(k.time - at) <= frameTolerance() && k.easing != *chosen) {
+                k.easing = *chosen;
+                any = true;
+            }
+        }
+        if (any)
+            changes.emplace(id, std::move(changed));
+    }
+    if (changes.empty())
+        return false;
+    return apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Change Keyframe"));
+}
+
+bool ProjectController::moveKeyframes(double clipId, double from, double to)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return false;
+    const Ticks frame = frameTicks();
+    const Ticks source = ticks(from);
+    // Keyframes land on the frame grid of the timeline.
+    const Ticks target = std::clamp<Ticks>((clip->start + ticks(to) + frame / 2) / frame * frame - clip->start, 0,
+                                           clip->duration);
+    std::map<std::string, Keyframes> changes;
+    for (const auto& [id, keys] : clip->keyframes) {
+        Keyframes moved = keys;
+        auto it = std::ranges::find_if(moved, [&](const Keyframe& k) { return std::llabs(k.time - source) <= frame / 2; });
+        if (it == moved.end())
+            continue;
+        if (it->time == target)
+            continue;
+        const bool taken = std::ranges::any_of(moved, [&](const Keyframe& k) { return &k != &*it && k.time == target; });
+        if (taken) {
+            reportError(QStringLiteral("Another keyframe is already there"));
+            return false;
+        }
+        it->time = target;
+        std::ranges::sort(moved, {}, &Keyframe::time);
+        changes.emplace(id, std::move(moved));
+    }
+    if (changes.empty())
+        return false;
+    const Ticks landed = clip->start + target; // `clip` does not outlive the edit
+    if (!apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Move Keyframe")))
+        return false;
+    seek(::seconds(landed));
+    return true;
+}
+
+bool ProjectController::seekKeyframe(double clipId, int direction)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || direction == 0)
+        return false;
+    const Ticks now = ticks(m_playhead) - clip->start;
+    std::optional<Ticks> best;
+    for (const auto& [id, keys] : clip->keyframes) {
+        for (const Keyframe& k : keys) {
+            if (k.time < 0 || k.time > clip->duration)
+                continue;
+            const bool ahead = direction > 0 ? k.time > now + frameTolerance() : k.time < now - frameTolerance();
+            if (ahead && (!best || (direction > 0 ? k.time < *best : k.time > *best)))
+                best = k.time;
+        }
+    }
+    if (!best)
+        return false;
+    seek(::seconds(clip->start + *best));
+    return true;
 }
 
 // --- Speed ---
@@ -1486,6 +1855,9 @@ void ProjectController::updatePlayhead()
     if (value != m_playhead) {
         m_playhead = value;
         emit playheadChanged();
+        // The inspector shows animated values as they are at the playhead.
+        if (const Clip* clip = findClip(m_selectedClip); clip && !clip->keyframes.empty())
+            emit selectedClipInfoChanged();
     }
     const double left = m_audioOutput->peakLeft();
     const double right = m_audioOutput->peakRight();

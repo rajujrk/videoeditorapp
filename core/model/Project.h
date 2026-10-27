@@ -1,5 +1,6 @@
 #pragma once
 
+#include "model/Keyframes.h"
 #include "model/Time.h"
 
 #include <cstdint>
@@ -173,6 +174,10 @@ struct Clip {
     // A title: drawn text instead of media (mediaId is kNoId).
     std::optional<ClipText> text;
 
+    // Animated properties (see animatableProperties()), by property id. A property with
+    // keyframes takes its value from them; its static value above is then unused.
+    std::map<std::string, Keyframes, std::less<>> keyframes;
+
     Ticks end() const { return start + duration; }
 
     // Source media the clip plays: duration × speed (0 for a freeze frame).
@@ -183,8 +188,12 @@ struct Clip {
     // May fall outside the media; callers clamp.
     Ticks sourceTimeBeyond(Ticks time) const;
 
-    // Linear amplitude at a timeline time inside the clip: gain × fade ramps.
+    // Linear amplitude at a timeline time inside the clip: gain (animated or not) × fade ramps.
     float gainAt(Ticks time) const;
+    float gainDbAt(Ticks time) const;
+    // The picture's placement at a timeline time, with animated properties evaluated.
+    ClipVisual visualAt(Ticks time) const;
+    const Keyframes* keyframesOf(std::string_view propertyId) const;
 
     friend bool operator==(const Clip&, const Clip&) = default;
 };

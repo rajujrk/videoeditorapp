@@ -207,10 +207,12 @@ Item {
             p.seek(2.8)
             verify(p.openVoiceOver())
             verify(p.startRecording())
-            tryVerify(() => p.playhead > 3.3, 3000) // playback did not stop at the end
+            tryVerify(() => p.playhead > 3.6, 3000) // playback did not stop at the end
             verify(p.recording)
             verify(p.stopRecording())
-            verify(p.duration > 3.3)
+            // The take runs past the end too. (A take is a little shorter than the time it
+            // ran: its first device period is trimmed and the last may still be in flight.)
+            verify(p.duration > 3.3, "duration " + p.duration)
             p.closeVoiceOver()
         }
 

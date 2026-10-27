@@ -42,6 +42,27 @@ void shiftClipsFrom(Track& track, Ticks from, Ticks delta)
     }
 }
 
+// Keeps keyframes over the same moments of a clip whose start moves by `delta` on the timeline.
+void shiftKeyframes(Clip& clip, Ticks delta)
+{
+    for (auto& [id, keys] : clip.keyframes) {
+        for (Keyframe& k : keys)
+            k.time -= delta;
+    }
+}
+
+// Stretches keyframe times with a clip whose length changes by `factor` (speed changes).
+void scaleKeyframes(Clip& clip, double factor)
+{
+    for (auto& [id, keys] : clip.keyframes) {
+        for (Keyframe& k : keys)
+            k.time = Ticks(std::llround(double(k.time) * factor));
+        // Rounding cannot reorder them, but it can merge neighbours.
+        keys.erase(std::unique(keys.begin(), keys.end(), [](const Keyframe& a, const Keyframe& b) { return a.time == b.time; }),
+                   keys.end());
+    }
+}
+
 } // namespace
 
 // --- AddTrackCommand ---
@@ -149,6 +170,7 @@ std::optional<std::string> TrimClipCommand::redo(Project& project)
         // of their span, which needs no in-point change.
         if (!clip.freeze && !clip.reversed)
             trimmed.sourceIn = clip.sourceIn + Ticks(std::llround(double(delta) * clip.speed));
+        shiftKeyframes(trimmed, delta);
     } else {
         trimmed.duration = m_newTime - clip.start;
         if (!clip.freeze && clip.reversed)
@@ -311,6 +333,8 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.visual = clip.visual;
     right.effects = clip.effects;
     right.text = clip.text;
+    right.keyframes = clip.keyframes; // both halves animate as the whole did
+    shiftKeyframes(right, leftDuration);
     right.fadeOut = clip.fadeOut;
     clip.duration = leftDuration;
     clip.fadeOut = 0;
@@ -480,6 +504,19 @@ void DetachAudioCommand::undo(Project& project)
 
 // --- SetClipVisualCommand ---
 
+std::optional<std::string> validateVisual(const ClipVisual& v)
+{
+    if (v.transform.scale < 0.01 || v.transform.scale > 20.0)
+        return "scale must be between 1% and 2000%";
+    if (v.opacity < 0.0 || v.opacity > 1.0)
+        return "opacity must be between 0 and 100%";
+    const auto inRange = [](double c) { return c >= 0.0 && c <= 0.9; };
+    if (!inRange(v.crop.left) || !inRange(v.crop.right) || !inRange(v.crop.top) || !inRange(v.crop.bottom)
+        || v.crop.left + v.crop.right > 0.95 || v.crop.top + v.crop.bottom > 0.95)
+        return "crop would leave too little of the picture";
+    return std::nullopt;
+}
+
 std::optional<std::string> SetClipVisualCommand::redo(Project& project)
 {
     auto location = project.locateClip(m_clipId);
@@ -489,15 +526,8 @@ std::optional<std::string> SetClipVisualCommand::redo(Project& project)
         return error;
     if (location->track->kind != TrackKind::Video)
         return "only video clips have a picture";
-    const ClipVisual& v = m_visual;
-    if (v.transform.scale < 0.01 || v.transform.scale > 20.0)
-        return "scale must be between 1% and 2000%";
-    if (v.opacity < 0.0 || v.opacity > 1.0)
-        return "opacity must be between 0 and 100%";
-    const auto inRange = [](double c) { return c >= 0.0 && c <= 0.9; };
-    if (!inRange(v.crop.left) || !inRange(v.crop.right) || !inRange(v.crop.top) || !inRange(v.crop.bottom)
-        || v.crop.left + v.crop.right > 0.95 || v.crop.top + v.crop.bottom > 0.95)
-        return "crop would leave too little of the picture";
+    if (auto error = validateVisual(m_visual))
+        return error;
     m_previous = location->clip->visual;
     location->clip->visual = m_visual;
     return std::nullopt;
@@ -506,6 +536,59 @@ std::optional<std::string> SetClipVisualCommand::redo(Project& project)
 void SetClipVisualCommand::undo(Project& project)
 {
     project.locateClip(m_clipId)->clip->visual = m_previous;
+}
+
+// --- SetClipKeyframesCommand ---
+
+std::optional<std::string> SetClipKeyframesCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    Clip& clip = *location->clip;
+    const bool hasPicture = location->track->kind == TrackKind::Video;
+    const MediaItem* media = project.findMedia(clip.mediaId);
+    const bool hasSound = media && media->hasAudio && !clip.freeze;
+    for (const auto& [id, keys] : m_changes) {
+        if (auto error = validateKeyframes(id, keys))
+            return error;
+        const bool picture = findAnimatable(id)->picture;
+        if (picture && !hasPicture)
+            return "only video clips have a picture";
+        if (!picture && !hasSound)
+            return "this clip has no sound";
+    }
+    if (m_visual) {
+        if (!hasPicture)
+            return "only video clips have a picture";
+        if (auto error = validateVisual(*m_visual))
+            return error;
+    }
+    if (m_gainDb && (*m_gainDb < kMinGainDb || *m_gainDb > kMaxGainDb))
+        return "volume must be between -60 dB and +12 dB";
+
+    m_previous = clip;
+    for (const auto& [id, keys] : m_changes) {
+        if (keys.empty())
+            clip.keyframes.erase(id);
+        else
+            clip.keyframes[id] = keys;
+    }
+    if (m_visual)
+        clip.visual = *m_visual;
+    if (m_gainDb)
+        clip.gainDb = *m_gainDb;
+    return std::nullopt;
+}
+
+void SetClipKeyframesCommand::undo(Project& project)
+{
+    Clip& clip = *project.locateClip(m_clipId)->clip;
+    clip.keyframes = m_previous.keyframes;
+    clip.visual = m_previous.visual;
+    clip.gainDb = m_previous.gainDb;
 }
 
 // --- SetClipEffectsCommand ---
@@ -578,6 +661,7 @@ std::optional<std::string> SetClipSpeedCommand::redo(Project& project)
     const Ticks oldEnd = clip.end();
     clip.speed = m_speed;
     clip.reversed = m_reversed;
+    scaleKeyframes(clip, double(newDuration) / double(clip.duration));
     clip.duration = newDuration;
     clampFades(clip);
     shiftClipsFrom(*location->track, oldEnd, m_delta);
@@ -629,6 +713,9 @@ std::optional<std::string> FreezeFrameCommand::redo(Project& project)
     }
     shiftClipsFrom(track, m_at, m_hold);
     Clip still = clip;
+    // The still holds the picture as it was placed at that moment.
+    still.visual = clip.visualAt(m_at);
+    still.keyframes.clear();
     still.id = m_freezeClipId;
     still.start = m_at;
     still.duration = m_hold;

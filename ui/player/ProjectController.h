@@ -212,6 +212,25 @@ public:
     Q_INVOKABLE void cancelPreview(double clipId);
     Q_INVOKABLE bool resetClipVisual(double clipId);
 
+    // Keyframes, at the playhead (snapped to the frame grid). `properties` are animatable
+    // property ids (x, y, scale, rotation, opacity, cropLeft…, volume); empty means the
+    // usual set: placement and opacity for pictures, volume for sound-only clips (add), or
+    // every property with a keyframe there (remove). While a property is animated, editing
+    // it in the inspector sets (or adds) its keyframe at the playhead. Times in and out of
+    // these calls are seconds from the clip's start. selectedClipInfo carries
+    // keyframes {property: [{time, value, easing}]} and keyframeStates {property: "key" |
+    // "animated"} for the playhead; easing: linear, easeIn, easeOut, easeInOut, hold.
+    Q_INVOKABLE bool addKeyframes(double clipId, const QStringList& properties = {});
+    Q_INVOKABLE bool removeKeyframes(double clipId, const QStringList& properties = {});
+    // Stops animating (all properties when empty); each keeps its value at the playhead.
+    Q_INVOKABLE bool clearKeyframes(double clipId, const QStringList& properties = {});
+    Q_INVOKABLE bool setKeyframeEasing(double clipId, const QString& easing);
+    // Moves every keyframe at `from` to `to` (seconds from the clip's start, snapped to the
+    // frame grid) and puts the playhead on it.
+    Q_INVOKABLE bool moveKeyframes(double clipId, double from, double to);
+    // Jumps the playhead to the clip's previous (-1) or next (+1) keyframe.
+    Q_INVOKABLE bool seekKeyframe(double clipId, int direction);
+
     // Speed (0.1–10) and direction; the clip's length changes and later clips follow.
     Q_INVOKABLE bool setClipSpeed(double clipId, double speed, bool reversed);
     // Inserts a still of the frame at the playhead into the clip under it (or the selected
@@ -316,6 +335,11 @@ private:
     tve::Id mainTrackId() const;
     const tve::Clip* findClip(tve::Id clipId) const;
     std::optional<tve::ClipVisual> visualFrom(tve::Id clipId, const QVariantMap& values) const;
+    // Playhead on the frame grid, from the clip's start.
+    tve::Ticks keyTime(const tve::Clip& clip) const;
+    tve::Ticks frameTolerance() const { return frameTicks() / 2; }
+    // Sets property `id`'s keyframe at keyTime(clip) to `value` (adding one if needed).
+    tve::Keyframes withKey(const tve::Clip& clip, std::string_view id, double value) const;
     std::optional<std::vector<tve::ClipEffect>> effectsWithParam(tve::Id clipId, int index, const QString& paramId,
                                                                  const QVariant& value) const;
     tve::Ticks frameTicks() const;

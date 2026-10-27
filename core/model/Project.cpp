@@ -5,11 +5,56 @@
 
 namespace tve {
 
+const Keyframes* Clip::keyframesOf(std::string_view propertyId) const
+{
+    const auto it = keyframes.find(propertyId);
+    return it != keyframes.end() && !it->second.empty() ? &it->second : nullptr;
+}
+
+float Clip::gainDbAt(Ticks time) const
+{
+    const Keyframes* animated = keyframesOf(property::kVolume);
+    return animated ? float(evaluate(*animated, time - start, gainDb)) : gainDb;
+}
+
+ClipVisual Clip::visualAt(Ticks time) const
+{
+    if (keyframes.empty())
+        return visual;
+    ClipVisual v = visual;
+    const Ticks local = time - start;
+    const auto apply = [&](std::string_view id, double& value) {
+        if (const Keyframes* animated = keyframesOf(id))
+            value = evaluate(*animated, local, value);
+    };
+    apply(property::kX, v.transform.x);
+    apply(property::kY, v.transform.y);
+    apply(property::kScale, v.transform.scale);
+    apply(property::kRotation, v.transform.rotation);
+    apply(property::kOpacity, v.opacity);
+    apply(property::kCropLeft, v.crop.left);
+    apply(property::kCropTop, v.crop.top);
+    apply(property::kCropRight, v.crop.right);
+    apply(property::kCropBottom, v.crop.bottom);
+    // Edges keyed apart can meet; keep a sliver of picture as static crops do.
+    const auto keepSome = [](double& a, double& b) {
+        const double sum = a + b;
+        if (sum > 0.95) {
+            a *= 0.95 / sum;
+            b *= 0.95 / sum;
+        }
+    };
+    keepSome(v.crop.left, v.crop.right);
+    keepSome(v.crop.top, v.crop.bottom);
+    return v;
+}
+
 float Clip::gainAt(Ticks time) const
 {
-    if (gainDb <= kMinGainDb)
+    const float db = gainDbAt(time);
+    if (db <= kMinGainDb)
         return 0.0f;
-    float gain = std::pow(10.0f, gainDb / 20.0f);
+    float gain = std::pow(10.0f, db / 20.0f);
     const Ticks intoClip = time - start;
     const Ticks untilEnd = end() - time;
     if (fadeIn > 0 && intoClip < fadeIn)

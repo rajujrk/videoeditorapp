@@ -157,7 +157,7 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
         };
         for (const VisibleClip& layer : visible) {
             if (layer.clip->text) {
-                composite.layers.push_back(VideoLayer{layer.clip->id, DecodedFrame{}, layer.clip->visual,
+                composite.layers.push_back(VideoLayer{layer.clip->id, DecodedFrame{}, layer.clip->visualAt(time),
                                                       layer.clip->effects, std::nullopt, layer.clip->text});
                 continue;
             }
@@ -167,14 +167,14 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
             if (frame && incoming) {
                 const TransitionLayer& t = *layer.transition;
                 composite.layers.push_back(VideoLayer{
-                    layer.clip->id, frame->share(), layer.clip->visual, layer.clip->effects,
+                    layer.clip->id, frame->share(), layer.clip->visualAt(time), layer.clip->effects,
                     LayerTransition{t.spec->transitionId, t.spec->values, float(t.progress), t.to->id,
-                                    incoming->share(), t.to->visual, t.to->effects},
+                                    incoming->share(), t.to->visualAt(time), t.to->effects},
                     std::nullopt});
             } else if (frame || incoming) {
                 // One side unreadable: show the other alone.
                 const Clip& clip = frame ? *layer.clip : *layer.transition->to;
-                composite.layers.push_back(VideoLayer{clip.id, (frame ? frame : incoming)->share(), clip.visual,
+                composite.layers.push_back(VideoLayer{clip.id, (frame ? frame : incoming)->share(), clip.visualAt(time),
                                                       clip.effects, std::nullopt, std::nullopt});
             }
         }

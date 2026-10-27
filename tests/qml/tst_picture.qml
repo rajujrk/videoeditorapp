@@ -63,6 +63,18 @@ Item {
             return item
         }
 
+        // Scrolls the nearest scrolling ancestor so `item` is fully in view, like a user would.
+        function scrollIntoView(item) {
+            for (let a = item.parent; a; a = a.parent) {
+                if (a.contentY === undefined || a.contentHeight === undefined || a.height === undefined)
+                    continue
+                const top = item.mapToItem(a.contentItem, 0, 0).y
+                if (top < a.contentY || top + item.height > a.contentY + a.height)
+                    a.contentY = Math.max(0, Math.min(top - 20, a.contentHeight - a.height))
+                return
+            }
+        }
+
         // Move there first, like a real cursor: leaving the previous control closes its
         // tooltip, which would otherwise take this click.
         function click(editor, name) {
@@ -82,6 +94,7 @@ Item {
             const f = createEditor()
             const p = f.project
             selectFirstClipAndOpen(f, "Video")
+            scrollIntoView(settled(f.editor, "visual:scale"))
             const slider = settled(f.editor, "visual:scale")
             mouseMove(slider, slider.width * 0.1, slider.height - 8)
             mouseClick(slider, slider.width * 0.1, slider.height - 8)

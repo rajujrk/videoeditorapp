@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 next
+**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a) done, curves & speed ramping (6b) next — see §9.2
 **Date:** 2026-10-27
 
 ---
@@ -516,6 +516,28 @@ Phase 1 is delivered in five vertical slices, each usable on its own:
 | 5b. Autosave & recovery | Autosave of unsaved work (debounced, per document session), recovery from crashes, quits and project switches on Home, atomic project saves | **Done** (snapshot autosave; the command journal stays a later option) |
 | 5c. Proxies | 720p short-GOP proxies made in the background (automatic above 1080p, or on request), cached by source identity, used by the preview only; media-bin state and actions, player toggle | **Done** |
 | 5d. Voice-over | Microphone recording at the playhead with the timeline playing (count-in, optional mute, input picker and level), take placed on a free audio track or a new Voice-over track in one undo step, crash-safe WAV takes, macOS microphone permission | **Done** |
+
+### 9.2 Phase 2 slices
+
+Phase 2 is split the same way. Keyframes come first because animation, masks, title
+animations and speed ramps all build on them. Proxies, listed in Phase 2 above, were
+pulled forward into Phase 1 (5c).
+
+| Slice | Scope | Status |
+|---|---|---|
+| 6a. Keyframes | Keyframes on clip placement (position, scale, rotation), opacity, crop and volume; linear, ease in/out and hold; inspector keyframe toggles, add/remove, step between, easing, clear; auto-key while animated; timeline keyframe marks (click to go, drag to move); keyframes follow trims, splits, speed changes and freeze frames; preview, export and mix evaluate them | **Done** (effect parameters are keyframed in 6b) |
+| 6b. Curves & speed ramping | Bezier curve editor for keyframes, keyframed effect parameters, speed ramps with curve presets and pitch-preserving audio | Next |
+| 7a. Color | RGB/luma and hue curves, colour wheels, HSL qualifier, `.cube`/`.3dl` LUT import, colour presets and copy grade | Planned |
+| 7b. Looks & scopes | Filters with intensity, overlays, our own LUT library, adjustment layers; waveform, vectorscope, histogram, parade | Planned |
+| 8a. Masks & keying | Shape and pen masks (feather, invert), track matte, chroma key, PiP and split-screen layouts | Planned |
+| 8b. Effects library | Effect framework to 60 effects: drop shadow, border, background fill, sharpen, grain, warps and more | Planned |
+| 9a. Audio DSP | EQ, dynamics, reverbs and delays, pitch and voice changers as audio effect packages; loudness normalization; mixer with peak/RMS/LUFS meters | Planned |
+| 9b. Titles system | Text animation presets (per word and character), title templates, shapes and bubbles, rolling credits | Planned |
+| 10a. Transitions to 60 | 3D, warp and luma-wipe transitions; apply to all or random | Planned |
+| 10b. Stickers | Lottie and alpha-video stickers | Planned |
+| 11a. Structure | Markers and chapters, groups, compound clips | Planned |
+| 11b. Delivery | Export formats and presets, export ranges, background render queue | Planned |
+| 11c. Hardening | Relink missing media, shortcut editor, golden-frame suite of 500 cases | Planned |
 
 ---
 

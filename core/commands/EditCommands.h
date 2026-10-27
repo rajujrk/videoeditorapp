@@ -275,6 +275,7 @@ public:
     void undo(Project& project) override;
 
     Id freezeClipId() const { return m_freezeClipId; }
+    Id rightClipId() const { return m_rightClipId; }
 
 private:
     Id m_clipId;
@@ -286,7 +287,6 @@ private:
     Id m_freezeClipId = kNoId;
 };
 
-// Checks a title's text and sizes; returns why it is invalid.
 // Adds a recorded voice-over in one step: imports its file and places it at `start` on an
 // audio track — `trackId`, or with kNoId a new "Voice-over" track below the others.
 class AddVoiceOverCommand final : public Command {
@@ -310,6 +310,34 @@ private:
     Id m_newTrackId = kNoId;
 };
 
+// Replaces the keyframes of some of a clip's properties (an empty list stops animating
+// that property), and optionally its static picture and volume, as one step. `label`
+// names the step for undo ("Add Keyframe", "Change Picture", …).
+class SetClipKeyframesCommand final : public Command {
+public:
+    SetClipKeyframesCommand(Id clipId, std::map<std::string, Keyframes> changes, std::string label,
+                            std::optional<ClipVisual> visual = std::nullopt, std::optional<float> gainDb = std::nullopt)
+        : m_clipId(clipId), m_changes(std::move(changes)), m_label(std::move(label)), m_visual(visual), m_gainDb(gainDb)
+    {
+    }
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    std::map<std::string, Keyframes> m_changes;
+    std::string m_label;
+    std::optional<ClipVisual> m_visual;
+    std::optional<float> m_gainDb;
+    Clip m_previous;
+};
+
+// Checks a picture's scale, opacity and crop; returns why it is invalid.
+std::optional<std::string> validateVisual(const ClipVisual& visual);
+
+// Checks a title's text and sizes; returns why it is invalid.
 std::optional<std::string> validateText(const ClipText& text);
 
 // Adds a title clip to a video or title track. With trackId kNoId it first adds a new
