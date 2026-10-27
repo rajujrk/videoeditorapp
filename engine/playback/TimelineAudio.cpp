@@ -132,7 +132,7 @@ void TimelineAudio::mixClip(const Project& project, const Track& track, const Cl
     }
     const int offset = int(audio::samplesFromTicks(from - chunkStart));
     const int frames = int(audio::samplesFromTicks(to - from));
-    const bool plainSpeed = clip.speed == 1.0 && !clip.reversed;
+    const bool plainSpeed = clip.speed == 1.0 && !clip.reversed && clip.speedRamp.empty();
     int read = 0;
     std::vector<float>& out = m_resampled;
     out.assign(std::size_t(frames) * audio::kChannels, 0.0f);
@@ -153,11 +153,14 @@ void TimelineAudio::mixClip(const Project& project, const Track& track, const Cl
         stream.nextSourceTime = sourceTime + audio::ticksFromSamples(frames - silent);
     } else {
         // Read the source span these output samples cover and resample it (pitch follows
-        // speed, like tape). Reversed clips read the span and walk it backwards.
-        const double step = clip.speed;
+        // speed, like tape). Reversed clips read the span and walk it backwards. A ramp's
+        // speed is taken per chunk from the span it covers (chunks are ~21 ms).
+        const Ticks sourceFrom = clip.sourceTimeBeyond(from);
+        const double step = clip.speedRamp.empty()
+                                ? clip.speed
+                                : double(std::llabs(clip.sourceTimeBeyond(to) - sourceFrom)) / double(to - from);
         const int needed = int(std::ceil(double(frames) * step)) + 2;
         const Ticks spanTicks = Ticks(std::llround(double(to - from) * step));
-        const Ticks sourceFrom = clip.sourceTimeBeyond(from);
         const Ticks blockStart = std::max<Ticks>(0, clip.reversed ? sourceFrom + 1 - spanTicks : sourceFrom);
         if (!stream.decoder->seek(blockStart))
             return;

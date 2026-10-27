@@ -186,7 +186,10 @@ bool AudioDecoder::seek(Ticks target)
 {
     Impl& d = *m_impl;
     target = std::max<Ticks>(target, 0);
-    const std::int64_t timestamp = d.startTime + av_rescale_q(target, kTickTimeBase, d.timeBase);
+    // Rounded down: starting after the target would leave a gap the read pads with silence
+    // (a click wherever a seek lands part-way through a sample, as resampled reads do).
+    const std::int64_t timestamp =
+        d.startTime + av_rescale_q_rnd(target, kTickTimeBase, d.timeBase, AV_ROUND_DOWN);
     if (av_seek_frame(d.format, d.streamIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0)
         return false;
     avcodec_flush_buffers(d.codec);

@@ -264,6 +264,30 @@ private:
     Ticks m_delta = 0;
 };
 
+// Gives a clip a speed ramp (or, with an empty ramp, back to its average constant speed),
+// optionally also setting its direction. It keeps playing the same source span, so its
+// length changes and later clips on the track move with its end.
+class SetClipSpeedRampCommand final : public Command {
+public:
+    SetClipSpeedRampCommand(Id clipId, SpeedRamp ramp, std::optional<bool> reversed = std::nullopt)
+        : m_clipId(clipId), m_ramp(std::move(ramp)), m_reversed(reversed) {}
+
+    std::string label() const override
+    {
+        return m_reversed ? "Change Speed" : m_ramp.empty() ? "Remove Speed Ramp" : "Speed Ramp";
+    }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    SpeedRamp m_ramp;
+    std::optional<bool> m_reversed;
+    Id m_trackId = kNoId;
+    Clip m_original;
+    Ticks m_delta = 0;
+};
+
 // Inserts a still of the frame shown at `at` for `hold`, splitting the clip there and
 // pushing the rest of the track right.
 class FreezeFrameCommand final : public Command {

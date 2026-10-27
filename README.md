@@ -4,13 +4,13 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5d (export, autosave and
-crash recovery, proxies, voice-over). Phase 2: keyframes (6a) and curves with effect keyframes (6b) done.** You can import video and audio files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over). Phase 2: keyframes (6a), curves with effect keyframes (6b) and speed ramps (6c) done.** You can import video and audio files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), give each clip its own effects,
 put any of 21 transitions on the cuts between clips (with a constant-power sound
 crossfade), add titles (font, size, colour, bold/italic, alignment, letter and line
-spacing, outline, shadow), change a clip's speed (0.1–10×), play it in reverse or insert
+spacing, outline, shadow), change a clip's speed (0.1–10×) or ramp it, play it in reverse or insert
 freeze frames, hear and see their sound (waveforms, volume, fades, detach audio, track
 mute/hide/lock, meter), see thumbnails in the media bin and on the timeline, play and
 scrub, save/open `.tve` projects (unsaved work is autosaved and recoverable after a crash),
@@ -82,6 +82,18 @@ presets) and direction; the clip gets shorter or longer and later clips on its t
 with it. Reversed clips play their sound backwards too. "Freeze frame at playhead" splits
 the clip there and inserts a 2-second still (silent; trim it to change its length). Clip
 labels show `2× ·`, `Reverse ·` or `Still ·` badges.
+
+**Speed ramps.** In the Speed tab, pick a ramp (Ramp up, Ramp down, Flash in, Flash out,
+Bullet time, Hero moment, Montage, Jumper) to change the speed through the clip. A ramp is
+a set of points along the clip, each with a speed (0.1× to 10×), and the speed changes in
+straight lines between them; the clip plays the same footage, so its length follows the
+ramp's average speed and later clips move with its end. The graph shows the ramp on a
+logarithmic scale with the playhead: drag a point up or down (and the inner ones sideways),
+double-click to add one, select one to remove it, or Remove ramp to go back to a constant
+speed (the average, same length). Splitting a ramped clip keeps every frame where it was;
+Reverse keeps the ramp; picking a constant speed replaces it. Sound follows the ramp with
+its pitch rising and falling like a tape (pitch-preserving stretching comes with the audio
+effects); thumbnails and waveforms follow it too, and its clip is labelled `Ramp ·`.
 
 **Proxies.** A proxy is a lighter copy of a video for the preview: 720p H.264 with a
 keyframe every 10 frames (cheap to seek and play backwards), the same frames at the same

@@ -87,11 +87,29 @@ Ticks Clip::sourceSpan() const
     return freeze ? 0 : Ticks(std::llround(double(duration) * speed));
 }
 
+namespace {
+
+// How far into the clip's source span a timeline time is (before reversing). Past the
+// clip's edges (transition handles) the speed at that edge carries on.
+Ticks spanOffset(const Clip& clip, Ticks time)
+{
+    if (clip.speedRamp.empty() || clip.duration <= 0)
+        return Ticks(std::llround(double(time - clip.start) * clip.speed));
+    if (time <= clip.start)
+        return Ticks(std::llround(double(time - clip.start) * clip.speedRamp.front().speed));
+    if (time >= clip.end())
+        return clip.sourceSpan() + Ticks(std::llround(double(time - clip.end()) * clip.speedRamp.back().speed));
+    const double u = double(time - clip.start) / double(clip.duration);
+    return Ticks(std::llround(double(clip.sourceSpan()) * rampProgress(clip.speedRamp, u)));
+}
+
+} // namespace
+
 Ticks Clip::sourceTimeAt(Ticks time) const
 {
     if (freeze)
         return sourceIn;
-    const Ticks offset = Ticks(std::llround(double(time - start) * speed));
+    const Ticks offset = spanOffset(*this, time);
     if (!reversed)
         return sourceIn + offset;
     // Backwards from the end of the span; one tick inside it so the frame shown at the
@@ -105,7 +123,7 @@ Ticks Clip::sourceTimeBeyond(Ticks time) const
         return sourceTimeAt(time);
     if (freeze)
         return sourceIn;
-    const Ticks offset = Ticks(std::llround(double(time - start) * speed));
+    const Ticks offset = spanOffset(*this, time);
     return reversed ? sourceIn + sourceSpan() - offset - 1 : sourceIn + offset;
 }
 

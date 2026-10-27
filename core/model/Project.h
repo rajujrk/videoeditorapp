@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/Keyframes.h"
+#include "model/SpeedRamp.h"
 #include "model/Time.h"
 
 #include <cstdint>
@@ -170,6 +171,9 @@ struct Clip {
     double speed = 1.0;
     bool reversed = false;
     bool freeze = false;
+    // A speed that changes through the clip (empty: constant `speed`). While set, `speed`
+    // holds the ramp's average, so duration × speed is still the source span.
+    SpeedRamp speedRamp;
 
     // Transition from the previous clip; plays only while a clip ends where this one starts.
     std::optional<ClipTransition> transitionIn;

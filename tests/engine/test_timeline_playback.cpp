@@ -8,6 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <map>
 #include <thread>
@@ -324,6 +325,28 @@ TEST_CASE("double speed shows every other source frame")
     REQUIRE(shown.size() == 30); // 1 s of timeline at 30 fps
     for (std::size_t i = 0; i < shown.size(); ++i)
         CHECK(shown[i] == Ticks(2 * i) * kFrame30);
+}
+
+TEST_CASE("a speed ramp shows source frames ever further apart")
+{
+    requireSamples();
+    auto project = speedProject(1.0, false);
+    const Id clip = project->tracks.front().clips.front().id;
+    CommandStack stack(*project);
+    // 2 s of footage from 1× up to 3×: 1 s long, u + u² seconds in at fraction u.
+    REQUIRE_FALSE(stack.push(std::make_unique<SetClipSpeedRampCommand>(clip, SpeedRamp{{0.0, 1.0}, {1.0, 3.0}})));
+    TimelinePlayback playback;
+    playback.setProject(project);
+    const auto shown = shownSourceFrames(playback);
+    REQUIRE(shown.size() == 30);
+    for (std::size_t i = 0; i < shown.size(); ++i) {
+        const double u = double(i) / 30.0;
+        const Ticks expected = Ticks(std::floor((u + u * u) * 30.0 + 1e-9)) * kFrame30;
+        INFO("frame " << i);
+        CHECK(std::llabs(shown[i] - expected) <= kFrame30);
+    }
+    CHECK(shown[1] - shown[0] <= kFrame30);       // about 1× at the start
+    CHECK(shown[29] - shown[28] >= 2 * kFrame30); // about 3× at the end
 }
 
 TEST_CASE("reversed clips show the source frames backwards")

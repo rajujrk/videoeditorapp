@@ -2,6 +2,8 @@ add_library(tve_core STATIC
     model/Time.h
     model/Keyframes.h
     model/Keyframes.cpp
+    model/SpeedRamp.h
+    model/SpeedRamp.cpp
     model/Project.h
     model/Project.cpp
     model/TimelineQuery.h
