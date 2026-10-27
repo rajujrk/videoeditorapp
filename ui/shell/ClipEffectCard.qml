@@ -33,7 +33,7 @@ Rectangle {
                 Layout.fillWidth: true
                 elide: Text.ElideRight
             }
-            Switch {
+            ToggleSwitch {
                 objectName: "clipEffect:" + card.stackIndex
                 checked: card.entry.enabled
                 onToggled: card.project.setClipEffectEnabled(card.clipId, card.stackIndex, checked)

@@ -6,6 +6,7 @@ add_executable(tve_core_tests
     core/test_timeline_query.cpp
     core/test_audio_model.cpp
     core/test_visual_model.cpp
+    core/test_time_model.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
@@ -49,5 +50,6 @@ if(TARGET tve_shell)
         TVE_QML_TESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
         TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples")
     target_link_libraries(tve_qml_tests PRIVATE Qt6::QuickTest Qt6::QuickControls2 tve_shellplugin)
+    target_include_directories(tve_qml_tests PRIVATE $<TARGET_PROPERTY:tve_player,INTERFACE_INCLUDE_DIRECTORIES>)
     add_test(NAME tve_qml_tests COMMAND tve_qml_tests)
 endif()

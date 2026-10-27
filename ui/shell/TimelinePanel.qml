@@ -375,14 +375,43 @@ Rectangle {
 
             readonly property bool showsSound: item.clip.hasAudio && (item.track.kind === "audio" || item.clip.audioEnabled)
 
+            // Thumbnail strip: one frame per tile, from the source time under the tile's centre.
             Row {
+                id: strip
                 visible: item.track.kind === "video"
                 anchors { left: parent.left; right: parent.right; top: parent.top; margins: 3; topMargin: 19 }
                 height: parent.height - 22 - (body.showsSound ? 14 : 0)
-                spacing: 2
+                spacing: 1
+                clip: true
+                readonly property real aspect: item.clip.mediaWidth > 0 ? item.clip.mediaWidth / item.clip.mediaHeight : 16 / 9
+                readonly property real tileWidth: Math.max(8, height * aspect)
+
                 Repeater {
-                    model: Math.max(1, Math.floor(parent.width / 44))
-                    Rectangle { width: 42; height: parent.height; radius: 2; color: Qt.alpha("#000000", 0.25) }
+                    model: strip.visible ? Math.max(1, Math.ceil(strip.width / (strip.tileWidth + 1))) : 0
+                    delegate: Rectangle {
+                        required property int index
+                        width: strip.tileWidth
+                        height: strip.height
+                        color: Qt.alpha("#000000", 0.25)
+                        Image {
+                            objectName: "thumb:" + item.clip.id + ":" + parent.index
+                            anchors.fill: parent
+                            asynchronous: true
+                            fillMode: Image.PreserveAspectCrop
+                            // Source time at the tile centre, rounded to 0.25 s so zooming reuses cached frames.
+                            readonly property real offset: (parent.index + 0.5) * (strip.tileWidth + 1) / timeline.pixelsPerSecond
+                            readonly property real sourceTime: {
+                                const c = item.clip
+                                if (c.freeze) return c.sourceIn
+                                const span = c.duration * c.speed
+                                const into = Math.min(offset, c.duration) * c.speed
+                                return c.reversed ? c.sourceIn + span - into : c.sourceIn + into
+                            }
+                            source: item.clip.path === "" || strip.height < 4 ? ""
+                                    : "image://tvethumb/" + encodeURIComponent(item.clip.path) + "@"
+                                      + (Math.round(sourceTime * 4) / 4).toFixed(2) + "@" + Math.round(strip.height * 2)
+                        }
+                    }
                 }
             }
 
@@ -394,6 +423,8 @@ Rectangle {
                 source: item.clip.path
                 sourceIn: item.clip.sourceIn
                 duration: item.previewDuration
+                speed: item.clip.speed
+                reversed: item.clip.reversed
                 gainDb: item.clip.gainDb
                 fadeIn: item.clip.fadeIn
                 fadeOut: item.clip.fadeOut
@@ -434,7 +465,11 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     x: Theme.space.s - 3
                     width: parent.width - Theme.space.s
-                    text: item.clip.label
+                    // Badges first so a short clip still shows them.
+                    text: (item.clip.freeze ? "Still · " : "")
+                          + (!item.clip.freeze && item.clip.speed !== 1 ? Number(item.clip.speed.toFixed(2)) + "× · " : "")
+                          + (item.clip.reversed ? "Reverse · " : "")
+                          + item.clip.label
                     font: Theme.type.caption
                     color: "#FFFFFF"
                     elide: Text.ElideRight
@@ -511,15 +546,20 @@ Rectangle {
                         return
                     const t = item.snapped(mapToItem(content, mouse.x, 0).x / timeline.pixelsPerSecond)
                     const clipEnd = item.clip.start + item.clip.duration
+                    // Unused media on each side, in timeline seconds; a still can grow freely.
+                    const c = item.clip
+                    const before = c.sourceIn / c.speed
+                    const after = (c.mediaDuration - c.sourceIn) / c.speed - c.duration
+                    const roomBefore = c.freeze ? Infinity : c.reversed ? after : before
+                    const roomAfter = c.freeze ? Infinity : c.reversed ? before : after
                     if (isStart) {
-                        // Can't extend before the media's first frame or past the end edge.
-                        const earliest = item.clip.start - item.clip.sourceIn
-                        const start = Math.min(Math.max(t, earliest, 0), clipEnd - 1 / 30)
+                        // Can't extend past the media's unused frames or past the end edge.
+                        const start = Math.min(Math.max(t, c.start - roomBefore, 0), clipEnd - 1 / 30)
                         item.previewStart = start
                         item.previewDuration = clipEnd - start
                     } else {
-                        const latest = item.clip.start + (item.clip.mediaDuration - item.clip.sourceIn)
-                        item.previewDuration = Math.min(Math.max(t, item.clip.start + 1 / 30), latest) - item.clip.start
+                        const latest = clipEnd + roomAfter
+                        item.previewDuration = Math.min(Math.max(t, c.start + 1 / 30), latest) - c.start
                     }
                 }
                 onReleased: {

@@ -66,6 +66,22 @@ void WaveformItem::setDuration(double seconds)
     }
 }
 
+void WaveformItem::setSpeed(double speed)
+{
+    if (speed > 0 && speed != m_speed) {
+        m_speed = speed;
+        emit changed();
+    }
+}
+
+void WaveformItem::setReversed(bool reversed)
+{
+    if (reversed != m_reversed) {
+        m_reversed = reversed;
+        emit changed();
+    }
+}
+
 void WaveformItem::setGainDb(double db)
 {
     if (db != m_gainDb) {
@@ -133,7 +149,10 @@ void WaveformItem::paint(QPainter* painter)
             fade *= t / m_fadeIn;
         if (m_fadeOut > 0 && m_duration - t < m_fadeOut)
             fade *= (m_duration - t) / m_fadeOut;
-        const double peak = peaks->maxIn(ticks(m_sourceIn + t), ticks(m_sourceIn + t + secondsPerPixel));
+        // Source range under this column; a reversed clip reads its source from the top down.
+        const double span = m_duration * m_speed;
+        const double into = m_reversed ? span - (t + secondsPerPixel) * m_speed : t * m_speed;
+        const double peak = peaks->maxIn(ticks(m_sourceIn + into), ticks(m_sourceIn + into + secondsPerPixel * m_speed));
         amplitude[std::size_t(x)] = std::min(1.0, peak * gain * fade) * mid;
         path.lineTo(x, mid - amplitude[std::size_t(x)]);
     }

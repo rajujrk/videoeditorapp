@@ -44,7 +44,7 @@ ColumnLayout {
         onPressedChanged: if (!pressed) control.valueCommitted(value)
     }
 
-    Switch {
+    ToggleSwitch {
         visible: control.param.type === "bool"
         text: control.param.title
         checked: control.param.default > 0.5

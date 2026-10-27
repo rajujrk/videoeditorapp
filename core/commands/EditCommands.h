@@ -105,6 +105,8 @@ public:
     void undo(Project& project) override;
 
     Id rightClipId() const { return m_rightClipId; }
+    // Lets a composite command (freeze frame) keep the same id across redo.
+    void setRightClipId(Id id) { m_rightClipId = id; }
 
 private:
     Id m_clipId;
@@ -233,6 +235,47 @@ public:
 private:
     ProjectSettings m_settings;
     ProjectSettings m_previous;
+};
+
+// Changes a clip's speed and direction. The clip keeps its source span, so its timeline
+// length changes and later clips on the same track move with its end.
+class SetClipSpeedCommand final : public Command {
+public:
+    SetClipSpeedCommand(Id clipId, double speed, bool reversed) : m_clipId(clipId), m_speed(speed), m_reversed(reversed) {}
+
+    std::string label() const override { return "Change Speed"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    double m_speed;
+    bool m_reversed;
+    Id m_trackId = kNoId;
+    Clip m_original;
+    Ticks m_delta = 0;
+};
+
+// Inserts a still of the frame shown at `at` for `hold`, splitting the clip there and
+// pushing the rest of the track right.
+class FreezeFrameCommand final : public Command {
+public:
+    FreezeFrameCommand(Id clipId, Ticks at, Ticks hold) : m_clipId(clipId), m_at(at), m_hold(hold) {}
+
+    std::string label() const override { return "Freeze Frame"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+    Id freezeClipId() const { return m_freezeClipId; }
+
+private:
+    Id m_clipId;
+    Ticks m_at;
+    Ticks m_hold;
+    Id m_trackId = kNoId;
+    Clip m_original;
+    Id m_rightClipId = kNoId;
+    Id m_freezeClipId = kNoId;
 };
 
 } // namespace tve

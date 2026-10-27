@@ -87,6 +87,7 @@ private:
 
     // Only touched by the producer thread; restarts join it first.
     std::map<Id, ClipStream> m_streams;
+    std::vector<float> m_resampled;
 };
 
 } // namespace tve

@@ -1,6 +1,7 @@
 #include "playback/TimelineAudio.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace tve {
 
@@ -63,7 +64,7 @@ bool isAudible(const Project& project, const Track& track, const Clip& clip)
         return false;
     if (track.kind == TrackKind::Video && !clip.audioEnabled)
         return false;
-    if (track.kind == TrackKind::Title)
+    if (track.kind == TrackKind::Title || clip.freeze)
         return false;
     const MediaItem* media = project.findMedia(clip.mediaId);
     return media && media->hasAudio;
@@ -116,27 +117,59 @@ void TimelineAudio::mixClip(const Project& project, const Clip& clip, Ticks chun
         if (!stream.decoder)
             return; // missing or unreadable media is silent
     }
-    const Ticks sourceTime = clip.sourceIn + (from - clip.start);
-    if (stream.nextSourceTime != sourceTime) {
-        if (!stream.decoder->seek(sourceTime))
-            return;
-    }
-
     const int offset = int(audio::samplesFromTicks(from - chunkStart));
     const int frames = int(audio::samplesFromTicks(to - from));
-    scratch.assign(std::size_t(frames) * audio::kChannels, 0.0f);
-    const int read = stream.decoder->read(scratch.data(), frames);
-    stream.nextSourceTime = sourceTime + audio::ticksFromSamples(frames);
+    const bool plainSpeed = clip.speed == 1.0 && !clip.reversed;
+    int read = 0;
+    std::vector<float>& out = m_resampled;
+    out.assign(std::size_t(frames) * audio::kChannels, 0.0f);
+
+    if (plainSpeed) {
+        const Ticks sourceTime = clip.sourceTimeAt(from);
+        if (stream.nextSourceTime != sourceTime && !stream.decoder->seek(sourceTime))
+            return;
+        read = stream.decoder->read(out.data(), frames);
+        stream.nextSourceTime = sourceTime + audio::ticksFromSamples(frames);
+    } else {
+        // Read the source span these output samples cover and resample it (pitch follows
+        // speed, like tape). Reversed clips read the span and walk it backwards.
+        const double step = clip.speed;
+        const int needed = int(std::ceil(double(frames) * step)) + 2;
+        const Ticks spanTicks = Ticks(std::llround(double(to - from) * step));
+        const Ticks blockStart = clip.reversed ? std::max(clip.sourceIn, clip.sourceTimeAt(from) + 1 - spanTicks)
+                                               : clip.sourceTimeAt(from);
+        if (!stream.decoder->seek(blockStart))
+            return;
+        stream.nextSourceTime = -1; // resampled reads always seek
+        scratch.assign(std::size_t(needed) * audio::kChannels, 0.0f);
+        const int available = stream.decoder->read(scratch.data(), needed);
+        if (available < 2)
+            return;
+        const double top = clip.reversed ? double(audio::samplesFromTicks(clip.sourceTimeAt(from) + 1 - blockStart)) - 1.0
+                                         : 0.0;
+        for (int i = 0; i < frames; ++i) {
+            double position = clip.reversed ? top - double(i) * step : double(i) * step;
+            position = std::clamp(position, 0.0, double(available - 1));
+            const int i0 = std::min(int(position), available - 2);
+            const float t = float(position - double(i0));
+            for (int c = 0; c < audio::kChannels; ++c) {
+                const float a = scratch[std::size_t(i0) * 2 + std::size_t(c)];
+                const float b = scratch[std::size_t(i0 + 1) * 2 + std::size_t(c)];
+                out[std::size_t(i) * 2 + std::size_t(c)] = a + (b - a) * t;
+            }
+        }
+        read = frames;
+    }
 
     // Fades are linear, so interpolating the gain across the span is exact.
     const float gainFrom = clip.gainAt(from);
     const float gainTo = clip.gainAt(to);
-    const float step = frames > 1 ? (gainTo - gainFrom) / float(frames) : 0.0f;
-    float* out = mix + offset * audio::kChannels;
+    const float gainStep = frames > 1 ? (gainTo - gainFrom) / float(frames) : 0.0f;
+    float* target = mix + offset * audio::kChannels;
     for (int i = 0; i < read; ++i) {
-        const float gain = gainFrom + step * float(i);
-        out[i * 2] += scratch[std::size_t(i) * 2] * gain;
-        out[i * 2 + 1] += scratch[std::size_t(i) * 2 + 1] * gain;
+        const float gain = gainFrom + gainStep * float(i);
+        target[i * 2] += out[std::size_t(i) * 2] * gain;
+        target[i * 2 + 1] += out[std::size_t(i) * 2 + 1] * gain;
     }
 }
 

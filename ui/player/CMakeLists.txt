@@ -13,6 +13,8 @@ qt_add_qml_module(tve_player
         WaveformItem.cpp
         TrackListModel.h
         TrackListModel.cpp
+        ThumbnailProvider.h
+        ThumbnailProvider.cpp
 )
 
 qt_add_shaders(tve_player "tve_player_shaders"

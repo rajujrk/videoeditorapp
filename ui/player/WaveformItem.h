@@ -13,6 +13,8 @@ class WaveformItem : public QQuickPaintedItem {
     Q_PROPERTY(QString source READ source WRITE setSource NOTIFY changed)
     Q_PROPERTY(double sourceIn READ sourceIn WRITE setSourceIn NOTIFY changed)
     Q_PROPERTY(double duration READ duration WRITE setDuration NOTIFY changed)
+    Q_PROPERTY(double speed READ speed WRITE setSpeed NOTIFY changed)
+    Q_PROPERTY(bool reversed READ reversed WRITE setReversed NOTIFY changed)
     Q_PROPERTY(double gainDb READ gainDb WRITE setGainDb NOTIFY changed)
     Q_PROPERTY(double fadeIn READ fadeIn WRITE setFadeIn NOTIFY changed)
     Q_PROPERTY(double fadeOut READ fadeOut WRITE setFadeOut NOTIFY changed)
@@ -28,6 +30,10 @@ public:
     void setSourceIn(double seconds);
     double duration() const { return m_duration; }
     void setDuration(double seconds);
+    double speed() const { return m_speed; }
+    void setSpeed(double speed);
+    bool reversed() const { return m_reversed; }
+    void setReversed(bool reversed);
     double gainDb() const { return m_gainDb; }
     void setGainDb(double db);
     double fadeIn() const { return m_fadeIn; }
@@ -50,6 +56,8 @@ private:
     QString m_source;
     double m_sourceIn = 0;
     double m_duration = 0;
+    double m_speed = 1;
+    bool m_reversed = false;
     double m_gainDb = 0;
     double m_fadeIn = 0;
     double m_fadeOut = 0;

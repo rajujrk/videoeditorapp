@@ -217,3 +217,157 @@ TEST_CASE("seeking restarts the timeline at the requested frame")
     CHECK(frames[1].first == kSec + 11 * kFrame30);
     CHECK(playback.clock().now() == kSec + 10 * kFrame30 + 7); // paused at the seek time
 }
+
+namespace {
+
+// A one-clip project of the 2 s 1080p30 sample with the given speed settings.
+std::shared_ptr<Project> speedProject(double speed, bool reversed, bool freezeAtOneSecond = false,
+                                      const char* file = "test_1080p30_h264.mp4", Ticks length = 2 * kSec)
+{
+    auto project = std::make_shared<Project>();
+    CommandStack stack(*project);
+    auto track = std::make_unique<AddTrackCommand>(TrackKind::Video, "V1");
+    auto* trackCmd = track.get();
+    REQUIRE_FALSE(stack.push(std::move(track)));
+    auto media = std::make_unique<ImportMediaCommand>(sample(file), length);
+    auto* mediaCmd = media.get();
+    REQUIRE_FALSE(stack.push(std::move(media)));
+    auto clip = std::make_unique<AddClipCommand>(trackCmd->trackId(), mediaCmd->mediaId(), 0, length, 0);
+    auto* clipCmd = clip.get();
+    REQUIRE_FALSE(stack.push(std::move(clip)));
+    if (freezeAtOneSecond)
+        REQUIRE_FALSE(stack.push(std::make_unique<FreezeFrameCommand>(clipCmd->clipId(), kSec, kSec / 2)));
+    else
+        REQUIRE_FALSE(stack.push(std::make_unique<SetClipSpeedCommand>(clipCmd->clipId(), speed, reversed)));
+    return project;
+}
+
+// Source frame times shown by each composite frame, in order.
+std::vector<Ticks> shownSourceFrames(TimelinePlayback& playback)
+{
+    std::vector<Ticks> shown;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (auto front = playback.queue().frontPts()) {
+            int skipped = 0;
+            auto frame = playback.queue().takeLatestDue(*front, skipped);
+            shown.push_back(frame->layers.empty() ? -1 : frame->layers.front().frame.pts());
+            continue;
+        }
+        if (playback.producerFinished())
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    return shown;
+}
+
+} // namespace
+
+TEST_CASE("double speed shows every other source frame")
+{
+    requireSamples();
+    TimelinePlayback playback;
+    playback.setProject(speedProject(2.0, false));
+    const auto shown = shownSourceFrames(playback);
+    REQUIRE(shown.size() == 30); // 1 s of timeline at 30 fps
+    for (std::size_t i = 0; i < shown.size(); ++i)
+        CHECK(shown[i] == Ticks(2 * i) * kFrame30);
+}
+
+TEST_CASE("reversed clips show the source frames backwards")
+{
+    requireSamples();
+    TimelinePlayback playback;
+    playback.setProject(speedProject(1.0, true));
+    const auto shown = shownSourceFrames(playback);
+    REQUIRE(shown.size() == 60);
+    for (std::size_t i = 0; i < shown.size(); ++i) {
+        INFO("frame " << i);
+        CHECK(shown[i] == Ticks(59 - i) * kFrame30);
+    }
+}
+
+TEST_CASE("half speed holds each source frame for two project frames")
+{
+    requireSamples();
+    TimelinePlayback playback;
+    playback.setProject(speedProject(0.5, false));
+    const auto shown = shownSourceFrames(playback);
+    REQUIRE(shown.size() == 120);
+    CHECK(shown[0] == 0);
+    CHECK(shown[1] == 0);
+    CHECK(shown[2] == kFrame30);
+    CHECK(shown[119] == 59 * kFrame30);
+}
+
+TEST_CASE("a freeze frame holds one source frame, then playback resumes")
+{
+    requireSamples();
+    TimelinePlayback playback;
+    playback.setProject(speedProject(1.0, false, true));
+    const auto shown = shownSourceFrames(playback);
+    REQUIRE(shown.size() == 60 + 15); // 2 s clip + 0.5 s still
+    for (std::size_t i = 30; i < 45; ++i)
+        CHECK(shown[i] == 30 * kFrame30); // the frame at 1 s, held
+    CHECK(shown[45] == 30 * kFrame30);    // the clip resumes at 1 s
+    CHECK(shown[46] == 31 * kFrame30);
+}
+
+// Not run by default: `tve_engine_tests "[perf]"`. Unpaced producer throughput, in project
+// frames per second, for a 4K60 clip played forwards and in reverse at 60 fps, and the
+// longest wait for a frame.
+TEST_CASE("reverse playback throughput", "[.][perf]")
+{
+    requireSamples();
+    for (const auto& [speed, reversed] : {std::pair{1.0, false}, std::pair{1.0, true}, std::pair{2.0, true}}) {
+        TimelinePlayback playback;
+        auto project = speedProject(speed, reversed, false, "4k60_h264.mp4", 4 * kSec);
+        project->settings.frameRate = {60, 1};
+        const auto begin = std::chrono::steady_clock::now();
+        playback.setProject(project);
+        std::size_t frames = 0;
+        std::size_t empty = 0;
+        double longestWait = 0;
+        auto last = begin;
+        while (!playback.producerFinished() || playback.queue().frontPts()) {
+            if (auto front = playback.queue().frontPts()) {
+                int skipped = 0;
+                const auto frame = playback.queue().takeLatestDue(*front, skipped);
+                ++frames;
+                empty += frame->layers.empty() ? 1 : 0;
+                const auto now = std::chrono::steady_clock::now();
+                longestWait = std::max(longestWait, std::chrono::duration<double>(now - last).count());
+                last = now;
+                continue;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count();
+        WARN(speed << "x " << (reversed ? "reverse" : "forward") << ": " << frames << " frames, " << frames / seconds
+                                                << " fps, " << empty << " empty, longest wait " << longestWait * 1000 << " ms, decoded "
+                                                << playback.counters().decoded.load());
+    }
+}
+
+// Keyframe seeks are cheap with hardware decoding (no frame-thread pipeline to refill):
+// reverse play depends on it.
+TEST_CASE("keyframe seek cost", "[.][perf]")
+{
+    requireSamples();
+    auto decoder = VideoDecoder::open(sample("4k60_h264.mp4"));
+    REQUIRE(decoder);
+    decoder->nextFrame();
+    const auto begin = std::chrono::steady_clock::now();
+    int frames = 0;
+    for (int i = 0; i < 20; ++i) {
+        REQUIRE(decoder->seekToKeyframe((19 - i) * kSec / 5 + kSec / 10));
+        for (int f = 0; f < 12; ++f)
+            frames += decoder->nextFrame() ? 1 : 0;
+    }
+    const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count();
+    WARN("20 keyframe seeks + " << frames << " frames: " << seconds * 1000 << " ms");
+    const auto linear = std::chrono::steady_clock::now();
+    for (int f = 0; f < 240; ++f)
+        decoder->nextFrame();
+    WARN("240 frames straight: " << std::chrono::duration<double>(std::chrono::steady_clock::now() - linear).count() * 1000 << " ms");
+}

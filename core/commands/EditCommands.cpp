@@ -96,15 +96,22 @@ std::optional<std::string> TrimClipCommand::redo(Project& project)
     if (m_edge == Edge::Start) {
         const Ticks delta = m_newTime - clip.start;
         trimmed.start = m_newTime;
-        trimmed.sourceIn = clip.sourceIn + delta;
         trimmed.duration = clip.duration - delta;
+        // Forward clips lose (or regain) source at their start; reversed ones at the top
+        // of their span, which needs no in-point change.
+        if (!clip.freeze && !clip.reversed)
+            trimmed.sourceIn = clip.sourceIn + Ticks(std::llround(double(delta) * clip.speed));
     } else {
         trimmed.duration = m_newTime - clip.start;
+        if (!clip.freeze && clip.reversed)
+            trimmed.sourceIn = clip.sourceIn + Ticks(std::llround(double(clip.duration - trimmed.duration) * clip.speed));
     }
     if (trimmed.duration <= 0)
         return "trim would leave the clip empty";
     clampFades(trimmed);
-    if (trimmed.start < 0 || trimmed.sourceIn < 0 || trimmed.sourceIn + trimmed.duration > media->duration)
+    const bool pastMedia = trimmed.freeze ? trimmed.sourceIn >= media->duration
+                                          : trimmed.sourceIn + trimmed.sourceSpan() > media->duration;
+    if (trimmed.start < 0 || trimmed.sourceIn < 0 || pastMedia)
         return "trim goes past the media's start or end";
     if (location->track->overlaps(trimmed.start, trimmed.duration, m_clipId))
         return "trim would overlap a neighboring clip";
@@ -213,13 +220,27 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
         m_rightClipId = project.allocateId();
 
     const Ticks leftDuration = m_at - clip.start;
+    const Ticks rightDuration = clip.duration - leftDuration;
     Clip right{
         .id = m_rightClipId,
         .mediaId = clip.mediaId,
         .start = m_at,
-        .duration = clip.duration - leftDuration,
-        .sourceIn = clip.sourceIn + leftDuration,
+        .duration = rightDuration,
+        .sourceIn = clip.sourceIn,
     };
+    right.speed = clip.speed;
+    right.reversed = clip.reversed;
+    right.freeze = clip.freeze;
+    if (!clip.freeze) {
+        // Forward: the right part continues further into the source. Reversed: the left
+        // part keeps the top of the span and the right part the bottom.
+        const Ticks leftSpan = Ticks(std::llround(double(leftDuration) * clip.speed));
+        const Ticks rightSpan = Ticks(std::llround(double(rightDuration) * clip.speed));
+        if (clip.reversed)
+            clip.sourceIn += rightSpan;
+        else
+            right.sourceIn = clip.sourceIn + leftSpan;
+    }
     right.audioEnabled = clip.audioEnabled;
     right.gainDb = clip.gainDb;
     right.visual = clip.visual;
@@ -360,6 +381,8 @@ std::optional<std::string> DetachAudioCommand::redo(Project& project)
         return "this clip has no sound";
     if (!clip.audioEnabled)
         return "this clip's sound is already detached";
+    if (clip.freeze)
+        return "a freeze frame has no sound";
     if (audioTrack->overlaps(clip.start, clip.duration))
         return "the audio track is not free at this clip's position";
 
@@ -451,6 +474,102 @@ std::optional<std::string> SetProjectSettingsCommand::redo(Project& project)
 void SetProjectSettingsCommand::undo(Project& project)
 {
     project.settings = m_previous;
+}
+
+// --- SetClipSpeedCommand ---
+
+std::optional<std::string> SetClipSpeedCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    Clip& clip = *location->clip;
+    if (clip.freeze)
+        return "a freeze frame has no speed";
+    if (m_speed < kMinSpeed || m_speed > kMaxSpeed)
+        return "speed must be between 0.1× and 10×";
+
+    // The clip keeps playing the same source; its length on the timeline changes, and later
+    // clips on the track move with its end.
+    const Ticks newDuration = std::max<Ticks>(1, Ticks(std::llround(double(clip.sourceSpan()) / m_speed)));
+    m_trackId = location->track->id;
+    m_original = clip;
+    m_delta = newDuration - clip.duration;
+    const Ticks oldEnd = clip.end();
+    clip.speed = m_speed;
+    clip.reversed = m_reversed;
+    clip.duration = newDuration;
+    clampFades(clip);
+    shiftClipsFrom(*location->track, oldEnd, m_delta);
+    return std::nullopt;
+}
+
+void SetClipSpeedCommand::undo(Project& project)
+{
+    Track* track = project.findTrack(m_trackId);
+    assert(track);
+    shiftClipsFrom(*track, m_original.end() + m_delta, -m_delta);
+    *track->findClip(m_clipId) = m_original;
+}
+
+// --- FreezeFrameCommand ---
+
+std::optional<std::string> FreezeFrameCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    Track& track = *location->track;
+    if (auto error = checkEditable(&track))
+        return error;
+    if (track.kind != TrackKind::Video)
+        return "freeze frames are made from video clips";
+    const Clip clip = *location->clip;
+    if (m_at < clip.start || m_at >= clip.end())
+        return "put the playhead inside the clip to freeze a frame";
+    if (m_hold <= 0)
+        return "the freeze must last some time";
+
+    m_trackId = track.id;
+    m_original = clip;
+    if (m_rightClipId == kNoId && m_at > clip.start)
+        m_rightClipId = project.allocateId();
+    if (m_freezeClipId == kNoId)
+        m_freezeClipId = project.allocateId();
+
+    // Split at the playhead (unless it is at the clip's start), push everything from there
+    // right by the hold, and put the still in the gap.
+    if (m_at > clip.start) {
+        SplitClipCommand split(m_clipId, m_at);
+        split.setRightClipId(m_rightClipId);
+        if (auto error = split.redo(project))
+            return error;
+    }
+    shiftClipsFrom(track, m_at, m_hold);
+    Clip still = clip;
+    still.id = m_freezeClipId;
+    still.start = m_at;
+    still.duration = m_hold;
+    still.sourceIn = clip.sourceTimeAt(m_at);
+    still.freeze = true;
+    still.speed = 1.0;
+    still.reversed = false;
+    still.audioEnabled = false;
+    still.fadeIn = still.fadeOut = 0;
+    track.insertClip(std::move(still));
+    return std::nullopt;
+}
+
+void FreezeFrameCommand::undo(Project& project)
+{
+    Track& track = *project.findTrack(m_trackId);
+    track.removeClip(m_freezeClipId);
+    shiftClipsFrom(track, m_at + m_hold, -m_hold);
+    if (m_at > m_original.start)
+        track.removeClip(m_rightClipId);
+    *track.findClip(m_clipId) = m_original;
 }
 
 } // namespace tve

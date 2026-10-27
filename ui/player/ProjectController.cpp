@@ -198,6 +198,11 @@ QVariantList ProjectController::tracks() const
                 {QStringLiteral("gainDb"), double(clip.gainDb)},
                 {QStringLiteral("fadeIn"), seconds(clip.fadeIn)},
                 {QStringLiteral("fadeOut"), seconds(clip.fadeOut)},
+                {QStringLiteral("speed"), clip.speed},
+                {QStringLiteral("reversed"), clip.reversed},
+                {QStringLiteral("freeze"), clip.freeze},
+                {QStringLiteral("mediaWidth"), media ? media->width : 0},
+                {QStringLiteral("mediaHeight"), media ? media->height : 0},
             };
         }
         list << QVariantMap{
@@ -560,6 +565,9 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("fadeOut"), seconds(clip->fadeOut)},
             {QStringLiteral("visual"), visualMap(clip->visual)},
             {QStringLiteral("effects"), effectsList(clip->effects)},
+            {QStringLiteral("speed"), clip->speed},
+            {QStringLiteral("reversed"), clip->reversed},
+            {QStringLiteral("freeze"), clip->freeze},
         };
     }
     return {};
@@ -634,6 +642,34 @@ void ProjectController::cancelPreview(double clipId)
 bool ProjectController::resetClipVisual(double clipId)
 {
     return apply(std::make_unique<SetClipVisualCommand>(toId(clipId), ClipVisual{}));
+}
+
+// --- Speed ---
+
+bool ProjectController::setClipSpeed(double clipId, double speed, bool reversed)
+{
+    return apply(std::make_unique<SetClipSpeedCommand>(toId(clipId), std::clamp(speed, kMinSpeed, kMaxSpeed), reversed));
+}
+
+bool ProjectController::freezeFrame(double holdSeconds)
+{
+    const Ticks at = ticks(m_playhead);
+    // The selected clip if the playhead is on it, else the visible clip there.
+    Id target = kNoId;
+    if (const Clip* selected = findClip(m_selectedClip); selected && selected->start <= at && at < selected->end())
+        target = selected->id;
+    else if (auto visible = visibleVideoAt(m_project, at))
+        target = visible->clip->id;
+    if (target == kNoId) {
+        reportError(QStringLiteral("Put the playhead on a video clip to freeze a frame"));
+        return false;
+    }
+    auto command = std::make_unique<FreezeFrameCommand>(target, at, ticks(std::max(holdSeconds, 0.1)));
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return false;
+    setSelectedClip(double(raw->freezeClipId()));
+    return true;
 }
 
 // --- Per-clip effects ---

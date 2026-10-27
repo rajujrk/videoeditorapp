@@ -237,6 +237,10 @@ std::unique_ptr<VideoDecoder> VideoDecoder::open(const std::string& path, std::s
     }
     d->codec->get_format = pickPixelFormat;
     d->codec->thread_count = 0; // software fallback: one thread per core
+    // VideoToolbox does the decoding; frame threading would only add a frame of delay per
+    // thread and make every seek refill that pipeline. Slice threads still serve a fallback.
+    if (d->codec->hw_device_ctx)
+        d->codec->thread_type = FF_THREAD_SLICE;
 
     if (int rc = avcodec_open2(d->codec, decoder, nullptr); rc < 0)
         return fail("cannot open decoder: " + avError(rc));
@@ -306,17 +310,36 @@ bool VideoDecoder::seekToStart()
 
 bool VideoDecoder::seek(Ticks target)
 {
+    // Land on the keyframe at or before the target, then decode forward to it.
+    if (!seekToKeyframe(target))
+        return false;
+    m_impl->discardBefore = target > 0 ? target : -1;
+    return true;
+}
+
+bool VideoDecoder::seekToKeyframe(Ticks target)
+{
     Impl& d = *m_impl;
     target = std::max<Ticks>(target, 0);
     const std::int64_t timestamp = d.startTime + av_rescale_q(target, kTickTimeBase, d.timeBase);
-    // Land on the keyframe at or before the target, then decode forward to it.
     if (av_seek_frame(d.format, d.streamIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0)
         return false;
     avcodec_flush_buffers(d.codec);
     d.inputDone = false;
     d.lastPts = target;
-    d.discardBefore = target > 0 ? target : -1;
+    d.discardBefore = -1;
     return true;
+}
+
+std::optional<Ticks> VideoDecoder::keyframeBefore(Ticks target) const
+{
+    const Impl& d = *m_impl;
+    AVStream* stream = d.format->streams[d.streamIndex];
+    const std::int64_t timestamp = d.startTime + av_rescale_q(std::max<Ticks>(target, 0), kTickTimeBase, d.timeBase);
+    const AVIndexEntry* entry = avformat_index_get_entry_from_timestamp(stream, timestamp, AVSEEK_FLAG_BACKWARD);
+    if (!entry)
+        return std::nullopt;
+    return av_rescale_q(entry->timestamp - d.startTime, d.timeBase, kTickTimeBase);
 }
 
 } // namespace tve

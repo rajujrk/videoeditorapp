@@ -6,6 +6,7 @@
 #include "playback/TimelineAudio.h"
 
 #include <atomic>
+#include <deque>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -54,6 +55,8 @@ private:
         std::string path;
         std::optional<DecodedFrame> current;
         std::optional<DecodedFrame> next;
+        // Reversed clips: a window of frames decoded forward, served backwards.
+        std::deque<DecodedFrame> window;
     };
 
     void restartAt(Ticks time);
@@ -62,6 +65,8 @@ private:
     // The decoded frame on screen at `sourceTime` for this clip, decoding or seeking as
     // needed; nullptr if the media cannot be decoded.
     const DecodedFrame* frameAt(LayerState& state, const MediaItem& media, Ticks sourceTime);
+    const DecodedFrame* reversedFrameAt(LayerState& state, const MediaItem& media, Ticks sourceTime);
+    bool openDecoder(LayerState& state, const MediaItem& media);
 
     mutable std::mutex m_control; // serializes setProject/seek from the UI thread
     std::shared_ptr<const Project> m_project;

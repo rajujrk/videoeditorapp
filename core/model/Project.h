@@ -35,6 +35,8 @@ struct MediaItem {
 
 inline constexpr float kMinGainDb = -60.0f; // treated as silence
 inline constexpr float kMaxGainDb = 12.0f;
+inline constexpr double kMinSpeed = 0.1;
+inline constexpr double kMaxSpeed = 10.0;
 
 enum class BlendMode { Normal, Multiply, Screen, Overlay, Add, Darken, Lighten };
 
@@ -97,7 +99,18 @@ struct Clip {
     ClipVisual visual;
     std::vector<ClipEffect> effects; // applied in order, before placement on the canvas
 
+    // Time. At speed 2 one second of timeline plays two seconds of source; reversed plays
+    // the source span backwards; a freeze clip holds the single frame at sourceIn.
+    double speed = 1.0;
+    bool reversed = false;
+    bool freeze = false;
+
     Ticks end() const { return start + duration; }
+
+    // Source media the clip plays: duration × speed (0 for a freeze frame).
+    Ticks sourceSpan() const;
+    // Media time shown at a timeline time inside the clip.
+    Ticks sourceTimeAt(Ticks time) const;
 
     // Linear amplitude at a timeline time inside the clip: gain × fade ramps.
     float gainAt(Ticks time) const;
