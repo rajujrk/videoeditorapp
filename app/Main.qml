@@ -1,148 +1,68 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import TechieVideoEditor.Player
+import TechieVideoEditor.Theme
+import TechieVideoEditor.Shell
 
 ApplicationWindow {
     id: root
-    width: 1440
-    height: 820
+    // "home" or "editor"; set from the command line too.
+    property string screen: "home"
+
+    width: 1600
+    height: 940
+    minimumWidth: 1180
+    minimumHeight: 700
     visible: true
-    title: "TechieVideoEditor — Playback Spike"
-    color: "#111316"
+    title: screen === "editor" ? editorScreen.projectName + " — TechieVideoEditor" : "TechieVideoEditor"
+    color: Theme.color.canvas
 
-    readonly property color panelColor: "#1b1e23"
-    readonly property color textColor: "#e6e8eb"
-    readonly property color mutedColor: "#8a9099"
-    readonly property color accentColor: "#4c8dff"
+    // Stock controls (Slider, Switch, ComboBox, ToolTip…) pick their colors up from here.
+    palette {
+        window: Theme.color.surface
+        windowText: Theme.color.textPrimary
+        base: Theme.color.surfaceRaised
+        alternateBase: Theme.color.surfaceHover
+        text: Theme.color.textPrimary
+        button: Theme.color.surfaceRaised
+        buttonText: Theme.color.textPrimary
+        brightText: Theme.color.textOnAccent
+        highlight: Theme.color.accent
+        highlightedText: Theme.color.textOnAccent
+        light: Theme.color.surfaceHover
+        midlight: Theme.color.borderSubtle
+        mid: Theme.color.borderStrong
+        dark: Theme.color.textDisabled
+        shadow: "#000000"
+        toolTipBase: Theme.color.surfaceRaised
+        toolTipText: Theme.color.textPrimary
+        placeholderText: Theme.color.textDisabled
+        disabled.windowText: Theme.color.textDisabled
+        disabled.text: Theme.color.textDisabled
+        disabled.buttonText: Theme.color.textDisabled
+    }
+    font: Theme.type.body
 
-    RowLayout {
+    StackLayout {
         anchors.fill: parent
-        spacing: 0
+        currentIndex: root.screen === "editor" ? 1 : 0
 
-        Item {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-
-            VideoView {
-                id: player
-                objectName: "player"
-                anchors.fill: parent
+        HomeScreen {
+            onNewProject: (name, w, h) => {
+                editorScreen.projectName = name
+                editorScreen.canvasWidth = w
+                editorScreen.canvasHeight = h
+                root.screen = "editor"
             }
-
-            DropArea {
-                anchors.fill: parent
-                onDropped: (drop) => {
-                    if (drop.hasUrls)
-                        player.source = drop.urls[0]
-                }
-            }
-
-            Text {
-                anchors.centerIn: parent
-                visible: player.source === ""
-                text: "Drop a video file here"
-                color: root.mutedColor
-                font.pixelSize: 20
-            }
-
-            Rectangle {
-                anchors { left: parent.left; top: parent.top; margins: 12 }
-                visible: player.source !== ""
-                color: "#b3000000"
-                radius: 6
-                width: stats.implicitWidth + 20
-                height: stats.implicitHeight + 14
-
-                Text {
-                    id: stats
-                    anchors.centerIn: parent
-                    color: "white"
-                    font.family: "Menlo"
-                    font.pixelSize: 13
-                    text: player.errorString !== ""
-                          ? player.errorString
-                          : player.streamDescription + "\n"
-                            + (player.hardwareAccelerated ? "VideoToolbox" : "software decode") + "\n"
-                            + "decode " + player.decodeFps.toFixed(1) + " fps · present " + player.presentFps.toFixed(1) + " fps\n"
-                            + "skipped " + player.skippedFrames + " · effects " + player.enabledEffectCount
-                }
+            onMediaDropped: (file) => {
+                editorScreen.player.source = file
+                root.screen = "editor"
             }
         }
 
-        // Effect stack: one card per built-in effect, controls generated from its manifest.
-        Rectangle {
-            Layout.preferredWidth: 320
-            Layout.fillHeight: true
-            color: root.panelColor
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 14
-                spacing: 10
-
-                Label {
-                    text: "Effects"
-                    color: root.textColor
-                    font.pixelSize: 17
-                    font.bold: true
-                }
-
-                ScrollView {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    contentWidth: availableWidth
-                    clip: true
-
-                    ColumnLayout {
-                        width: parent.width
-                        spacing: 8
-
-                        Repeater {
-                            model: player.availableEffects
-
-                            delegate: Rectangle {
-                                id: card
-                                required property var modelData
-                                // Re-evaluated whenever the stack changes (also from --effects).
-                                readonly property bool enabled_: player.enabledEffectCount >= 0
-                                                                 && player.isEffectEnabled(modelData.id)
-
-                                Layout.fillWidth: true
-                                implicitHeight: cardColumn.implicitHeight + 16
-                                radius: 6
-                                color: enabled_ ? "#232832" : "#1f2227"
-                                border.color: enabled_ ? root.accentColor : "#2c3038"
-
-                                ColumnLayout {
-                                    id: cardColumn
-                                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 8 }
-                                    spacing: 4
-
-                                    CheckBox {
-                                        objectName: "effect:" + card.modelData.id
-                                        text: card.modelData.title
-                                        checked: card.enabled_
-                                        palette.windowText: root.textColor
-                                        onToggled: player.setEffectEnabled(card.modelData.id, checked)
-                                    }
-
-                                    Repeater {
-                                        model: card.enabled_ ? card.modelData.params : []
-
-                                        delegate: ParamControl {
-                                            required property var modelData
-                                            Layout.fillWidth: true
-                                            param: modelData
-                                            onValueEdited: (value) => player.setEffectParam(card.modelData.id, modelData.id, value)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        EditorScreen {
+            id: editorScreen
+            onHomeRequested: root.screen = "home"
         }
     }
 }

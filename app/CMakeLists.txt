@@ -5,7 +5,9 @@ qt_add_qml_module(TechieVideoEditor
     VERSION 1.0
     QML_FILES
         Main.qml
-        ParamControl.qml
+    IMPORTS
+        TechieVideoEditor.Theme
+        TechieVideoEditor.Shell
 )
 
 set_target_properties(TechieVideoEditor PROPERTIES
@@ -16,8 +18,13 @@ set_target_properties(TechieVideoEditor PROPERTIES
 )
 
 target_compile_definitions(TechieVideoEditor PRIVATE TVE_VERSION="${PROJECT_VERSION}")
-# The plugin target links tve_player itself; linking both triggers a duplicate-library
-# warning, so only borrow the player's include path here.
-target_link_libraries(TechieVideoEditor PRIVATE Qt6::Quick tve_playerplugin)
+# Static QML modules are linked through their plugin targets. The shell plugin brings in
+# the theme and player plugins (and their backing libraries); linking them again here
+# triggers duplicate-library warnings, so only the player's include path is borrowed.
+target_link_libraries(TechieVideoEditor PRIVATE
+    Qt6::Quick
+    Qt6::QuickControls2
+    tve_shellplugin
+)
 target_include_directories(TechieVideoEditor PRIVATE $<TARGET_PROPERTY:tve_player,INTERFACE_INCLUDE_DIRECTORIES>)
 tve_set_warnings(TechieVideoEditor)

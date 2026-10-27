@@ -4,6 +4,7 @@
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQuickStyle>
 #include <QQuickWindow>
 #include <QTimer>
 #include <QtQml/qqmlextensionplugin.h>
@@ -12,7 +13,9 @@
 #include <cstdio>
 #include <memory>
 
+Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ThemePlugin)
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_PlayerPlugin)
+Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ShellPlugin)
 
 namespace {
 
@@ -62,6 +65,9 @@ void attachStatsPrinter(VideoView* view, QCoreApplication& app)
 int main(int argc, char* argv[])
 {
     QQuickWindow::setGraphicsApi(QSGRendererInterface::Metal);
+    // Basic is the one Controls style that takes all its colors from the palette, which
+    // Main.qml fills from the theme tokens.
+    QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("TechieVideoEditor"));
@@ -69,7 +75,7 @@ int main(int argc, char* argv[])
     QGuiApplication::setApplicationVersion(QStringLiteral(TVE_VERSION));
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(QStringLiteral("TechieVideoEditor — Phase 0 playback spike"));
+    parser.setApplicationDescription(QStringLiteral("TechieVideoEditor"));
     parser.addHelpOption();
     parser.addVersionOption();
     const QCommandLineOption statsOption(QStringLiteral("stats"), QStringLiteral("Print playback statistics every second."));
@@ -84,18 +90,32 @@ int main(int argc, char* argv[])
     const QCommandLineOption screenshotAtOption(QStringLiteral("screenshot-at"),
                                                 QStringLiteral("When to take the screenshot (default 3)."),
                                                 QStringLiteral("seconds"), QStringLiteral("3"));
-    parser.addOptions({statsOption, quitOption, effectsOption, screenshotOption, screenshotAtOption});
+    const QCommandLineOption screenOption(QStringLiteral("screen"),
+                                          QStringLiteral("Start on \"home\" or \"editor\" (default: editor when a "
+                                                         "file is given, else home)."),
+                                          QStringLiteral("name"));
+    const QCommandLineOption themeOption(QStringLiteral("theme"), QStringLiteral("\"dark\" (default) or \"light\"."),
+                                         QStringLiteral("name"), QStringLiteral("dark"));
+    parser.addOptions({statsOption, quitOption, effectsOption, screenshotOption, screenshotAtOption, screenOption,
+                       themeOption});
     parser.addPositionalArgument(QStringLiteral("file"), QStringLiteral("Video file to play."), QStringLiteral("[file]"));
     parser.process(app);
 
     QQmlApplicationEngine engine;
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
+    if (auto* theme = engine.singletonInstance<QObject*>("TechieVideoEditor.Theme", "Theme"))
+        theme->setProperty("dark", parser.value(themeOption) != QLatin1String("light"));
     engine.loadFromModule("TechieVideoEditor.App", "Main");
     if (engine.rootObjects().isEmpty())
         return 1;
 
     auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+    const bool hasFile = !parser.positionalArguments().isEmpty();
+    const QString screen = parser.isSet(screenOption) ? parser.value(screenOption)
+                                                      : QString::fromLatin1(hasFile ? "editor" : "home");
+    engine.rootObjects().constFirst()->setProperty("screen", screen);
+
     auto* view = engine.rootObjects().constFirst()->findChild<VideoView*>(QStringLiteral("player"));
     if (view && parser.isSet(statsOption))
         attachStatsPrinter(view, app);

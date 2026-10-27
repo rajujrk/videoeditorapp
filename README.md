@@ -17,8 +17,11 @@ A desktop video editor for macOS (Apple Silicon first). See
 - `ui/player/` — `VideoView`, a Qt Quick item that shows decoded frames as Metal textures
   without copying them (CVPixelBuffer → CVMetalTexture → Qt RHI), converts YUV to RGB,
   runs the effect chain and aspect-fits the result.
-- `app/` — a window that plays one video file, with an effects panel generated from the
-  manifests and decode/present statistics.
+- `ui/theme/` — design system: color/type/spacing tokens (dark and light), original icon
+  set and base components. See [docs/design-system.md](docs/design-system.md).
+- `ui/shell/` — Home screen and Editor workspace (library, player, inspector, timeline).
+  Playback and effects are live; the other parts show the planned layout.
+- `app/` — the application window and command-line options.
 
 ## Requirements
 
@@ -54,7 +57,8 @@ build/macos-release/tools/tve_decode_bench samples/4k60_h264.mp4
 ```
 
 `--effects` takes `all` or comma-separated effect ids; `--screenshot` saves the window
-after `--screenshot-at` seconds (default 3).
+after `--screenshot-at` seconds (default 3); `--screen home|editor` picks the start
+screen; `--theme dark|light` picks the theme.
 
 ## Rules
 

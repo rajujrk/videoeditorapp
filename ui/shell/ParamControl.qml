@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import TechieVideoEditor.Theme
 
 // Editor for one effect parameter, chosen by the manifest type:
 // float/int → slider, bool → switch, enum → combo box, color → swatches.
@@ -9,27 +10,23 @@ ColumnLayout {
     required property var param
     signal valueEdited(var value)
 
-    readonly property color textColor: "#e6e8eb"
-    readonly property color mutedColor: "#8a9099"
-
-    spacing: 2
+    spacing: Theme.space.xxs
 
     RowLayout {
         Layout.fillWidth: true
         visible: control.param.type !== "bool"
 
-        Label {
+        Text {
             text: control.param.title
-            color: control.mutedColor
-            font.pixelSize: 12
+            color: Theme.color.textSecondary
+            font: Theme.type.label
             Layout.fillWidth: true
         }
-        Label {
+        Text {
             visible: slider.visible
             text: control.param.type === "int" ? slider.value.toFixed(0) : slider.value.toFixed(2)
-            color: control.textColor
-            font.family: "Menlo"
-            font.pixelSize: 12
+            color: Theme.color.textPrimary
+            font: Theme.type.mono
         }
     }
 
@@ -49,7 +46,6 @@ ColumnLayout {
         visible: control.param.type === "bool"
         text: control.param.title
         checked: control.param.default > 0.5
-        palette.windowText: control.textColor
         onToggled: control.valueEdited(checked ? 1 : 0)
     }
 
@@ -63,7 +59,7 @@ ColumnLayout {
 
     Row {
         visible: control.param.type === "color"
-        spacing: 6
+        spacing: Theme.space.s
 
         Repeater {
             model: [[0, 0, 0, 1], [1, 1, 1, 1], [0.9, 0.2, 0.2, 1], [0.2, 0.4, 0.95, 1], [1, 0.6, 0.1, 1]]
@@ -72,12 +68,13 @@ ColumnLayout {
                 required property var modelData
                 width: 22
                 height: 22
-                radius: 11
+                radius: width / 2
                 color: Qt.rgba(modelData[0], modelData[1], modelData[2], 1)
-                border.color: "#5a606a"
+                border.color: Theme.color.borderStrong
 
                 MouseArea {
                     anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
                     onClicked: control.valueEdited(parent.modelData)
                 }
             }
