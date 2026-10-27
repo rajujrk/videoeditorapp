@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** plan only — no code yet
+**Status:** Phase 0 complete; Phase 1 slice 1 (project-backed timeline) complete — see §9.1
 **Date:** 2026-10-26
 
 ---
@@ -499,6 +499,18 @@ Assumed team: 8 engineers (3 engine, 2 UI, 2 AI/audio, 1 platform/infra), 1 prod
 | **5. Advanced & polish** | 15–20 | OpenFX/AU/VST3 hosts; brush/path animation; 360°; color management/HDR; interchange (OTIO/FCPXML); AI copilot; localization; Windows port; performance hardening | Windows beta; perf budgets (§10) met on reference hardware |
 
 **Calendar estimate:** about 18–20 months to broad parity with this team; MVP in about 4 months.
+
+### 9.1 Phase 1 slices
+
+Phase 1 is delivered in five vertical slices, each usable on its own:
+
+| Slice | Scope | Status |
+|---|---|---|
+| 1. Project-backed timeline | Media import/probe, media bin, timeline bound to the model, move/trim/split/ripple delete with snapping, undo/redo, timeline playback with play/pause/scrub/frame step, frame-accurate seek, save/open `.tve` | **Done** |
+| 2. Audio | Audio decode, mixer, clip volume/fades, waveforms, A/V sync, voice-over | Next |
+| 3. Clip properties | Transform/crop/opacity/blend, constant speed/reverse/freeze, basic color, per-clip effects, thumbnails | Planned |
+| 4. Transitions & titles | Transition engine + first 20 transitions, basic text clips | Planned |
+| 5. Export & robustness | MP4 export, autosave and crash recovery, proxies | Planned |
 
 ---
 

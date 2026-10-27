@@ -201,3 +201,41 @@ TEST_CASE("failed commands do not enter the history")
     CHECK(f.tryPush<SplitClipCommand>(12345, kSec) == "clip not found");
     CHECK(f.stack.count() == count);
 }
+
+TEST_CASE("trimming the start moves the in-point with it")
+{
+    Fixture f;
+    const Id clip = f.push<AddClipCommand>(f.videoTrack, f.media, 10 * kSec, 10 * kSec, 5 * kSec).clipId();
+
+    f.push<TrimClipCommand>(clip, TrimClipCommand::Edge::Start, 12 * kSec);
+    CHECK(*f.track(f.videoTrack).findClip(clip) == Clip{clip, f.media, 12 * kSec, 8 * kSec, 7 * kSec});
+
+    f.push<TrimClipCommand>(clip, TrimClipCommand::Edge::Start, 6 * kSec); // extend back into unused media
+    CHECK(*f.track(f.videoTrack).findClip(clip) == Clip{clip, f.media, 6 * kSec, 14 * kSec, 1 * kSec});
+
+    f.stack.undo();
+    f.stack.undo();
+    CHECK(*f.track(f.videoTrack).findClip(clip) == Clip{clip, f.media, 10 * kSec, 10 * kSec, 5 * kSec});
+}
+
+TEST_CASE("trimming the end changes only the duration")
+{
+    Fixture f;
+    const Id clip = f.push<AddClipCommand>(f.videoTrack, f.media, 0, 10 * kSec, 5 * kSec).clipId();
+    f.push<TrimClipCommand>(clip, TrimClipCommand::Edge::End, 4 * kSec);
+    CHECK(*f.track(f.videoTrack).findClip(clip) == Clip{clip, f.media, 0, 4 * kSec, 5 * kSec});
+}
+
+TEST_CASE("trims are limited by the media, the timeline start and neighbors")
+{
+    Fixture f;
+    const Id a = f.push<AddClipCommand>(f.videoTrack, f.media, 2 * kSec, 10 * kSec, 1 * kSec).clipId();
+    f.push<AddClipCommand>(f.videoTrack, f.media, 15 * kSec, 5 * kSec);
+
+    using Edge = TrimClipCommand::Edge;
+    CHECK(f.tryPush<TrimClipCommand>(a, Edge::Start, 0));            // in-point would go below 0
+    CHECK(f.tryPush<TrimClipCommand>(a, Edge::End, 16 * kSec));      // into the next clip
+    CHECK(f.tryPush<TrimClipCommand>(a, Edge::End, 2 * kSec));       // empty
+    CHECK(f.tryPush<TrimClipCommand>(a, Edge::End, 62 * kSec));      // past the 60 s media
+    CHECK_FALSE(f.tryPush<TrimClipCommand>(a, Edge::End, 15 * kSec)); // exactly touching is fine
+}

@@ -7,6 +7,8 @@ qt_add_qml_module(tve_player
     SOURCES
         VideoView.h
         VideoView.mm
+        ProjectController.h
+        ProjectController.cpp
 )
 
 qt_add_shaders(tve_player "tve_player_shaders"

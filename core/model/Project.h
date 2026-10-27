@@ -20,6 +20,10 @@ struct MediaItem {
     Id id = kNoId;
     std::string path;
     Ticks duration = 0;
+    // Video stream facts from probing at import; 0 when unknown.
+    std::int32_t width = 0;
+    std::int32_t height = 0;
+    FrameRate frameRate{30, 1};
 
     friend bool operator==(const MediaItem&, const MediaItem&) = default;
 };

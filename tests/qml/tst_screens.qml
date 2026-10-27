@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import TechieVideoEditor.Theme
+import TechieVideoEditor.Player
 import TechieVideoEditor.Shell
 
 // The Home and Editor screens load cleanly and their live parts are wired up.
@@ -13,7 +14,13 @@ Item {
     height: 780
 
     Component { id: homeComponent; HomeScreen { anchors.fill: parent } }
-    Component { id: editorComponent; EditorScreen { anchors.fill: parent } }
+    Component {
+        id: editorComponent
+        EditorScreen {
+            anchors.fill: parent
+            project: ProjectController { view: player }
+        }
+    }
     Component { id: spyComponent; SignalSpy {} }
 
     TestCase {

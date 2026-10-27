@@ -47,19 +47,64 @@ void AddTrackCommand::undo(Project& project)
 
 std::optional<std::string> ImportMediaCommand::redo(Project& project)
 {
-    if (m_path.empty())
+    if (m_item.path.empty())
         return "media path is empty";
-    if (m_duration <= 0)
+    if (m_item.duration <= 0)
         return "media duration must be positive";
-    if (m_mediaId == kNoId)
-        m_mediaId = project.allocateId();
-    project.media.push_back(MediaItem{.id = m_mediaId, .path = m_path, .duration = m_duration});
+    if (m_item.id == kNoId)
+        m_item.id = project.allocateId();
+    project.media.push_back(m_item);
     return std::nullopt;
 }
 
 void ImportMediaCommand::undo(Project& project)
 {
-    std::erase_if(project.media, [&](const MediaItem& item) { return item.id == m_mediaId; });
+    std::erase_if(project.media, [&](const MediaItem& item) { return item.id == m_item.id; });
+}
+
+// --- TrimClipCommand ---
+
+std::optional<std::string> TrimClipCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    const Clip& clip = *location->clip;
+    const MediaItem* media = project.findMedia(clip.mediaId);
+    if (!media)
+        return "media not found";
+
+    Clip trimmed = clip;
+    if (m_edge == Edge::Start) {
+        const Ticks delta = m_newTime - clip.start;
+        trimmed.start = m_newTime;
+        trimmed.sourceIn = clip.sourceIn + delta;
+        trimmed.duration = clip.duration - delta;
+    } else {
+        trimmed.duration = m_newTime - clip.start;
+    }
+    if (trimmed.duration <= 0)
+        return "trim would leave the clip empty";
+    if (trimmed.start < 0 || trimmed.sourceIn < 0 || trimmed.sourceIn + trimmed.duration > media->duration)
+        return "trim goes past the media's start or end";
+    if (location->track->overlaps(trimmed.start, trimmed.duration, m_clipId))
+        return "trim would overlap a neighboring clip";
+
+    m_trackId = location->track->id;
+    m_original = clip;
+    location->track->removeClip(m_clipId);
+    location->track->insertClip(trimmed);
+    return std::nullopt;
+}
+
+void TrimClipCommand::undo(Project& project)
+{
+    Track* track = project.findTrack(m_trackId);
+    assert(track);
+    track->removeClip(m_clipId);
+    track->insertClip(m_original);
 }
 
 // --- AddClipCommand ---

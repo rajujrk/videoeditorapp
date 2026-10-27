@@ -7,11 +7,12 @@
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
+#include <functional>
 #include <memory>
 #include <vector>
 
 namespace tve {
-class PlaybackSession;
+class FrameSource;
 }
 
 // Plays a video file through the TVE engine: FFmpeg/VideoToolbox decode on a worker
@@ -54,8 +55,12 @@ public:
     // `value` is a number (float/int/bool/enum index) or a list of numbers (color).
     Q_INVOKABLE void setEffectParam(const QString& effectId, const QString& paramId, const QVariant& value);
 
+    // Shows frames from `source` (e.g. timeline playback) instead of a file. `source`
+    // property and this are alternatives; setting one replaces the other.
+    void setFrameSource(std::shared_ptr<tve::FrameSource> source, const QString& description);
+
     // Read by the renderer on the render thread during synchronize().
-    std::shared_ptr<tve::PlaybackSession> session() const { return m_session; }
+    std::shared_ptr<tve::FrameSource> frameSource() const { return m_frameSource; }
     const std::vector<tve::EffectInstance>& effects() const { return m_effects; }
     quint64 effectsRevision() const { return m_effectsRevision; }
 
@@ -75,7 +80,8 @@ private:
     QString m_source;
     QString m_error;
     QString m_description;
-    std::shared_ptr<tve::PlaybackSession> m_session;
+    std::shared_ptr<tve::FrameSource> m_frameSource;
+    std::function<void()> m_stopFileSession; // set while playing a file via `source`
 
     std::vector<tve::EffectInstance> m_effects;
     quint64 m_effectsRevision = 1;

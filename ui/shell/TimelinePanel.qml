@@ -3,40 +3,41 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 
-// Bottom panel layout: toolbar, ruler, track headers and lanes. The clips are fixed
-// sample data to show the visual language; Phase 1 binds this to the project model.
+// The timeline, bound to the project: tracks and clips from the model, drag to move
+// (snapping to edges and the playhead), drag edges to trim, click/drag the ruler to seek,
+// drop media from the library onto a track.
 Rectangle {
     id: timeline
-    color: Theme.color.surface
+    required property var project
 
     property real pixelsPerSecond: 60
-    property real playheadSeconds: 3.2
+    readonly property real snapPixels: 8
+    readonly property var tracks: project.tracks // top to bottom
 
-    readonly property var tracks: [
-        { name: "Title 1", kind: "title", height: Theme.size.audioTrack },
-        { name: "Video 2", kind: "video", height: Theme.size.videoTrack },
-        { name: "Video 1", kind: "video", height: Theme.size.videoTrack, main: true },
-        { name: "Audio 1", kind: "audio", height: Theme.size.audioTrack },
-        { name: "Music", kind: "audio", height: Theme.size.audioTrack }
-    ]
-    readonly property var clips: [
-        { track: 0, start: 1.0, length: 4.0, label: "Opening title" },
-        { track: 1, start: 6.5, length: 5.0, label: "B-roll.mov" },
-        { track: 2, start: 0.0, length: 6.5, label: "4k30_h264.mp4", effects: 2 },
-        { track: 2, start: 6.5, length: 9.0, label: "4k60_h264.mp4" },
-        { track: 2, start: 15.5, length: 5.5, label: "4k60_hevc_10bit.mp4" },
-        { track: 3, start: 0.0, length: 6.5, label: "4k30_h264.mp4" },
-        { track: 4, start: 0.0, length: 21.0, label: "Soundtrack.m4a" }
-    ]
+    color: Theme.color.surface
 
     function trackColor(kind) {
         return kind === "video" ? Theme.color.trackVideo
              : kind === "audio" ? Theme.color.trackAudio
              : kind === "title" ? Theme.color.trackTitle : Theme.color.trackEffect
     }
-    function timecode(seconds) {
+    function trackHeight(kind) {
+        return kind === "video" ? Theme.size.videoTrack : Theme.size.audioTrack
+    }
+    function rulerLabel(seconds) {
         const s = Math.floor(seconds)
         return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0")
+    }
+    // Track under a y position in the lanes' coordinate space, or null.
+    function trackAtY(y) {
+        let top = 0
+        for (const track of tracks) {
+            const h = trackHeight(track.kind)
+            if (y >= top && y < top + h)
+                return track
+            top += h
+        }
+        return null
     }
 
     ColumnLayout {
@@ -54,23 +55,40 @@ Rectangle {
             spacing: Theme.space.xxs
 
             IconButton { iconName: "select"; tip: "Select (V)"; checkable: true; checked: true }
-            IconButton { iconName: "split"; tip: "Split at playhead (S) — Phase 1"; enabled: false }
-            IconButton { iconName: "delete"; tip: "Delete — Phase 1"; enabled: false }
+            IconButton {
+                objectName: "splitButton"
+                iconName: "split"
+                tip: "Split at playhead (S)"
+                enabled: timeline.project.duration > 0
+                onClicked: timeline.project.splitAtPlayhead()
+            }
+            IconButton {
+                objectName: "deleteButton"
+                iconName: "delete"
+                tip: "Delete selected clip (⌫) — closes the gap on the main track"
+                enabled: timeline.project.selectedClip > 0
+                onClicked: timeline.project.deleteClip(timeline.project.selectedClip)
+            }
             Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
-            IconButton { iconName: "magnet"; tip: "Magnetic main track"; checkable: true; checked: true }
-            IconButton { iconName: "snap"; tip: "Snapping"; checkable: true; checked: true }
+            IconButton { iconName: "magnet"; tip: "Main track closes gaps on delete"; checkable: true; checked: true; enabled: false }
+            IconButton { id: snapToggle; iconName: "snap"; tip: "Snapping"; checkable: true; checked: true }
             IconButton { iconName: "keyframe"; tip: "Keyframes — Phase 2"; enabled: false }
 
             Item { Layout.fillWidth: true }
 
+            Text {
+                text: timeline.project.timecode(timeline.project.duration)
+                font: Theme.type.mono
+                color: Theme.color.textSecondary
+                Layout.rightMargin: Theme.space.m
+            }
             IconButton { iconName: "zoom-out"; tip: "Zoom out"; onClicked: zoom.value = Math.max(zoom.from, zoom.value / 1.5) }
             Slider {
                 id: zoom
-                from: 15
-                to: 240
+                from: 8
+                to: 400
                 value: timeline.pixelsPerSecond
                 implicitWidth: 120
-                onMoved: timeline.pixelsPerSecond = value
                 onValueChanged: timeline.pixelsPerSecond = value
             }
             IconButton { iconName: "zoom-in"; tip: "Zoom in"; onClicked: zoom.value = Math.min(zoom.to, zoom.value * 1.5) }
@@ -100,7 +118,7 @@ Rectangle {
                     delegate: Rectangle {
                         required property var modelData
                         Layout.fillWidth: true
-                        Layout.preferredHeight: modelData.height
+                        Layout.preferredHeight: timeline.trackHeight(modelData.kind)
                         color: Theme.color.surface
 
                         Rectangle { width: 3; height: parent.height - 8; anchors.verticalCenter: parent.verticalCenter; radius: 2; color: timeline.trackColor(modelData.kind) }
@@ -123,9 +141,9 @@ Rectangle {
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
                             }
-                            Icon { visible: !!modelData.main; name: "magnet"; size: 14; color: Theme.color.accentText; Layout.rightMargin: Theme.space.xs }
-                            IconButton { iconName: "lock"; tip: "Lock track"; buttonSize: 22; checkable: true }
-                            IconButton { iconName: modelData.kind === "audio" ? "volume" : "eye"; tip: modelData.kind === "audio" ? "Mute" : "Hide"; buttonSize: 22; checkable: true }
+                            Icon { visible: modelData.main; name: "magnet"; size: 14; color: Theme.color.accentText; Layout.rightMargin: Theme.space.xs }
+                            IconButton { iconName: "lock"; tip: "Lock track — Phase 1"; buttonSize: 22; enabled: false }
+                            IconButton { iconName: modelData.kind === "audio" ? "volume" : "eye"; tip: "Phase 1"; buttonSize: 22; enabled: false }
                         }
                         Divider { anchors.bottom: parent.bottom; width: parent.width }
                     }
@@ -140,140 +158,308 @@ Rectangle {
                 id: lanes
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                contentWidth: Math.max(width, 30 * timeline.pixelsPerSecond)
+                contentWidth: Math.max(width, (timeline.project.duration + 20) * timeline.pixelsPerSecond)
                 contentHeight: height
                 flickableDirection: Flickable.HorizontalFlick
                 boundsBehavior: Flickable.StopAtBounds
+                interactive: false // drags belong to clips and the ruler; scroll with the bar or trackpad
                 clip: true
                 ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
 
+                WheelHandler {
+                    acceptedDevices: PointerDevice.TouchPad | PointerDevice.Mouse
+                    onWheel: (event) => {
+                        const dx = event.angleDelta.x !== 0 ? event.angleDelta.x : event.angleDelta.y
+                        lanes.contentX = Math.max(0, Math.min(lanes.contentWidth - lanes.width, lanes.contentX - dx))
+                    }
+                }
+
+                // Keep the playhead in view while playing.
+                Connections {
+                    target: timeline.project
+                    function onPlayheadChanged() {
+                        if (!timeline.project.playing)
+                            return
+                        const x = timeline.project.playhead * timeline.pixelsPerSecond
+                        if (x > lanes.contentX + lanes.width - 60 || x < lanes.contentX)
+                            lanes.contentX = Math.max(0, x - 120)
+                    }
+                }
+
                 Rectangle {
+                    id: content
                     width: lanes.contentWidth
                     height: lanes.height
                     color: Theme.color.surfaceSunken
 
-                    // Ruler
+                    // Ruler: click or drag to seek
                     Rectangle {
                         id: ruler
+                        objectName: "ruler"
                         width: parent.width
                         height: Theme.size.ruler
                         color: Theme.color.surface
 
+                        readonly property real step: timeline.pixelsPerSecond >= 40 ? 1 : timeline.pixelsPerSecond >= 15 ? 5 : 15
                         Repeater {
-                            model: Math.ceil(lanes.contentWidth / timeline.pixelsPerSecond)
+                            model: Math.ceil(content.width / timeline.pixelsPerSecond / ruler.step)
                             delegate: Item {
                                 required property int index
-                                x: index * timeline.pixelsPerSecond
+                                readonly property real seconds: index * ruler.step
+                                readonly property bool major: Math.round(seconds) % (ruler.step * 5) === 0
+                                x: seconds * timeline.pixelsPerSecond
                                 height: ruler.height
-                                Rectangle { width: 1; height: index % 5 === 0 ? 10 : 5; anchors.bottom: parent.bottom; color: Theme.color.borderStrong }
+                                Rectangle { width: 1; height: parent.major ? 10 : 5; anchors.bottom: parent.bottom; color: Theme.color.borderStrong }
                                 Text {
-                                    visible: index % 5 === 0
+                                    visible: parent.major
                                     x: 4
                                     y: 4
-                                    text: timeline.timecode(index)
+                                    text: timeline.rulerLabel(parent.seconds)
                                     font: Theme.type.caption
                                     color: Theme.color.textSecondary
                                 }
                             }
                         }
                         Divider { anchors.bottom: parent.bottom; width: parent.width }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.IBeamCursor
+                            onPressed: (mouse) => timeline.project.seek(mouse.x / timeline.pixelsPerSecond)
+                            onPositionChanged: (mouse) => {
+                                if (pressed)
+                                    timeline.project.seek(Math.max(0, mouse.x) / timeline.pixelsPerSecond)
+                            }
+                        }
                     }
 
-                    // Lanes with clips
-                    Column {
+                    // Lanes
+                    Item {
+                        id: laneArea
                         y: Theme.size.ruler
                         width: parent.width
+                        height: parent.height - Theme.size.ruler
 
-                        Repeater {
-                            model: timeline.tracks
-                            delegate: Item {
-                                id: lane
-                                required property var modelData
-                                required property int index
-                                width: parent.width
-                                height: modelData.height
+                        // Clicking empty lane space clears the selection.
+                        MouseArea {
+                            anchors.fill: parent
+                            onPressed: timeline.project.selectedClip = 0
+                        }
 
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: lane.modelData.main ? Theme.color.surface : "transparent"
-                                    opacity: 0.4
-                                }
-                                Divider { anchors.bottom: parent.bottom; width: parent.width }
+                        Column {
+                            id: laneColumn
+                            width: parent.width
 
-                                Repeater {
-                                    model: timeline.clips.filter((c) => c.track === lane.index)
-                                    delegate: Rectangle {
-                                        required property var modelData
-                                        x: modelData.start * timeline.pixelsPerSecond + 1
-                                        y: 3
-                                        width: modelData.length * timeline.pixelsPerSecond - 2
-                                        height: lane.height - 6
-                                        radius: Theme.radius.s
-                                        color: Qt.alpha(timeline.trackColor(lane.modelData.kind), Theme.dark ? 0.55 : 0.45)
-                                        border.color: timeline.trackColor(lane.modelData.kind)
-                                        clip: true
+                            Repeater {
+                                model: timeline.tracks
+                                delegate: Item {
+                                    id: lane
+                                    required property var modelData
+                                    width: laneColumn.width
+                                    height: timeline.trackHeight(modelData.kind)
 
-                                        // Thumbnail strip (video) or waveform hint (audio)
-                                        Row {
-                                            visible: lane.modelData.kind === "video"
-                                            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 3 }
-                                            height: parent.height - 22
-                                            spacing: 2
-                                            Repeater {
-                                                model: Math.max(1, Math.floor((parent.width) / 44))
-                                                Rectangle { width: 42; height: parent.height; radius: 2; color: Qt.alpha("#000000", 0.25) }
-                                            }
-                                        }
-                                        Row {
-                                            visible: lane.modelData.kind === "audio"
-                                            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 4 }
-                                            height: parent.height - 18
-                                            spacing: 2
-                                            Repeater {
-                                                model: Math.max(1, Math.floor(parent.width / 4))
-                                                Rectangle {
-                                                    required property int index
-                                                    width: 2
-                                                    height: 2 + Math.abs(Math.sin(index * 0.7) * Math.cos(index * 0.23)) * (parent.height - 2)
-                                                    anchors.verticalCenter: parent.verticalCenter
-                                                    color: Theme.dark ? Qt.alpha("#FFFFFF", 0.55) : Qt.alpha("#000000", 0.35)
-                                                }
-                                            }
-                                        }
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        color: lane.modelData.main ? Theme.color.surface : "transparent"
+                                        opacity: 0.4
+                                    }
+                                    Divider { anchors.bottom: parent.bottom; width: parent.width }
 
-                                        // Label on a small scrim so it stays readable over thumbnails and waveforms
-                                        Rectangle {
-                                            x: 3
-                                            y: 3
-                                            width: Math.min(clipLabel.implicitWidth + Theme.space.s * 2, parent.width - 6)
-                                            height: clipLabel.implicitHeight + 2
-                                            radius: 3
-                                            color: Qt.alpha("#000000", 0.45)
-
-                                            Text {
-                                                id: clipLabel
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                x: Theme.space.s - 3
-                                                width: parent.width - Theme.space.s
-                                                text: parent.parent.modelData.label
-                                                      + (parent.parent.modelData.effects ? "  · fx " + parent.parent.modelData.effects : "")
-                                                font: Theme.type.caption
-                                                color: "#FFFFFF"
-                                                elide: Text.ElideRight
-                                            }
+                                    Repeater {
+                                        model: lane.modelData.clips
+                                        delegate: ClipItem {
+                                            required property var modelData
+                                            clip: modelData
+                                            track: lane.modelData
                                         }
                                     }
                                 }
+                            }
+                        }
+
+                        // Media dragged from the library
+                        DropArea {
+                            anchors.fill: parent
+                            keys: ["application/x-tve-media"]
+                            onDropped: (drop) => {
+                                const track = timeline.trackAtY(drop.y)
+                                if (!track)
+                                    return
+                                let start = Math.max(0, drop.x / timeline.pixelsPerSecond)
+                                if (snapToggle.checked)
+                                    start = timeline.project.snap(start, timeline.snapPixels / timeline.pixelsPerSecond)
+                                const mediaId = drop.source && drop.source.mediaId !== undefined
+                                              ? drop.source.mediaId
+                                              : Number(drop.getDataAsString("application/x-tve-media"))
+                                timeline.project.addClip(mediaId, track.id, start)
+                                drop.accept()
                             }
                         }
                     }
 
                     // Playhead
                     Item {
-                        x: timeline.playheadSeconds * timeline.pixelsPerSecond
+                        x: timeline.project.playhead * timeline.pixelsPerSecond
                         height: parent.height
+                        z: 10
                         Rectangle { x: -0.5; width: 1.5; height: parent.height; color: Theme.color.playhead }
                         Rectangle { x: -6; y: 0; width: 13; height: 14; radius: 3; color: Theme.color.playhead }
+                    }
+                }
+            }
+        }
+    }
+
+    // One clip. While dragging, it previews its new position locally and commits a single
+    // move/trim command on release, so a drag is one undo step.
+    component ClipItem: Item {
+        id: item
+        required property var clip
+        required property var track
+
+        property real previewStart: clip.start
+        property real previewDuration: clip.duration
+        property real previewYOffset: 0
+        readonly property bool selected: timeline.project.selectedClip === clip.id
+        readonly property real tolerance: timeline.snapPixels / timeline.pixelsPerSecond
+
+        objectName: "clip:" + clip.id
+        x: previewStart * timeline.pixelsPerSecond
+        y: 3 + previewYOffset
+        z: moveArea.pressed ? 5 : 1
+        width: Math.max(4, previewDuration * timeline.pixelsPerSecond)
+        height: parent.height - 6
+
+        function snapped(value) {
+            return snapToggle.checked ? timeline.project.snap(value, tolerance, clip.id) : value
+        }
+
+        Rectangle {
+            id: body
+            anchors.fill: parent
+            radius: Theme.radius.s
+            color: Qt.alpha(timeline.trackColor(item.track.kind), Theme.dark ? 0.55 : 0.45)
+            border.width: item.selected ? 2 : 1
+            border.color: item.selected ? Theme.color.selection : timeline.trackColor(item.track.kind)
+            clip: true
+
+            Row {
+                visible: item.track.kind === "video"
+                anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 3 }
+                height: parent.height - 22
+                spacing: 2
+                Repeater {
+                    model: Math.max(1, Math.floor(parent.width / 44))
+                    Rectangle { width: 42; height: parent.height; radius: 2; color: Qt.alpha("#000000", 0.25) }
+                }
+            }
+
+            Rectangle {
+                x: 3
+                y: 3
+                width: Math.min(clipLabel.implicitWidth + Theme.space.s * 2, parent.width - 6)
+                height: clipLabel.implicitHeight + 2
+                radius: 3
+                color: Qt.alpha("#000000", 0.45)
+                Text {
+                    id: clipLabel
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: Theme.space.s - 3
+                    width: parent.width - Theme.space.s
+                    text: item.clip.label
+                    font: Theme.type.caption
+                    color: "#FFFFFF"
+                    elide: Text.ElideRight
+                }
+            }
+        }
+
+        // Body: select and move (horizontally and to another track of the same kind)
+        MouseArea {
+            id: moveArea
+            anchors.fill: parent
+            anchors.leftMargin: 6
+            anchors.rightMargin: 6
+            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            property real pressX: 0
+            property real pressY: 0
+            property bool moved: false
+
+            onPressed: (mouse) => {
+                timeline.project.selectedClip = item.clip.id
+                const p = mapToItem(content, mouse.x, mouse.y)
+                pressX = p.x
+                pressY = p.y
+                moved = false
+            }
+            onPositionChanged: (mouse) => {
+                const p = mapToItem(content, mouse.x, mouse.y)
+                if (!moved && Math.abs(p.x - pressX) < 3 && Math.abs(p.y - pressY) < 3)
+                    return
+                moved = true
+                const proposed = Math.max(0, item.clip.start + (p.x - pressX) / timeline.pixelsPerSecond)
+                const byStart = item.snapped(proposed)
+                const byEnd = item.snapped(proposed + item.clip.duration) - item.clip.duration
+                item.previewStart = byStart !== proposed ? byStart : byEnd
+                item.previewYOffset = p.y - pressY
+            }
+            onReleased: (mouse) => {
+                if (moved) {
+                    const p = mapToItem(laneArea, mouse.x, mouse.y)
+                    const target = timeline.trackAtY(p.y) || item.track
+                    const start = item.previewStart
+                    item.previewYOffset = 0
+                    if (!timeline.project.moveClip(item.clip.id, target.id, start))
+                        item.previewStart = item.clip.start
+                }
+            }
+            onCanceled: { item.previewStart = item.clip.start; item.previewYOffset = 0 }
+        }
+
+        // Edges: trim
+        Repeater {
+            model: ["start", "end"]
+            delegate: MouseArea {
+                required property string modelData
+                readonly property bool isStart: modelData === "start"
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                x: isStart ? 0 : item.width - width
+                width: 7
+                cursorShape: Qt.SizeHorCursor
+                hoverEnabled: true
+
+                Rectangle {
+                    anchors.fill: parent
+                    visible: parent.containsMouse || parent.pressed
+                    radius: 2
+                    color: Theme.color.selection
+                    opacity: 0.6
+                }
+
+                onPressed: timeline.project.selectedClip = item.clip.id
+                onPositionChanged: (mouse) => {
+                    if (!pressed)
+                        return
+                    const t = item.snapped(mapToItem(content, mouse.x, 0).x / timeline.pixelsPerSecond)
+                    const clipEnd = item.clip.start + item.clip.duration
+                    if (isStart) {
+                        // Can't extend before the media's first frame or past the end edge.
+                        const earliest = item.clip.start - item.clip.sourceIn
+                        const start = Math.min(Math.max(t, earliest, 0), clipEnd - 1 / 30)
+                        item.previewStart = start
+                        item.previewDuration = clipEnd - start
+                    } else {
+                        const latest = item.clip.start + (item.clip.mediaDuration - item.clip.sourceIn)
+                        item.previewDuration = Math.min(Math.max(t, item.clip.start + 1 / 30), latest) - item.clip.start
+                    }
+                }
+                onReleased: {
+                    const ok = isStart ? timeline.project.trimClip(item.clip.id, true, item.previewStart)
+                                       : timeline.project.trimClip(item.clip.id, false, item.previewStart + item.previewDuration)
+                    if (!ok) {
+                        item.previewStart = item.clip.start
+                        item.previewDuration = item.clip.duration
                     }
                 }
             }

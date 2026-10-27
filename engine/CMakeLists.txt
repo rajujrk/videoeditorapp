@@ -3,8 +3,12 @@ add_library(tve_engine STATIC
     decode/VideoDecoder.h
     decode/VideoDecoder.cpp
     playback/FrameQueue.h
+    playback/FrameSource.h
+    playback/PlaybackClock.h
     playback/PlaybackSession.h
     playback/PlaybackSession.cpp
+    playback/TimelinePlayback.h
+    playback/TimelinePlayback.cpp
 )
 add_library(tve::engine ALIAS tve_engine)
 
