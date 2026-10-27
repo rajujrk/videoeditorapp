@@ -1,0 +1,30 @@
+{
+  "id": "tve.transition.checkerboard",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "wipe",
+    "shape"
+  ],
+  "title": {
+    "en": "Checkerboard"
+  },
+  "params": [
+    {
+      "id": "squares",
+      "type": "int",
+      "title": {
+        "en": "Squares across"
+      },
+      "min": 2,
+      "max": 32,
+      "default": 8
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "checkerboard.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

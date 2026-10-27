@@ -1,0 +1,43 @@
+{
+  "id": "tve.transition.wipe",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "wipe"
+  ],
+  "title": {
+    "en": "Wipe"
+  },
+  "params": [
+    {
+      "id": "direction",
+      "type": "enum",
+      "title": {
+        "en": "Direction"
+      },
+      "values": [
+        "left",
+        "right",
+        "up",
+        "down"
+      ],
+      "default": "left"
+    },
+    {
+      "id": "softness",
+      "type": "float",
+      "title": {
+        "en": "Softness"
+      },
+      "min": 0,
+      "max": 0.5,
+      "default": 0.1
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "wipe.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

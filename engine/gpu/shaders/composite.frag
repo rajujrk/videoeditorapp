@@ -48,5 +48,11 @@ void main()
     }
     vec4 layer = texture(layerTex, layerUv);
     float alpha = layer.a * opacity;
-    fragColor = vec4(mix(canvas.rgb, blendColor(canvas.rgb, layer.rgb), alpha), max(canvas.a, alpha));
+    // Straight-alpha "over". Blend modes act where there is canvas below; over a
+    // transparent canvas the layer shows as is. On an opaque canvas this is
+    // mix(canvas, blended, alpha).
+    vec3 top = mix(layer.rgb, blendColor(canvas.rgb, layer.rgb), canvas.a);
+    float outAlpha = alpha + canvas.a * (1.0 - alpha);
+    vec3 rgb = outAlpha > 0.0 ? (top * alpha + canvas.rgb * canvas.a * (1.0 - alpha)) / outAlpha : vec3(0.0);
+    fragColor = vec4(rgb, outAlpha);
 }

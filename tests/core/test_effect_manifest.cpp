@@ -148,6 +148,16 @@ TEST_CASE("pass rules")
     }
 }
 
+TEST_CASE("transitions are a kind with exactly one pass")
+{
+    json m = validManifest();
+    m["kind"] = "transition";
+    m["passes"] = json::array({{{"fragment", "a.frag"}}});
+    CHECK(parseEffectManifest(m).kind == "transition");
+    m["passes"].push_back({{"fragment", "b.frag"}});
+    CHECK(mentions(problemsFor(m), "exactly one pass"));
+}
+
 TEST_CASE("unsupported kind and malformed JSON are rejected")
 {
     json m = validManifest();

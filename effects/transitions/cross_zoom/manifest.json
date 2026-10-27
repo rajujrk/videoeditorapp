@@ -1,0 +1,30 @@
+{
+  "id": "tve.transition.cross_zoom",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "zoom",
+    "blur"
+  ],
+  "title": {
+    "en": "Cross Zoom"
+  },
+  "params": [
+    {
+      "id": "strength",
+      "type": "float",
+      "title": {
+        "en": "Strength"
+      },
+      "min": 0,
+      "max": 1,
+      "default": 0.4
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "cross_zoom.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

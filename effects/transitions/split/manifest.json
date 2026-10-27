@@ -1,0 +1,41 @@
+{
+  "id": "tve.transition.split",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "wipe"
+  ],
+  "title": {
+    "en": "Split"
+  },
+  "params": [
+    {
+      "id": "orientation",
+      "type": "enum",
+      "title": {
+        "en": "Orientation"
+      },
+      "values": [
+        "horizontal",
+        "vertical"
+      ],
+      "default": "horizontal"
+    },
+    {
+      "id": "softness",
+      "type": "float",
+      "title": {
+        "en": "Softness"
+      },
+      "min": 0,
+      "max": 0.5,
+      "default": 0.05
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "split.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

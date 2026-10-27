@@ -1,0 +1,30 @@
+{
+  "id": "tve.transition.flash",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "basic",
+    "light"
+  ],
+  "title": {
+    "en": "Flash"
+  },
+  "params": [
+    {
+      "id": "intensity",
+      "type": "float",
+      "title": {
+        "en": "Intensity"
+      },
+      "min": 0,
+      "max": 1,
+      "default": 1
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "flash.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

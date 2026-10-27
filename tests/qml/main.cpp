@@ -8,6 +8,7 @@
 #include <QtQuickTest/quicktest.h>
 
 #include "ThumbnailProvider.h"
+#include "TransitionPreviewProvider.h"
 
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ThemePlugin)
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_PlayerPlugin)
@@ -22,6 +23,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("samplesDir"), QStringLiteral(TVE_SAMPLES_DIR));
         engine->rootContext()->setContextProperty(QStringLiteral("tempDir"), QDir::tempPath());
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
+        engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
     }
 };
 

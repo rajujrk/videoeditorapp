@@ -15,6 +15,10 @@ qt_add_qml_module(tve_player
         TrackListModel.cpp
         ThumbnailProvider.h
         ThumbnailProvider.cpp
+        EffectInfo.h
+        EffectInfo.cpp
+        TransitionPreviewProvider.h
+        TransitionPreviewProvider.cpp
 )
 
 qt_add_shaders(tve_player "tve_player_shaders"

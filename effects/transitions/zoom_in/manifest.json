@@ -1,0 +1,29 @@
+{
+  "id": "tve.transition.zoom_in",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "zoom"
+  ],
+  "title": {
+    "en": "Zoom In"
+  },
+  "params": [
+    {
+      "id": "strength",
+      "type": "float",
+      "title": {
+        "en": "Strength"
+      },
+      "min": 0,
+      "max": 3,
+      "default": 1
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "zoom_in.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

@@ -1,6 +1,9 @@
 #include "VideoView.h"
 
+#include "EffectInfo.h"
+
 #include "gpu/Compositor.h"
+#include "gpu/TransitionRenderer.h"
 #include "playback/PlaybackSession.h"
 
 #include <QDateTime>
@@ -104,7 +107,8 @@ tve::EffectInstance toInstance(const tve::ClipEffect& effect)
 // Rendering, per composite frame:
 //   1. each layer: YUV → RGB at the layer's own resolution, then that clip's effects
 //   2. the compositor draws the layers onto the project canvas (placement, crop, opacity,
-//      blend)
+//      blend). A layer in a transition places each of its two clips on a transparent
+//      canvas of its own, blends them with the transition, and draws the result.
 //   3. output effects (the global stack) on the canvas
 //   4. aspect-fit of the canvas into the item
 // Steps 1–3 run when a new frame arrives or a preview/effect setting changes; step 4 runs on
@@ -163,6 +167,9 @@ private:
     std::unique_ptr<QRhiRenderPassDescriptor> m_layerRenderPass;
 
     std::unique_ptr<tve::Compositor> m_compositor;
+    // Per transition within a frame: the outgoing and incoming clips' own canvases.
+    std::vector<std::array<std::unique_ptr<tve::Compositor>, 2>> m_transitionCanvases;
+    std::unique_ptr<tve::TransitionRenderer> m_transitions;
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_clipChains;
     std::unique_ptr<tve::EffectChain> m_outputChain;
     quint64 m_effectsRevision = 0;
@@ -225,6 +232,7 @@ void VideoRenderer::initialize(QRhiCommandBuffer*)
 
     // The layer slots' YUV pipeline is built on first use, against their render pass.
     m_compositor = std::make_unique<tve::Compositor>(m_rhi);
+    m_transitions = std::make_unique<tve::TransitionRenderer>(m_rhi, tve::EffectLibrary::builtIn());
     m_outputChain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
 
     // A placeholder input gives the present pipeline its binding layout.
@@ -388,22 +396,23 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
     FrameResources& resources = m_frames[m_currentFrame];
     tve::CompositeFrame& frame = *resources.frame;
     m_compositor->begin(cb, m_canvasSize);
+    m_transitions->begin();
     std::set<tve::Id> liveClips;
-    for (std::size_t i = 0; i < frame.layers.size(); ++i) {
-        tve::VideoLayer& layer = frame.layers[i];
-        if (!layer.frame.pixelBuffer())
-            continue;
-        QRhiTexture* picture = convertLayer(cb, slot(i), layer.frame.pixelBuffer(), resources);
+    std::size_t slotIndex = 0;
+    std::size_t transitionIndex = 0;
+
+    // One clip's picture, converted and through its effects (with any live preview).
+    const auto clipPicture = [&](tve::Id clipId, const tve::DecodedFrame& decoded, tve::ClipVisual& visual,
+                                 std::vector<tve::ClipEffect> effects) -> QRhiTexture* {
+        if (!decoded.pixelBuffer())
+            return nullptr;
+        QRhiTexture* picture = convertLayer(cb, slot(slotIndex++), decoded.pixelBuffer(), resources);
         if (!picture)
-            continue;
-
-        tve::ClipVisual visual = layer.visual;
-        std::vector<tve::ClipEffect> effects = layer.effects;
+            return nullptr;
         if (m_overrides)
-            m_overrides->apply(layer.clipId, visual, effects);
-
+            m_overrides->apply(clipId, visual, effects);
         if (!effects.empty()) {
-            auto& chain = m_clipChains[layer.clipId];
+            auto& chain = m_clipChains[clipId];
             if (!chain)
                 chain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
             std::vector<tve::EffectInstance> instances;
@@ -411,9 +420,50 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
                 instances.push_back(toInstance(effect));
             chain->setInstances(std::move(instances));
             picture = chain->process(cb, picture, seconds);
-            liveClips.insert(layer.clipId);
+            liveClips.insert(clipId);
         }
-        m_compositor->draw(cb, picture, visual);
+        return picture;
+    };
+
+    for (tve::VideoLayer& layer : frame.layers) {
+        tve::ClipVisual visual = layer.visual;
+        QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects);
+        if (!layer.transition) {
+            if (picture)
+                m_compositor->draw(cb, picture, visual);
+            continue;
+        }
+
+        tve::LayerTransition& transition = *layer.transition;
+        tve::ClipVisual incomingVisual = transition.visual;
+        QRhiTexture* incoming = clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects);
+        if (!picture || !incoming) {
+            if (picture || incoming)
+                m_compositor->draw(cb, picture ? picture : incoming, picture ? visual : incomingVisual);
+            continue;
+        }
+        if (m_transitionCanvases.size() <= transitionIndex)
+            m_transitionCanvases.push_back({std::make_unique<tve::Compositor>(m_rhi), std::make_unique<tve::Compositor>(m_rhi)});
+        auto& canvases = m_transitionCanvases[transitionIndex++];
+        // Each side is placed by itself (blend modes need what is below, which comes after).
+        const tve::BlendMode blend = visual.blend == incomingVisual.blend ? visual.blend : tve::BlendMode::Normal;
+        visual.blend = tve::BlendMode::Normal;
+        incomingVisual.blend = tve::BlendMode::Normal;
+        canvases[0]->begin(cb, m_canvasSize, true);
+        canvases[0]->draw(cb, picture, visual);
+        canvases[1]->begin(cb, m_canvasSize, true);
+        canvases[1]->draw(cb, incoming, incomingVisual);
+        QRhiTexture* blended = m_transitions->render(cb, transition.transitionId, transition.values, transition.progress,
+                                                     canvases[0]->result(), canvases[1]->result(), seconds);
+        if (blended) {
+            tve::ClipVisual whole;
+            whole.blend = blend;
+            m_compositor->draw(cb, blended, whole);
+        } else {
+            // Unknown transition (e.g. from a newer version): cut at the half-way point.
+            m_compositor->draw(cb, transition.progress < 0.5f ? canvases[0]->result() : canvases[1]->result(),
+                               tve::ClipVisual{});
+        }
     }
     // Drop effect chains of clips no longer on screen.
     std::erase_if(m_clipChains, [&](const auto& entry) { return !liveClips.contains(entry.first); });
@@ -588,32 +638,8 @@ QQuickRhiItemRenderer* VideoView::createRenderer()
 QVariantList VideoView::availableEffects() const
 {
     QVariantList list;
-    for (const tve::LoadedEffect& effect : tve::EffectLibrary::builtIn().effects()) {
-        const tve::EffectManifest& m = effect.manifest;
-        QVariantList params;
-        for (const tve::EffectParamSpec& p : m.params) {
-            QVariantList defaults;
-            for (float v : p.defaultValue)
-                defaults << double(v);
-            QStringList values;
-            for (const std::string& v : p.enumValues)
-                values << QString::fromStdString(v);
-            params << QVariantMap{
-                {QStringLiteral("id"), QString::fromStdString(p.id)},
-                {QStringLiteral("title"), QString::fromStdString(p.title.at("en"))},
-                {QStringLiteral("type"), QString::fromLatin1(tve::toString(p.type).data())},
-                {QStringLiteral("min"), p.min},
-                {QStringLiteral("max"), p.max},
-                {QStringLiteral("default"), p.type == tve::ParamType::Color ? QVariant(defaults) : defaults.value(0)},
-                {QStringLiteral("values"), values},
-            };
-        }
-        list << QVariantMap{
-            {QStringLiteral("id"), QString::fromStdString(m.id)},
-            {QStringLiteral("title"), QString::fromStdString(m.displayTitle())},
-            {QStringLiteral("params"), params},
-        };
-    }
+    for (const tve::LoadedEffect& effect : tve::EffectLibrary::builtIn().effects())
+        list << describeEffect(effect);
     return list;
 }
 

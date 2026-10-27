@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phase 0 complete; Phase 1 slices 1, 2, 3a and 3b (timeline, audio, compositing, speed & thumbnails) complete — see §9.1
+**Status:** Phase 0 complete; Phase 1 slices 1, 2, 3a, 3b and 4a (timeline, audio, compositing, speed & thumbnails, transitions) complete — see §9.1
 **Date:** 2026-10-26
 
 ---
@@ -510,7 +510,8 @@ Phase 1 is delivered in five vertical slices, each usable on its own:
 | 2. Audio | Audio decode, mixer, clip volume/fades, waveforms, A/V sync, detach audio, track mute/hide/lock, level meter | **Done** (voice-over moved to slice 5) |
 | 3a. Compositing | Multi-layer compositor on the project canvas: transform, crop, opacity, blend modes; per-clip effects (Color Adjust as basic colour); live preview; canvas from first clip | **Done** |
 | 3b. Speed & thumbnails | Constant speed, reverse, freeze frame (video and audio), timeline and media-bin thumbnails | **Done** (4K60 reverse at 60 fps; 4K60 2× reverse is at the hardware decoder's ceiling until proxies) |
-| 4. Transitions & titles | Transition engine + first 20 transitions, basic text clips | Next |
+| 4a. Transitions | Transition engine (handles, alignment, held edge frames, constant-power sound crossfade), 21 original transitions as shader packages, library with GPU previews, timeline markers, inspector | **Done** |
+| 4b. Titles | Basic text clips on title tracks: font, size, colour, alignment, position | Next |
 | 5. Export & robustness | MP4 export, autosave and crash recovery, proxies, voice-over recording | Planned |
 
 ---

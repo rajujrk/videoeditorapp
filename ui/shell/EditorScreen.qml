@@ -102,8 +102,11 @@ Rectangle {
     Shortcut { sequence: "S"; enabled: editor.visible && !editor.typing; onActivated: editor.project.splitAtPlayhead() }
     Shortcut {
         sequences: ["Delete", "Backspace"]
-        enabled: editor.visible && !editor.typing && editor.project.selectedClip > 0
-        onActivated: editor.project.deleteClip(editor.project.selectedClip)
+        enabled: editor.visible && !editor.typing
+                 && (editor.project.selectedClip > 0 || editor.project.selectedTransition > 0)
+        onActivated: editor.project.selectedTransition > 0
+                     ? editor.project.removeTransition(editor.project.selectedTransition)
+                     : editor.project.deleteClip(editor.project.selectedClip)
     }
     Shortcut { sequence: "Left"; enabled: editor.visible && !editor.typing; onActivated: editor.project.stepFrames(-1) }
     Shortcut { sequence: "Right"; enabled: editor.visible && !editor.typing; onActivated: editor.project.stepFrames(1) }

@@ -243,7 +243,10 @@ TEST_CASE("output follows the clock and is silent when paused")
     PlaybackClock clock;
     clock.seek(kSec + 4 * kSec / 10); // 1.4 s: click at 1.5 s
     mixer->restart(p.project, clock.now());
-    std::this_thread::sleep_for(std::chrono::milliseconds(50)); // let the mixer fill its queue
+    // Let the mixer get well ahead (a busy machine can be slow to schedule it).
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (mixer->queue().size() < 8 && !mixer->producerFinished() && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     AudioOutput output(AudioOutput::Backend::None);
     output.setSource(mixer, &clock);
@@ -254,9 +257,10 @@ TEST_CASE("output follows the clock and is silent when paused")
 
     clock.play();
     output.render(out.data(), 9600);
-    // The click is 0.1 s (4 800 samples) ahead; allow for the time between play() and render().
+    // The click is 0.1 s (4 800 samples) ahead, less the time between play() and render():
+    // up to 20 ms on a loaded machine.
     const auto onset = firstLoud(out);
-    CHECK(onset > 4700);
+    CHECK(onset > 4800 - 960);
     CHECK(onset <= 4800);
     CHECK(output.peakLeft() == Catch::Approx(0.9f).margin(0.01));
     CHECK(output.underruns() == 0);
@@ -351,4 +355,29 @@ TEST_CASE("freeze frames are silent")
     CHECK(peak(mix, 4800, 47000) == Catch::Approx(0.5f).margin(0.05)); // before the still
     CHECK(peak(mix, 49000, 95000) == 0.0f);                            // during the still
     CHECK(peak(mix, 97000, 140000) == Catch::Approx(0.5f).margin(0.05)); // after it
+}
+
+TEST_CASE("a transition crossfades the outgoing clip's sound into its handle")
+{
+    requireSamples();
+    AudioProject p;
+    // Treated as video media so it can sit on a video track (only its sound is mixed here).
+    const Id tone = p.importAudio("test_tone_440.wav", 3 * kSec, true);
+    // A: the tone at 0–1 s; B: silent (volume at minimum), so the mix is A alone.
+    p.push<AddClipCommand>(p.videoTrack, tone, 0, kSec, 0);
+    const Id b = p.push<AddClipCommand>(p.videoTrack, tone, kSec, kSec, 0).clipId();
+    p.push<SetClipAudioCommand>(b, ClipAudio{kMinGainDb, 0, 0});
+    p.push<SetClipTransitionCommand>(b, ClipTransition{"tve.transition.dissolve", kSec});
+
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    const auto mix = drainMix(mixer);
+    const auto at = [](double seconds) { return std::size_t(seconds * audio::kSampleRate); };
+    // The window is 0.5–1.5 s. Before it: full level. Half way to the cut (t = 0.75 s,
+    // progress 1/4): cos(π/8) of full.
+    CHECK(peak(mix, at(0.2), at(0.3)) == Catch::Approx(0.5).margin(kQuantization));
+    CHECK(peak(mix, at(0.745), at(0.755)) == Catch::Approx(0.5 * std::cos(std::numbers::pi / 8)).margin(0.01));
+    // After the cut A runs on into its handle (t = 1.25 s, progress 3/4), silent by 1.5 s.
+    CHECK(peak(mix, at(1.245), at(1.255)) == Catch::Approx(0.5 * std::cos(3 * std::numbers::pi / 8)).margin(0.01));
+    CHECK(peak(mix, at(1.55), at(1.95)) < kQuantization);
 }

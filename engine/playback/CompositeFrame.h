@@ -4,16 +4,32 @@
 #include "model/Project.h"
 #include "playback/FrameQueue.h"
 
+#include <map>
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace tve {
 
-// One clip's picture at a moment of the timeline, with how to show it.
+// The incoming clip of a layer that is in a transition, and how far the transition is.
+struct LayerTransition {
+    std::string transitionId;
+    std::map<std::string, std::vector<float>> values;
+    float progress = 0.0f; // 0 = all outgoing clip, 1 = all incoming clip
+    Id clipId = kNoId;
+    DecodedFrame frame;
+    ClipVisual visual;
+    std::vector<ClipEffect> effects;
+};
+
+// One clip's picture at a moment of the timeline, with how to show it. During a
+// transition this is the outgoing clip and `transition` holds the incoming one.
 struct VideoLayer {
     Id clipId = kNoId;
     DecodedFrame frame;
     ClipVisual visual;
     std::vector<ClipEffect> effects;
+    std::optional<LayerTransition> transition;
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.

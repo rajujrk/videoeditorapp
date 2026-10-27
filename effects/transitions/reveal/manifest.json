@@ -1,0 +1,33 @@
+{
+  "id": "tve.transition.reveal",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "slide"
+  ],
+  "title": {
+    "en": "Reveal"
+  },
+  "params": [
+    {
+      "id": "direction",
+      "type": "enum",
+      "title": {
+        "en": "Direction"
+      },
+      "values": [
+        "left",
+        "right",
+        "up",
+        "down"
+      ],
+      "default": "left"
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "reveal.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

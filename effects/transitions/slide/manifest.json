@@ -1,0 +1,33 @@
+{
+  "id": "tve.transition.slide",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "slide"
+  ],
+  "title": {
+    "en": "Slide"
+  },
+  "params": [
+    {
+      "id": "direction",
+      "type": "enum",
+      "title": {
+        "en": "Direction"
+      },
+      "values": [
+        "left",
+        "right",
+        "up",
+        "down"
+      ],
+      "default": "left"
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "slide.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

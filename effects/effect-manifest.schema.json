@@ -8,7 +8,7 @@
   "properties": {
     "id": { "type": "string", "pattern": "^[a-z0-9]+(\\.[a-z0-9_]+)+$" },
     "version": { "type": "integer", "minimum": 1 },
-    "kind": { "const": "video-effect" },
+    "kind": { "enum": ["video-effect", "transition"] },
     "category": { "type": "array", "items": { "type": "string" } },
     "title": { "$ref": "#/$defs/localized" },
     "params": { "type": "array", "items": { "$ref": "#/$defs/param" } },

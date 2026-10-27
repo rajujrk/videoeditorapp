@@ -4,10 +4,12 @@
 #include "playback/PlaybackClock.h"
 #include "playback/TimelinePlayback.h"
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
 #include <filesystem>
+#include <map>
 #include <thread>
 
 using namespace tve;
@@ -311,6 +313,59 @@ TEST_CASE("a freeze frame holds one source frame, then playback resumes")
         CHECK(shown[i] == 30 * kFrame30); // the frame at 1 s, held
     CHECK(shown[45] == 30 * kFrame30);    // the clip resumes at 1 s
     CHECK(shown[46] == 31 * kFrame30);
+}
+
+TEST_CASE("during a transition each composite carries both clips' frames and the progress")
+{
+    requireSamples();
+    if (!std::filesystem::exists(sample("4k30_h264.mp4")))
+        SKIP("sample missing: 4k30_h264.mp4");
+    auto project = std::make_shared<Project>();
+    CommandStack stack(*project);
+    auto push = [&](std::unique_ptr<Command> command) { REQUIRE_FALSE(stack.push(std::move(command))); };
+    auto track = std::make_unique<AddTrackCommand>(TrackKind::Video, "V1");
+    const auto* trackCmd = track.get();
+    push(std::move(track));
+    auto media = std::make_unique<ImportMediaCommand>(sample("4k30_h264.mp4"), 20 * kSec);
+    const auto* mediaCmd = media.get();
+    push(std::move(media));
+    // A: source 5–6 s at 0–1 s; B: source 10–11 s at 1–2 s; a 0.5 s transition at the cut.
+    push(std::make_unique<AddClipCommand>(trackCmd->trackId(), mediaCmd->mediaId(), 0, kSec, 5 * kSec));
+    auto b = std::make_unique<AddClipCommand>(trackCmd->trackId(), mediaCmd->mediaId(), kSec, kSec, 10 * kSec);
+    const auto* bCmd = b.get();
+    push(std::move(b));
+    push(std::make_unique<SetClipTransitionCommand>(bCmd->clipId(), ClipTransition{"tve.transition.wipe", kSec / 2}));
+
+    TimelinePlayback playback;
+    playback.setProject(project);
+    std::map<Ticks, CompositeFrame> frames;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+    while (std::chrono::steady_clock::now() < deadline && !(playback.producerFinished() && !playback.queue().frontPts())) {
+        if (auto front = playback.queue().frontPts()) {
+            int skipped = 0;
+            auto frame = playback.queue().takeLatestDue(*front, skipped);
+            frames.emplace(frame->time, std::move(*frame));
+            continue;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    REQUIRE(frames.size() == 60);
+
+    const auto check = [&](int frameIndex, Ticks fromPts, Ticks toPts, double progress) {
+        INFO("frame " << frameIndex);
+        const CompositeFrame& frame = frames.at(Ticks(frameIndex) * kFrame30);
+        REQUIRE(frame.layers.size() == 1);
+        const VideoLayer& layer = frame.layers[0];
+        CHECK(layer.frame.pts() == fromPts);
+        REQUIRE(layer.transition);
+        CHECK(layer.transition->transitionId == "tve.transition.wipe");
+        CHECK(layer.transition->frame.pts() == toPts);
+        CHECK(layer.transition->progress == Catch::Approx(progress).margin(1e-4));
+    };
+    check(24, 5 * kSec + 24 * kFrame30, 9 * kSec + 24 * kFrame30, 0.1);  // t = 0.8 s, B in its head handle
+    check(36, 6 * kSec + 6 * kFrame30, 10 * kSec + 6 * kFrame30, 0.9);  // t = 1.2 s, A in its tail handle
+    CHECK_FALSE(frames.at(22 * kFrame30).layers[0].transition);         // t = 0.733 s, before the window
+    CHECK_FALSE(frames.at(38 * kFrame30).layers[0].transition);         // t = 1.267 s, after it
 }
 
 // Not run by default: `tve_engine_tests "[perf]"`. Unpaced producer throughput, in project

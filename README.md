@@ -3,13 +3,14 @@
 A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
-**Status: Phase 1 (MVP editor), slices 1, 2, 3a and 3b of 5 done.** You can import video
+**Status: Phase 1 (MVP editor), slices 1, 2, 3a, 3b and 4a done.** You can import video
 and audio files, arrange them on a multi-track timeline (move, trim, split, delete with
 ripple on the main track, undo/redo), layer clips with position, scale, rotation, crop,
-opacity and blend modes, give each clip its own effects, change a clip's speed (0.1–10×),
-play it in reverse or insert freeze frames, hear and see their sound (waveforms, volume,
-fades, detach audio, track mute/hide/lock, meter), see thumbnails in the media bin and on
-the timeline, play and scrub, and save/open `.tve` projects. Not yet: transitions, titles,
+opacity and blend modes, give each clip its own effects, put any of 21 transitions on the
+cuts between clips (with a constant-power sound crossfade), change a clip's speed
+(0.1–10×), play it in reverse or insert freeze frames, hear and see their sound (waveforms,
+volume, fades, detach audio, track mute/hide/lock, meter), see thumbnails in the media bin
+and on the timeline, play and scrub, and save/open `.tve` projects. Not yet: titles,
 voice-over, export.
 
 What's in the repo:
@@ -23,7 +24,9 @@ What's in the repo:
   audible clips with volume, fades, speed and mute; miniaudio output slaved to the shared
   play/pause/seek clock; waveform peak cache; thumbnail extraction.
 - `effects/` — built-in effect packages (manifest + GLSL shaders): color adjust, gaussian
-  blur, vignette, RGB split, pixelate. See [effects/README.md](effects/README.md) for the
+  blur, vignette, RGB split, pixelate; and 21 original transition packages (dissolve, dips,
+  flash, push, slide, reveal, squeeze, wipes, iris, zooms, spin, pixelate, blur, ripple,
+  door, …). See [effects/README.md](effects/README.md) for the
   manifest format and shader contract.
 - `engine/gpu/` — effect library (manifests cross-checked against shader reflection), the
   GPU effect chain, and the compositor that places layers on the project canvas
@@ -36,7 +39,8 @@ What's in the repo:
 - `ui/theme/` — design system: color/type/spacing tokens (dark and light), original icon
   set and base components. See [docs/design-system.md](docs/design-system.md).
 - `ui/shell/` — Home screen and Editor workspace: media bin, player with transport,
-  inspector (effects live; other tabs planned), and the project-bound timeline.
+  inspector (Video, Speed, Audio and Effects tabs, and a transition page), and the
+  project-bound timeline.
 - `app/` — the application window and command-line options.
 
 ### Editor shortcuts
@@ -69,7 +73,19 @@ with it. Reversed clips play their sound backwards too. "Freeze frame at playhea
 the clip there and inserts a 2-second still (silent; trim it to change its length). Clip
 labels show `2× ·`, `Reverse ·` or `Still ·` badges.
 
-On an M-series Mac a 4K60 H.264 clip plays at 60 fps forwards, in reverse and at 2×; 4K30
+**Transitions.** Click one in the library's Transitions tab to put it on the cut nearest
+the playhead (on the selected clip's track, else the main track), or drag it onto a cut.
+It shows as a marker over the cut; click the marker to edit it in the inspector: kind,
+duration, position (before, centred on or after the cut) and its own settings. ⌫ removes
+the selected transition. A transition plays the media beyond each clip's edges (its
+"handles"); where the media runs out, the edge frame is held. Each side of a transition is
+limited to half its clip, so neighbouring transitions never overlap. Moving or deleting a
+clip removes the transitions it was part of; trimming keeps them, and they play again
+whenever the clips touch.
+
+On an M-series Mac a 4K60 H.264 clip plays at 60 fps forwards, in reverse and at 2×, and
+through any transition between two 4K60 clips (about 59–60 fps; the second the incoming
+clip's decoder opens can dip to the low 50s); 4K30
 plays at 2× in reverse at 30 fps. 4K60 at 2× in reverse needs about 120 hardware decodes
 a second, the decoder's ceiling, so it can drop frames under load; proxies (slice 5) are
 the answer there. `tve_engine_tests "[perf]"` runs the playback throughput benchmarks.

@@ -1,0 +1,40 @@
+{
+  "id": "tve.transition.ripple",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "stylize",
+    "distort"
+  ],
+  "title": {
+    "en": "Ripple"
+  },
+  "params": [
+    {
+      "id": "amplitude",
+      "type": "float",
+      "title": {
+        "en": "Amplitude"
+      },
+      "min": 0,
+      "max": 0.1,
+      "default": 0.03
+    },
+    {
+      "id": "waves",
+      "type": "float",
+      "title": {
+        "en": "Waves"
+      },
+      "min": 1,
+      "max": 40,
+      "default": 12
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "ripple.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

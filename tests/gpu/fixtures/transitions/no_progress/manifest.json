@@ -1,0 +1,9 @@
+{
+  "id": "test.transition.no_progress",
+  "version": 1,
+  "kind": "transition",
+  "title": { "en": "No progress" },
+  "params": [],
+  "passes": [ { "fragment": "no_progress.frag" } ],
+  "license": "TVE-Original"
+}

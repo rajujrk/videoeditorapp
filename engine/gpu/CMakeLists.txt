@@ -7,6 +7,8 @@ add_library(tve_gpu STATIC
     LayerPlacement.h
     Compositor.h
     Compositor.cpp
+    TransitionRenderer.h
+    TransitionRenderer.cpp
 )
 
 qt_add_shaders(tve_gpu "tve_gpu_shaders"

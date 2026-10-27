@@ -66,9 +66,12 @@ Rectangle {
             IconButton {
                 objectName: "deleteButton"
                 iconName: "delete"
-                tip: "Delete selected clip (⌫) — closes the gap on the main track"
-                enabled: timeline.project.selectedClip > 0
-                onClicked: timeline.project.deleteClip(timeline.project.selectedClip)
+                tip: timeline.project.selectedTransition > 0 ? "Remove selected transition (⌫)"
+                                                             : "Delete selected clip (⌫) — closes the gap on the main track"
+                enabled: timeline.project.selectedClip > 0 || timeline.project.selectedTransition > 0
+                onClicked: timeline.project.selectedTransition > 0
+                           ? timeline.project.removeTransition(timeline.project.selectedTransition)
+                           : timeline.project.deleteClip(timeline.project.selectedClip)
             }
             Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
             IconButton { iconName: "magnet"; tip: "Main track closes gaps on delete"; checkable: true; checked: true; enabled: false }
@@ -270,7 +273,10 @@ Rectangle {
                         // Clicking empty lane space clears the selection.
                         MouseArea {
                             anchors.fill: parent
-                            onPressed: timeline.project.selectedClip = 0
+                            onPressed: {
+                                timeline.project.selectedClip = 0
+                                timeline.project.selectedTransition = 0
+                            }
                         }
 
                         Column {
@@ -303,18 +309,36 @@ Rectangle {
                                             track: lane.track
                                         }
                                     }
+                                    // Transitions sit over the cuts they span.
+                                    Repeater {
+                                        model: lane.track.clips.filter((c) => c.transition && c.transition.clipId !== undefined)
+                                        delegate: TransitionMarker {
+                                            required property var modelData
+                                            transition: modelData.transition
+                                        }
+                                    }
                                 }
                             }
                         }
 
-                        // Media dragged from the library
+                        // Media and transitions dragged from the library
                         DropArea {
                             anchors.fill: parent
-                            keys: ["application/x-tve-media"]
+                            keys: ["application/x-tve-media", "application/x-tve-transition"]
                             onDropped: (drop) => {
                                 const track = timeline.trackAtY(drop.y)
                                 if (!track)
                                     return
+                                if (drop.keys.indexOf("application/x-tve-transition") >= 0) {
+                                    // Onto the nearest cut within a few clip-edge widths.
+                                    const id = drop.source && drop.source.transitionId !== undefined
+                                             ? drop.source.transitionId
+                                             : drop.getDataAsString("application/x-tve-transition")
+                                    timeline.project.addTransitionAt(id, track.id, drop.x / timeline.pixelsPerSecond,
+                                                                     40 / timeline.pixelsPerSecond)
+                                    drop.accept()
+                                    return
+                                }
                                 let start = Math.max(0, drop.x / timeline.pixelsPerSecond)
                                 if (snapToggle.checked)
                                     start = timeline.project.snap(start, timeline.snapPixels / timeline.pixelsPerSecond)
@@ -336,6 +360,42 @@ Rectangle {
                         Rectangle { x: -6; y: 0; width: 13; height: 14; radius: 3; color: Theme.color.playhead }
                     }
                 }
+            }
+        }
+    }
+
+    // A transition over a cut: spans its window, centred on the lane. Click to select it.
+    component TransitionMarker: AbstractButton {
+        id: marker
+        required property var transition
+        readonly property bool selected: timeline.project.selectedTransition === transition.clipId
+
+        objectName: "transition:" + transition.clipId
+        x: transition.start * timeline.pixelsPerSecond
+        width: Math.max(18, (transition.end - transition.start) * timeline.pixelsPerSecond)
+        height: 22
+        y: (parent.height - height) / 2
+        z: 6
+        hoverEnabled: true
+        onClicked: timeline.project.selectedTransition = transition.clipId
+
+        ToolTip {
+            visible: marker.hovered
+            delay: 500
+            text: marker.transition.title + " · " + marker.transition.duration.toFixed(1) + " s"
+        }
+        background: Rectangle {
+            radius: Theme.radius.s
+            color: marker.selected ? Theme.color.accent : Qt.alpha(Theme.color.surfaceRaised, 0.92)
+            border.width: marker.selected ? 2 : 1
+            border.color: marker.selected ? Theme.color.selection : Theme.color.borderStrong
+        }
+        contentItem: Item {
+            Icon {
+                anchors.centerIn: parent
+                name: "transitions"
+                size: Theme.size.iconSmall
+                color: marker.selected ? Theme.color.textOnAccent : Theme.color.textPrimary
             }
         }
     }

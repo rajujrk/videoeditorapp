@@ -1,0 +1,31 @@
+{
+  "id": "tve.transition.squeeze",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "slide"
+  ],
+  "title": {
+    "en": "Squeeze"
+  },
+  "params": [
+    {
+      "id": "orientation",
+      "type": "enum",
+      "title": {
+        "en": "Orientation"
+      },
+      "values": [
+        "horizontal",
+        "vertical"
+      ],
+      "default": "horizontal"
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "squeeze.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

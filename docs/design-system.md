@@ -114,10 +114,10 @@ Sizes are `Theme.size.*` tokens.
 | Region | File | Status |
 |---|---|---|
 | Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker, undo/redo with labels, save, theme toggle; export waits for Phase 1 slice 5 |
-| Library | `ui/shell/LibraryPanel.qml` | **Media and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
+| Library | `ui/shell/LibraryPanel.qml` | **Media, Transitions and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, stats overlay |
-| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (placement/crop/opacity/blend, speed/reverse/freeze frame, volume/fades/detach, effect stack); Color tab shows the planned sections |
-| Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges |
+| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (placement/crop/opacity/blend, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); Color tab shows the planned sections |
+| Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges, transition markers over cuts (select, delete, drop target) |
 
 ### Home
 
@@ -155,10 +155,20 @@ Thumbnails come from `image://tvethumb/<url-encoded path>@<seconds>@<height>` (a
 twice the displayed height for Retina screens, and round times (the timeline uses 0.25 s)
 so zooming reuses cached frames.
 
+Transition previews come from `image://tvetransition/<transition id>@<progress>`: the
+transition between two generated sample pictures, rendered offscreen on the GPU and cached.
+Tiles show progress 0.3 and step through 0–1 on hover.
+
 Speed tab, dark and light:
 
 ![Speed tab, dark](images/speed-dark.png)
 ![Speed tab, light](images/speed-light.png)
+
+Transitions tab and a selected transition (a soft wipe between test-pattern and gradient
+footage, playhead in the transition), dark and light:
+
+![Transitions, dark](images/transitions-dark.png)
+![Transitions, light](images/transitions-light.png)
 
 ### Icons
 
