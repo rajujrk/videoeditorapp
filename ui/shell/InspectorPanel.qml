@@ -11,6 +11,8 @@ Rectangle {
     required property var project
     property int currentTab: 3
     readonly property var clipInfo: project.selectedClipInfo
+    readonly property bool clipIsVideo: clipInfo.trackKind === "video"
+    readonly property var visual: clipInfo.visual || ({})
 
     color: Theme.color.surface
 
@@ -70,22 +72,81 @@ Rectangle {
             Layout.fillHeight: true
             currentIndex: inspector.currentTab
 
-            // Video
+            // Video: placement, crop and compositing of the selected clip
             InspectorPage {
-                Section {
-                    title: "Transform"
-                    PlannedSlider { label: "Position X" }
-                    PlannedSlider { label: "Position Y" }
-                    PlannedSlider { label: "Scale"; value: 0.5 }
-                    PlannedSlider { label: "Rotation" }
+
+                Text {
+                    visible: !inspector.clipIsVideo
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.space.l
+                    text: inspector.clipInfo.id === undefined ? "Select a video clip to adjust its picture."
+                                                             : "Audio clips have no picture."
+                    font: Theme.type.body
+                    color: Theme.color.textSecondary
+                    wrapMode: Text.WordWrap
                 }
-                Section {
-                    title: "Compositing"
-                    PlannedSlider { label: "Opacity"; value: 1 }
-                    PlannedRow { label: "Blend mode"; detail: "Normal" }
+
+                ColumnLayout {
+                    visible: inspector.clipIsVideo
+                    Layout.fillWidth: true
+                    spacing: Theme.space.s
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Theme.space.s
+                        Text {
+                            text: inspector.clipInfo.label || ""
+                            font: Theme.type.heading
+                            color: Theme.color.textPrimary
+                            elide: Text.ElideMiddle
+                            Layout.fillWidth: true
+                        }
+                        TextButton {
+                            objectName: "resetVisualButton"
+                            text: "Reset"
+                            variant: "ghost"
+                            onClicked: inspector.project.resetClipVisual(inspector.clipInfo.id)
+                        }
+                    }
+
+                    Section {
+                        title: "Transform"
+                        VisualSlider { key: "x"; objectName: "visual:x"; label: "Position X"; from: -1; to: 1; value: inspector.visual.x || 0
+                                       format: (v) => Math.round(v * inspector.project.canvasWidth) + " px" }
+                        VisualSlider { key: "y"; objectName: "visual:y"; label: "Position Y"; from: -1; to: 1; value: inspector.visual.y || 0
+                                       format: (v) => Math.round(v * inspector.project.canvasHeight) + " px" }
+                        VisualSlider { key: "scale"; objectName: "visual:scale"; label: "Scale"; from: 0.05; to: 4
+                                       value: inspector.visual.scale === undefined ? 1 : inspector.visual.scale
+                                       format: (v) => Math.round(v * 100) + "%" }
+                        VisualSlider { key: "rotation"; objectName: "visual:rotation"; label: "Rotation"; from: -180; to: 180
+                                       value: inspector.visual.rotation || 0; format: (v) => v.toFixed(1) + "°" }
+                    }
+                    Section {
+                        title: "Crop"
+                        VisualSlider { key: "cropLeft"; label: "Left"; from: 0; to: 0.45; value: inspector.visual.cropLeft || 0; format: (v) => Math.round(v * 100) + "%" }
+                        VisualSlider { key: "cropRight"; label: "Right"; from: 0; to: 0.45; value: inspector.visual.cropRight || 0; format: (v) => Math.round(v * 100) + "%" }
+                        VisualSlider { key: "cropTop"; label: "Top"; from: 0; to: 0.45; value: inspector.visual.cropTop || 0; format: (v) => Math.round(v * 100) + "%" }
+                        VisualSlider { key: "cropBottom"; label: "Bottom"; from: 0; to: 0.45; value: inspector.visual.cropBottom || 0; format: (v) => Math.round(v * 100) + "%" }
+                    }
+                    Section {
+                        title: "Compositing"
+                        VisualSlider { key: "opacity"; objectName: "visual:opacity"; label: "Opacity"; from: 0; to: 1
+                                       value: inspector.visual.opacity === undefined ? 1 : inspector.visual.opacity
+                                       format: (v) => Math.round(v * 100) + "%" }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: "Blend mode"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            ComboBox {
+                                objectName: "blendMode"
+                                readonly property var modes: ["normal", "multiply", "screen", "overlay", "add", "darken", "lighten"]
+                                model: ["Normal", "Multiply", "Screen", "Overlay", "Add", "Darken", "Lighten"]
+                                currentIndex: Math.max(0, modes.indexOf(inspector.visual.blend || "normal"))
+                                onActivated: (index) => inspector.project.setClipVisual(inspector.clipInfo.id, { blend: modes[index] })
+                            }
+                        }
+                    }
+                    Section { title: "Speed"; expanded: false; PlannedRow { label: "Constant / reverse / freeze"; detail: "Slice 3b" } }
                 }
-                Section { title: "Crop"; expanded: false; PlannedRow { label: "Crop & zoom"; detail: "Phase 1" } }
-                Section { title: "Speed"; expanded: false; PlannedRow { label: "Constant / ramp"; detail: "Phase 1–2" } }
             }
 
             // Audio: live for the selected clip
@@ -182,15 +243,58 @@ Rectangle {
                 Section { title: "LUT"; expanded: false; PlannedRow { label: "3D LUT"; detail: "Phase 2" } }
             }
 
-            // Effects: the live effect stack
+            // Effects: the selected clip's effect stack
             InspectorPage {
-                Repeater {
-                    model: inspector.player.availableEffects
-                    delegate: EffectCard {
-                        required property var modelData
+
+                Text {
+                    visible: !inspector.clipIsVideo
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.space.l
+                    text: "Select a video clip to add effects to it."
+                    font: Theme.type.body
+                    color: Theme.color.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+
+                RowLayout {
+                    visible: inspector.clipIsVideo
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.space.s
+                    ComboBox {
+                        id: effectPicker
+                        objectName: "effectPicker"
                         Layout.fillWidth: true
-                        player: inspector.player
-                        effect: modelData
+                        model: inspector.player.availableEffects.map((e) => e.title)
+                    }
+                    TextButton {
+                        objectName: "addEffectButton"
+                        text: "Add"
+                        iconName: "plus"
+                        onClicked: inspector.project.addClipEffect(inspector.clipInfo.id,
+                                                                   inspector.player.availableEffects[effectPicker.currentIndex].id)
+                    }
+                }
+
+                Text {
+                    visible: inspector.clipIsVideo && (inspector.clipInfo.effects || []).length === 0
+                    Layout.fillWidth: true
+                    text: "No effects on this clip yet. Pick one above, or click an effect in the library."
+                    font: Theme.type.label
+                    color: Theme.color.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+
+                Repeater {
+                    model: inspector.clipIsVideo ? (inspector.clipInfo.effects || []) : []
+                    delegate: ClipEffectCard {
+                        required property var modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        project: inspector.project
+                        clipId: inspector.clipInfo.id
+                        stackIndex: index
+                        entry: modelData
+                        spec: inspector.player.availableEffects.find((e) => e.id === modelData.effectId) || ({ title: modelData.effectId, params: [] })
                     }
                 }
             }
@@ -199,6 +303,13 @@ Rectangle {
 
     function commitAudio(gainDb, fadeIn, fadeOut) {
         project.setClipAudio(clipInfo.id, gainDb, fadeIn, fadeOut)
+    }
+
+    // A picture property: previews live while dragging, commits one undo step on release.
+    component VisualSlider: AudioSlider {
+        required property string key
+        onLiveValue: (v) => { const m = {}; m[key] = v; inspector.project.previewClipVisual(inspector.clipInfo.id, m) }
+        onCommitted: (v) => { const m = {}; m[key] = v; inspector.project.setClipVisual(inspector.clipInfo.id, m) }
     }
 
     // A slider that previews while dragging and commits one undo step on release.
@@ -210,6 +321,7 @@ Rectangle {
         property real value: 0
         property var format: (v) => v.toFixed(2)
         signal committed(real value)
+        signal liveValue(real value)
         Layout.fillWidth: true
         spacing: 0
         onValueChanged: slider.value = value
@@ -223,6 +335,7 @@ Rectangle {
             id: slider
             Layout.fillWidth: true
             value: audioSlider.value
+            onMoved: audioSlider.liveValue(value)
             onPressedChanged: {
                 if (!pressed && value !== audioSlider.value)
                     audioSlider.committed(value)

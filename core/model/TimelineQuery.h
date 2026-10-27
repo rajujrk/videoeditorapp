@@ -18,6 +18,9 @@ struct VisibleClip {
 // layers arrives with transforms; until then upper tracks fully cover lower ones.)
 std::optional<VisibleClip> visibleVideoAt(const Project& project, Ticks time);
 
+// Every visible video clip covering `time`, bottom track first: the layers to composite.
+std::vector<VisibleClip> visibleVideoLayersAt(const Project& project, Ticks time);
+
 // Start of the next video clip on a visible track strictly after `time`, if any.
 std::optional<Ticks> nextVideoClipStart(const Project& project, Ticks time);
 

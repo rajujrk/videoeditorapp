@@ -222,6 +222,8 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     };
     right.audioEnabled = clip.audioEnabled;
     right.gainDb = clip.gainDb;
+    right.visual = clip.visual;
+    right.effects = clip.effects;
     right.fadeOut = clip.fadeOut;
     clip.duration = leftDuration;
     clip.fadeOut = 0;
@@ -375,6 +377,80 @@ void DetachAudioCommand::undo(Project& project)
     for (Track& track : project.tracks)
         track.removeClip(m_audioClipId);
     project.locateClip(m_clipId)->clip->audioEnabled = true;
+}
+
+// --- SetClipVisualCommand ---
+
+std::optional<std::string> SetClipVisualCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    if (location->track->kind != TrackKind::Video)
+        return "only video clips have a picture";
+    const ClipVisual& v = m_visual;
+    if (v.transform.scale < 0.01 || v.transform.scale > 20.0)
+        return "scale must be between 1% and 2000%";
+    if (v.opacity < 0.0 || v.opacity > 1.0)
+        return "opacity must be between 0 and 100%";
+    const auto inRange = [](double c) { return c >= 0.0 && c <= 0.9; };
+    if (!inRange(v.crop.left) || !inRange(v.crop.right) || !inRange(v.crop.top) || !inRange(v.crop.bottom)
+        || v.crop.left + v.crop.right > 0.95 || v.crop.top + v.crop.bottom > 0.95)
+        return "crop would leave too little of the picture";
+    m_previous = location->clip->visual;
+    location->clip->visual = m_visual;
+    return std::nullopt;
+}
+
+void SetClipVisualCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->visual = m_previous;
+}
+
+// --- SetClipEffectsCommand ---
+
+std::optional<std::string> SetClipEffectsCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    if (location->track->kind != TrackKind::Video)
+        return "effects apply to video clips";
+    for (const ClipEffect& effect : m_effects) {
+        if (effect.effectId.empty())
+            return "effect id is empty";
+    }
+    m_previous = location->clip->effects;
+    location->clip->effects = m_effects;
+    return std::nullopt;
+}
+
+void SetClipEffectsCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->effects = m_previous;
+}
+
+// --- SetProjectSettingsCommand ---
+
+std::optional<std::string> SetProjectSettingsCommand::redo(Project& project)
+{
+    const ProjectSettings& s = m_settings;
+    if (s.width < 16 || s.height < 16 || s.width > 16384 || s.height > 16384)
+        return "canvas size is out of range";
+    if (s.frameRate.num <= 0 || s.frameRate.den <= 0)
+        return "frame rate must be positive";
+    m_previous = project.settings;
+    project.settings = m_settings;
+    return std::nullopt;
+}
+
+void SetProjectSettingsCommand::undo(Project& project)
+{
+    project.settings = m_previous;
 }
 
 } // namespace tve

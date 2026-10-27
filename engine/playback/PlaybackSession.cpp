@@ -68,7 +68,9 @@ void PlaybackSession::run()
         frame->setPts(frame->pts() + loopOffset);
         loopEnd = std::max(loopEnd, frame->pts() + frameTicks);
         ++m_counters.decoded;
-        if (!m_queue.push(std::move(*frame)))
+        CompositeFrame composite{frame->pts(), {}};
+        composite.layers.push_back(VideoLayer{kNoId, std::move(*frame), {}, {}});
+        if (!m_queue.push(std::move(composite)))
             break;
     }
 }

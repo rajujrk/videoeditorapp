@@ -33,6 +33,7 @@ public:
     PlaybackClock& clock() override { return m_clock; }
     PlaybackCounters& counters() override { return m_counters; }
     bool startsOnFirstFrame() const override { return true; }
+    Size canvasSize() const override { return {m_info.width, m_info.height}; }
 
 private:
     explicit PlaybackSession(std::unique_ptr<VideoDecoder> decoder);

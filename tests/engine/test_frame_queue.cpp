@@ -1,3 +1,4 @@
+#include "decode/DecodedFrame.h"
 #include "playback/FrameQueue.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -19,7 +20,7 @@ DecodedFrame makeFrame(Ticks pts)
 
 TEST_CASE("takeLatestDue returns the newest due frame and counts skipped ones")
 {
-    FrameQueue queue(8);
+    BasicFrameQueue<DecodedFrame> queue(8);
     for (Ticks pts : {0, 10, 20, 30})
         REQUIRE(queue.push(makeFrame(pts)));
 
@@ -35,7 +36,7 @@ TEST_CASE("takeLatestDue returns the newest due frame and counts skipped ones")
 
 TEST_CASE("stop unblocks a producer waiting on a full queue")
 {
-    FrameQueue queue(1);
+    BasicFrameQueue<DecodedFrame> queue(1);
     REQUIRE(queue.push(makeFrame(0)));
 
     bool pushed = true;

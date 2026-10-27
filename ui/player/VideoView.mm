@@ -1,5 +1,6 @@
 #include "VideoView.h"
 
+#include "gpu/Compositor.h"
 #include "playback/PlaybackSession.h"
 
 #include <QDateTime>
@@ -15,6 +16,8 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <map>
+#include <set>
 
 namespace {
 
@@ -93,20 +96,25 @@ QMatrix4x4 yuvToRgbMatrix(CVPixelBufferRef buffer, bool fullRange)
                       0.0f, 0.0f, 0.0f, 1.0f);
 }
 
+tve::EffectInstance toInstance(const tve::ClipEffect& effect)
+{
+    return tve::EffectInstance{effect.effectId, effect.enabled, effect.values};
+}
 
-
-// Rendering happens in three stages:
-//   1. YUV → RGB into m_frame, an RGBA16F texture at the video's own resolution
-//   2. the effect chain, which reads m_frame and returns the processed texture
-//   3. aspect-fit of that texture into the item
-// Stages 1–2 only run when a new frame arrives or the effects change; stage 3 runs on
+// Rendering, per composite frame:
+//   1. each layer: YUV → RGB at the layer's own resolution, then that clip's effects
+//   2. the compositor draws the layers onto the project canvas (placement, crop, opacity,
+//      blend)
+//   3. output effects (the global stack) on the canvas
+//   4. aspect-fit of the canvas into the item
+// Steps 1–3 run when a new frame arrives or a preview/effect setting changes; step 4 runs on
 // every vsync.
 class VideoRenderer final : public QQuickRhiItemRenderer {
 public:
     ~VideoRenderer() override
     {
-        for (InFlight& slot : m_inFlight)
-            release(slot);
+        for (FrameResources& resources : m_frames)
+            release(resources);
         if (m_textureCache)
             CFRelease(m_textureCache);
     }
@@ -117,62 +125,72 @@ protected:
     void render(QRhiCommandBuffer* cb) override;
 
 private:
-    // A frame's Metal textures stay alive for a few renders because the GPU may still be
-    // sampling them after the frame has been replaced.
-    struct InFlight {
-        tve::DecodedFrame frame;
-        CVMetalTextureRef luma = nullptr;
-        CVMetalTextureRef chroma = nullptr;
+    // A composite frame and the Metal textures made from its pixel buffers. Kept for a few
+    // renders because the GPU may still be sampling them after the frame is replaced.
+    struct FrameResources {
+        std::optional<tve::CompositeFrame> frame;
+        std::vector<CVMetalTextureRef> textures;
     };
 
-    static void release(InFlight& slot);
-    bool showFrame(tve::DecodedFrame frame);
-    bool ensureFrameTarget(QSize size);
+    // Per layer position within a frame: every pass of a frame is recorded before the GPU
+    // runs it, so each layer needs its own textures, uniforms and bindings.
+    struct LayerSlot {
+        std::unique_ptr<QRhiTexture> luma;
+        std::unique_ptr<QRhiTexture> chroma;
+        std::unique_ptr<QRhiBuffer> uniforms;
+        std::unique_ptr<QRhiShaderResourceBindings> bindings;
+        std::unique_ptr<QRhiTexture> rgb;
+        std::unique_ptr<QRhiTextureRenderTarget> target;
+    };
+
+    static void release(FrameResources& resources);
+    LayerSlot& slot(std::size_t index);
+    // YUV → RGB of one layer into its slot's texture; nullptr if the buffer is unusable.
+    QRhiTexture* convertLayer(QRhiCommandBuffer* cb, LayerSlot& slot, CVPixelBufferRef buffer,
+                              FrameResources& resources);
     bool bindPresentInput(QRhiTexture* image);
+    void renderFrame(QRhiCommandBuffer* cb, float seconds);
 
     QRhi* m_rhi = nullptr;
     std::unique_ptr<QRhiSampler> m_sampler;
     CVMetalTextureCacheRef m_textureCache = nullptr;
+    QShader m_videoVert;
+    QShader m_videoFrag;
+    QShader m_presentFrag;
 
-    // Stage 1: YUV → RGB
-    std::unique_ptr<QRhiBuffer> m_yuvUniforms;
-    std::unique_ptr<QRhiTexture> m_luma;
-    std::unique_ptr<QRhiTexture> m_chroma;
-    std::unique_ptr<QRhiShaderResourceBindings> m_yuvBindings;
+    std::vector<LayerSlot> m_slots;
     std::unique_ptr<QRhiGraphicsPipeline> m_yuvPipeline;
-    std::unique_ptr<QRhiTexture> m_frame;
-    std::unique_ptr<QRhiTextureRenderTarget> m_frameTarget;
-    std::unique_ptr<QRhiRenderPassDescriptor> m_frameRenderPass;
+    std::unique_ptr<QRhiRenderPassDescriptor> m_layerRenderPass;
 
-    // Stage 2: effects
-    std::unique_ptr<tve::EffectChain> m_chain;
+    std::unique_ptr<tve::Compositor> m_compositor;
+    std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_clipChains;
+    std::unique_ptr<tve::EffectChain> m_outputChain;
     quint64 m_effectsRevision = 0;
+    std::shared_ptr<PreviewOverrides> m_overrides;
+    quint64 m_overridesRevision = 0;
 
-    // Stage 3: present
     std::unique_ptr<QRhiBuffer> m_presentUniforms;
     std::unique_ptr<QRhiShaderResourceBindings> m_presentBindings;
     std::unique_ptr<QRhiGraphicsPipeline> m_presentPipeline;
     QRhiTexture* m_presentInput = nullptr;
     QRhiTexture* m_processed = nullptr;
 
-    std::array<InFlight, 3> m_inFlight;
-    std::size_t m_nextSlot = 0;
-
-    std::shared_ptr<tve::FrameSource> m_source;
+    std::array<FrameResources, 3> m_frames;
+    std::size_t m_currentFrame = 0;
     bool m_hasFrame = false;
     bool m_needsProcessing = false;
-    QSize m_videoSize;
-    QMatrix4x4 m_colorMatrix;
+    QSize m_canvasSize;
+
+    std::shared_ptr<tve::FrameSource> m_source;
+    std::unique_ptr<QRhiTexture> m_placeholder;
 };
 
-void VideoRenderer::release(InFlight& slot)
+void VideoRenderer::release(FrameResources& resources)
 {
-    if (slot.luma)
-        CFRelease(slot.luma);
-    if (slot.chroma)
-        CFRelease(slot.chroma);
-    slot.luma = slot.chroma = nullptr;
-    slot.frame.reset();
+    for (CVMetalTextureRef texture : resources.textures)
+        CFRelease(texture);
+    resources.textures.clear();
+    resources.frame.reset();
 }
 
 void VideoRenderer::initialize(QRhiCommandBuffer*)
@@ -196,57 +214,27 @@ void VideoRenderer::initialize(QRhiCommandBuffer*)
         return;
     }
 
+    m_videoVert = loadShader(QStringLiteral(":/shaders/video.vert.qsb"));
+    m_videoFrag = loadShader(QStringLiteral(":/shaders/video.frag.qsb"));
+    m_presentFrag = loadShader(QStringLiteral(":/shaders/present.frag.qsb"));
     m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
                                       QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
     m_sampler->create();
-    m_luma.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(1, 1)));
-    m_luma->create();
-    m_chroma.reset(m_rhi->newTexture(QRhiTexture::RG8, QSize(1, 1)));
-    m_chroma->create();
-    m_yuvUniforms.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, 80));
-    m_yuvUniforms->create();
     m_presentUniforms.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, 80));
     m_presentUniforms->create();
 
-    m_yuvBindings.reset(m_rhi->newShaderResourceBindings());
-    m_yuvBindings->setBindings({
-        QRhiShaderResourceBinding::uniformBuffer(
-            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, m_yuvUniforms.get()),
-        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, m_luma.get(),
-                                                  m_sampler.get()),
-        QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, m_chroma.get(),
-                                                  m_sampler.get()),
-    });
-    m_yuvBindings->create();
+    // The layer slots' YUV pipeline is built on first use, against their render pass.
+    m_compositor = std::make_unique<tve::Compositor>(m_rhi);
+    m_outputChain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
 
-    // The frame target only gets its real size with the first frame; a placeholder
-    // gives the render pass descriptor the YUV pipeline is built against.
-    if (!ensureFrameTarget(QSize(16, 16)))
-        return;
-    m_yuvPipeline.reset(m_rhi->newGraphicsPipeline());
-    m_yuvPipeline->setTopology(QRhiGraphicsPipeline::TriangleStrip);
-    m_yuvPipeline->setShaderStages({
-        {QRhiShaderStage::Vertex, loadShader(QStringLiteral(":/shaders/video.vert.qsb"))},
-        {QRhiShaderStage::Fragment, loadShader(QStringLiteral(":/shaders/video.frag.qsb"))},
-    });
-    m_yuvPipeline->setVertexInputLayout({});
-    m_yuvPipeline->setShaderResourceBindings(m_yuvBindings.get());
-    m_yuvPipeline->setRenderPassDescriptor(m_frameRenderPass.get());
-    if (!m_yuvPipeline->create()) {
-        qWarning("VideoView: cannot create YUV pipeline");
-        return;
-    }
-
-    m_chain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
-
-    if (!bindPresentInput(m_frame.get()))
+    // A placeholder input gives the present pipeline its binding layout.
+    m_placeholder.reset(m_rhi->newTexture(QRhiTexture::RGBA8, QSize(1, 1)));
+    m_placeholder->create();
+    if (!bindPresentInput(m_placeholder.get()))
         return;
     m_presentPipeline.reset(m_rhi->newGraphicsPipeline());
     m_presentPipeline->setTopology(QRhiGraphicsPipeline::TriangleStrip);
-    m_presentPipeline->setShaderStages({
-        {QRhiShaderStage::Vertex, loadShader(QStringLiteral(":/shaders/video.vert.qsb"))},
-        {QRhiShaderStage::Fragment, loadShader(QStringLiteral(":/shaders/present.frag.qsb"))},
-    });
+    m_presentPipeline->setShaderStages({{QRhiShaderStage::Vertex, m_videoVert}, {QRhiShaderStage::Fragment, m_presentFrag}});
     m_presentPipeline->setVertexInputLayout({});
     m_presentPipeline->setShaderResourceBindings(m_presentBindings.get());
     m_presentPipeline->setRenderPassDescriptor(renderTarget()->renderPassDescriptor());
@@ -257,21 +245,105 @@ void VideoRenderer::initialize(QRhiCommandBuffer*)
     }
 }
 
-bool VideoRenderer::ensureFrameTarget(QSize size)
+VideoRenderer::LayerSlot& VideoRenderer::slot(std::size_t index)
 {
-    if (m_frame && m_frame->pixelSize() == size)
-        return true;
-    const QRhiTexture::Format format =
-        m_rhi->isTextureFormatSupported(QRhiTexture::RGBA16F) ? QRhiTexture::RGBA16F : QRhiTexture::RGBA8;
-    m_frameTarget.reset();
-    m_frame.reset(m_rhi->newTexture(format, size, 1, QRhiTexture::RenderTarget));
-    if (!m_frame->create())
-        return false;
-    m_frameTarget.reset(m_rhi->newTextureRenderTarget({m_frame.get()}));
-    if (!m_frameRenderPass)
-        m_frameRenderPass.reset(m_frameTarget->newCompatibleRenderPassDescriptor());
-    m_frameTarget->setRenderPassDescriptor(m_frameRenderPass.get());
-    return m_frameTarget->create();
+    while (m_slots.size() <= index) {
+        LayerSlot slot;
+        slot.luma.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(1, 1)));
+        slot.luma->create();
+        slot.chroma.reset(m_rhi->newTexture(QRhiTexture::RG8, QSize(1, 1)));
+        slot.chroma->create();
+        slot.uniforms.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, 80));
+        slot.uniforms->create();
+        slot.bindings.reset(m_rhi->newShaderResourceBindings());
+        slot.bindings->setBindings({
+            QRhiShaderResourceBinding::uniformBuffer(
+                0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage,
+                slot.uniforms.get()),
+            QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, slot.luma.get(),
+                                                      m_sampler.get()),
+            QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, slot.chroma.get(),
+                                                      m_sampler.get()),
+        });
+        slot.bindings->create();
+        m_slots.push_back(std::move(slot));
+    }
+    return m_slots[index];
+}
+
+QRhiTexture* VideoRenderer::convertLayer(QRhiCommandBuffer* cb, LayerSlot& slot, CVPixelBufferRef buffer,
+                                         FrameResources& resources)
+{
+    const PlaneFormats formats = planeFormats(CVPixelBufferGetPixelFormatType(buffer));
+    if (!formats.supported)
+        return nullptr;
+
+    const size_t lumaWidth = CVPixelBufferGetWidthOfPlane(buffer, 0);
+    const size_t lumaHeight = CVPixelBufferGetHeightOfPlane(buffer, 0);
+    const size_t chromaWidth = CVPixelBufferGetWidthOfPlane(buffer, 1);
+    const size_t chromaHeight = CVPixelBufferGetHeightOfPlane(buffer, 1);
+    CVMetalTextureRef luma = nullptr;
+    CVMetalTextureRef chroma = nullptr;
+    if (CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, m_textureCache, buffer, nullptr,
+                                                  formats.metalLuma, lumaWidth, lumaHeight, 0, &luma)
+            != kCVReturnSuccess
+        || CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, m_textureCache, buffer, nullptr,
+                                                     formats.metalChroma, chromaWidth, chromaHeight, 1, &chroma)
+            != kCVReturnSuccess) {
+        if (luma)
+            CFRelease(luma);
+        return nullptr;
+    }
+    resources.textures.push_back(luma);
+    resources.textures.push_back(chroma);
+
+    slot.luma->setFormat(formats.luma);
+    slot.luma->setPixelSize(QSize(int(lumaWidth), int(lumaHeight)));
+    slot.luma->createFrom({quint64(quintptr((void*)CVMetalTextureGetTexture(luma))), 0});
+    slot.chroma->setFormat(formats.chroma);
+    slot.chroma->setPixelSize(QSize(int(chromaWidth), int(chromaHeight)));
+    slot.chroma->createFrom({quint64(quintptr((void*)CVMetalTextureGetTexture(chroma))), 0});
+
+    const QSize size(int(CVPixelBufferGetWidth(buffer)), int(CVPixelBufferGetHeight(buffer)));
+    if (!slot.rgb || slot.rgb->pixelSize() != size) {
+        const QRhiTexture::Format format =
+            m_rhi->isTextureFormatSupported(QRhiTexture::RGBA16F) ? QRhiTexture::RGBA16F : QRhiTexture::RGBA8;
+        slot.target.reset();
+        slot.rgb.reset(m_rhi->newTexture(format, size, 1, QRhiTexture::RenderTarget));
+        if (!slot.rgb->create())
+            return nullptr;
+        slot.target.reset(m_rhi->newTextureRenderTarget({slot.rgb.get()}));
+        if (!m_layerRenderPass)
+            m_layerRenderPass.reset(slot.target->newCompatibleRenderPassDescriptor());
+        slot.target->setRenderPassDescriptor(m_layerRenderPass.get());
+        if (!slot.target->create())
+            return nullptr;
+    }
+    if (!m_yuvPipeline) {
+        m_yuvPipeline.reset(m_rhi->newGraphicsPipeline());
+        m_yuvPipeline->setTopology(QRhiGraphicsPipeline::TriangleStrip);
+        m_yuvPipeline->setShaderStages({{QRhiShaderStage::Vertex, m_videoVert}, {QRhiShaderStage::Fragment, m_videoFrag}});
+        m_yuvPipeline->setVertexInputLayout({});
+        m_yuvPipeline->setShaderResourceBindings(slot.bindings.get());
+        m_yuvPipeline->setRenderPassDescriptor(m_layerRenderPass.get());
+        if (!m_yuvPipeline->create()) {
+            m_yuvPipeline.reset();
+            return nullptr;
+        }
+    }
+
+    const QMatrix4x4 matrix = yuvToRgbMatrix(buffer, formats.fullRange);
+    const float fullFrame[4] = {1.0f, 1.0f, m_rhi->isYUpInNDC() ? 1.0f : 0.0f, 0.0f};
+    QRhiResourceUpdateBatch* updates = m_rhi->nextResourceUpdateBatch();
+    updates->updateDynamicBuffer(slot.uniforms.get(), 0, 64, matrix.constData());
+    updates->updateDynamicBuffer(slot.uniforms.get(), 64, 16, fullFrame);
+    cb->beginPass(slot.target.get(), QColor(Qt::black), {1.0f, 0}, updates);
+    cb->setGraphicsPipeline(m_yuvPipeline.get());
+    cb->setViewport({0, 0, float(size.width()), float(size.height())});
+    cb->setShaderResources(slot.bindings.get());
+    cb->draw(4);
+    cb->endPass();
+    return slot.rgb.get();
 }
 
 bool VideoRenderer::bindPresentInput(QRhiTexture* image)
@@ -297,59 +369,61 @@ void VideoRenderer::synchronize(QQuickRhiItem* item)
     if (source != m_source) {
         m_source = std::move(source);
         m_hasFrame = false;
+        m_clipChains.clear();
     }
-    if (m_chain && view->effectsRevision() != m_effectsRevision) {
-        m_chain->setInstances(view->effects());
+    if (m_outputChain && view->effectsRevision() != m_effectsRevision) {
+        m_outputChain->setInstances(view->effects());
         m_effectsRevision = view->effectsRevision();
+        m_needsProcessing = true;
+    }
+    m_overrides = view->previewOverrides();
+    if (m_overrides && m_overrides->revision() != m_overridesRevision) {
+        m_overridesRevision = m_overrides->revision();
         m_needsProcessing = true;
     }
 }
 
-bool VideoRenderer::showFrame(tve::DecodedFrame frame)
+void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
 {
-    CVPixelBufferRef buffer = frame.pixelBuffer();
-    const PlaneFormats formats = planeFormats(CVPixelBufferGetPixelFormatType(buffer));
-    if (!formats.supported)
-        return false;
+    FrameResources& resources = m_frames[m_currentFrame];
+    tve::CompositeFrame& frame = *resources.frame;
+    m_compositor->begin(cb, m_canvasSize);
+    std::set<tve::Id> liveClips;
+    for (std::size_t i = 0; i < frame.layers.size(); ++i) {
+        tve::VideoLayer& layer = frame.layers[i];
+        if (!layer.frame.pixelBuffer())
+            continue;
+        QRhiTexture* picture = convertLayer(cb, slot(i), layer.frame.pixelBuffer(), resources);
+        if (!picture)
+            continue;
 
-    InFlight& slot = m_inFlight[m_nextSlot];
-    m_nextSlot = (m_nextSlot + 1) % m_inFlight.size();
-    release(slot);
+        tve::ClipVisual visual = layer.visual;
+        std::vector<tve::ClipEffect> effects = layer.effects;
+        if (m_overrides)
+            m_overrides->apply(layer.clipId, visual, effects);
 
-    const size_t lumaWidth = CVPixelBufferGetWidthOfPlane(buffer, 0);
-    const size_t lumaHeight = CVPixelBufferGetHeightOfPlane(buffer, 0);
-    const size_t chromaWidth = CVPixelBufferGetWidthOfPlane(buffer, 1);
-    const size_t chromaHeight = CVPixelBufferGetHeightOfPlane(buffer, 1);
-    if (CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, m_textureCache, buffer, nullptr,
-                                                  formats.metalLuma, lumaWidth, lumaHeight, 0, &slot.luma)
-            != kCVReturnSuccess
-        || CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, m_textureCache, buffer, nullptr,
-                                                     formats.metalChroma, chromaWidth, chromaHeight, 1, &slot.chroma)
-            != kCVReturnSuccess) {
-        release(slot);
-        return false;
+        if (!effects.empty()) {
+            auto& chain = m_clipChains[layer.clipId];
+            if (!chain)
+                chain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
+            std::vector<tve::EffectInstance> instances;
+            for (const tve::ClipEffect& effect : effects)
+                instances.push_back(toInstance(effect));
+            chain->setInstances(std::move(instances));
+            picture = chain->process(cb, picture, seconds);
+            liveClips.insert(layer.clipId);
+        }
+        m_compositor->draw(cb, picture, visual);
     }
+    // Drop effect chains of clips no longer on screen.
+    std::erase_if(m_clipChains, [&](const auto& entry) { return !liveClips.contains(entry.first); });
 
-    id<MTLTexture> luma = CVMetalTextureGetTexture(slot.luma);
-    id<MTLTexture> chroma = CVMetalTextureGetTexture(slot.chroma);
-    m_luma->setFormat(formats.luma);
-    m_luma->setPixelSize(QSize(int(lumaWidth), int(lumaHeight)));
-    m_luma->createFrom({quint64(quintptr((void*)luma)), 0});
-    m_chroma->setFormat(formats.chroma);
-    m_chroma->setPixelSize(QSize(int(chromaWidth), int(chromaHeight)));
-    m_chroma->createFrom({quint64(quintptr((void*)chroma)), 0});
-
-    m_colorMatrix = yuvToRgbMatrix(buffer, formats.fullRange);
-    m_videoSize = QSize(int(CVPixelBufferGetWidth(buffer)), int(CVPixelBufferGetHeight(buffer)));
-    slot.frame = std::move(frame);
-    m_hasFrame = true;
-    m_needsProcessing = true;
-    return true;
+    m_processed = m_outputChain->process(cb, m_compositor->result(), seconds);
 }
 
 void VideoRenderer::render(QRhiCommandBuffer* cb)
 {
-    float playbackSeconds = 0.0f;
+    float seconds = 0.0f;
     if (m_source && m_presentPipeline) {
         auto& queue = m_source->queue();
         auto& clock = m_source->clock();
@@ -361,50 +435,41 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
         }
         if (clock.started()) {
             const tve::Ticks now = clock.now();
-            playbackSeconds = float(tve::toSeconds(now));
+            seconds = float(tve::toSeconds(now));
             int skipped = 0;
             if (auto frame = queue.takeLatestDue(now, skipped)) {
                 m_source->counters().skipped += skipped;
-                if (!frame->pixelBuffer()) {
-                    m_hasFrame = false; // a gap: show black
-                } else if (showFrame(std::move(*frame))) {
+                m_currentFrame = (m_currentFrame + 1) % m_frames.size();
+                release(m_frames[m_currentFrame]);
+                if (!frame->layers.empty())
                     ++m_source->counters().presented;
-                }
+                m_frames[m_currentFrame].frame = std::move(*frame);
+                const auto canvas = m_source->canvasSize();
+                m_canvasSize = QSize(std::max(canvas.width, 16), std::max(canvas.height, 16));
+                m_hasFrame = true;
+                m_needsProcessing = true;
             }
         }
         CVMetalTextureCacheFlush(m_textureCache, 0);
     }
 
-    if (m_hasFrame && m_needsProcessing && ensureFrameTarget(m_videoSize)) {
-        // Stage 1: YUV → RGB at full resolution.
-        QRhiResourceUpdateBatch* updates = m_rhi->nextResourceUpdateBatch();
-        const float fullFrame[4] = {1.0f, 1.0f, m_rhi->isYUpInNDC() ? 1.0f : 0.0f, 0.0f};
-        updates->updateDynamicBuffer(m_yuvUniforms.get(), 0, 64, m_colorMatrix.constData());
-        updates->updateDynamicBuffer(m_yuvUniforms.get(), 64, 16, fullFrame);
-        cb->beginPass(m_frameTarget.get(), QColor(Qt::black), {1.0f, 0}, updates);
-        cb->setGraphicsPipeline(m_yuvPipeline.get());
-        cb->setViewport({0, 0, float(m_videoSize.width()), float(m_videoSize.height())});
-        cb->setShaderResources();
-        cb->draw(4);
-        cb->endPass();
-
-        // Stage 2: effects.
-        m_processed = m_chain->process(cb, m_frame.get(), playbackSeconds);
+    if (m_hasFrame && m_needsProcessing) {
+        renderFrame(cb, seconds);
         m_needsProcessing = false;
     }
 
-    // Stage 3: aspect-fit into the item.
+    // Aspect-fit the canvas into the item.
     const QSize outputSize = renderTarget()->pixelSize();
     const bool canPresent = m_hasFrame && m_processed && m_presentPipeline && bindPresentInput(m_processed);
     QRhiResourceUpdateBatch* updates = m_rhi->nextResourceUpdateBatch();
     if (canPresent) {
         float scale[4] = {1.0f, 1.0f, m_rhi->isYUpInNDC() ? 1.0f : 0.0f, 0.0f};
-        const float videoAspect = float(m_videoSize.width()) / float(m_videoSize.height());
+        const float canvasAspect = float(m_canvasSize.width()) / float(m_canvasSize.height());
         const float viewAspect = float(outputSize.width()) / float(outputSize.height());
-        if (videoAspect > viewAspect)
-            scale[1] = viewAspect / videoAspect;
+        if (canvasAspect > viewAspect)
+            scale[1] = viewAspect / canvasAspect;
         else
-            scale[0] = videoAspect / viewAspect;
+            scale[0] = canvasAspect / viewAspect;
         updates->updateDynamicBuffer(m_presentUniforms.get(), 64, 16, scale);
     }
     cb->beginPass(renderTarget(), QColor(Qt::black), {1.0f, 0}, updates);
@@ -607,3 +672,62 @@ void VideoView::setEffectParam(const QString& effectId, const QString& paramId, 
     markEffectsChanged();
 }
 
+
+// --- PreviewOverrides ---
+
+void PreviewOverrides::setVisual(tve::Id clipId, const tve::ClipVisual& visual)
+{
+    std::lock_guard lock(m_mutex);
+    m_visual[clipId] = visual;
+    ++m_revision;
+}
+
+void PreviewOverrides::setEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects)
+{
+    std::lock_guard lock(m_mutex);
+    m_effects[clipId] = std::move(effects);
+    ++m_revision;
+}
+
+void PreviewOverrides::clear(tve::Id clipId)
+{
+    std::lock_guard lock(m_mutex);
+    m_visual.erase(clipId);
+    m_effects.erase(clipId);
+    ++m_revision;
+}
+
+void PreviewOverrides::apply(tve::Id clipId, tve::ClipVisual& visual, std::vector<tve::ClipEffect>& effects)
+{
+    std::lock_guard lock(m_mutex);
+    if (auto it = m_visual.find(clipId); it != m_visual.end()) {
+        if (it->second == visual)
+            m_visual.erase(it); // the frames carry the committed value now
+        else
+            visual = it->second;
+    }
+    if (auto it = m_effects.find(clipId); it != m_effects.end()) {
+        if (it->second == effects)
+            m_effects.erase(it);
+        else
+            effects = it->second;
+    }
+}
+
+void VideoView::setPreviewVisual(tve::Id clipId, const tve::ClipVisual& visual)
+{
+    m_previewOverrides->setVisual(clipId, visual);
+    update();
+}
+
+void VideoView::setPreviewEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects)
+{
+    m_previewOverrides->setEffects(clipId, std::move(effects));
+    update();
+}
+
+void VideoView::clearPreview(tve::Id clipId)
+{
+    m_previewOverrides->clear(clipId);
+    update();
+}

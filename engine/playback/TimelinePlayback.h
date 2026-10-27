@@ -13,9 +13,10 @@
 
 namespace tve {
 
-// Plays a project's timeline. A producer thread walks the timeline from the requested
-// time, decodes whichever video clip is visible, and stamps each frame with its timeline
-// time; gaps produce one black frame. The UI drives the clock (play/pause/seek); every
+// Plays a project's timeline. A producer thread walks the timeline on the project's frame
+// grid from the requested time and, at each step, emits a CompositeFrame holding every
+// visible video layer (bottom first) with its placement and effects; gaps produce one
+// black frame. The UI drives the clock (play/pause/seek); every
 // seek or project change restarts the producer at the clock's position.
 class TimelinePlayback final : public FrameSource {
 public:
@@ -44,12 +45,23 @@ public:
     PlaybackClock& clock() override { return m_clock; }
     PlaybackCounters& counters() override { return m_counters; }
     bool hardwareAccelerated() const override { return m_hardware.load(); }
+    Size canvasSize() const override;
 
 private:
+    // Per visible clip: its decoder, the frame on screen and the next one decoded.
+    struct LayerState {
+        std::unique_ptr<VideoDecoder> decoder;
+        std::string path;
+        std::optional<DecodedFrame> current;
+        std::optional<DecodedFrame> next;
+    };
+
     void restartAt(Ticks time);
     void stopProducer();
     void run(std::shared_ptr<const Project> project, Ticks start);
-    VideoDecoder* decoderFor(const MediaItem& media);
+    // The decoded frame on screen at `sourceTime` for this clip, decoding or seeking as
+    // needed; nullptr if the media cannot be decoded.
+    const DecodedFrame* frameAt(LayerState& state, const MediaItem& media, Ticks sourceTime);
 
     mutable std::mutex m_control; // serializes setProject/seek from the UI thread
     std::shared_ptr<const Project> m_project;
@@ -63,9 +75,9 @@ private:
     std::atomic<bool> m_finished{false};
     std::thread m_producer;
 
-    // Only touched by the producer thread; restarts join it first.
-    std::map<Id, std::unique_ptr<VideoDecoder>> m_decoders;
-    std::map<Id, std::string> m_decoderPaths;
+    // Only touched by the producer thread; restarts join it first. Keyed by clip id, so
+    // two clips of the same file decode independently.
+    std::map<Id, LayerState> m_layers;
 };
 
 } // namespace tve

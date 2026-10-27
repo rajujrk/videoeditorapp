@@ -13,9 +13,13 @@ AbstractButton {
     hoverEnabled: true
     focusPolicy: Qt.TabFocus
 
-    ToolTip.visible: tip !== "" && hovered
-    ToolTip.text: tip
-    ToolTip.delay: 600
+    // Each button owns its tooltip. (Qt's attached ToolTip is one shared popup: if its
+    // button is destroyed while showing it, it stays open and swallows the next click.)
+    ToolTip {
+        text: button.tip
+        visible: button.tip !== "" && button.hovered
+        delay: 600
+    }
 
     background: Rectangle {
         radius: Theme.radius.s

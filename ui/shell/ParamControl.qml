@@ -8,7 +8,8 @@ import TechieVideoEditor.Theme
 ColumnLayout {
     id: control
     required property var param
-    signal valueEdited(var value)
+    signal valueEdited(var value)    // while dragging (preview)
+    signal valueCommitted(var value) // on release / toggle / pick (one undo step)
 
     spacing: Theme.space.xxs
 
@@ -40,13 +41,14 @@ ColumnLayout {
         stepSize: control.param.type === "int" ? 1 : 0
         snapMode: control.param.type === "int" ? Slider.SnapAlways : Slider.NoSnap
         onMoved: control.valueEdited(value)
+        onPressedChanged: if (!pressed) control.valueCommitted(value)
     }
 
     Switch {
         visible: control.param.type === "bool"
         text: control.param.title
         checked: control.param.default > 0.5
-        onToggled: control.valueEdited(checked ? 1 : 0)
+        onToggled: { control.valueEdited(checked ? 1 : 0); control.valueCommitted(checked ? 1 : 0) }
     }
 
     ComboBox {
@@ -54,7 +56,7 @@ ColumnLayout {
         visible: control.param.type === "enum"
         model: control.param.values
         currentIndex: control.param.type === "enum" ? control.param.default : 0
-        onActivated: (index) => control.valueEdited(index)
+        onActivated: (index) => { control.valueEdited(index); control.valueCommitted(index) }
     }
 
     Row {
@@ -75,7 +77,7 @@ ColumnLayout {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: control.valueEdited(parent.modelData)
+                    onClicked: { control.valueEdited(parent.modelData); control.valueCommitted(parent.modelData) }
                 }
             }
         }

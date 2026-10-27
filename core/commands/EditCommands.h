@@ -188,4 +188,51 @@ private:
     Id m_audioClipId = kNoId;
 };
 
+// Sets a clip's placement, crop, opacity and blend mode (video tracks only).
+class SetClipVisualCommand final : public Command {
+public:
+    SetClipVisualCommand(Id clipId, ClipVisual visual) : m_clipId(clipId), m_visual(visual) {}
+
+    std::string label() const override { return "Change Picture"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    ClipVisual m_visual;
+    ClipVisual m_previous;
+};
+
+// Replaces a clip's effect stack. One command per user action (add, remove, reorder, or a
+// parameter change), with a label saying which.
+class SetClipEffectsCommand final : public Command {
+public:
+    SetClipEffectsCommand(Id clipId, std::vector<ClipEffect> effects, std::string label)
+        : m_clipId(clipId), m_effects(std::move(effects)), m_label(std::move(label)) {}
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    std::vector<ClipEffect> m_effects;
+    std::string m_label;
+    std::vector<ClipEffect> m_previous;
+};
+
+// Changes the canvas size and frame rate.
+class SetProjectSettingsCommand final : public Command {
+public:
+    explicit SetProjectSettingsCommand(ProjectSettings settings) : m_settings(settings) {}
+
+    std::string label() const override { return "Change Canvas"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    ProjectSettings m_settings;
+    ProjectSettings m_previous;
+};
+
 } // namespace tve

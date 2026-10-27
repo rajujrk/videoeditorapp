@@ -4,6 +4,14 @@ add_library(tve_gpu STATIC
     EffectLibrary.cpp
     EffectChain.h
     EffectChain.cpp
+    LayerPlacement.h
+    Compositor.h
+    Compositor.cpp
+)
+
+qt_add_shaders(tve_gpu "tve_gpu_shaders"
+    PREFIX "/gpu"
+    FILES shaders/composite.frag
 )
 add_library(tve::gpu ALIAS tve_gpu)
 

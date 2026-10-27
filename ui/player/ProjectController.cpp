@@ -7,6 +7,7 @@
 #include "decode/VideoDecoder.h"
 #include "io/ProjectSerializer.h"
 #include "model/TimelineQuery.h"
+#include "gpu/EffectLibrary.h"
 #include "playback/TimelinePlayback.h"
 
 #include <QFileInfo>
@@ -37,6 +38,59 @@ Id toId(double value)
 QString fileName(const std::string& path)
 {
     return QFileInfo(QString::fromStdString(path)).fileName();
+}
+
+const char* const kBlendNames[] = {"normal", "multiply", "screen", "overlay", "add", "darken", "lighten"};
+
+QVariantMap visualMap(const ClipVisual& v)
+{
+    return {
+        {QStringLiteral("x"), v.transform.x},
+        {QStringLiteral("y"), v.transform.y},
+        {QStringLiteral("scale"), v.transform.scale},
+        {QStringLiteral("rotation"), v.transform.rotation},
+        {QStringLiteral("cropLeft"), v.crop.left},
+        {QStringLiteral("cropTop"), v.crop.top},
+        {QStringLiteral("cropRight"), v.crop.right},
+        {QStringLiteral("cropBottom"), v.crop.bottom},
+        {QStringLiteral("opacity"), v.opacity},
+        {QStringLiteral("blend"), QString::fromLatin1(kBlendNames[int(v.blend)])},
+    };
+}
+
+QVariantList effectsList(const std::vector<ClipEffect>& effects)
+{
+    QVariantList list;
+    for (const ClipEffect& effect : effects) {
+        QVariantMap values;
+        for (const auto& [param, value] : effect.values) {
+            QVariantList components;
+            for (float c : value)
+                components << double(c);
+            values[QString::fromStdString(param)] = components.size() == 1 ? components.front() : QVariant(components);
+        }
+        list << QVariantMap{
+            {QStringLiteral("effectId"), QString::fromStdString(effect.effectId)},
+            {QStringLiteral("enabled"), effect.enabled},
+            {QStringLiteral("values"), values},
+        };
+    }
+    return list;
+}
+
+std::vector<float> componentsOf(const QVariant& value)
+{
+    std::vector<float> components;
+    if (value.typeId() == QMetaType::QVariantList || value.canConvert<QVariantList>()) {
+        const QVariantList list = value.toList();
+        if (!list.isEmpty() && value.typeId() != QMetaType::QString) {
+            for (const QVariant& v : list)
+                components.push_back(v.toFloat());
+            return components;
+        }
+    }
+    components.push_back(value.toFloat());
+    return components;
 }
 
 // Default track layout for a new project, bottom to top: audio, main video, overlay.
@@ -215,6 +269,7 @@ void ProjectController::resetProject(Project project, const QString& filePath)
     m_stack = std::make_unique<CommandStack>(m_project);
     m_filePath = filePath;
     m_selectedClip = kNoId;
+    m_canvasChosen = !filePath.isEmpty();
     m_playback->seek(0);
     publish();
     emit selectionChanged();
@@ -223,6 +278,7 @@ void ProjectController::resetProject(Project project, const QString& filePath)
 void ProjectController::newProject(int width, int height, const QString&)
 {
     resetProject(emptyProject(std::max(width, 16), std::max(height, 16)), {});
+    m_canvasChosen = true;
 }
 
 bool ProjectController::open(const QUrl& file)
@@ -323,6 +379,16 @@ bool ProjectController::addClip(double mediaId, double trackId, double start)
     if (!track) {
         reportError(QStringLiteral("Track not found"));
         return false;
+    }
+    // An untouched project takes its canvas from the first video clip.
+    const bool projectEmpty = std::ranges::all_of(m_project.tracks, [](const Track& t) { return t.clips.empty(); });
+    if (!m_canvasChosen && projectEmpty && media->hasVideo && media->width > 0 && media->height > 0) {
+        ProjectSettings settings = m_project.settings;
+        settings.width = media->width;
+        settings.height = media->height;
+        settings.frameRate = media->frameRate;
+        apply(std::make_unique<SetProjectSettingsCommand>(settings));
+        m_canvasChosen = true;
     }
     const Ticks at = start < 0 ? (track->clips.empty() ? 0 : track->clips.back().end()) : ticks(start);
     auto command = std::make_unique<AddClipCommand>(target, media->id, std::max<Ticks>(at, 0), media->duration, 0);
@@ -492,9 +558,147 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("gainDb"), double(clip->gainDb)},
             {QStringLiteral("fadeIn"), seconds(clip->fadeIn)},
             {QStringLiteral("fadeOut"), seconds(clip->fadeOut)},
+            {QStringLiteral("visual"), visualMap(clip->visual)},
+            {QStringLiteral("effects"), effectsList(clip->effects)},
         };
     }
     return {};
+}
+
+// --- Picture ---
+
+const Clip* ProjectController::findClip(Id clipId) const
+{
+    for (const Track& track : m_project.tracks) {
+        if (const Clip* clip = track.findClip(clipId))
+            return clip;
+    }
+    return nullptr;
+}
+
+std::optional<ClipVisual> ProjectController::visualFrom(Id clipId, const QVariantMap& values) const
+{
+    const Clip* clip = findClip(clipId);
+    if (!clip)
+        return std::nullopt;
+    ClipVisual v = clip->visual;
+    auto take = [&](const char* key, double& target) {
+        const auto it = values.constFind(QLatin1String(key));
+        if (it != values.constEnd())
+            target = it->toDouble();
+    };
+    take("x", v.transform.x);
+    take("y", v.transform.y);
+    take("scale", v.transform.scale);
+    take("rotation", v.transform.rotation);
+    take("cropLeft", v.crop.left);
+    take("cropTop", v.crop.top);
+    take("cropRight", v.crop.right);
+    take("cropBottom", v.crop.bottom);
+    take("opacity", v.opacity);
+    if (const auto it = values.constFind(QStringLiteral("blend")); it != values.constEnd()) {
+        const QString name = it->toString();
+        for (int i = 0; i < int(std::size(kBlendNames)); ++i) {
+            if (name == QLatin1String(kBlendNames[i]))
+                v.blend = BlendMode(i);
+        }
+    }
+    return v;
+}
+
+bool ProjectController::setClipVisual(double clipId, const QVariantMap& visual)
+{
+    const auto v = visualFrom(toId(clipId), visual);
+    if (!v) {
+        reportError(QStringLiteral("Select a video clip"));
+        return false;
+    }
+    const bool ok = apply(std::make_unique<SetClipVisualCommand>(toId(clipId), *v));
+    if (!ok && m_view)
+        m_view->clearPreview(toId(clipId)); // the refused value must not stay on screen
+    return ok;
+}
+
+void ProjectController::previewClipVisual(double clipId, const QVariantMap& visual)
+{
+    if (const auto v = visualFrom(toId(clipId), visual); v && m_view)
+        m_view->setPreviewVisual(toId(clipId), *v);
+}
+
+void ProjectController::cancelPreview(double clipId)
+{
+    if (m_view)
+        m_view->clearPreview(toId(clipId));
+}
+
+bool ProjectController::resetClipVisual(double clipId)
+{
+    return apply(std::make_unique<SetClipVisualCommand>(toId(clipId), ClipVisual{}));
+}
+
+// --- Per-clip effects ---
+
+bool ProjectController::addClipEffect(double clipId, const QString& effectId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip) {
+        reportError(QStringLiteral("Select a video clip to add an effect to"));
+        return false;
+    }
+    if (!EffectLibrary::builtIn().find(effectId.toStdString())) {
+        reportError(QStringLiteral("Unknown effect %1").arg(effectId));
+        return false;
+    }
+    auto effects = clip->effects;
+    effects.push_back(ClipEffect{effectId.toStdString(), true, {}});
+    return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects), "Add Effect"));
+}
+
+bool ProjectController::removeClipEffect(double clipId, int index)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || index < 0 || index >= int(clip->effects.size()))
+        return false;
+    auto effects = clip->effects;
+    effects.erase(effects.begin() + index);
+    return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects), "Remove Effect"));
+}
+
+bool ProjectController::setClipEffectEnabled(double clipId, int index, bool enabled)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || index < 0 || index >= int(clip->effects.size()))
+        return false;
+    auto effects = clip->effects;
+    effects[std::size_t(index)].enabled = enabled;
+    return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects),
+                                                         enabled ? "Enable Effect" : "Disable Effect"));
+}
+
+std::optional<std::vector<ClipEffect>> ProjectController::effectsWithParam(Id clipId, int index,
+                                                                           const QString& paramId,
+                                                                           const QVariant& value) const
+{
+    const Clip* clip = findClip(clipId);
+    if (!clip || index < 0 || index >= int(clip->effects.size()))
+        return std::nullopt;
+    auto effects = clip->effects;
+    effects[std::size_t(index)].values[paramId.toStdString()] = componentsOf(value);
+    return effects;
+}
+
+bool ProjectController::setClipEffectParam(double clipId, int index, const QString& paramId, const QVariant& value)
+{
+    auto effects = effectsWithParam(toId(clipId), index, paramId, value);
+    if (!effects)
+        return false;
+    return apply(std::make_unique<SetClipEffectsCommand>(toId(clipId), std::move(*effects), "Change Effect"));
+}
+
+void ProjectController::previewClipEffectParam(double clipId, int index, const QString& paramId, const QVariant& value)
+{
+    if (auto effects = effectsWithParam(toId(clipId), index, paramId, value); effects && m_view)
+        m_view->setPreviewEffects(toId(clipId), std::move(*effects));
 }
 
 // --- Transport ---

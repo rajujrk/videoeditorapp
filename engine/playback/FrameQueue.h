@@ -1,6 +1,6 @@
 #pragma once
 
-#include "decode/DecodedFrame.h"
+#include "model/Time.h"
 
 #include <condition_variable>
 #include <cstddef>
@@ -11,13 +11,15 @@
 namespace tve {
 
 // Bounded hand-off between the decode thread (producer) and the render thread (consumer).
-// The producer blocks when the queue is full; the consumer never blocks.
-class FrameQueue {
+// The producer blocks when the queue is full; the consumer never blocks. `Frame` is any
+// movable type with `Ticks pts() const`.
+template <typename Frame>
+class BasicFrameQueue {
 public:
-    explicit FrameQueue(std::size_t capacity) : m_capacity(capacity) {}
+    explicit BasicFrameQueue(std::size_t capacity) : m_capacity(capacity) {}
 
     // Blocks while full. Returns false if the queue was stopped.
-    bool push(DecodedFrame frame)
+    bool push(Frame frame)
     {
         std::unique_lock lock(m_mutex);
         m_notFull.wait(lock, [&] { return m_stopped || m_frames.size() < m_capacity; });
@@ -37,9 +39,9 @@ public:
 
     // Removes every frame due at or before `now` and returns the newest of them.
     // `skipped` receives how many older due frames were discarded unseen.
-    std::optional<DecodedFrame> takeLatestDue(Ticks now, int& skipped)
+    std::optional<Frame> takeLatestDue(Ticks now, int& skipped)
     {
-        std::optional<DecodedFrame> latest;
+        std::optional<Frame> latest;
         skipped = 0;
         {
             std::lock_guard lock(m_mutex);
@@ -76,7 +78,7 @@ private:
     const std::size_t m_capacity;
     mutable std::mutex m_mutex;
     std::condition_variable m_notFull;
-    std::deque<DecodedFrame> m_frames;
+    std::deque<Frame> m_frames;
     bool m_stopped = false;
 };
 

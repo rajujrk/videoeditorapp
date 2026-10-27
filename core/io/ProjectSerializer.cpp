@@ -24,8 +24,21 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ProjectSettings, width, height, frameRate, sa
 // Fields added after schema 1 shipped default when absent, so older files still load.
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MediaItem, id, path, duration, hasVideo, hasAudio, width, height,
                                                 frameRate, audioSampleRate, audioChannels)
+NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
+    {BlendMode::Normal, "normal"},
+    {BlendMode::Multiply, "multiply"},
+    {BlendMode::Screen, "screen"},
+    {BlendMode::Overlay, "overlay"},
+    {BlendMode::Add, "add"},
+    {BlendMode::Darken, "darken"},
+    {BlendMode::Lighten, "lighten"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipTransform, x, y, scale, rotation)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipCrop, left, top, right, bottom)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipVisual, transform, crop, opacity, blend)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipEffect, effectId, enabled, values)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
-                                                fadeIn, fadeOut)
+                                                fadeIn, fadeOut, visual, effects)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Track, id, kind, name, locked, hidden, muted, clips)
 
 nlohmann::json projectToJson(const Project& project)

@@ -30,6 +30,15 @@ public:
     DecodedFrame(const DecodedFrame&) = delete;
     DecodedFrame& operator=(const DecodedFrame&) = delete;
 
+    // Another reference to the same pixel buffer (no copy), e.g. to show one decoded
+    // picture in several composite frames.
+    DecodedFrame share() const
+    {
+        if (m_buffer)
+            CVPixelBufferRetain(m_buffer);
+        return DecodedFrame(m_buffer, m_pts);
+    }
+
     CVPixelBufferRef pixelBuffer() const { return m_buffer; }
     Ticks pts() const { return m_pts; }
     void setPts(Ticks pts) { m_pts = pts; }

@@ -120,15 +120,22 @@ Rectangle {
                     required property var modelData
                     width: effectsGrid.cellWidth
                     height: effectsGrid.cellHeight
-                    readonly property bool active: library.player.enabledEffectCount >= 0
-                                                   && library.player.isEffectEnabled(modelData.id)
+                    // Highlighted when the selected clip uses this effect.
+                    readonly property bool active: (library.project.selectedClipInfo.effects || [])
+                                                   .some((e) => e.effectId === modelData.id)
 
                     AbstractButton {
                         anchors.fill: parent
                         anchors.rightMargin: Theme.space.m
                         anchors.bottomMargin: Theme.space.m
                         hoverEnabled: true
-                        onClicked: library.player.setEffectEnabled(tile.modelData.id, !tile.active)
+                        objectName: "libraryEffect:" + tile.modelData.id
+                        onClicked: library.project.addClipEffect(library.project.selectedClip, tile.modelData.id)
+                        ToolTip {
+                            visible: parent.hovered
+                            delay: 600
+                            text: "Add to the selected clip"
+                        }
 
                         background: Rectangle {
                             radius: Theme.radius.m
@@ -252,9 +259,11 @@ Rectangle {
                         }
                         Item { id: dragProxy }
 
-                        ToolTip.visible: tileMouse.containsMouse && !tileMouse.drag.active
-                        ToolTip.delay: 800
-                        ToolTip.text: "Double-click to add to the timeline, or drag onto a track"
+                        ToolTip {
+                            visible: tileMouse.containsMouse && !tileMouse.drag.active
+                            delay: 800
+                            text: "Double-click to add to the timeline, or drag onto a track"
+                        }
                     }
                 }
 
