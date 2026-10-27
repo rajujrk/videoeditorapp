@@ -76,7 +76,19 @@ Rectangle {
             Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
             IconButton { iconName: "magnet"; tip: "Main track closes gaps on delete"; checkable: true; checked: true; enabled: false }
             IconButton { id: snapToggle; iconName: "snap"; tip: "Snapping"; checkable: true; checked: true }
-            IconButton { iconName: "keyframe"; tip: "Keyframes — Phase 2"; enabled: false }
+            IconButton {
+                objectName: "keyframeToolButton"
+                readonly property var info: timeline.project.selectedClipInfo
+                readonly property bool keyHere: Object.values(info.keyframeStates || {}).indexOf("key") >= 0
+                iconName: "keyframe"
+                tip: timeline.project.selectedClip <= 0 ? "Select a clip to animate it"
+                   : keyHere ? "Remove the selected clip's keyframe at the playhead"
+                             : "Add a keyframe to the selected clip at the playhead"
+                enabled: timeline.project.selectedClip > 0
+                checked: keyHere
+                onClicked: keyHere ? timeline.project.removeKeyframes(info.id)
+                                   : timeline.project.addKeyframes(info.id)
+            }
             Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
             IconButton {
                 id: voiceOverButton
@@ -680,6 +692,60 @@ Rectangle {
                     if (!ok) {
                         item.previewStart = item.clip.start
                         item.previewDuration = item.clip.duration
+                    }
+                }
+            }
+        }
+
+        // Keyframes along the bottom edge: click to go to one, drag to move it in time.
+        Repeater {
+            model: item.clip.keyframeTimes || []
+            delegate: Item {
+                id: diamond
+                required property real modelData
+                required property int index
+                property real previewTime: modelData
+                objectName: "keyframeMark:" + item.clip.id + ":" + index
+                width: 12
+                height: 12
+                x: previewTime * timeline.pixelsPerSecond - width / 2
+                y: item.height - height - 2
+                z: 6
+                visible: x > -width && x < item.width
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 7
+                    height: 7
+                    rotation: 45
+                    color: keyMouse.pressed || keyMouse.containsMouse ? Theme.color.accent : Theme.color.selection
+                    border.color: Theme.color.canvas
+                }
+                MouseArea {
+                    id: keyMouse
+                    anchors.fill: parent
+                    anchors.margins: -3
+                    hoverEnabled: true
+                    cursorShape: Qt.SizeHorCursor
+                    property real pressX: 0
+                    onPressed: (mouse) => {
+                        pressX = mapToItem(item, mouse.x, 0).x
+                        timeline.project.selectedClip = item.clip.id
+                    }
+                    onPositionChanged: (mouse) => {
+                        if (!pressed)
+                            return
+                        const x = mapToItem(item, mouse.x, 0).x
+                        diamond.previewTime = Math.max(0, Math.min(item.clip.duration,
+                                                                   diamond.modelData + (x - pressX) / timeline.pixelsPerSecond))
+                    }
+                    onReleased: {
+                        if (Math.abs(diamond.previewTime - diamond.modelData) * timeline.pixelsPerSecond < 2) {
+                            diamond.previewTime = diamond.modelData
+                            timeline.project.seek(item.clip.start + diamond.modelData)
+                        } else if (!timeline.project.moveKeyframes(item.clip.id, diamond.modelData, diamond.previewTime)) {
+                            diamond.previewTime = diamond.modelData
+                        }
                     }
                 }
             }

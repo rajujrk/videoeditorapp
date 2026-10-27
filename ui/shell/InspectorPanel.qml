@@ -13,6 +13,17 @@ Rectangle {
     readonly property var clipInfo: project.selectedClipInfo
     readonly property bool clipIsVideo: clipInfo.trackKind === "video"
     readonly property var visual: clipInfo.visual || ({})
+    readonly property var keyStates: clipInfo.keyframeStates || ({})
+    readonly property bool keyHere: Object.values(keyStates).indexOf("key") >= 0
+    // Distinct keyframe times of the selected clip (any property).
+    readonly property int keyframeCount: {
+        const times = new Set()
+        const all = clipInfo.keyframes || {}
+        for (const id in all)
+            for (const k of all[id])
+                times.add(Math.round(k.time * 1000))
+        return times.size
+    }
     readonly property var transitionInfo: project.selectedTransitionInfo
     readonly property bool showsTransition: transitionInfo.clipId !== undefined
 
@@ -206,6 +217,78 @@ Rectangle {
                             text: "Reset"
                             variant: "ghost"
                             onClicked: inspector.project.resetClipVisual(inspector.clipInfo.id)
+                        }
+                    }
+
+                    // Keyframes: add/remove at the playhead, step between them, easing.
+                    Section {
+                        objectName: "keyframesSection"
+                        title: "Keyframes"
+                        Layout.fillWidth: true
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            IconButton {
+                                objectName: "previousKeyframe"
+                                iconName: "skip-back"
+                                tip: "Previous keyframe"
+                                enabled: inspector.keyframeCount > 0
+                                onClicked: inspector.project.seekKeyframe(inspector.clipInfo.id, -1)
+                            }
+                            TextButton {
+                                objectName: "keyframeButton"
+                                Layout.fillWidth: true
+                                text: inspector.keyHere ? "Remove" : "Add keyframe"
+                                iconName: "keyframe"
+                                tip: inspector.keyHere ? "Remove every keyframe at the playhead"
+                                                       : "Keep position, scale, rotation and opacity as they are at the playhead"
+                                onClicked: inspector.keyHere ? inspector.project.removeKeyframes(inspector.clipInfo.id)
+                                                             : inspector.project.addKeyframes(inspector.clipInfo.id)
+                            }
+                            IconButton {
+                                objectName: "nextKeyframe"
+                                iconName: "skip-forward"
+                                tip: "Next keyframe"
+                                enabled: inspector.keyframeCount > 0
+                                onClicked: inspector.project.seekKeyframe(inspector.clipInfo.id, 1)
+                            }
+                        }
+                        RowLayout {
+                            visible: inspector.keyHere
+                            Layout.fillWidth: true
+                            Text { text: "Easing"; font: Theme.type.label; color: Theme.color.textSecondary }
+                            ComboBox {
+                                objectName: "keyframeEasing"
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1 // shares the row instead of asking for its longest item
+                                readonly property var names: ["linear", "easeIn", "easeOut", "easeInOut", "hold"]
+                                model: ["Linear", "Ease in", "Ease out", "Ease in and out", "Hold"]
+                                currentIndex: Math.max(0, names.indexOf(inspector.clipInfo.keyframeEasing || "linear"))
+                                onActivated: (index) => inspector.project.setKeyframeEasing(inspector.clipInfo.id, names[index])
+                            }
+                        }
+                        RowLayout {
+                        Layout.fillWidth: true
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1 // wraps to the panel instead of widening it
+                            wrapMode: Text.WordWrap
+                            text: inspector.keyframeCount === 0
+                                  ? "Add a keyframe, move the playhead and change a value: the clip animates between them. ◆ beside a value animates just that one."
+                                  : inspector.keyframeCount + (inspector.keyframeCount === 1 ? " keyframe" : " keyframes")
+                                    + ". Changing an animated value sets its keyframe at the playhead."
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                        TextButton {
+                            objectName: "clearKeyframesButton"
+                            Layout.alignment: Qt.AlignTop
+                            text: "Clear"
+                            variant: "ghost"
+                            visible: inspector.keyframeCount > 0
+                            tip: "Stop animating: every property keeps its value at the playhead"
+                            onClicked: inspector.project.clearKeyframes(inspector.clipInfo.id)
+                        }
                         }
                     }
 
@@ -499,6 +582,7 @@ Rectangle {
                         title: "Volume"
                         AudioSlider {
                             objectName: "volumeSlider"
+                            animKey: "volume"
                             label: "Gain"
                             from: -60
                             to: 12
@@ -618,6 +702,7 @@ Rectangle {
     // A picture property: previews live while dragging, commits one undo step on release.
     component VisualSlider: AudioSlider {
         required property string key
+        animKey: key
         onLiveValue: (v) => { const m = {}; m[key] = v; inspector.project.previewClipVisual(inspector.clipInfo.id, m) }
         onCommitted: (v) => { const m = {}; m[key] = v; inspector.project.setClipVisual(inspector.clipInfo.id, m) }
     }
@@ -665,6 +750,7 @@ Rectangle {
         property alias to: slider.to
         property real value: 0
         property var format: (v) => v.toFixed(2)
+        property string animKey // an animatable property: shows its keyframe toggle
         signal committed(real value)
         signal liveValue(real value)
         Layout.fillWidth: true
@@ -673,6 +759,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
+            KeyframeToggle { visible: audioSlider.animKey !== ""; key: audioSlider.animKey }
             Text { text: audioSlider.label; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
             Text { text: audioSlider.format(slider.value); font: Theme.type.mono; color: Theme.color.textPrimary }
         }
@@ -684,6 +771,39 @@ Rectangle {
             onPressedChanged: {
                 if (!pressed && value !== audioSlider.value)
                     audioSlider.committed(value)
+            }
+        }
+    }
+
+    // ◆ beside an animatable value: filled when it has a keyframe at the playhead, outlined
+    // in accent while it is animated, faint otherwise. Click to add or remove that keyframe.
+    component KeyframeToggle: AbstractButton {
+        id: toggle
+        property string key
+        readonly property string keyState: inspector.keyStates[key] || "none"
+        objectName: "keyframe:" + key
+        implicitWidth: 18
+        implicitHeight: 18
+        hoverEnabled: true
+        focusPolicy: Qt.TabFocus
+        ToolTip {
+            text: toggle.keyState === "key" ? "Remove this keyframe" : "Add a keyframe at the playhead"
+            visible: toggle.hovered
+            delay: 600
+        }
+        onClicked: keyState === "key" ? inspector.project.removeKeyframes(inspector.clipInfo.id, [key])
+                                      : inspector.project.addKeyframes(inspector.clipInfo.id, [key])
+        background: Rectangle { radius: Theme.radius.s; color: toggle.hovered ? Theme.color.surfaceHover : "transparent" }
+        contentItem: Item {
+            Rectangle {
+                anchors.centerIn: parent
+                width: 8
+                height: 8
+                rotation: 45
+                color: toggle.keyState === "key" ? Theme.color.accentText : "transparent"
+                border.width: 1.5
+                border.color: toggle.keyState !== "none" ? Theme.color.accentText
+                            : toggle.hovered ? Theme.color.textSecondary : Theme.color.textDisabled
             }
         }
     }

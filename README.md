@@ -4,9 +4,10 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5d (export, autosave and
-crash recovery, proxies, voice-over).** You can import video and audio files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over). Phase 2: keyframes (6a) done.** You can import video and audio files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
-position, scale, rotation, crop, opacity and blend modes, give each clip its own effects,
+position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
+volume), give each clip its own effects,
 put any of 21 transitions on the cuts between clips (with a constant-power sound
 crossfade), add titles (font, size, colour, bold/italic, alignment, letter and line
 spacing, outline, shadow), change a clip's speed (0.1–10×), play it in reverse or insert
@@ -18,7 +19,7 @@ playhead, and export MP4 files (H.264 or HEVC with AAC sound).
 
 What's in the repo:
 
-- `core/` — project model (tracks, clips, media), undoable edit commands (add, move, trim,
+- `core/` — project model (tracks, clips, media, keyframes with easing), undoable edit commands (add, move, trim,
   split, delete/ripple delete), timeline queries, JSON project save/load. Plain C++20, no Qt.
 - `engine/encode/` — `Mp4Writer`: H.264/HEVC through VideoToolbox plus AAC (or video
   only), muxed to a fast-start MP4 (LGPL FFmpeg encoders only); `makeProxy`: 720p H.264
@@ -95,6 +96,20 @@ use the originals. On an M-series Mac a 20 s 4K60 video's proxy takes about 10 s
 played at 2× in reverse — beyond the hardware decoder with the original — holds 60 fps.
 Scripted runs never start proxies on their own; `--make-proxies` makes them and quits,
 `--no-proxies` plays the originals.
+
+**Keyframes.** Position, scale, rotation, opacity, the crop edges and volume can be
+animated. In the inspector's Video tab, Keyframes → Add keyframe keeps placement and
+opacity as they are at the playhead; move the playhead and change a value, and the clip
+animates between the two. The ◆ beside each value (and beside the Audio tab's gain)
+animates just that one: filled when it has a keyframe at the playhead, outlined while it is
+animated. While a value is animated, changing it sets its keyframe at the playhead (adding
+one if needed). Step between keyframes with the arrows, choose how a keyframe eases to the
+next (linear, ease in, ease out, ease in and out, hold), remove one, or Clear to stop
+animating (each value keeps what it was at the playhead). Selected clips show their
+keyframes as diamonds along the bottom: click one to go there, drag it to move it in time.
+The timeline toolbar's ◆ adds or removes a keyframe for the selected clip. Keyframes stay
+on the same moments when a clip is trimmed, split or sped up; a freeze frame holds the
+placement of its moment. Preview, export and the sound mix all use them.
 
 **Voice-over.** Click the microphone in the timeline toolbar to open the voice-over panel:
 pick the microphone, check its level, and press the red button. After an optional

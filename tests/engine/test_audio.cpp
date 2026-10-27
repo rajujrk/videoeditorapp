@@ -198,6 +198,24 @@ TEST_CASE("mixer applies volume, fades and mute")
     CHECK(peak(mix, 0, mix.size() / 2) == 0.0f);
 }
 
+TEST_CASE("mixer follows volume keyframes")
+{
+    requireSamples();
+    AudioProject p;
+    const Id toneMedia = p.importAudio("test_tone_440.wav", 3 * kSec);
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, toneMedia, 0, 2 * kSec).clipId();
+    // Silent for the first half second, then up to full volume by 1 s, held there.
+    p.push<SetClipKeyframesCommand>(clip, std::map<std::string, Keyframes>{{"volume", {{kSec / 2, -60.0}, {kSec, 0.0}}}},
+                                    "Add Keyframe");
+
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    auto mix = drainMix(mixer);
+    CHECK(peak(mix, 0, 23000) == 0.0f);
+    CHECK(peak(mix, 35500, 36500) == Catch::Approx(0.5f * std::pow(10.0f, -30.0f / 20.0f)).margin(0.005)); // -30 dB, halfway
+    CHECK(peak(mix, 60000, 61000) == Catch::Approx(0.5f).margin(kQuantization * 2));
+}
+
 TEST_CASE("mixer plays video clips' sound until it is detached")
 {
     requireSamples();
