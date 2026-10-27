@@ -287,6 +287,29 @@ private:
 };
 
 // Checks a title's text and sizes; returns why it is invalid.
+// Adds a recorded voice-over in one step: imports its file and places it at `start` on an
+// audio track — `trackId`, or with kNoId a new "Voice-over" track below the others.
+class AddVoiceOverCommand final : public Command {
+public:
+    AddVoiceOverCommand(MediaItem item, Id trackId, Ticks start)
+        : m_item(std::move(item)), m_trackId(trackId), m_start(start) {}
+
+    std::string label() const override { return "Record Voice-over"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+    Id clipId() const { return m_clipId; }
+    Id mediaId() const { return m_item.id; }
+    Id trackId() const { return m_trackId != kNoId ? m_trackId : m_newTrackId; }
+
+private:
+    MediaItem m_item;
+    Id m_trackId;
+    Ticks m_start;
+    Id m_clipId = kNoId;
+    Id m_newTrackId = kNoId;
+};
+
 std::optional<std::string> validateText(const ClipText& text);
 
 // Adds a title clip to a video or title track. With trackId kNoId it first adds a new

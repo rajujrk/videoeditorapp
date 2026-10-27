@@ -11,6 +11,7 @@ qt_add_qml_module(TechieVideoEditor
 )
 
 set_target_properties(TechieVideoEditor PROPERTIES
+    MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
     MACOSX_BUNDLE_GUI_IDENTIFIER "com.techievideoeditor.app"
     MACOSX_BUNDLE_BUNDLE_NAME "TechieVideoEditor"
     MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"

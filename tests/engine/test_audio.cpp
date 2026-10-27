@@ -268,6 +268,12 @@ TEST_CASE("output follows the clock and is silent when paused")
     CHECK(onset <= 4800);
     CHECK(output.peakLeft() == Catch::Approx(0.9f).margin(0.01));
     CHECK(output.underruns() == 0);
+
+    // Muted, it keeps up with the clock but plays nothing.
+    output.setMuted(true);
+    output.render(out.data(), 9600);
+    CHECK(peak(out, 0, 9600) == 0.0f);
+    CHECK(output.peakLeft() == 0.0f);
 }
 
 #include "audio/WaveformCache.h"

@@ -77,6 +77,23 @@ Rectangle {
             IconButton { iconName: "magnet"; tip: "Main track closes gaps on delete"; checkable: true; checked: true; enabled: false }
             IconButton { id: snapToggle; iconName: "snap"; tip: "Snapping"; checkable: true; checked: true }
             IconButton { iconName: "keyframe"; tip: "Keyframes — Phase 2"; enabled: false }
+            Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
+            IconButton {
+                id: voiceOverButton
+                objectName: "voiceOverButton"
+                iconName: "mic"
+                tip: "Record voice-over"
+                checkable: true
+                checked: voiceOver.visible
+                onClicked: voiceOver.visible ? voiceOver.close() : voiceOver.open()
+
+                VoiceOverPanel {
+                    id: voiceOver
+                    objectName: "voiceOverPanel"
+                    project: timeline.project
+                    y: -height - Theme.space.s
+                }
+            }
 
             Item { Layout.fillWidth: true }
 
@@ -188,7 +205,7 @@ Rectangle {
                 id: lanes
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                contentWidth: Math.max(width, (timeline.project.duration + 20) * timeline.pixelsPerSecond)
+                contentWidth: Math.max(width, (Math.max(timeline.project.duration, timeline.project.playhead) + 20) * timeline.pixelsPerSecond)
                 contentHeight: height
                 flickableDirection: Flickable.HorizontalFlick
                 boundsBehavior: Flickable.StopAtBounds
@@ -360,6 +377,26 @@ Rectangle {
                                 timeline.project.addClip(mediaId, track.id, start)
                                 drop.accept()
                             }
+                        }
+                    }
+
+                    // The take being recorded, from where it started to the playhead
+                    Rectangle {
+                        objectName: "recordingRange"
+                        visible: timeline.project.recording
+                        x: timeline.project.recordingStart * timeline.pixelsPerSecond
+                        width: Math.max(0, timeline.project.playhead - timeline.project.recordingStart) * timeline.pixelsPerSecond
+                        height: parent.height
+                        z: 9
+                        color: Qt.alpha(Theme.color.danger, 0.12)
+                        Rectangle { width: parent.width; height: Theme.size.ruler; color: Qt.alpha(Theme.color.danger, 0.35) }
+                        Text {
+                            x: Theme.space.xs
+                            y: Theme.space.xs
+                            visible: parent.width > implicitWidth + Theme.space.s
+                            text: "● REC"
+                            font: Theme.type.caption
+                            color: Theme.color.danger
                         }
                     }
 

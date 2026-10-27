@@ -10,6 +10,8 @@ add_library(tve_engine STATIC
     encode/Mp4Writer.cpp
     encode/Proxy.h
     encode/Proxy.cpp
+    encode/WavWriter.h
+    encode/WavWriter.cpp
     playback/FrameQueue.h
     playback/FrameSource.h
     playback/PlaybackClock.h
@@ -21,6 +23,8 @@ add_library(tve_engine STATIC
     playback/TimelineAudio.cpp
     audio/AudioOutput.h
     audio/AudioOutput.cpp
+    audio/AudioRecorder.h
+    audio/AudioRecorder.cpp
     audio/MiniaudioImpl.c
     audio/WaveformCache.h
     audio/WaveformCache.cpp

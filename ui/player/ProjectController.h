@@ -21,6 +21,7 @@
 
 namespace tve {
 class AudioOutput;
+class AudioRecorder;
 class TimelinePlayback;
 }
 
@@ -93,6 +94,23 @@ class ProjectController : public QObject {
     Q_PROPERTY(double levelRight READ levelRight NOTIFY levelsChanged)
     Q_PROPERTY(QString audioDevice READ audioDevice CONSTANT)
 
+    // Voice-over: recording from a microphone at the playhead. The input is open (and its
+    // level metered) while voiceOverActive; a take plays the timeline from the playhead and,
+    // when it stops, lands on a free audio track there as one undoable step. Takes are WAV
+    // files in recordingsDirectory: "<project> Voice-overs" beside a saved project, else
+    // Movies/TechieVideoEditor Voice-overs (TVE_RECORDING_DIR overrides; TVE_AUDIO_INPUT=null
+    // or none records without a microphone). microphoneAccess: granted, denied, undetermined.
+    Q_PROPERTY(bool voiceOverActive READ voiceOverActive NOTIFY voiceOverChanged)
+    Q_PROPERTY(bool recording READ recording NOTIFY voiceOverChanged)
+    Q_PROPERTY(double recordingStart READ recordingStart NOTIFY voiceOverChanged)
+    Q_PROPERTY(double recordingTime READ recordingTime NOTIFY inputLevelChanged)
+    Q_PROPERTY(double inputLevel READ inputLevel NOTIFY inputLevelChanged)
+    Q_PROPERTY(QStringList inputDevices READ inputDevices NOTIFY voiceOverChanged)
+    Q_PROPERTY(QString inputDevice READ inputDevice WRITE setInputDevice NOTIFY voiceOverChanged)
+    Q_PROPERTY(QString microphoneAccess READ microphoneAccessName NOTIFY voiceOverChanged)
+    Q_PROPERTY(bool muteWhileRecording READ muteWhileRecording WRITE setMuteWhileRecording NOTIFY voiceOverChanged)
+    Q_PROPERTY(QString recordingsDirectory READ recordingsDirectory NOTIFY projectChanged)
+
 public:
     explicit ProjectController(QObject* parent = nullptr);
     ~ProjectController() override;
@@ -144,6 +162,18 @@ public:
     double levelLeft() const { return m_levelLeft; }
     double levelRight() const { return m_levelRight; }
     QString audioDevice() const;
+    bool voiceOverActive() const { return m_recorder != nullptr; }
+    bool recording() const;
+    double recordingStart() const;
+    double recordingTime() const { return m_recordingTime; }
+    double inputLevel() const { return m_inputLevel; }
+    QStringList inputDevices() const { return m_inputDevices; }
+    QString inputDevice() const;
+    void setInputDevice(const QString& name);
+    QString microphoneAccessName() const;
+    bool muteWhileRecording() const { return m_muteWhileRecording; }
+    void setMuteWhileRecording(bool mute);
+    QString recordingsDirectory() const;
 
     // Project lifecycle
     Q_INVOKABLE void newProject(int width, int height, const QString& name = {});
@@ -214,6 +244,15 @@ public:
     Q_INVOKABLE bool setClipText(double clipId, const QVariantMap& changes);
 
     // Makes (in the background) or deletes the proxy of a video.
+    // Voice-over. openVoiceOver asks for microphone access first if it has not been given
+    // (returning false until it is; voiceOverChanged follows the answer). closeVoiceOver
+    // ends a take in progress, keeping it.
+    Q_INVOKABLE bool openVoiceOver();
+    Q_INVOKABLE void closeVoiceOver();
+    Q_INVOKABLE bool startRecording();
+    Q_INVOKABLE bool stopRecording();
+    Q_INVOKABLE void openMicrophoneSettings();
+
     Q_INVOKABLE bool createProxy(double mediaId);
     Q_INVOKABLE bool deleteProxy(double mediaId);
 
@@ -263,6 +302,8 @@ signals:
     void exportChanged();
     void recoveryChanged();
     void proxiesChanged();
+    void voiceOverChanged();
+    void inputLevelChanged();
     // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
     void exportFinished(bool ok, const QString& message);
 
@@ -320,6 +361,18 @@ private:
     qint64 m_unsavedSince = 0; // ms since epoch of the first edit not yet autosaved; 0 = none
     qint64 m_lastAutosave = 0;
     QTimer m_autosaveTimer;
+
+    // Voice-over
+    QString takePath() const;
+    void updateInput();
+    std::unique_ptr<tve::AudioRecorder> m_recorder;
+    QStringList m_inputDevices;
+    QString m_inputDevice; // empty: the system default
+    std::optional<tve::Ticks> m_recordingStart;
+    double m_recordingTime = 0;
+    double m_inputLevel = 0;
+    bool m_muteWhileRecording = true;
+    bool m_requestingAccess = false;
 
     std::thread m_exportThread;
     std::atomic<bool> m_cancelExport{false};

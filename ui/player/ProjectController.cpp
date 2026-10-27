@@ -2,6 +2,7 @@
 
 #include "VideoView.h"
 #include "audio/AudioOutput.h"
+#include "audio/AudioRecorder.h"
 #include "commands/EditCommands.h"
 #include "decode/AudioDecoder.h"
 #include "decode/VideoDecoder.h"
@@ -10,10 +11,12 @@
 #include "gpu/EffectLibrary.h"
 #include "EffectInfo.h"
 #include "Exporter.h"
+#include "MicrophoneAccess.h"
 #include "TitleRenderer.h"
 #include "playback/TimelinePlayback.h"
 
 #include <QDateTime>
+#include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -53,6 +56,48 @@ Id toId(double value)
 QString fileName(const std::string& path)
 {
     return QFileInfo(QString::fromStdString(path)).fileName();
+}
+
+// A media file's streams and length, or nullopt (with `error` set) if it has neither
+// pictures nor sound.
+std::optional<MediaItem> probeMedia(const std::string& path, QString* error)
+{
+    MediaItem item{.path = path};
+    if (auto video = VideoDecoder::open(path)) {
+        const VideoStreamInfo& info = video->info();
+        item.width = info.width;
+        item.height = info.height;
+        item.frameRate = info.frameRate;
+        item.duration = info.duration;
+    } else {
+        item.hasVideo = false;
+    }
+    if (auto sound = AudioDecoder::open(path)) {
+        item.hasAudio = true;
+        item.audioSampleRate = sound->info().sourceSampleRate;
+        item.audioChannels = sound->info().sourceChannels;
+        if (!item.hasVideo || item.duration <= 0)
+            item.duration = sound->info().duration;
+    }
+    if (!item.hasVideo && !item.hasAudio) {
+        *error = QStringLiteral("Could not import %1: no video or audio found").arg(fileName(path));
+        return std::nullopt;
+    }
+    if (item.duration <= 0) {
+        *error = QStringLiteral("%1 has no known duration").arg(fileName(path));
+        return std::nullopt;
+    }
+    return item;
+}
+
+// TVE_AUDIO_INPUT=null records silence in real time without a microphone (tests, CI);
+// =none opens no device at all.
+AudioRecorder::Backend inputBackend()
+{
+    const QByteArray mode = qgetenv("TVE_AUDIO_INPUT");
+    return mode == "null"   ? AudioRecorder::Backend::Null
+         : mode == "none" ? AudioRecorder::Backend::None
+                          : AudioRecorder::Backend::System;
 }
 
 const char* const kBlendNames[] = {"normal", "multiply", "screen", "overlay", "add", "darken", "lighten"};
@@ -229,6 +274,7 @@ ProjectController::~ProjectController()
         m_exportThread.join();
     // Quitting with unsaved changes keeps them recoverable; otherwise nothing is left behind.
     blockSignals(true); // nothing should react to a half-destroyed controller
+    closeVoiceOver();   // a take in progress lands on the timeline first
     if (m_autosaveEnabled && modified())
         autosaveNow();
     else
@@ -431,7 +477,7 @@ QVariantMap ProjectController::selectedTransitionInfo() const
 
 void ProjectController::resetProject(Project project, const QString& filePath)
 {
-    pause();
+    pause(); // also ends a take in progress, in the project it was recorded for
     // Unsaved work being replaced stays recoverable under its own session; the new
     // document gets a new one.
     if (m_stack && modified() && m_autosaveEnabled) {
@@ -505,32 +551,13 @@ int ProjectController::importMedia(const QList<QUrl>& files)
             ++imported;
             continue;
         }
-        MediaItem item{.path = path};
-        if (auto video = VideoDecoder::open(path)) {
-            const VideoStreamInfo& info = video->info();
-            item.width = info.width;
-            item.height = info.height;
-            item.frameRate = info.frameRate;
-            item.duration = info.duration;
-        } else {
-            item.hasVideo = false;
-        }
-        if (auto sound = AudioDecoder::open(path)) {
-            item.hasAudio = true;
-            item.audioSampleRate = sound->info().sourceSampleRate;
-            item.audioChannels = sound->info().sourceChannels;
-            if (!item.hasVideo || item.duration <= 0)
-                item.duration = sound->info().duration;
-        }
-        if (!item.hasVideo && !item.hasAudio) {
-            reportError(QStringLiteral("Could not import %1: no video or audio found").arg(fileName(path)));
+        QString error;
+        auto item = probeMedia(path, &error);
+        if (!item) {
+            reportError(error);
             continue;
         }
-        if (item.duration <= 0) {
-            reportError(QStringLiteral("%1 has no known duration").arg(fileName(path)));
-            continue;
-        }
-        if (apply(std::make_unique<ImportMediaCommand>(std::move(item))))
+        if (apply(std::make_unique<ImportMediaCommand>(std::move(*item))))
             ++imported;
     }
     requestAutoProxies();
@@ -1415,6 +1442,10 @@ void ProjectController::play()
 
 void ProjectController::pause()
 {
+    if (recording()) {
+        stopRecording();
+        return;
+    }
     m_playback->pause();
     updatePlayhead();
 }
@@ -1426,6 +1457,8 @@ void ProjectController::togglePlay()
 
 void ProjectController::seek(double seconds)
 {
+    if (recording())
+        return; // the take is tied to the time it started at
     const Ticks clamped = std::clamp<Ticks>(ticks(seconds), 0, m_project.duration());
     m_playback->seek(clamped);
     updatePlayhead();
@@ -1444,7 +1477,7 @@ void ProjectController::updatePlayhead()
 {
     Ticks now = m_playback->clock().now();
     const Ticks end = m_project.duration();
-    if (m_playback->clock().playing() && now >= end) {
+    if (m_playback->clock().playing() && now >= end && !recording()) { // takes run past the end
         m_playback->pause();
         m_playback->seek(end);
         now = end;
@@ -1461,10 +1494,222 @@ void ProjectController::updatePlayhead()
         m_levelRight = right;
         emit levelsChanged();
     }
+    updateInput();
     const bool isPlaying = m_playback->clock().playing();
     if (isPlaying != m_wasPlaying) {
         m_wasPlaying = isPlaying;
         emit playingChanged();
+    }
+}
+
+// --- Voice-over ---
+
+bool ProjectController::recording() const
+{
+    return m_recorder && m_recorder->recording();
+}
+
+double ProjectController::recordingStart() const
+{
+    return m_recordingStart ? seconds(*m_recordingStart) : 0.0;
+}
+
+QString ProjectController::inputDevice() const
+{
+    return m_recorder ? QString::fromStdString(m_recorder->deviceName()) : m_inputDevice;
+}
+
+void ProjectController::setInputDevice(const QString& name)
+{
+    if (recording() || name == inputDevice())
+        return;
+    m_inputDevice = name;
+    if (m_recorder) {
+        m_recorder.reset();
+        openVoiceOver();
+    }
+    emit voiceOverChanged();
+}
+
+QString ProjectController::microphoneAccessName() const
+{
+    if (inputBackend() != AudioRecorder::Backend::System)
+        return QStringLiteral("granted");
+    switch (microphoneAccess()) {
+    case MicrophoneAccess::Granted:
+        return QStringLiteral("granted");
+    case MicrophoneAccess::Undetermined:
+        return QStringLiteral("undetermined");
+    case MicrophoneAccess::Denied:
+        break;
+    }
+    return QStringLiteral("denied");
+}
+
+void ProjectController::setMuteWhileRecording(bool mute)
+{
+    if (mute == m_muteWhileRecording)
+        return;
+    m_muteWhileRecording = mute;
+    if (recording())
+        m_audioOutput->setMuted(mute);
+    emit voiceOverChanged();
+}
+
+QString ProjectController::recordingsDirectory() const
+{
+    const QByteArray override = qgetenv("TVE_RECORDING_DIR");
+    if (!override.isEmpty())
+        return QString::fromLocal8Bit(override);
+    if (!m_filePath.isEmpty()) {
+        const QFileInfo project(m_filePath);
+        return project.absolutePath() + QLatin1Char('/') + project.completeBaseName() + QStringLiteral(" Voice-overs");
+    }
+    return QStandardPaths::writableLocation(QStandardPaths::MoviesLocation) + QStringLiteral("/TechieVideoEditor Voice-overs");
+}
+
+QString ProjectController::takePath() const
+{
+    const QDir folder(recordingsDirectory());
+    if (!folder.mkpath(QStringLiteral(".")))
+        return {};
+    for (int n = 1;; ++n) {
+        const QString path = folder.filePath(QStringLiteral("Voice-over %1.wav").arg(n));
+        if (!QFileInfo::exists(path))
+            return path;
+    }
+}
+
+bool ProjectController::openVoiceOver()
+{
+    if (m_recorder)
+        return true;
+    const AudioRecorder::Backend backend = inputBackend();
+    if (backend == AudioRecorder::Backend::System) {
+        const MicrophoneAccess access = microphoneAccess();
+        if (access == MicrophoneAccess::Denied) {
+            emit voiceOverChanged();
+            return false;
+        }
+        if (access == MicrophoneAccess::Undetermined) {
+            // macOS asks the person; carry on when they answer, unless closed meanwhile.
+            if (!m_requestingAccess) {
+                m_requestingAccess = true;
+                requestMicrophoneAccess(this, [this](bool granted) {
+                    const bool wanted = m_requestingAccess;
+                    m_requestingAccess = false;
+                    if (granted && wanted)
+                        openVoiceOver();
+                    emit voiceOverChanged();
+                });
+            }
+            return false;
+        }
+    }
+    auto recorder = std::make_unique<AudioRecorder>(backend, m_inputDevice.toStdString());
+    if (!recorder->isOpen()) {
+        reportError(QStringLiteral("Could not open the microphone: %1").arg(QString::fromStdString(recorder->errorString())));
+        return false;
+    }
+    m_inputDevices.clear();
+    for (const std::string& name : AudioRecorder::inputDevices(backend))
+        m_inputDevices << QString::fromStdString(name);
+    m_recorder = std::move(recorder);
+    emit voiceOverChanged();
+    return true;
+}
+
+void ProjectController::closeVoiceOver()
+{
+    m_requestingAccess = false;
+    if (!m_recorder)
+        return;
+    if (recording())
+        stopRecording();
+    m_recorder.reset();
+    m_inputLevel = 0;
+    m_recordingTime = 0;
+    emit inputLevelChanged();
+    emit voiceOverChanged();
+}
+
+bool ProjectController::startRecording()
+{
+    if (!openVoiceOver() || recording())
+        return false;
+    const QString path = takePath();
+    if (path.isEmpty()) {
+        reportError(QStringLiteral("Could not create the folder %1").arg(recordingsDirectory()));
+        return false;
+    }
+    std::string error;
+    if (!m_recorder->start(path.toStdString(), &error)) {
+        reportError(QStringLiteral("Could not start recording: %1").arg(QString::fromStdString(error)));
+        return false;
+    }
+    // The take begins at the playhead and the timeline plays along (past its end if need be).
+    m_recordingStart = m_playback->clock().now();
+    m_recordingTime = 0;
+    m_audioOutput->setMuted(m_muteWhileRecording);
+    m_playback->play();
+    updatePlayhead();
+    emit voiceOverChanged();
+    return true;
+}
+
+bool ProjectController::stopRecording()
+{
+    if (!recording())
+        return false;
+    std::string error;
+    const auto take = m_recorder->stop(&error);
+    m_playback->pause();
+    m_audioOutput->setMuted(false);
+    const Ticks start = *m_recordingStart;
+    m_recordingStart.reset();
+    updatePlayhead();
+    emit voiceOverChanged();
+    if (!take) {
+        reportError(QStringLiteral("Recording failed: %1").arg(QString::fromStdString(error)));
+        return false;
+    }
+    QString probeError;
+    auto item = probeMedia(take->path, &probeError);
+    if (!item) {
+        reportError(probeError);
+        return false;
+    }
+    // The topmost audio track with room for the whole take, else a new one.
+    Id target = kNoId;
+    for (auto track = m_project.tracks.rbegin(); track != m_project.tracks.rend(); ++track) {
+        if (track->kind == TrackKind::Audio && !track->locked && !track->muted
+            && !track->overlaps(start, item->duration)) {
+            target = track->id;
+            break;
+        }
+    }
+    auto command = std::make_unique<AddVoiceOverCommand>(std::move(*item), target, start);
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return false;
+    setSelectedClip(double(raw->clipId()));
+    return true;
+}
+
+void ProjectController::openMicrophoneSettings()
+{
+    QDesktopServices::openUrl(
+        QUrl(QStringLiteral("x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")));
+}
+
+void ProjectController::updateInput()
+{
+    const double level = m_recorder ? double(m_recorder->peak()) : 0.0;
+    const double time = recording() ? seconds(m_recorder->recordedDuration()) : m_recordingTime;
+    if (level != m_inputLevel || time != m_recordingTime) {
+        m_inputLevel = level;
+        m_recordingTime = time;
+        emit inputLevelChanged();
     }
 }
 

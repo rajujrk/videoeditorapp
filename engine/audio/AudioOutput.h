@@ -35,6 +35,10 @@ public:
     std::string errorString() const { return m_error; }
 
     void setSource(std::shared_ptr<TimelineAudio> audio, PlaybackClock* clock);
+    // Muted output keeps following the clock but plays silence (e.g. while a microphone
+    // records, so the speakers are not recorded too).
+    void setMuted(bool muted) { m_muted = muted; }
+    bool muted() const { return m_muted; }
 
     // Peak levels (0..1) of the most recent callback, for meters.
     float peakLeft() const { return m_peakLeft.load(); }
@@ -65,6 +69,7 @@ private:
     std::atomic<float> m_peakLeft{0.0f};
     std::atomic<float> m_peakRight{0.0f};
     std::atomic<std::int64_t> m_underruns{0};
+    std::atomic<bool> m_muted{false};
 };
 
 } // namespace tve

@@ -27,6 +27,8 @@ qt_add_qml_module(tve_player
         TransitionPreviewProvider.cpp
         TitleRenderer.h
         TitleRenderer.cpp
+        MicrophoneAccess.h
+        MicrophoneAccess.mm
 )
 
 qt_add_shaders(tve_player "tve_player_shaders"
@@ -48,4 +50,5 @@ target_link_libraries(tve_player
         tve::engine
         "-framework Metal"
         "-framework CoreVideo"
+        "-framework AVFoundation"
 )
