@@ -225,3 +225,112 @@ TEST_CASE("keyframes are saved and loaded", "[keyframes]")
             c.erase("keyframes");
     CHECK(projectFromJson(old).locateClip(p.clip)->clip->keyframes.empty());
 }
+
+TEST_CASE("timing curves follow their control points", "[keyframes][curves]")
+{
+    const EasingCurve straight{0.0, 0.0, 1.0, 1.0};
+    for (double t : {0.0, 0.2, 0.5, 0.9, 1.0})
+        CHECK(evaluateCurve(straight, t) == Approx(t).margin(1e-6));
+    // The stand-ins for the named easings stay close to them.
+    for (Easing e : {Easing::EaseIn, Easing::EaseOut, Easing::EaseInOut}) {
+        for (double t : {0.1, 0.3, 0.5, 0.7, 0.9})
+            CHECK(evaluateCurve(curveFor(e), t) == Approx(ease(e, t)).margin(0.06));
+    }
+    const EasingCurve overshoot{0.34, 1.56, 0.64, 1.0};
+    CHECK(evaluateCurve(overshoot, 0.6) > 1.0);
+    CHECK(evaluateCurve(overshoot, 1.0) == Approx(1.0));
+    const EasingCurve anticipate{0.36, 0.0, 0.66, -0.56};
+    CHECK(evaluateCurve(anticipate, 0.3) < 0.0);
+
+    Keyframe from{0, 0.0, Easing::Curve, overshoot};
+    CHECK(ease(from, 0.6) == Approx(evaluateCurve(overshoot, 0.6)));
+    const Keyframes keys{from, {kSec, 10.0}};
+    CHECK(evaluate(keys, kSec * 6 / 10, 0.0) > 10.0);
+
+    CHECK(validateKeyframeTimes({{0, 0.0, Easing::Curve, {1.5, 0.0, 0.5, 1.0}}}).value() == "a keyframe's curve is out of range");
+    CHECK(validateKeyframeTimes({{0, 0.0, Easing::Curve, {0.5, 3.5, 0.5, 1.0}}}).has_value());
+    CHECK_FALSE(validateKeyframeTimes({{0, 0.0, Easing::Curve, {0.5, -1.0, 0.5, 2.0}}}));
+}
+
+TEST_CASE("an overshooting curve stays inside a property's range", "[keyframes][curves]")
+{
+    AnimProject p;
+    const EasingCurve overshoot{0.34, 1.56, 0.64, 1.0};
+    p.push<SetClipKeyframesCommand>(p.clip,
+                                    std::map<std::string, Keyframes>{
+                                        {"opacity", {{0, 0.0, Easing::Curve, overshoot}, {kSec, 1.0}}},
+                                        {"x", {{0, 0.0, Easing::Curve, overshoot}, {kSec, 0.5}}},
+                                        {"volume", {{0, -12.0, Easing::Curve, overshoot}, {kSec, 12.0}}},
+                                    },
+                                    "Add Keyframe");
+    const Clip& clip = p.get(p.clip);
+    const Ticks peak = 10 * kSec + kSec * 6 / 10;
+    CHECK(clip.visualAt(peak).opacity == 1.0);
+    CHECK(clip.visualAt(peak).transform.x > 0.5); // room to overshoot
+    CHECK(clip.gainDbAt(peak) == 12.0f);
+}
+
+namespace {
+
+ClipEffect blur(Keyframes radius)
+{
+    ClipEffect effect{"tve.blur.gaussian", true, {{"radius", {12.0f}}}};
+    if (!radius.empty())
+        effect.keyframes["radius"] = std::move(radius);
+    return effect;
+}
+
+} // namespace
+
+TEST_CASE("effect parameters animate", "[keyframes][effects]")
+{
+    AnimProject p;
+    p.push<SetClipEffectsCommand>(p.clip, std::vector<ClipEffect>{blur({{0, 0.0}, {2 * kSec, 40.0}})}, "Add Effect");
+    const Clip& clip = p.get(p.clip);
+    const auto radiusAt = [&](Id id, Ticks t) { return p.get(id).effectsAt(t).at(0).values.at("radius").at(0); };
+    CHECK(radiusAt(p.clip, 10 * kSec) == 0.0f);
+    CHECK(radiusAt(p.clip, 11 * kSec) == Approx(20.0f));
+    CHECK(radiusAt(p.clip, 15 * kSec) == Approx(40.0f));
+    CHECK(clip.effectsAt(11 * kSec).at(0).keyframes.empty()); // evaluated, not animated
+    CHECK(clip.effects.at(0).values.at("radius").at(0) == 12.0f); // the static value is kept
+
+    SECTION("they follow the clip through trims and splits")
+    {
+        p.push<TrimClipCommand>(p.clip, TrimClipCommand::Edge::Start, 10 * kSec + kSec / 2);
+        CHECK(radiusAt(p.clip, 11 * kSec) == Approx(20.0f));
+        auto& split = p.push<SplitClipCommand>(p.clip, 11 * kSec);
+        CHECK(radiusAt(split.rightClipId(), 11 * kSec + kSec / 2) == Approx(30.0f));
+    }
+    SECTION("a freeze frame holds the effect as it was")
+    {
+        auto& freeze = p.push<FreezeFrameCommand>(p.clip, 11 * kSec, kSec);
+        const Clip& still = p.get(freeze.freezeClipId());
+        CHECK(still.effects.at(0).keyframes.empty());
+        CHECK(still.effects.at(0).values.at("radius").at(0) == Approx(20.0f));
+    }
+    SECTION("they are saved and loaded with their curves")
+    {
+        Keyframes curved{{0, 0.0, Easing::Curve, {0.1, 0.2, 0.3, 0.9}}, {kSec, 5.0}};
+        p.push<SetClipEffectsCommand>(p.clip, std::vector<ClipEffect>{blur(curved)}, "Change Effect");
+        Project loaded = projectFromJson(projectToJson(p.project));
+        CHECK(loaded.locateClip(p.clip)->clip->effects == p.get(p.clip).effects);
+    }
+    SECTION("out-of-order keyframes are refused")
+    {
+        auto error = p.stack.push(std::make_unique<SetClipEffectsCommand>(
+            p.clip, std::vector<ClipEffect>{blur({{kSec, 0.0}, {0, 1.0}})}, "Change Effect"));
+        CHECK(error.value() == "keyframes must be in order, one per time");
+    }
+    SECTION("keyframes and effects change in one step")
+    {
+        auto command = std::make_unique<SetClipKeyframesCommand>(
+            p.clip, std::map<std::string, Keyframes>{{"x", {{0, 0.2}}}}, "Remove Keyframe");
+        command->setEffects({blur({})});
+        REQUIRE_FALSE(p.stack.push(std::move(command)));
+        CHECK(p.get(p.clip).effects.at(0).keyframes.empty());
+        CHECK(p.get(p.clip).keyframesOf("x"));
+        p.stack.undo();
+        CHECK(p.get(p.clip).effects.at(0).keyframes.size() == 1);
+        CHECK_FALSE(p.get(p.clip).keyframesOf("x"));
+    }
+}

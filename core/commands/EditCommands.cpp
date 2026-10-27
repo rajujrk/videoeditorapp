@@ -43,24 +43,36 @@ void shiftClipsFrom(Track& track, Ticks from, Ticks delta)
 }
 
 // Keeps keyframes over the same moments of a clip whose start moves by `delta` on the timeline.
+// Every keyframe list of a clip: its properties' and its effects' parameters'.
+template <typename F>
+void forEachKeyframes(Clip& clip, F f)
+{
+    for (auto& [id, keys] : clip.keyframes)
+        f(keys);
+    for (ClipEffect& effect : clip.effects) {
+        for (auto& [id, keys] : effect.keyframes)
+            f(keys);
+    }
+}
+
 void shiftKeyframes(Clip& clip, Ticks delta)
 {
-    for (auto& [id, keys] : clip.keyframes) {
+    forEachKeyframes(clip, [&](Keyframes& keys) {
         for (Keyframe& k : keys)
             k.time -= delta;
-    }
+    });
 }
 
 // Stretches keyframe times with a clip whose length changes by `factor` (speed changes).
 void scaleKeyframes(Clip& clip, double factor)
 {
-    for (auto& [id, keys] : clip.keyframes) {
+    forEachKeyframes(clip, [&](Keyframes& keys) {
         for (Keyframe& k : keys)
             k.time = Ticks(std::llround(double(k.time) * factor));
         // Rounding cannot reorder them, but it can merge neighbours.
         keys.erase(std::unique(keys.begin(), keys.end(), [](const Keyframe& a, const Keyframe& b) { return a.time == b.time; }),
                    keys.end());
-    }
+    });
 }
 
 } // namespace
@@ -540,6 +552,19 @@ void SetClipVisualCommand::undo(Project& project)
 
 // --- SetClipKeyframesCommand ---
 
+std::optional<std::string> validateEffects(const std::vector<ClipEffect>& effects)
+{
+    for (const ClipEffect& effect : effects) {
+        if (effect.effectId.empty())
+            return "effect id is empty";
+        for (const auto& [param, keys] : effect.keyframes) {
+            if (auto error = validateKeyframeTimes(keys))
+                return error;
+        }
+    }
+    return std::nullopt;
+}
+
 std::optional<std::string> SetClipKeyframesCommand::redo(Project& project)
 {
     auto location = project.locateClip(m_clipId);
@@ -568,6 +593,12 @@ std::optional<std::string> SetClipKeyframesCommand::redo(Project& project)
     }
     if (m_gainDb && (*m_gainDb < kMinGainDb || *m_gainDb > kMaxGainDb))
         return "volume must be between -60 dB and +12 dB";
+    if (m_effects) {
+        if (!hasPicture)
+            return "effects apply to video clips";
+        if (auto error = validateEffects(*m_effects))
+            return error;
+    }
 
     m_previous = clip;
     for (const auto& [id, keys] : m_changes) {
@@ -580,6 +611,8 @@ std::optional<std::string> SetClipKeyframesCommand::redo(Project& project)
         clip.visual = *m_visual;
     if (m_gainDb)
         clip.gainDb = *m_gainDb;
+    if (m_effects)
+        clip.effects = *m_effects;
     return std::nullopt;
 }
 
@@ -589,6 +622,7 @@ void SetClipKeyframesCommand::undo(Project& project)
     clip.keyframes = m_previous.keyframes;
     clip.visual = m_previous.visual;
     clip.gainDb = m_previous.gainDb;
+    clip.effects = m_previous.effects;
 }
 
 // --- SetClipEffectsCommand ---
@@ -602,10 +636,8 @@ std::optional<std::string> SetClipEffectsCommand::redo(Project& project)
         return error;
     if (location->track->kind != TrackKind::Video)
         return "effects apply to video clips";
-    for (const ClipEffect& effect : m_effects) {
-        if (effect.effectId.empty())
-            return "effect id is empty";
-    }
+    if (auto error = validateEffects(m_effects))
+        return error;
     m_previous = location->clip->effects;
     location->clip->effects = m_effects;
     return std::nullopt;
@@ -715,6 +747,7 @@ std::optional<std::string> FreezeFrameCommand::redo(Project& project)
     Clip still = clip;
     // The still holds the picture as it was placed at that moment.
     still.visual = clip.visualAt(m_at);
+    still.effects = clip.effectsAt(m_at);
     still.keyframes.clear();
     still.id = m_freezeClipId;
     still.start = m_at;

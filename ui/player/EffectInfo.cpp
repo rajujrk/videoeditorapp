@@ -21,6 +21,9 @@ QVariantMap describeEffect(const tve::LoadedEffect& effect)
             {QStringLiteral("max"), p.max},
             {QStringLiteral("default"), p.type == tve::ParamType::Color ? QVariant(defaults) : defaults.value(0)},
             {QStringLiteral("values"), values},
+            // Scalar parameters the manifest allows to animate.
+            {QStringLiteral("keyframable"), p.keyframable
+                                               && (p.type == tve::ParamType::Float || p.type == tve::ParamType::Int)},
         };
     }
     QStringList categories;

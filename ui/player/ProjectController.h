@@ -212,19 +212,23 @@ public:
     Q_INVOKABLE void cancelPreview(double clipId);
     Q_INVOKABLE bool resetClipVisual(double clipId);
 
-    // Keyframes, at the playhead (snapped to the frame grid). `properties` are animatable
-    // property ids (x, y, scale, rotation, opacity, cropLeft…, volume); empty means the
+    // Keyframes, at the playhead (snapped to the frame grid). `properties` are channels:
+    // animatable property ids (x, y, scale, rotation, opacity, cropLeft…, volume) or an
+    // effect's keyframable parameter, "effect:<stack index>:<parameter id>"; empty means the
     // usual set: placement and opacity for pictures, volume for sound-only clips (add), or
     // every property with a keyframe there (remove). While a property is animated, editing
     // it in the inspector sets (or adds) its keyframe at the playhead. Times in and out of
     // these calls are seconds from the clip's start. selectedClipInfo carries
     // keyframes {property: [{time, value, easing}]} and keyframeStates {property: "key" |
-    // "animated"} for the playhead; easing: linear, easeIn, easeOut, easeInOut, hold.
+    // "animated"} for the playhead, and for a keyframe there its keyframeEasing and
+    // keyframeCurve [x1, y1, x2, y2]; easing: linear, easeIn, easeOut, easeInOut, hold, curve.
     Q_INVOKABLE bool addKeyframes(double clipId, const QStringList& properties = {});
     Q_INVOKABLE bool removeKeyframes(double clipId, const QStringList& properties = {});
     // Stops animating (all properties when empty); each keeps its value at the playhead.
     Q_INVOKABLE bool clearKeyframes(double clipId, const QStringList& properties = {});
     Q_INVOKABLE bool setKeyframeEasing(double clipId, const QString& easing);
+    // Gives the keyframes at the playhead a custom curve (cubic Bezier control points).
+    Q_INVOKABLE bool setKeyframeCurve(double clipId, double x1, double y1, double x2, double y2);
     // Moves every keyframe at `from` to `to` (seconds from the clip's start, snapped to the
     // frame grid) and puts the playhead on it.
     Q_INVOKABLE bool moveKeyframes(double clipId, double from, double to);
@@ -338,8 +342,13 @@ private:
     // Playhead on the frame grid, from the clip's start.
     tve::Ticks keyTime(const tve::Clip& clip) const;
     tve::Ticks frameTolerance() const { return frameTicks() / 2; }
-    // Sets property `id`'s keyframe at keyTime(clip) to `value` (adding one if needed).
+    // Sets channel `id`'s keyframe at keyTime(clip) to `value` (adding one if needed). A
+    // channel is a property id or "effect:<stack index>:<parameter id>".
+    void setKey(tve::Clip& clip, const std::string& id, double value) const;
     tve::Keyframes withKey(const tve::Clip& clip, std::string_view id, double value) const;
+    // Applies the difference between `before` and `after` (keyframes, static picture and
+    // volume, effects) as one undo step. False when nothing changed or it was refused.
+    bool commitAnimation(const tve::Clip& before, tve::Clip after, const char* label);
     std::optional<std::vector<tve::ClipEffect>> effectsWithParam(tve::Id clipId, int index, const QString& paramId,
                                                                  const QVariant& value) const;
     tve::Ticks frameTicks() const;

@@ -36,7 +36,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipTransform, x, y, scale, rotation)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipCrop, left, top, right, bottom)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipVisual, transform, crop, opacity, blend)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipEffect, effectId, enabled, values)
+
 NLOHMANN_JSON_SERIALIZE_ENUM(TransitionAlignment, {
     {TransitionAlignment::Center, "center"},
     {TransitionAlignment::EndsAtCut, "endsAtCut"},
@@ -57,8 +57,11 @@ NLOHMANN_JSON_SERIALIZE_ENUM(Easing, {
     {Easing::EaseOut, "easeOut"},
     {Easing::EaseInOut, "easeInOut"},
     {Easing::Hold, "hold"},
+    {Easing::Curve, "curve"},
 })
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Keyframe, time, value, easing)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EasingCurve, x1, y1, x2, y2)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Keyframe, time, value, easing, curve)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipEffect, effectId, enabled, values, keyframes)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes)

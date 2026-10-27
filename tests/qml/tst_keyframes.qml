@@ -282,5 +282,108 @@ Item {
             // Picture properties do not apply to sound.
             verify(!p.addKeyframes(p.selectedClip, ["opacity"]))
         }
+
+        function test_animate_an_effect_parameter() {
+            const f = animatable()
+            const p = f.project
+            const id = p.selectedClip
+            verify(p.addClipEffect(id, "tve.blur.gaussian"))
+            click(f.editor, "inspectorTab:Effects")
+            p.seek(0)
+            click(f.editor, "effectParam:0:radius:keyframe")
+            compare(stateOf(p, "effect:0:radius"), "key")
+            compare(keys(p, "effect:0:radius")[0].value, 12) // the manifest default
+            p.seek(1.0)
+            compare(stateOf(p, "effect:0:radius"), "animated")
+            verify(p.setClipEffectParam(id, 0, "radius", 40))
+            compare(p.undoText, "Change Effect")
+            compare(keys(p, "effect:0:radius").length, 2)
+            p.seek(0.5)
+            fuzzyCompare(p.selectedClipInfo.effects[0].values.radius, 26, 1e-4)
+            compare(findChild(f.editor, "effectParam:0:radius:keyframe").keyState, "animated")
+            // Not every parameter animates: an enum has no toggle.
+            verify(p.addClipEffect(id, "tve.glitch.rgb_split"))
+            tryVerify(() => findChild(f.editor, "effectParam:1:channels") !== null)
+            verify(!findChild(f.editor, "effectParam:1:channels:keyframe").visible)
+            verify(!p.addKeyframes(id, ["effect:1:channels"]))
+            verify(!p.addKeyframes(id, ["effect:7:radius"]))
+
+            // Effect keyframes are keyframes of the clip like any other.
+            compare(p.tracks.find((t) => t.main).clips[0].keyframeTimes, [0, 1])
+            p.seek(0)
+            verify(p.seekKeyframe(id, 1))
+            compare(p.playhead, 1.0)
+            verify(p.removeKeyframes(id))
+            compare(keys(p, "effect:0:radius").length, 1)
+            // Removing the effect takes its keyframes with it.
+            verify(p.removeClipEffect(id, 0))
+            compare(Object.keys(p.selectedClipInfo.keyframes).length, 0)
+            compare(p.tracks.find((t) => t.main).clips[0].keyframeTimes, [])
+        }
+
+        function test_custom_curves_and_presets() {
+            const f = animatable()
+            const p = f.project
+            const id = p.selectedClip
+            p.seek(0)
+            verify(p.addKeyframes(id, ["x"]))
+            p.seek(1.0)
+            verify(p.setClipVisual(id, { x: 0.5 }))
+            p.seek(0)
+            verify(p.setKeyframeEasing(id, "easeIn"))
+            compare(p.selectedClipInfo.keyframeCurve, [0.32, 0, 0.67, 0])
+            // Choosing a custom curve starts from the easing it replaces.
+            verify(p.setKeyframeEasing(id, "curve"))
+            compare(p.selectedClipInfo.keyframeEasing, "curve")
+            compare(p.selectedClipInfo.keyframeCurve, [0.32, 0, 0.67, 0])
+            compare(settled(f.editor, "keyframeEasing").currentText, "Custom curve")
+
+            click(f.editor, "curvePreset:overshoot")
+            compare(p.undoText, "Change Keyframe")
+            compare(p.selectedClipInfo.keyframeCurve, [0.34, 1.56, 0.64, 1])
+            p.seek(0.6)
+            verify(p.selectedClipInfo.visual.x > 0.5) // past the target, then back
+            p.seek(1.0)
+            fuzzyCompare(p.selectedClipInfo.visual.x, 0.5, 1e-6)
+
+            // Out-of-range handles are pulled back in.
+            p.seek(0)
+            verify(p.setKeyframeCurve(id, -1, 9, 2, -9))
+            compare(p.selectedClipInfo.keyframeCurve, [0, 3, 1, -2])
+            p.seek(0.5)
+            verify(!p.setKeyframeCurve(id, 0.2, 0.2, 0.8, 0.8)) // no keyframe here
+        }
+
+        function test_drag_a_curve_handle() {
+            const f = animatable()
+            const p = f.project
+            const id = p.selectedClip
+            p.seek(0)
+            verify(p.addKeyframes(id, ["opacity"]))
+            p.seek(1.0)
+            verify(p.setClipVisual(id, { opacity: 0 }))
+            p.seek(0)
+            const editor = settled(f.editor, "curveEditor")
+            compare(editor.curve, [0, 0, 1, 1]) // linear
+            const handle = findChild(editor, "curveHandle:0")
+            const from = handle.mapToItem(editor, handle.width / 2, handle.height / 2)
+            const to = Qt.point(editor.px(0.6), editor.py(0))
+            mousePress(editor, from.x, from.y)
+            mouseMove(editor, (from.x + to.x) / 2, (from.y + to.y) / 2)
+            mouseMove(editor, to.x, to.y)
+            mouseRelease(editor, to.x, to.y)
+            compare(p.undoText, "Change Keyframe")
+            compare(p.selectedClipInfo.keyframeEasing, "curve")
+            const c = p.selectedClipInfo.keyframeCurve
+            fuzzyCompare(c[0], 0.6, 0.02)
+            fuzzyCompare(c[1], 0, 0.02)
+            compare(c[2], 1)
+            compare(c[3], 1)
+
+            // Hold draws a step with nothing to drag.
+            verify(p.setKeyframeEasing(id, "hold"))
+            verify(editor.hold)
+            verify(!findChild(editor, "curveHandle:0"))
+        }
     }
 }

@@ -12,6 +12,7 @@ Rectangle {
     required property int stackIndex
     required property var entry // {effectId, enabled, values}
     required property var spec  // the effect's manifest summary from availableEffects
+    property var keyStates: ({}) // channel → "key" / "animated" (selectedClipInfo.keyframeStates)
 
     implicitHeight: column.implicitHeight + Theme.space.m
     radius: Theme.radius.m
@@ -51,7 +52,12 @@ Rectangle {
             model: card.entry.enabled ? card.spec.params : []
             delegate: ParamControl {
                 required property var modelData
+                readonly property string channel: "effect:" + card.stackIndex + ":" + modelData.id
                 Layout.fillWidth: true
+                objectName: "effectParam:" + card.stackIndex + ":" + modelData.id
+                keyState: modelData.keyframable ? (card.keyStates[channel] || "none") : ""
+                onKeyframeToggled: keyState === "key" ? card.project.removeKeyframes(card.clipId, [channel])
+                                                      : card.project.addKeyframes(card.clipId, [channel])
                 // Show the clip's value when set, else the manifest default.
                 param: Object.assign({}, modelData, card.entry.values[modelData.id] !== undefined
                                                     ? { default: card.entry.values[modelData.id] } : {})

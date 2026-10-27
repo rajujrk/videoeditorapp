@@ -176,7 +176,7 @@ TEST_CASE("layers carry their clip's picture settings and effects, top last")
     CHECK(frame->layers[1].frame.pts() == kSec / 2 + 10 * kFrame30);
 }
 
-TEST_CASE("animated clips are placed as their keyframes say at each frame")
+TEST_CASE("animated clips are placed and filtered as their keyframes say at each frame")
 {
     requireSamples();
     auto project = std::make_shared<Project>();
@@ -194,22 +194,31 @@ TEST_CASE("animated clips are placed as their keyframes say at each frame")
         addCmd->clipId(),
         std::map<std::string, Keyframes>{{"x", {{0, 0.0}, {30 * kFrame30, 0.3}}}, {"opacity", {{15 * kFrame30, 1.0}, {30 * kFrame30, 0.0}}}},
         "Add Keyframe")));
+    ClipEffect blur{"tve.blur.gaussian", true, {}};
+    blur.keyframes["radius"] = {{0, 0.0}, {kSec, 30.0}};
+    REQUIRE_FALSE(stack.push(std::make_unique<SetClipEffectsCommand>(addCmd->clipId(), std::vector<ClipEffect>{blur}, "Add Effect")));
 
     TimelinePlayback playback;
     playback.setProject(project);
     std::map<Ticks, ClipVisual> visuals;
+    std::map<Ticks, float> radii;
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
     while (std::chrono::steady_clock::now() < deadline && !(playback.producerFinished() && !playback.queue().frontPts())) {
         if (auto front = playback.queue().frontPts()) {
             int skipped = 0;
             auto frame = playback.queue().takeLatestDue(*front, skipped);
-            if (frame && !frame->layers.empty())
+            if (frame && !frame->layers.empty()) {
                 visuals[frame->pts()] = frame->layers[0].visual;
+                radii[frame->pts()] = frame->layers[0].effects.at(0).values.at("radius").at(0);
+                CHECK(frame->layers[0].effects.at(0).keyframes.empty());
+            }
             continue;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     REQUIRE(visuals.size() == 30);
+    CHECK(radii.at(0) == 0.0f);
+    CHECK(radii.at(15 * kFrame30) == Catch::Approx(15.0f));
     CHECK(visuals.at(0).transform.x == Catch::Approx(0.0));
     CHECK(visuals.at(10 * kFrame30).transform.x == Catch::Approx(0.1));
     CHECK(visuals.at(10 * kFrame30).opacity == Catch::Approx(1.0));

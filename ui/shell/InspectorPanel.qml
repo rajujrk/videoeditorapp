@@ -261,10 +261,42 @@ Rectangle {
                                 objectName: "keyframeEasing"
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1 // shares the row instead of asking for its longest item
-                                readonly property var names: ["linear", "easeIn", "easeOut", "easeInOut", "hold"]
-                                model: ["Linear", "Ease in", "Ease out", "Ease in and out", "Hold"]
+                                readonly property var names: ["linear", "easeIn", "easeOut", "easeInOut", "hold", "curve"]
+                                model: ["Linear", "Ease in", "Ease out", "Ease in and out", "Hold", "Custom curve"]
                                 currentIndex: Math.max(0, names.indexOf(inspector.clipInfo.keyframeEasing || "linear"))
                                 onActivated: (index) => inspector.project.setKeyframeEasing(inspector.clipInfo.id, names[index])
+                            }
+                        }
+                        // The timing curve to the next keyframe: drag its handles for a custom one.
+                        CurveEditor {
+                            objectName: "curveEditor"
+                            visible: inspector.keyHere
+                            Layout.fillWidth: true
+                            curve: inspector.clipInfo.keyframeCurve || [0, 0, 1, 1]
+                            hold: inspector.clipInfo.keyframeEasing === "hold"
+                            onCommitted: (c) => inspector.project.setKeyframeCurve(inspector.clipInfo.id, c[0], c[1], c[2], c[3])
+                        }
+                        RowLayout {
+                            visible: inspector.keyHere
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            Repeater {
+                                // Curves the named easings cannot make: past the target and back, a
+                                // wind-up before moving, and a quick snap.
+                                model: [{ id: "overshoot", label: "Overshoot", curve: [0.34, 1.56, 0.64, 1] },
+                                        { id: "anticipate", label: "Anticipate", curve: [0.36, 0, 0.66, -0.56] },
+                                        { id: "snap", label: "Snap", curve: [0.9, 0, 0.1, 1] }]
+                                delegate: TextButton {
+                                    required property var modelData
+                                    objectName: "curvePreset:" + modelData.id
+                                    Layout.fillWidth: true
+                                    Layout.preferredWidth: 1
+                                    text: modelData.label
+                                    variant: "secondary"
+                                    onClicked: inspector.project.setKeyframeCurve(inspector.clipInfo.id, modelData.curve[0],
+                                                                                  modelData.curve[1], modelData.curve[2],
+                                                                                  modelData.curve[3])
+                                }
                             }
                         }
                         RowLayout {
@@ -679,16 +711,19 @@ Rectangle {
                 }
 
                 Repeater {
-                    model: inspector.clipIsVideo ? (inspector.clipInfo.effects || []) : []
+                    // By count, so cards stay put while values change (animated values change
+                    // with every frame) and are only rebuilt when effects come or go.
+                    model: inspector.clipIsVideo ? (inspector.clipInfo.effects || []).length : 0
                     delegate: ClipEffectCard {
-                        required property var modelData
                         required property int index
+                        readonly property var current: (inspector.clipInfo.effects || [])[index] || ({ effectId: "", enabled: false, values: {} })
                         Layout.fillWidth: true
                         project: inspector.project
                         clipId: inspector.clipInfo.id
                         stackIndex: index
-                        entry: modelData
-                        spec: inspector.player.availableEffects.find((e) => e.id === modelData.effectId) || ({ title: modelData.effectId, params: [] })
+                        entry: current
+                        keyStates: inspector.keyStates
+                        spec: inspector.player.availableEffects.find((e) => e.id === current.effectId) || ({ title: current.effectId, params: [] })
                     }
                 }
             }
@@ -759,7 +794,12 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            KeyframeToggle { visible: audioSlider.animKey !== ""; key: audioSlider.animKey }
+            KeyframeToggle {
+                objectName: "keyframe:" + audioSlider.animKey
+                visible: audioSlider.animKey !== ""
+                keyState: inspector.keyStates[audioSlider.animKey] || "none"
+                onClicked: inspector.toggleKeyframe(audioSlider.animKey)
+            }
             Text { text: audioSlider.label; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
             Text { text: audioSlider.format(slider.value); font: Theme.type.mono; color: Theme.color.textPrimary }
         }
@@ -775,37 +815,12 @@ Rectangle {
         }
     }
 
-    // ◆ beside an animatable value: filled when it has a keyframe at the playhead, outlined
-    // in accent while it is animated, faint otherwise. Click to add or remove that keyframe.
-    component KeyframeToggle: AbstractButton {
-        id: toggle
-        property string key
-        readonly property string keyState: inspector.keyStates[key] || "none"
-        objectName: "keyframe:" + key
-        implicitWidth: 18
-        implicitHeight: 18
-        hoverEnabled: true
-        focusPolicy: Qt.TabFocus
-        ToolTip {
-            text: toggle.keyState === "key" ? "Remove this keyframe" : "Add a keyframe at the playhead"
-            visible: toggle.hovered
-            delay: 600
-        }
-        onClicked: keyState === "key" ? inspector.project.removeKeyframes(inspector.clipInfo.id, [key])
-                                      : inspector.project.addKeyframes(inspector.clipInfo.id, [key])
-        background: Rectangle { radius: Theme.radius.s; color: toggle.hovered ? Theme.color.surfaceHover : "transparent" }
-        contentItem: Item {
-            Rectangle {
-                anchors.centerIn: parent
-                width: 8
-                height: 8
-                rotation: 45
-                color: toggle.keyState === "key" ? Theme.color.accentText : "transparent"
-                border.width: 1.5
-                border.color: toggle.keyState !== "none" ? Theme.color.accentText
-                            : toggle.hovered ? Theme.color.textSecondary : Theme.color.textDisabled
-            }
-        }
+    // Adds or removes channel `key`'s keyframe at the playhead (see KeyframeToggle).
+    function toggleKeyframe(key) {
+        if ((keyStates[key] || "none") === "key")
+            project.removeKeyframes(clipInfo.id, [key])
+        else
+            project.addKeyframes(clipInfo.id, [key])
     }
 
     component InspectorPage: ScrollView {

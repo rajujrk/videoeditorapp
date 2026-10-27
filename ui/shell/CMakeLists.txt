@@ -16,6 +16,8 @@ qt_add_qml_module(tve_shell
         ParamControl.qml
         ExportDialog.qml
         VoiceOverPanel.qml
+        KeyframeToggle.qml
+        CurveEditor.qml
     IMPORTS
         TechieVideoEditor.Theme
         TechieVideoEditor.Player

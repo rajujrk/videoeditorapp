@@ -82,6 +82,9 @@ struct ClipEffect {
     std::string effectId;
     bool enabled = true;
     std::map<std::string, std::vector<float>> values;
+    // Animated scalar parameters, by parameter id; they override `values` (the app checks
+    // their range against the effect's manifest).
+    std::map<std::string, Keyframes> keyframes;
 
     friend bool operator==(const ClipEffect&, const ClipEffect&) = default;
 };
@@ -193,6 +196,9 @@ struct Clip {
     float gainDbAt(Ticks time) const;
     // The picture's placement at a timeline time, with animated properties evaluated.
     ClipVisual visualAt(Ticks time) const;
+    // The effect stack at a timeline time: animated parameters evaluated into `values`,
+    // keyframes left out.
+    std::vector<ClipEffect> effectsAt(Ticks time) const;
     const Keyframes* keyframesOf(std::string_view propertyId) const;
 
     friend bool operator==(const Clip&, const Clip&) = default;
