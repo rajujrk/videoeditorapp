@@ -64,6 +64,12 @@ Ticks clampedSourceTime(const Project& project, const Clip& clip, Ticks time)
 
 namespace {
 
+// Video and title tracks are drawn; hidden ones are not.
+bool showsPictures(const Track& track)
+{
+    return (track.kind == TrackKind::Video || track.kind == TrackKind::Title) && !track.hidden;
+}
+
 // The layer a track shows at `time`: the clip covering it, or the pair in a transition.
 std::optional<VisibleClip> trackLayerAt(const Project& project, const Track& track, Ticks time)
 {
@@ -94,7 +100,7 @@ std::optional<VisibleClip> visibleVideoAt(const Project& project, Ticks time)
 {
     // Tracks are stored bottom to top, so search from the end.
     for (auto track = project.tracks.rbegin(); track != project.tracks.rend(); ++track) {
-        if (track->kind != TrackKind::Video || track->hidden)
+        if (!showsPictures(*track))
             continue;
         auto clip = std::ranges::upper_bound(track->clips, time, {}, &Clip::start);
         if (clip == track->clips.begin())
@@ -110,7 +116,7 @@ std::vector<VisibleClip> visibleVideoLayersAt(const Project& project, Ticks time
 {
     std::vector<VisibleClip> layers;
     for (const Track& track : project.tracks) {
-        if (track.kind != TrackKind::Video || track.hidden)
+        if (!showsPictures(track))
             continue;
         if (auto layer = trackLayerAt(project, track, time))
             layers.push_back(*layer);
@@ -143,7 +149,7 @@ std::optional<Ticks> nextVideoClipStart(const Project& project, Ticks time)
 {
     std::optional<Ticks> next;
     for (const Track& track : project.tracks) {
-        if (track.kind != TrackKind::Video || track.hidden)
+        if (!showsPictures(track))
             continue;
         auto clip = std::ranges::upper_bound(track.clips, time, {}, &Clip::start);
         if (clip != track.clips.end() && (!next || clip->start < *next))

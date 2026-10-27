@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <thread>
 
 namespace tve {
 
@@ -23,8 +24,16 @@ std::optional<AudioChunk> AudioChunkQueue::tryPop()
 {
     std::optional<AudioChunk> chunk;
     {
-        std::unique_lock lock(m_mutex, std::try_to_lock);
-        if (!lock.owns_lock() || m_chunks.empty())
+        // Never block the audio callback, but don't mistake a lock held for a moment (the
+        // producer pushing a chunk) for an empty queue: that would be a needless dropout.
+        constexpr int kAttempts = 200;
+        std::unique_lock lock(m_mutex, std::defer_lock);
+        for (int attempt = 0; !lock.try_lock(); ++attempt) {
+            if (attempt == kAttempts)
+                return std::nullopt;
+            std::this_thread::yield();
+        }
+        if (m_chunks.empty())
             return std::nullopt;
         chunk = std::move(m_chunks.front());
         m_chunks.pop_front();

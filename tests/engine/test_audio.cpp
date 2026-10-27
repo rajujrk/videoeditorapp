@@ -243,9 +243,10 @@ TEST_CASE("output follows the clock and is silent when paused")
     PlaybackClock clock;
     clock.seek(kSec + 4 * kSec / 10); // 1.4 s: click at 1.5 s
     mixer->restart(p.project, clock.now());
-    // Let the mixer get well ahead (a busy machine can be slow to schedule it).
+    // Let the mixer get well ahead (a busy machine can be slow to schedule it): more than
+    // the 9 600 frames rendered below, so the output never waits on it.
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-    while (mixer->queue().size() < 8 && !mixer->producerFinished() && std::chrono::steady_clock::now() < deadline)
+    while (mixer->queue().size() < 16 && !mixer->producerFinished() && std::chrono::steady_clock::now() < deadline)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     AudioOutput output(AudioOutput::Backend::None);
@@ -255,8 +256,11 @@ TEST_CASE("output follows the clock and is silent when paused")
     output.render(out.data(), 9600); // paused
     CHECK(peak(out, 0, 9600) == 0.0f);
 
+    const std::size_t queued = mixer->queue().size();
     clock.play();
     output.render(out.data(), 9600);
+    const double lateMs = toSeconds(clock.now() - (kSec + 4 * kSec / 10)) * 1000.0;
+    INFO("chunks queued: " << queued << ", render finished " << lateMs << " ms after play");
     // The click is 0.1 s (4 800 samples) ahead, less the time between play() and render():
     // up to 20 ms on a loaded machine.
     const auto onset = firstLoud(out);

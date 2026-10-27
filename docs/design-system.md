@@ -114,10 +114,10 @@ Sizes are `Theme.size.*` tokens.
 | Region | File | Status |
 |---|---|---|
 | Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker, undo/redo with labels, save, theme toggle; export waits for Phase 1 slice 5 |
-| Library | `ui/shell/LibraryPanel.qml` | **Media, Transitions and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
+| Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, stats overlay |
-| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (placement/crop/opacity/blend, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); Color tab shows the planned sections |
-| Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges, transition markers over cuts (select, delete, drop target) |
+| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed, Audio and Effects tabs are live** for the selected clip (placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); Color tab shows the planned sections |
+| Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges, title clips (purple, labelled with their text), transition markers over cuts (select, delete, drop target) |
 
 ### Home
 
@@ -136,6 +136,9 @@ Module `TechieVideoEditor.Theme` (`ui/theme/`):
 | `IconButton` | 28 px square tool button: hover, pressed, checked (accent-subtle), focus ring, tooltip |
 | `TextButton` | `primary` / `secondary` / `ghost` labelled button with optional icon |
 | `ToggleSwitch` | On/off switch in theme colours, with an optional label (sized for the indicator alone when there is none) |
+
+The inspector's own `Swatches` component (colour row with the current colour ringed) is
+used for title colours.
 | `SearchField` | Text field with search icon and focus ring |
 | `PanelHeader` | Panel title bar with trailing actions |
 | `Section` | Collapsible inspector section |
@@ -155,6 +158,10 @@ Thumbnails come from `image://tvethumb/<url-encoded path>@<seconds>@<height>` (a
 twice the displayed height for Retina screens, and round times (the timeline uses 0.25 s)
 so zooming reuses cached frames.
 
+Title previews come from `image://tvetitle/<url-encoded JSON of the title's fields and y>`,
+drawn by the same renderer as the player at 320 × 180, transparent around the text (tiles
+put a dusk gradient behind it).
+
 Transition previews come from `image://tvetransition/<transition id>@<progress>`: the
 transition between two generated sample pictures, rendered offscreen on the GPU and cached.
 Tiles show progress 0.3 and step through 0–1 on hover.
@@ -169,6 +176,11 @@ footage, playhead in the transition), dark and light:
 
 ![Transitions, dark](images/transitions-dark.png)
 ![Transitions, light](images/transitions-light.png)
+
+Titles tab and a selected title over gradient footage, dark and light:
+
+![Titles, dark](images/titles-dark.png)
+![Titles, light](images/titles-light.png)
 
 ### Icons
 

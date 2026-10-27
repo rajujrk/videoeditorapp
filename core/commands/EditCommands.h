@@ -286,6 +286,48 @@ private:
     Id m_freezeClipId = kNoId;
 };
 
+// Checks a title's text and sizes; returns why it is invalid.
+std::optional<std::string> validateText(const ClipText& text);
+
+// Adds a title clip to a video or title track. With trackId kNoId it first adds a new
+// video track on top (undone together).
+class AddTitleCommand final : public Command {
+public:
+    AddTitleCommand(Id trackId, Ticks start, Ticks duration, ClipText text, ClipVisual visual = {})
+        : m_trackId(trackId), m_start(start), m_duration(duration), m_text(std::move(text)), m_visual(visual) {}
+
+    std::string label() const override { return "Add Title"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+    Id clipId() const { return m_clipId; }
+    Id trackId() const { return m_trackId != kNoId ? m_trackId : m_newTrackId; }
+
+private:
+    Id m_trackId;
+    Ticks m_start;
+    Ticks m_duration;
+    ClipText m_text;
+    ClipVisual m_visual;
+    Id m_clipId = kNoId;
+    Id m_newTrackId = kNoId;
+};
+
+// Replaces a title clip's text and style.
+class SetClipTextCommand final : public Command {
+public:
+    SetClipTextCommand(Id clipId, ClipText text) : m_clipId(clipId), m_text(std::move(text)) {}
+
+    std::string label() const override { return "Edit Title"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    ClipText m_text;
+    ClipText m_previous;
+};
+
 // Sets, changes or (with nullopt) removes the transition into a clip. Setting one needs a
 // clip ending where this one starts on the same track.
 class SetClipTransitionCommand final : public Command {

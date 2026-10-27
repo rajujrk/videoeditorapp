@@ -324,11 +324,23 @@ Rectangle {
                         // Media and transitions dragged from the library
                         DropArea {
                             anchors.fill: parent
-                            keys: ["application/x-tve-media", "application/x-tve-transition"]
+                            keys: ["application/x-tve-media", "application/x-tve-transition", "application/x-tve-title"]
                             onDropped: (drop) => {
                                 const track = timeline.trackAtY(drop.y)
                                 if (!track)
                                     return
+                                if (drop.keys.indexOf("application/x-tve-title") >= 0) {
+                                    const style = drop.source && drop.source.titleStyle !== undefined
+                                                ? drop.source.titleStyle
+                                                : JSON.parse(drop.getDataAsString("application/x-tve-title"))
+                                    let at = Math.max(0, drop.x / timeline.pixelsPerSecond)
+                                    if (snapToggle.checked)
+                                        at = timeline.project.snap(at, timeline.snapPixels / timeline.pixelsPerSecond)
+                                    // Onto that track if it takes pictures, else wherever there is room.
+                                    timeline.project.addTitle(style, track.kind === "audio" ? -1 : track.id, at)
+                                    drop.accept()
+                                    return
+                                }
                                 if (drop.keys.indexOf("application/x-tve-transition") >= 0) {
                                     // Onto the nearest cut within a few clip-edge widths.
                                     const id = drop.source && drop.source.transitionId !== undefined
@@ -428,9 +440,10 @@ Rectangle {
             id: body
             anchors.fill: parent
             radius: Theme.radius.s
-            color: Qt.alpha(timeline.trackColor(item.track.kind), Theme.dark ? 0.55 : 0.45)
+            readonly property color kindColor: item.clip.isTitle ? Theme.color.trackTitle : timeline.trackColor(item.track.kind)
+            color: Qt.alpha(kindColor, Theme.dark ? 0.55 : 0.45)
             border.width: item.selected ? 2 : 1
-            border.color: item.selected ? Theme.color.selection : timeline.trackColor(item.track.kind)
+            border.color: item.selected ? Theme.color.selection : kindColor
             clip: true
 
             readonly property bool showsSound: item.clip.hasAudio && (item.track.kind === "audio" || item.clip.audioEnabled)
@@ -438,7 +451,7 @@ Rectangle {
             // Thumbnail strip: one frame per tile, from the source time under the tile's centre.
             Row {
                 id: strip
-                visible: item.track.kind === "video"
+                visible: item.track.kind === "video" && !item.clip.isTitle
                 anchors { left: parent.left; right: parent.right; top: parent.top; margins: 3; topMargin: 19 }
                 height: parent.height - 22 - (body.showsSound ? 14 : 0)
                 spacing: 1
@@ -526,7 +539,8 @@ Rectangle {
                     x: Theme.space.s - 3
                     width: parent.width - Theme.space.s
                     // Badges first so a short clip still shows them.
-                    text: (item.clip.freeze ? "Still · " : "")
+                    text: (item.clip.isTitle ? "Title · " : "")
+                          + (item.clip.freeze ? "Still · " : "")
                           + (!item.clip.freeze && item.clip.speed !== 1 ? Number(item.clip.speed.toFixed(2)) + "× · " : "")
                           + (item.clip.reversed ? "Reverse · " : "")
                           + item.clip.label
@@ -606,12 +620,13 @@ Rectangle {
                         return
                     const t = item.snapped(mapToItem(content, mouse.x, 0).x / timeline.pixelsPerSecond)
                     const clipEnd = item.clip.start + item.clip.duration
-                    // Unused media on each side, in timeline seconds; a still can grow freely.
+                    // Unused media on each side, in timeline seconds; stills and titles can grow freely.
                     const c = item.clip
                     const before = c.sourceIn / c.speed
                     const after = (c.mediaDuration - c.sourceIn) / c.speed - c.duration
-                    const roomBefore = c.freeze ? Infinity : c.reversed ? after : before
-                    const roomAfter = c.freeze ? Infinity : c.reversed ? before : after
+                    const unlimited = c.freeze || c.isTitle
+                    const roomBefore = unlimited ? Infinity : c.reversed ? after : before
+                    const roomAfter = unlimited ? Infinity : c.reversed ? before : after
                     if (isStart) {
                         // Can't extend past the media's unused frames or past the end edge.
                         const start = Math.min(Math.max(t, c.start - roomBefore, 0), clipEnd - 1 / 30)

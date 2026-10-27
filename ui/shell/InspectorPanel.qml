@@ -209,6 +209,135 @@ Rectangle {
                         }
                     }
 
+                    // A title's text and style. Text commits when typing pauses; the rest on each change.
+                    Section {
+                        id: textSection
+                        objectName: "titleTextSection"
+                        visible: inspector.clipInfo.isTitle === true
+                        title: "Text"
+                        readonly property var text: inspector.clipInfo.text || ({})
+                        function change(fields) { inspector.project.setClipText(inspector.clipInfo.id, fields) }
+
+                        TextArea {
+                            id: titleText
+                            objectName: "titleText"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.max(64, implicitHeight)
+                            wrapMode: TextEdit.Wrap
+                            font: Theme.type.body
+                            color: Theme.color.textPrimary
+                            placeholderText: "Type your title"
+                            background: Rectangle {
+                                radius: Theme.radius.s
+                                color: Theme.color.surfaceSunken
+                                border.color: titleText.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
+                            }
+                            // Follows the clip unless being typed in.
+                            Binding on text { value: textSection.text.text || ""; when: !titleText.activeFocus }
+                            onTextChanged: if (activeFocus) commitTimer.restart()
+                            onActiveFocusChanged: if (!activeFocus && commitTimer.running) { commitTimer.stop(); textSection.change({ text: text }) }
+                            Timer {
+                                id: commitTimer
+                                interval: 600
+                                onTriggered: textSection.change({ text: titleText.text })
+                            }
+                        }
+
+                        ComboBox {
+                            objectName: "titleFont"
+                            Layout.fillWidth: true
+                            model: inspector.project.titleFonts
+                            currentIndex: Math.max(0, model.indexOf(textSection.text.fontFamily || ""))
+                            onActivated: (index) => textSection.change({ fontFamily: model[index] })
+                        }
+
+                        RowLayout {
+                            spacing: Theme.space.xs
+                            Repeater {
+                                model: [{ key: "bold", label: "Bold" }, { key: "italic", label: "Italic" }]
+                                delegate: TextButton {
+                                    required property var modelData
+                                    objectName: "titleStyle:" + modelData.key
+                                    text: modelData.label
+                                    variant: textSection.text[modelData.key] ? "primary" : "secondary"
+                                    onClicked: {
+                                        const fields = {}
+                                        fields[modelData.key] = !textSection.text[modelData.key]
+                                        textSection.change(fields)
+                                    }
+                                }
+                            }
+                        }
+                        RowLayout {
+                            spacing: Theme.space.xs
+                            Repeater {
+                                model: ["left", "center", "right"]
+                                delegate: TextButton {
+                                    required property string modelData
+                                    objectName: "titleAlign:" + modelData
+                                    text: modelData === "left" ? "Left" : modelData === "center" ? "Center" : "Right"
+                                    variant: (textSection.text.alignment || "center") === modelData ? "primary" : "secondary"
+                                    onClicked: textSection.change({ alignment: modelData })
+                                }
+                            }
+                        }
+
+                        AudioSlider {
+                            objectName: "titleSize"
+                            label: "Size"
+                            from: 0.01
+                            to: 0.5
+                            value: textSection.text.size || 0.08
+                            format: (v) => (v * 100).toFixed(1) + "%"
+                            onCommitted: (v) => textSection.change({ size: v })
+                        }
+
+                        Text { text: "Color"; font: Theme.type.label; color: Theme.color.textSecondary }
+                        Swatches {
+                            objectName: "titleColor"
+                            current: textSection.text.color || [1, 1, 1, 1]
+                            onPicked: (c) => textSection.change({ color: c })
+                        }
+
+                        AudioSlider {
+                            objectName: "titleLetterSpacing"
+                            label: "Letter spacing"
+                            from: -0.2
+                            to: 1
+                            value: textSection.text.letterSpacing || 0
+                            onCommitted: (v) => textSection.change({ letterSpacing: v })
+                        }
+                        AudioSlider {
+                            objectName: "titleLineSpacing"
+                            label: "Line spacing"
+                            from: 0.5
+                            to: 3
+                            value: textSection.text.lineSpacing || 1
+                            format: (v) => v.toFixed(2) + "×"
+                            onCommitted: (v) => textSection.change({ lineSpacing: v })
+                        }
+                        AudioSlider {
+                            objectName: "titleOutline"
+                            label: "Outline"
+                            from: 0
+                            to: 0.3
+                            value: textSection.text.outlineWidth || 0
+                            onCommitted: (v) => textSection.change({ outlineWidth: v })
+                        }
+                        Swatches {
+                            objectName: "titleOutlineColor"
+                            visible: (textSection.text.outlineWidth || 0) > 0
+                            current: textSection.text.outlineColor || [0, 0, 0, 1]
+                            onPicked: (c) => textSection.change({ outlineColor: c })
+                        }
+                        ToggleSwitch {
+                            objectName: "titleShadow"
+                            text: "Shadow"
+                            checked: textSection.text.shadow === true
+                            onToggled: textSection.change({ shadow: checked })
+                        }
+                    }
+
                     Section {
                         title: "Transform"
                         VisualSlider { key: "x"; objectName: "visual:x"; label: "Position X"; from: -1; to: 1; value: inspector.visual.x || 0
@@ -260,9 +389,19 @@ Rectangle {
                     wrapMode: Text.WordWrap
                 }
 
+                Text {
+                    visible: inspector.clipInfo.isTitle === true
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.space.l
+                    text: "Titles have no speed; trim them to change how long they show."
+                    font: Theme.type.body
+                    color: Theme.color.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+
                 Section {
                     id: speedSection
-                    visible: inspector.clipInfo.id !== undefined
+                    visible: inspector.clipInfo.id !== undefined && inspector.clipInfo.isTitle !== true
                     Layout.topMargin: Theme.space.s
                     title: "Speed"
                     readonly property bool still: inspector.clipInfo.freeze === true
@@ -481,6 +620,41 @@ Rectangle {
         required property string key
         onLiveValue: (v) => { const m = {}; m[key] = v; inspector.project.previewClipVisual(inspector.clipInfo.id, m) }
         onCommitted: (v) => { const m = {}; m[key] = v; inspector.project.setClipVisual(inspector.clipInfo.id, m) }
+    }
+
+    // A row of colour swatches; the one matching `current` is ringed.
+    component Swatches: Flow {
+        id: swatches
+        property var current: [1, 1, 1, 1]
+        signal picked(var color)
+        Layout.fillWidth: true
+        spacing: Theme.space.s
+        readonly property var colors: [[1, 1, 1, 1], [0, 0, 0, 1], [1, 0.84, 0.2, 1], [1, 0.55, 0.1, 1],
+                                       [0.92, 0.25, 0.3, 1], [0.95, 0.45, 0.75, 1], [0.35, 0.55, 1, 1],
+                                       [0.3, 0.8, 0.55, 1], [1, 0.95, 0.85, 1]]
+        Repeater {
+            model: swatches.colors
+            delegate: Rectangle {
+                required property var modelData
+                required property int index
+                objectName: swatches.objectName + ":" + index
+                readonly property bool chosen: swatches.current.length >= 3
+                                               && Math.abs(swatches.current[0] - modelData[0]) < 0.01
+                                               && Math.abs(swatches.current[1] - modelData[1]) < 0.01
+                                               && Math.abs(swatches.current[2] - modelData[2]) < 0.01
+                width: 22
+                height: 22
+                radius: width / 2
+                color: Qt.rgba(modelData[0], modelData[1], modelData[2], 1)
+                border.width: chosen ? 2 : 1
+                border.color: chosen ? Theme.color.accent : Theme.color.borderStrong
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: swatches.picked(parent.modelData)
+                }
+            }
+        }
     }
 
     // A slider that previews while dragging and commits one undo step on release.

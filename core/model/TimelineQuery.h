@@ -49,7 +49,8 @@ struct VisibleClip {
     std::optional<TransitionLayer> transition;
 };
 
-// Topmost non-hidden video track with a clip covering `time` wins. (Compositing several
+// Video and title tracks are picture tracks; titles are clips with text instead of media.
+// Topmost non-hidden picture track with a clip covering `time` wins. (Compositing several
 // layers arrives with transforms; until then upper tracks fully cover lower ones.)
 std::optional<VisibleClip> visibleVideoAt(const Project& project, Ticks time);
 

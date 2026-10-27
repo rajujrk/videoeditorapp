@@ -13,10 +13,28 @@ Rectangle {
 
     color: Theme.color.surface
 
+    // Title styles (original designs). Each is a title's text fields plus its position (y,
+    // a fraction of the canvas height from the centre).
+    readonly property var titleStyles: [
+        { name: "Title", style: { text: "Your Title", size: 0.1, bold: true, shadow: true } },
+        { name: "Subtitle", style: { text: "Subtitle text goes here", size: 0.05, outlineWidth: 0.08,
+                                     outlineColor: [0, 0, 0, 1], y: 0.36 } },
+        { name: "Lower Third", style: { text: "Name Surname\nRole or place", size: 0.045, bold: true,
+                                        alignment: "left", shadow: true, y: 0.3 } },
+        { name: "Big Bold", style: { text: "BIG NEWS", size: 0.16, bold: true, color: [1, 0.84, 0.2, 1],
+                                     outlineWidth: 0.06, outlineColor: [0.1, 0.05, 0, 1] } },
+        { name: "Minimal", style: { text: "minimal", size: 0.06, letterSpacing: 0.4, fontFamily: "Avenir Next" } },
+        { name: "Serif", style: { text: "Chapter One", size: 0.09, italic: true, fontFamily: "Georgia",
+                                  color: [1, 0.95, 0.85, 1], shadow: true } },
+        { name: "Typewriter", style: { text: "Once upon a time…", size: 0.06, fontFamily: "American Typewriter" } },
+        { name: "Callout", style: { text: "Look here!", size: 0.08, fontFamily: "Marker Felt", color: [1, 0.55, 0.1, 1],
+                                    outlineWidth: 0.08, outlineColor: [1, 1, 1, 1] } }
+    ]
+
     readonly property var tabs: [
         { icon: "media", label: "Media", phase: "" },
         { icon: "audio", label: "Audio", phase: "Music and sound library — Phase 4" },
-        { icon: "titles", label: "Titles", phase: "Title templates — Phase 2" },
+        { icon: "titles", label: "Titles", phase: "" },
         { icon: "transitions", label: "Transitions", phase: "" },
         { icon: "effects", label: "Effects", phase: "" },
         { icon: "stickers", label: "Stickers", phase: "Stickers and elements — Phase 2" },
@@ -168,6 +186,95 @@ Rectangle {
                 }
             }
 
+            // Titles tab: click to add one at the playhead, or drag it onto a track.
+            GridView {
+                id: titlesGrid
+                visible: library.tabs[library.currentTab].label === "Titles"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.leftMargin: Theme.space.m
+                clip: true
+                cellWidth: Math.floor(width / 2)
+                cellHeight: 112
+                model: library.titleStyles
+
+                delegate: Item {
+                    id: titleTile
+                    required property var modelData
+                    readonly property var titleStyle: modelData.style // read by the timeline's drop area
+                    width: titlesGrid.cellWidth
+                    height: titlesGrid.cellHeight
+
+                    Drag.active: titleMouse.drag.active
+                    Drag.dragType: Drag.Automatic
+                    Drag.supportedActions: Qt.CopyAction
+                    Drag.keys: ["application/x-tve-title"]
+                    Drag.mimeData: { "application/x-tve-title": JSON.stringify(modelData.style) }
+                    // The tile's own preview (grabbing the tile on press could outlive it).
+                    Drag.imageSource: "image://tvetitle/" + encodeURIComponent(JSON.stringify(modelData.style))
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.rightMargin: Theme.space.m
+                        anchors.bottomMargin: Theme.space.m
+                        radius: Theme.radius.m
+                        color: Theme.color.surfaceRaised
+                        border.color: titleMouse.containsMouse ? Theme.color.borderStrong : Theme.color.borderSubtle
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: Theme.space.xs
+                            // The title drawn by the app's own text renderer, over a dusk sky.
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                Layout.margins: Theme.space.xs
+                                radius: Theme.radius.s
+                                clip: true
+                                gradient: Gradient {
+                                    GradientStop { position: 0; color: "#3B4E7A" }
+                                    GradientStop { position: 1; color: "#B0675A" }
+                                }
+                                Image {
+                                    objectName: "titlePreview:" + titleTile.modelData.name
+                                    anchors.fill: parent
+                                    fillMode: Image.PreserveAspectCrop
+                                    asynchronous: true
+                                    source: "image://tvetitle/" + encodeURIComponent(JSON.stringify(titleTile.modelData.style))
+                                }
+                            }
+                            Text {
+                                Layout.leftMargin: Theme.space.s
+                                Layout.bottomMargin: Theme.space.s
+                                text: titleTile.modelData.name
+                                font: Theme.type.label
+                                color: Theme.color.textPrimary
+                                elide: Text.ElideRight
+                                Layout.maximumWidth: titleTile.width - Theme.space.xl
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: titleMouse
+                        objectName: "libraryTitle:" + titleTile.modelData.name
+                        anchors.fill: parent
+                        anchors.rightMargin: Theme.space.m
+                        anchors.bottomMargin: Theme.space.m
+                        hoverEnabled: true
+                        drag.target: titleDragProxy
+                        onClicked: library.project.addTitle(titleTile.modelData.style)
+                    }
+                    Item { id: titleDragProxy }
+
+                    ToolTip {
+                        visible: titleMouse.containsMouse && !titleMouse.drag.active
+                        delay: 800
+                        text: "Click to add at the playhead, or drag onto a track"
+                    }
+                }
+            }
+
             // Transitions tab: click to put one on the cut nearest the playhead, or drag it
             // onto a cut.
             GridView {
@@ -194,6 +301,7 @@ Rectangle {
                     Drag.supportedActions: Qt.CopyAction
                     Drag.keys: ["application/x-tve-transition"]
                     Drag.mimeData: { "application/x-tve-transition": modelData.id }
+                    Drag.imageSource: "image://tvetransition/" + modelData.id + "@0.5"
 
                     Rectangle {
                         anchors.fill: parent
@@ -223,14 +331,14 @@ Rectangle {
                                     anchors.fill: parent
                                     asynchronous: true
                                     fillMode: Image.PreserveAspectCrop
-                                    property real progress: 0.3
-                                    source: "image://tvetransition/" + transitionTile.modelData.id + "@" + progress.toFixed(1)
+                                    property real transitionProgress: 0.3
+                                    source: "image://tvetransition/" + transitionTile.modelData.id + "@" + transitionProgress.toFixed(1)
                                     Timer {
                                         running: transitionMouse.containsMouse
                                         repeat: true
                                         interval: 120
-                                        onTriggered: preview.progress = preview.progress >= 1.0 ? 0.0 : preview.progress + 0.1
-                                        onRunningChanged: if (!running) preview.progress = 0.3
+                                        onTriggered: preview.transitionProgress = preview.transitionProgress >= 1.0 ? 0.0 : preview.transitionProgress + 0.1
+                                        onRunningChanged: if (!running) preview.transitionProgress = 0.3
                                     }
                                 }
                             }
@@ -255,7 +363,6 @@ Rectangle {
                         hoverEnabled: true
                         drag.target: transitionDragProxy
                         onClicked: library.project.addTransition(transitionTile.modelData.id)
-                        onPressed: transitionTile.grabToImage((result) => transitionTile.Drag.imageSource = result.url, Qt.size(120, 90))
                     }
                     Item { id: transitionDragProxy }
 
@@ -296,6 +403,11 @@ Rectangle {
                         Drag.supportedActions: Qt.CopyAction
                         Drag.keys: ["application/x-tve-media"]
                         Drag.mimeData: { "application/x-tve-media": String(modelData.id) }
+                        // The tile's thumbnail (grabbing the tile on press could outlive it).
+                        Drag.imageSource: modelData.hasVideo
+                                          ? "image://tvethumb/!" + encodeURIComponent(modelData.path) + "@"
+                                            + (modelData.duration * 0.1).toFixed(2) + "@90"
+                                          : ""
 
                         Rectangle {
                             anchors.fill: parent
@@ -375,7 +487,6 @@ Rectangle {
                             hoverEnabled: true
                             drag.target: dragProxy
                             onDoubleClicked: library.project.addClip(mediaTile.modelData.id)
-                            onPressed: mediaTile.grabToImage((result) => mediaTile.Drag.imageSource = result.url, Qt.size(120, 90))
                         }
                         Item { id: dragProxy }
 
@@ -424,7 +535,7 @@ Rectangle {
             }
 
             Item {
-                visible: !effectsGrid.visible && !transitionsGrid.visible && !mediaBin.visible
+                visible: !effectsGrid.visible && !transitionsGrid.visible && !titlesGrid.visible && !mediaBin.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
