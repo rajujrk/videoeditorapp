@@ -130,4 +130,62 @@ private:
     Clip m_removed;
 };
 
+struct ClipAudio {
+    float gainDb = 0.0f;
+    Ticks fadeIn = 0;
+    Ticks fadeOut = 0;
+
+    friend bool operator==(const ClipAudio&, const ClipAudio&) = default;
+};
+
+// Sets a clip's volume and fade lengths. Fades may not overlap (fadeIn + fadeOut must fit).
+class SetClipAudioCommand final : public Command {
+public:
+    SetClipAudioCommand(Id clipId, ClipAudio audio) : m_clipId(clipId), m_audio(audio) {}
+
+    std::string label() const override { return "Change Audio"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    ClipAudio m_audio;
+    ClipAudio m_previous;
+};
+
+// Toggles a track's lock / hide / mute. Allowed on locked tracks (that's how they unlock).
+class SetTrackFlagCommand final : public Command {
+public:
+    enum class Flag { Locked, Hidden, Muted };
+    SetTrackFlagCommand(Id trackId, Flag flag, bool value) : m_trackId(trackId), m_flag(flag), m_value(value) {}
+
+    std::string label() const override;
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_trackId;
+    Flag m_flag;
+    bool m_value;
+    bool m_previous = false;
+};
+
+// Moves a video clip's sound onto an audio track as its own clip (same timing, volume and
+// fades), and silences the video clip.
+class DetachAudioCommand final : public Command {
+public:
+    DetachAudioCommand(Id clipId, Id audioTrackId) : m_clipId(clipId), m_audioTrackId(audioTrackId) {}
+
+    std::string label() const override { return "Detach Audio"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+    Id audioClipId() const { return m_audioClipId; }
+
+private:
+    Id m_clipId;
+    Id m_audioTrackId;
+    Id m_audioClipId = kNoId;
+};
+
 } // namespace tve

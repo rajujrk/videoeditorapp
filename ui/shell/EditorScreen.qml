@@ -66,6 +66,7 @@ Rectangle {
                     SplitView.preferredWidth: Theme.size.inspectorWidth
                     SplitView.minimumWidth: Theme.size.inspectorMinWidth
                     player: playerPanel.player
+                    project: editor.project
                 }
             }
 
@@ -81,7 +82,7 @@ Rectangle {
         id: importDialog
         title: "Import media"
         fileMode: FileDialog.OpenFiles
-        nameFilters: ["Video files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts)", "All files (*)"]
+        nameFilters: ["Media files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg)", "All files (*)"]
         onAccepted: editor.project.importMedia(selectedFiles)
     }
 

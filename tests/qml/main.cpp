@@ -26,6 +26,8 @@ int main(int argc, char** argv)
 {
     QQuickWindow::setGraphicsApi(QSGRendererInterface::Metal);
     QQuickStyle::setStyle(QStringLiteral("Basic"));
+    // Real-time audio callbacks without a sound card: meters work, nothing is heard.
+    qputenv("TVE_AUDIO", "null");
     Setup setup;
     return quick_test_main_with_setup(argc, argv, "tve_qml_tests", TVE_QML_TESTS_DIR, &setup);
 }

@@ -1,13 +1,16 @@
 #include "ProjectController.h"
 
 #include "VideoView.h"
+#include "audio/AudioOutput.h"
 #include "commands/EditCommands.h"
+#include "decode/AudioDecoder.h"
 #include "decode/VideoDecoder.h"
 #include "io/ProjectSerializer.h"
 #include "model/TimelineQuery.h"
 #include "playback/TimelinePlayback.h"
 
 #include <QFileInfo>
+#include <QtGlobal>
 
 #include <algorithm>
 #include <cmath>
@@ -56,13 +59,41 @@ Project emptyProject(int width, int height)
 ProjectController::ProjectController(QObject* parent)
     : QObject(parent), m_playback(std::make_shared<TimelinePlayback>())
 {
+    // TVE_AUDIO=null renders sound without a device (tests, CI); =none disables output.
+    const QByteArray mode = qgetenv("TVE_AUDIO");
+    const auto backend = mode == "null" ? AudioOutput::Backend::Null
+                       : mode == "none" ? AudioOutput::Backend::None
+                                        : AudioOutput::Backend::System;
+    m_audioOutput = std::make_unique<AudioOutput>(backend);
+    m_audioOutput->setSource(m_playback->audio(), &m_playback->clock());
+
     m_playheadTimer.setInterval(16);
     connect(&m_playheadTimer, &QTimer::timeout, this, &ProjectController::updatePlayhead);
     m_playheadTimer.start();
     resetProject(emptyProject(1920, 1080), {});
 }
 
-ProjectController::~ProjectController() = default;
+ProjectController::~ProjectController()
+{
+    m_audioOutput.reset(); // stop the device callback before the playback it reads from
+}
+
+QVariantMap ProjectController::audioStats() const
+{
+    return {
+        {QStringLiteral("device"), QString::fromStdString(m_audioOutput->deviceName())},
+        {QStringLiteral("running"), m_audioOutput->isRunning()},
+        {QStringLiteral("latencyMs"), double(m_audioOutput->latency()) * 1000.0 / double(kTicksPerSecond)},
+        {QStringLiteral("underruns"), qint64(m_audioOutput->underruns())},
+    };
+}
+
+QString ProjectController::audioDevice() const
+{
+    if (!m_audioOutput->isRunning())
+        return QString::fromStdString(m_audioOutput->errorString());
+    return QString::fromStdString(m_audioOutput->deviceName());
+}
 
 void ProjectController::setView(VideoView* view)
 {
@@ -107,6 +138,12 @@ QVariantList ProjectController::tracks() const
                 {QStringLiteral("duration"), seconds(clip.duration)},
                 {QStringLiteral("sourceIn"), seconds(clip.sourceIn)},
                 {QStringLiteral("mediaDuration"), media ? seconds(media->duration) : 0.0},
+                {QStringLiteral("path"), media ? QString::fromStdString(media->path) : QString()},
+                {QStringLiteral("hasAudio"), media && media->hasAudio},
+                {QStringLiteral("audioEnabled"), clip.audioEnabled},
+                {QStringLiteral("gainDb"), double(clip.gainDb)},
+                {QStringLiteral("fadeIn"), seconds(clip.fadeIn)},
+                {QStringLiteral("fadeOut"), seconds(clip.fadeOut)},
             };
         }
         list << QVariantMap{
@@ -137,6 +174,8 @@ QVariantList ProjectController::media() const
             {QStringLiteral("width"), item.width},
             {QStringLiteral("height"), item.height},
             {QStringLiteral("frameRate"), double(item.frameRate.num) / item.frameRate.den},
+            {QStringLiteral("hasVideo"), item.hasVideo},
+            {QStringLiteral("hasAudio"), item.hasAudio},
         };
     }
     return list;
@@ -164,6 +203,7 @@ void ProjectController::setSelectedClip(double clipId)
         return;
     m_selectedClip = id;
     emit selectionChanged();
+    emit selectedClipInfoChanged();
 }
 
 // --- Lifecycle ---
@@ -229,19 +269,31 @@ int ProjectController::importMedia(const QList<QUrl>& files)
             ++imported;
             continue;
         }
-        std::string error;
-        auto decoder = VideoDecoder::open(path, &error);
-        if (!decoder) {
-            reportError(QStringLiteral("Could not import %1").arg(QString::fromStdString(path)));
+        MediaItem item{.path = path};
+        if (auto video = VideoDecoder::open(path)) {
+            const VideoStreamInfo& info = video->info();
+            item.width = info.width;
+            item.height = info.height;
+            item.frameRate = info.frameRate;
+            item.duration = info.duration;
+        } else {
+            item.hasVideo = false;
+        }
+        if (auto sound = AudioDecoder::open(path)) {
+            item.hasAudio = true;
+            item.audioSampleRate = sound->info().sourceSampleRate;
+            item.audioChannels = sound->info().sourceChannels;
+            if (!item.hasVideo || item.duration <= 0)
+                item.duration = sound->info().duration;
+        }
+        if (!item.hasVideo && !item.hasAudio) {
+            reportError(QStringLiteral("Could not import %1: no video or audio found").arg(fileName(path)));
             continue;
         }
-        const VideoStreamInfo& info = decoder->info();
-        if (info.duration <= 0) {
+        if (item.duration <= 0) {
             reportError(QStringLiteral("%1 has no known duration").arg(fileName(path)));
             continue;
         }
-        MediaItem item{.path = path, .duration = info.duration, .width = info.width, .height = info.height,
-                       .frameRate = info.frameRate};
         if (apply(std::make_unique<ImportMediaCommand>(std::move(item))))
             ++imported;
     }
@@ -255,10 +307,21 @@ bool ProjectController::addClip(double mediaId, double trackId, double start)
         reportError(QStringLiteral("Media not found"));
         return false;
     }
-    const Id target = trackId < 0 ? mainTrackId() : toId(trackId);
+    Id target = toId(trackId);
+    if (trackId < 0) {
+        target = mainTrackId();
+        if (!media->hasVideo) { // sound-only files go on the first audio track
+            for (const Track& t : m_project.tracks) {
+                if (t.kind == TrackKind::Audio) {
+                    target = t.id;
+                    break;
+                }
+            }
+        }
+    }
     const Track* track = m_project.findTrack(target);
-    if (!track || track->kind != TrackKind::Video) {
-        reportError(QStringLiteral("Video clips go on video tracks (audio arrives in a later Phase 1 step)"));
+    if (!track) {
+        reportError(QStringLiteral("Track not found"));
         return false;
     }
     const Ticks at = start < 0 ? (track->clips.empty() ? 0 : track->clips.back().end()) : ticks(start);
@@ -361,13 +424,77 @@ bool ProjectController::apply(std::unique_ptr<Command> command)
 void ProjectController::publish()
 {
     m_playback->setProject(std::make_shared<const Project>(m_project));
+    m_trackModel.update(tracks());
     emit projectChanged();
+    emit selectedClipInfoChanged();
 }
 
 void ProjectController::reportError(const QString& message)
 {
     m_lastError = message;
     emit errorOccurred(message);
+}
+
+// --- Audio ---
+
+bool ProjectController::setClipAudio(double clipId, double gainDb, double fadeIn, double fadeOut)
+{
+    ClipAudio audio{float(std::clamp(gainDb, double(kMinGainDb), double(kMaxGainDb))), ticks(std::max(fadeIn, 0.0)),
+                    ticks(std::max(fadeOut, 0.0))};
+    return apply(std::make_unique<SetClipAudioCommand>(toId(clipId), audio));
+}
+
+bool ProjectController::detachAudio(double clipId)
+{
+    auto location = m_project.locateClip(toId(clipId));
+    if (!location) {
+        reportError(QStringLiteral("Select a clip to detach its audio"));
+        return false;
+    }
+    const Clip& clip = *location->clip;
+    for (const Track& track : m_project.tracks) {
+        if (track.kind == TrackKind::Audio && !track.locked && !track.overlaps(clip.start, clip.duration)) {
+            auto command = std::make_unique<DetachAudioCommand>(clip.id, track.id);
+            auto* raw = command.get();
+            if (!apply(std::move(command)))
+                return false;
+            setSelectedClip(double(raw->audioClipId()));
+            return true;
+        }
+    }
+    reportError(QStringLiteral("No audio track is free where this clip is"));
+    return false;
+}
+
+bool ProjectController::setTrackFlag(double trackId, const QString& flag, bool value)
+{
+    using Flag = SetTrackFlagCommand::Flag;
+    const Flag which = flag == QLatin1String("locked") ? Flag::Locked
+                     : flag == QLatin1String("hidden") ? Flag::Hidden : Flag::Muted;
+    return apply(std::make_unique<SetTrackFlagCommand>(toId(trackId), which, value));
+}
+
+QVariantMap ProjectController::selectedClipInfo() const
+{
+    for (const Track& track : m_project.tracks) {
+        const Clip* clip = track.findClip(m_selectedClip);
+        if (!clip)
+            continue;
+        const MediaItem* media = m_project.findMedia(clip->mediaId);
+        return {
+            {QStringLiteral("id"), double(clip->id)},
+            {QStringLiteral("label"), media ? fileName(media->path) : QString()},
+            {QStringLiteral("trackKind"), track.kind == TrackKind::Audio ? QStringLiteral("audio") : QStringLiteral("video")},
+            {QStringLiteral("locked"), track.locked},
+            {QStringLiteral("duration"), seconds(clip->duration)},
+            {QStringLiteral("hasAudio"), media && media->hasAudio},
+            {QStringLiteral("audioEnabled"), clip->audioEnabled},
+            {QStringLiteral("gainDb"), double(clip->gainDb)},
+            {QStringLiteral("fadeIn"), seconds(clip->fadeIn)},
+            {QStringLiteral("fadeOut"), seconds(clip->fadeOut)},
+        };
+    }
+    return {};
 }
 
 // --- Transport ---
@@ -422,6 +549,13 @@ void ProjectController::updatePlayhead()
     if (value != m_playhead) {
         m_playhead = value;
         emit playheadChanged();
+    }
+    const double left = m_audioOutput->peakLeft();
+    const double right = m_audioOutput->peakRight();
+    if (left != m_levelLeft || right != m_levelRight) {
+        m_levelLeft = left;
+        m_levelRight = right;
+        emit levelsChanged();
     }
     const bool isPlaying = m_playback->clock().playing();
     if (isPlaying != m_wasPlaying) {

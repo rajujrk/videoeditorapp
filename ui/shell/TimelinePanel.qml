@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
+import TechieVideoEditor.Player
 
 // The timeline, bound to the project: tracks and clips from the model, drag to move
 // (snapping to edges and the playhead), drag edges to trim, click/drag the ruler to seek,
@@ -114,14 +115,14 @@ Rectangle {
                 Item { Layout.preferredHeight: Theme.size.ruler; Layout.fillWidth: true }
 
                 Repeater {
-                    model: timeline.tracks
+                    model: timeline.project.trackModel
                     delegate: Rectangle {
-                        required property var modelData
+                        required property var track
                         Layout.fillWidth: true
-                        Layout.preferredHeight: timeline.trackHeight(modelData.kind)
+                        Layout.preferredHeight: timeline.trackHeight(track.kind)
                         color: Theme.color.surface
 
-                        Rectangle { width: 3; height: parent.height - 8; anchors.verticalCenter: parent.verticalCenter; radius: 2; color: timeline.trackColor(modelData.kind) }
+                        Rectangle { width: 3; height: parent.height - 8; anchors.verticalCenter: parent.verticalCenter; radius: 2; color: timeline.trackColor(track.kind) }
 
                         RowLayout {
                             anchors.fill: parent
@@ -130,20 +131,46 @@ Rectangle {
                             spacing: 0
 
                             Icon {
-                                name: modelData.kind === "audio" ? "audio" : modelData.kind === "title" ? "titles" : "media"
+                                name: track.kind === "audio" ? "audio" : track.kind === "title" ? "titles" : "media"
                                 size: Theme.size.iconSmall
                             }
                             Text {
                                 Layout.leftMargin: Theme.space.s
-                                text: modelData.name
+                                text: track.name
                                 font: Theme.type.label
                                 color: Theme.color.textPrimary
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight
                             }
-                            Icon { visible: modelData.main; name: "magnet"; size: 14; color: Theme.color.accentText; Layout.rightMargin: Theme.space.xs }
-                            IconButton { iconName: "lock"; tip: "Lock track — Phase 1"; buttonSize: 22; enabled: false }
-                            IconButton { iconName: modelData.kind === "audio" ? "volume" : "eye"; tip: "Phase 1"; buttonSize: 22; enabled: false }
+                            Icon { visible: track.main; name: "magnet"; size: 14; color: Theme.color.accentText; Layout.rightMargin: Theme.space.xs }
+                            IconButton {
+                                objectName: "lock:" + track.name
+                                iconName: "lock"
+                                tip: track.locked ? "Unlock track" : "Lock track"
+                                buttonSize: 22
+                                checkable: true
+                                checked: track.locked
+                                onClicked: timeline.project.setTrackFlag(track.id, "locked", !track.locked)
+                            }
+                            IconButton {
+                                visible: track.kind === "video"
+                                objectName: "hide:" + track.name
+                                iconName: "eye"
+                                tip: track.hidden ? "Show track" : "Hide track"
+                                buttonSize: 22
+                                checkable: true
+                                checked: track.hidden
+                                onClicked: timeline.project.setTrackFlag(track.id, "hidden", !track.hidden)
+                            }
+                            IconButton {
+                                objectName: "mute:" + track.name
+                                iconName: "volume"
+                                tip: track.muted ? "Unmute track" : "Mute track"
+                                buttonSize: 22
+                                checkable: true
+                                checked: track.muted
+                                onClicked: timeline.project.setTrackFlag(track.id, "muted", !track.muted)
+                            }
                         }
                         Divider { anchors.bottom: parent.bottom; width: parent.width }
                     }
@@ -251,26 +278,29 @@ Rectangle {
                             width: parent.width
 
                             Repeater {
-                                model: timeline.tracks
+                                model: timeline.project.trackModel
                                 delegate: Item {
                                     id: lane
-                                    required property var modelData
+                                    required property var track
                                     width: laneColumn.width
-                                    height: timeline.trackHeight(modelData.kind)
+                                    height: timeline.trackHeight(track.kind)
 
                                     Rectangle {
                                         anchors.fill: parent
-                                        color: lane.modelData.main ? Theme.color.surface : "transparent"
+                                        color: lane.track.main ? Theme.color.surface : "transparent"
                                         opacity: 0.4
                                     }
+                                    // Hidden or muted lanes fade back; locked lanes take no edits.
+                                    opacity: lane.track.hidden || lane.track.muted ? 0.45 : 1.0
+                                    enabled: !lane.track.locked
                                     Divider { anchors.bottom: parent.bottom; width: parent.width }
 
                                     Repeater {
-                                        model: lane.modelData.clips
+                                        model: lane.track.clips
                                         delegate: ClipItem {
                                             required property var modelData
                                             clip: modelData
-                                            track: lane.modelData
+                                            track: lane.track
                                         }
                                     }
                                 }
@@ -343,14 +373,52 @@ Rectangle {
             border.color: item.selected ? Theme.color.selection : timeline.trackColor(item.track.kind)
             clip: true
 
+            readonly property bool showsSound: item.clip.hasAudio && (item.track.kind === "audio" || item.clip.audioEnabled)
+
             Row {
                 visible: item.track.kind === "video"
-                anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 3 }
-                height: parent.height - 22
+                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 3; topMargin: 19 }
+                height: parent.height - 22 - (body.showsSound ? 14 : 0)
                 spacing: 2
                 Repeater {
                     model: Math.max(1, Math.floor(parent.width / 44))
                     Rectangle { width: 42; height: parent.height; radius: 2; color: Qt.alpha("#000000", 0.25) }
+                }
+            }
+
+            WaveformItem {
+                objectName: "waveform:" + item.clip.id
+                visible: body.showsSound
+                anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 2 }
+                height: item.track.kind === "audio" ? parent.height - 20 : 14
+                source: item.clip.path
+                sourceIn: item.clip.sourceIn
+                duration: item.previewDuration
+                gainDb: item.clip.gainDb
+                fadeIn: item.clip.fadeIn
+                fadeOut: item.clip.fadeOut
+                color: Theme.dark ? Qt.alpha("#FFFFFF", 0.6) : Qt.alpha("#000000", 0.45)
+            }
+
+            // Fade ramps: dark wedges over the faded part of the clip
+            Canvas {
+                anchors.fill: parent
+                visible: item.clip.fadeIn > 0 || item.clip.fadeOut > 0
+                property real fadeInPx: item.clip.fadeIn * timeline.pixelsPerSecond
+                property real fadeOutPx: item.clip.fadeOut * timeline.pixelsPerSecond
+                onFadeInPxChanged: requestPaint()
+                onFadeOutPxChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.reset()
+                    ctx.fillStyle = Qt.rgba(0, 0, 0, 0.3)
+                    if (fadeInPx > 0) {
+                        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(fadeInPx, 0); ctx.lineTo(0, height); ctx.closePath(); ctx.fill()
+                    }
+                    if (fadeOutPx > 0) {
+                        ctx.beginPath(); ctx.moveTo(width, 0); ctx.lineTo(width - fadeOutPx, 0); ctx.lineTo(width, height); ctx.closePath(); ctx.fill()
+                    }
                 }
             }
 
@@ -460,6 +528,50 @@ Rectangle {
                     if (!ok) {
                         item.previewStart = item.clip.start
                         item.previewDuration = item.clip.duration
+                    }
+                }
+            }
+        }
+
+        // Fade handles: drag the small knobs at the top corners to set fade lengths.
+        Repeater {
+            model: item.clip.hasAudio && (item.track.kind === "audio" || item.clip.audioEnabled) ? ["in", "out"] : []
+            delegate: Rectangle {
+                id: knob
+                required property string modelData
+                readonly property bool isIn: modelData === "in"
+                property real previewFade: isIn ? item.clip.fadeIn : item.clip.fadeOut
+                objectName: "fade" + modelData + ":" + item.clip.id
+                width: 10
+                height: 10
+                radius: 5
+                y: -1
+                x: isIn ? Math.min(previewFade * timeline.pixelsPerSecond, item.width - 10) - 1
+                        : Math.max(item.width - previewFade * timeline.pixelsPerSecond - 10, 0) + 1
+                color: Theme.color.selection
+                border.color: Theme.color.canvas
+                visible: item.selected || fadeMouse.containsMouse || previewFade > 0
+                z: 6
+
+                MouseArea {
+                    id: fadeMouse
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    hoverEnabled: true
+                    cursorShape: Qt.SizeHorCursor
+                    onPositionChanged: (mouse) => {
+                        if (!pressed)
+                            return
+                        const x = mapToItem(item, mouse.x, 0).x
+                        const seconds = knob.isIn ? x / timeline.pixelsPerSecond
+                                                  : (item.width - x) / timeline.pixelsPerSecond
+                        const other = knob.isIn ? item.clip.fadeOut : item.clip.fadeIn
+                        knob.previewFade = Math.max(0, Math.min(seconds, item.clip.duration - other))
+                    }
+                    onReleased: {
+                        const c = item.clip
+                        timeline.project.setClipAudio(c.id, c.gainDb, knob.isIn ? knob.previewFade : c.fadeIn,
+                                                      knob.isIn ? c.fadeOut : knob.previewFade)
                     }
                 }
             }

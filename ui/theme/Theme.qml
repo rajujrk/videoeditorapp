@@ -94,7 +94,7 @@ QtObject {
         readonly property int trackHeader: 168
         readonly property int ruler: 28
         readonly property int videoTrack: 56
-        readonly property int audioTrack: 40
+        readonly property int audioTrack: 52
     }
 
     readonly property QtObject motion: QtObject {

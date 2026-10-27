@@ -8,9 +8,15 @@
     {
       "name": "ffmpeg",
       "default-features": false,
-      "features": ["avcodec", "avformat", "swscale", "swresample"]
+      "features": [
+        "avcodec",
+        "avformat",
+        "swscale",
+        "swresample"
+      ]
     },
     "nlohmann-json",
-    "catch2"
+    "catch2",
+    "miniaudio"
   ]
 }

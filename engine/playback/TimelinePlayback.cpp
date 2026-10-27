@@ -47,6 +47,7 @@ void TimelinePlayback::restartAt(Ticks time)
     m_finished = false;
     if (m_project)
         m_producer = std::thread([this, project = m_project, time] { run(project, time); });
+    m_audio->restart(m_project, time);
 }
 
 VideoDecoder* TimelinePlayback::decoderFor(const MediaItem& media)

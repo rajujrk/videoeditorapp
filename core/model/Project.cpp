@@ -1,8 +1,23 @@
 #include "model/Project.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace tve {
+
+float Clip::gainAt(Ticks time) const
+{
+    if (gainDb <= kMinGainDb)
+        return 0.0f;
+    float gain = std::pow(10.0f, gainDb / 20.0f);
+    const Ticks intoClip = time - start;
+    const Ticks untilEnd = end() - time;
+    if (fadeIn > 0 && intoClip < fadeIn)
+        gain *= float(std::max<Ticks>(intoClip, 0)) / float(fadeIn);
+    if (fadeOut > 0 && untilEnd < fadeOut)
+        gain *= float(std::max<Ticks>(untilEnd, 0)) / float(fadeOut);
+    return gain;
+}
 
 const Clip* Track::findClip(Id clipId) const
 {

@@ -23,7 +23,7 @@ struct Timeline {
         v1 = add<AddTrackCommand>(TrackKind::Video, "V1").trackId();
         v2 = add<AddTrackCommand>(TrackKind::Video, "V2").trackId();
         a1 = add<AddTrackCommand>(TrackKind::Audio, "A1").trackId();
-        media = add<ImportMediaCommand>("/m.mp4", 100 * kSec).mediaId();
+        media = add<ImportMediaCommand>(MediaItem{.path = "/m.mp4", .duration = 100 * kSec, .hasAudio = true}).mediaId();
     }
 
     template <typename T, typename... Args>
