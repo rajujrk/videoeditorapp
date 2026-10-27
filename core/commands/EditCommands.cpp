@@ -89,7 +89,7 @@ std::optional<std::string> TrimClipCommand::redo(Project& project)
         return error;
     const Clip& clip = *location->clip;
     const MediaItem* media = project.findMedia(clip.mediaId);
-    if (!media)
+    if (!media && !clip.text)
         return "media not found";
 
     Clip trimmed = clip;
@@ -109,7 +109,9 @@ std::optional<std::string> TrimClipCommand::redo(Project& project)
     if (trimmed.duration <= 0)
         return "trim would leave the clip empty";
     clampFades(trimmed);
-    const bool pastMedia = trimmed.freeze ? trimmed.sourceIn >= media->duration
+    // A title can be any length.
+    const bool pastMedia = clip.text ? false
+                         : trimmed.freeze ? trimmed.sourceIn >= media->duration
                                           : trimmed.sourceIn + trimmed.sourceSpan() > media->duration;
     if (trimmed.start < 0 || trimmed.sourceIn < 0 || pastMedia)
         return "trim goes past the media's start or end";
@@ -260,6 +262,7 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.gainDb = clip.gainDb;
     right.visual = clip.visual;
     right.effects = clip.effects;
+    right.text = clip.text;
     right.fadeOut = clip.fadeOut;
     clip.duration = leftDuration;
     clip.fadeOut = 0;
@@ -513,6 +516,8 @@ std::optional<std::string> SetClipSpeedCommand::redo(Project& project)
     Clip& clip = *location->clip;
     if (clip.freeze)
         return "a freeze frame has no speed";
+    if (location->clip->text)
+        return "titles have no speed";
     if (m_speed < kMinSpeed || m_speed > kMaxSpeed)
         return "speed must be between 0.1× and 10×";
 
@@ -550,6 +555,8 @@ std::optional<std::string> FreezeFrameCommand::redo(Project& project)
     if (auto error = checkEditable(&track))
         return error;
     if (track.kind != TrackKind::Video)
+        return "freeze frames are made from video clips";
+    if (location->clip->text)
         return "freeze frames are made from video clips";
     const Clip clip = *location->clip;
     if (m_at < clip.start || m_at >= clip.end())
@@ -619,10 +626,13 @@ std::optional<std::string> SetClipTransitionCommand::redo(Project& project)
             return "transitions go between video clips";
         if (m_transition->transitionId.empty())
             return "no transition chosen";
+        const auto& clips = location->track->clips;
+        const auto previous = std::ranges::find(clips, clip.start, &Clip::end);
+        if (clip.text || (previous != clips.end() && previous->text))
+            return "transitions go between video clips";
         if (m_transition->duration < kMinTransitionDuration || m_transition->duration > kMaxTransitionDuration)
             return "transition length is out of range";
-        const auto& clips = location->track->clips;
-        const bool touching = std::ranges::any_of(clips, [&](const Clip& c) { return c.end() == clip.start; });
+        const bool touching = previous != clips.end();
         if (!touching)
             return "a transition needs a clip ending where this one starts";
     }
@@ -634,6 +644,96 @@ std::optional<std::string> SetClipTransitionCommand::redo(Project& project)
 void SetClipTransitionCommand::undo(Project& project)
 {
     project.locateClip(m_clipId)->clip->transitionIn = m_previous;
+}
+
+// --- Titles ---
+
+std::optional<std::string> validateText(const ClipText& text)
+{
+    if (text.text.size() > kMaxTextLength)
+        return "the text is too long";
+    if (text.size < kMinTextSize || text.size > kMaxTextSize)
+        return "text size is out of range";
+    if (text.lineSpacing < 0.5 || text.lineSpacing > 3.0)
+        return "line spacing is out of range";
+    if (text.letterSpacing < -0.2 || text.letterSpacing > 1.0)
+        return "letter spacing is out of range";
+    if (text.outlineWidth < 0.0 || text.outlineWidth > 0.3)
+        return "outline width is out of range";
+    for (const ColorRgba& c : {text.color, text.outlineColor}) {
+        for (double v : {c.r, c.g, c.b, c.a}) {
+            if (v < 0.0 || v > 1.0)
+                return "colours must be between 0 and 1";
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<std::string> AddTitleCommand::redo(Project& project)
+{
+    if (auto error = validateText(m_text))
+        return error;
+    if (m_start < 0 || m_duration <= 0)
+        return "clip times are out of range";
+    Track* track = nullptr;
+    if (m_trackId != kNoId) {
+        track = project.findTrack(m_trackId);
+        if (auto error = checkEditable(track))
+            return error;
+        if (track->kind == TrackKind::Audio)
+            return "titles go on video or title tracks";
+        if (track->overlaps(m_start, m_duration))
+            return "clip overlaps an existing clip";
+    } else {
+        // A new video track on top (tracks are stored bottom to top).
+        if (m_newTrackId == kNoId)
+            m_newTrackId = project.allocateId();
+        const auto videoTracks = std::ranges::count(project.tracks, TrackKind::Video, &Track::kind);
+        project.tracks.push_back(
+            Track{.id = m_newTrackId, .kind = TrackKind::Video, .name = "Video " + std::to_string(videoTracks + 1)});
+        track = &project.tracks.back();
+    }
+
+    if (m_clipId == kNoId)
+        m_clipId = project.allocateId();
+    Clip clip{.id = m_clipId, .start = m_start, .duration = m_duration};
+    clip.audioEnabled = false;
+    clip.visual = m_visual;
+    clip.text = m_text;
+    track->insertClip(std::move(clip));
+    return std::nullopt;
+}
+
+void AddTitleCommand::undo(Project& project)
+{
+    if (m_trackId == kNoId) {
+        std::erase_if(project.tracks, [&](const Track& t) { return t.id == m_newTrackId; });
+        return;
+    }
+    Track* track = project.findTrack(m_trackId);
+    assert(track);
+    track->removeClip(m_clipId);
+}
+
+std::optional<std::string> SetClipTextCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    if (!location->clip->text)
+        return "only titles have text";
+    if (auto error = validateText(m_text))
+        return error;
+    m_previous = *location->clip->text;
+    location->clip->text = m_text;
+    return std::nullopt;
+}
+
+void SetClipTextCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->text = m_previous;
 }
 
 } // namespace tve

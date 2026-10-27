@@ -1,6 +1,7 @@
 #include "VideoView.h"
 
 #include "EffectInfo.h"
+#include "TitleRenderer.h"
 
 #include "gpu/Compositor.h"
 #include "gpu/TransitionRenderer.h"
@@ -170,6 +171,14 @@ private:
     // Per transition within a frame: the outgoing and incoming clips' own canvases.
     std::vector<std::array<std::unique_ptr<tve::Compositor>, 2>> m_transitionCanvases;
     std::unique_ptr<tve::TransitionRenderer> m_transitions;
+    // Titles on screen: their text drawn at canvas size, redrawn only when it changes.
+    struct TitleTexture {
+        tve::ClipText text;
+        QSize canvas;
+        std::unique_ptr<QRhiTexture> texture;
+    };
+    std::map<tve::Id, TitleTexture> m_titles;
+    QRhiTexture* titleTexture(QRhiCommandBuffer* cb, tve::Id clipId, const tve::ClipText& text);
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_clipChains;
     std::unique_ptr<tve::EffectChain> m_outputChain;
     quint64 m_effectsRevision = 0;
@@ -354,6 +363,27 @@ QRhiTexture* VideoRenderer::convertLayer(QRhiCommandBuffer* cb, LayerSlot& slot,
     return slot.rgb.get();
 }
 
+QRhiTexture* VideoRenderer::titleTexture(QRhiCommandBuffer* cb, tve::Id clipId, const tve::ClipText& text)
+{
+    TitleTexture& title = m_titles[clipId];
+    if (title.texture && title.text == text && title.canvas == m_canvasSize)
+        return title.texture.get();
+    const QImage image = renderTitle(text, m_canvasSize);
+    if (!title.texture || title.texture->pixelSize() != image.size()) {
+        title.texture.reset(m_rhi->newTexture(QRhiTexture::RGBA8, image.size()));
+        if (!title.texture->create()) {
+            title.texture.reset();
+            return nullptr;
+        }
+    }
+    QRhiResourceUpdateBatch* upload = m_rhi->nextResourceUpdateBatch();
+    upload->uploadTexture(title.texture.get(), image);
+    cb->resourceUpdate(upload);
+    title.text = text;
+    title.canvas = m_canvasSize;
+    return title.texture.get();
+}
+
 bool VideoRenderer::bindPresentInput(QRhiTexture* image)
 {
     if (m_presentBindings && m_presentInput == image)
@@ -401,12 +431,19 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
     std::size_t slotIndex = 0;
     std::size_t transitionIndex = 0;
 
-    // One clip's picture, converted and through its effects (with any live preview).
+    std::set<tve::Id> liveTitles;
+    // One clip's picture (decoded video, or a title's text), through its effects (with any
+    // live preview).
     const auto clipPicture = [&](tve::Id clipId, const tve::DecodedFrame& decoded, tve::ClipVisual& visual,
-                                 std::vector<tve::ClipEffect> effects) -> QRhiTexture* {
-        if (!decoded.pixelBuffer())
-            return nullptr;
-        QRhiTexture* picture = convertLayer(cb, slot(slotIndex++), decoded.pixelBuffer(), resources);
+                                 std::vector<tve::ClipEffect> effects,
+                                 const std::optional<tve::ClipText>& text = std::nullopt) -> QRhiTexture* {
+        QRhiTexture* picture = nullptr;
+        if (text) {
+            picture = titleTexture(cb, clipId, *text);
+            liveTitles.insert(clipId);
+        } else if (decoded.pixelBuffer()) {
+            picture = convertLayer(cb, slot(slotIndex++), decoded.pixelBuffer(), resources);
+        }
         if (!picture)
             return nullptr;
         if (m_overrides)
@@ -427,7 +464,7 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
 
     for (tve::VideoLayer& layer : frame.layers) {
         tve::ClipVisual visual = layer.visual;
-        QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects);
+        QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.text);
         if (!layer.transition) {
             if (picture)
                 m_compositor->draw(cb, picture, visual);
@@ -465,8 +502,9 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
                                tve::ClipVisual{});
         }
     }
-    // Drop effect chains of clips no longer on screen.
+    // Drop effect chains and title textures of clips no longer on screen.
     std::erase_if(m_clipChains, [&](const auto& entry) { return !liveClips.contains(entry.first); });
+    std::erase_if(m_titles, [&](const auto& entry) { return !liveTitles.contains(entry.first); });
 
     m_processed = m_outputChain->process(cb, m_compositor->result(), seconds);
 }

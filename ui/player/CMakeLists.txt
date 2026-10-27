@@ -19,6 +19,8 @@ qt_add_qml_module(tve_player
         EffectInfo.cpp
         TransitionPreviewProvider.h
         TransitionPreviewProvider.cpp
+        TitleRenderer.h
+        TitleRenderer.cpp
 )
 
 qt_add_shaders(tve_player "tve_player_shaders"

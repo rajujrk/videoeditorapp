@@ -34,7 +34,8 @@ public:
     explicit AudioChunkQueue(std::size_t capacity) : m_capacity(capacity) {}
 
     bool push(AudioChunk chunk);
-    // Non-blocking; returns nullopt when empty or when the lock is busy.
+    // Never blocks for long (retries a briefly held lock); nullopt when empty, or busy for
+    // longer than a push takes.
     std::optional<AudioChunk> tryPop();
     void stop();
     void restart();

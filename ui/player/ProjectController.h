@@ -59,6 +59,8 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantMap selectedTransitionInfo READ selectedTransitionInfo NOTIFY selectedClipInfoChanged)
     // The transition library: [{id, title, categories, params}].
     Q_PROPERTY(QVariantList availableTransitions READ availableTransitions CONSTANT)
+    // Font families offered for titles.
+    Q_PROPERTY(QStringList titleFonts READ titleFonts CONSTANT)
 
     // Output meters (0..1 peak per channel) and the audio device.
     Q_PROPERTY(double levelLeft READ levelLeft NOTIFY levelsChanged)
@@ -98,6 +100,7 @@ public:
     void setSelectedTransition(double clipId);
     QVariantMap selectedTransitionInfo() const;
     QVariantList availableTransitions() const;
+    QStringList titleFonts() const;
     double levelLeft() const { return m_levelLeft; }
     double levelRight() const { return m_levelRight; }
     QString audioDevice() const;
@@ -162,6 +165,13 @@ public:
     // values ({paramId: value}, merged). One undo step.
     Q_INVOKABLE bool setTransition(double clipId, const QVariantMap& changes);
     Q_INVOKABLE bool removeTransition(double clipId);
+
+    // Titles. `style` holds text fields (see TitleRenderer.h textMap) plus optional x and y
+    // (the clip's position). trackId < 0: the lowest free video or title track above the
+    // main track, or a new track on top; start < 0: the playhead. Lasts 5 s; selected.
+    Q_INVOKABLE bool addTitle(const QVariantMap& style, double trackId = -1, double start = -1);
+    // Applies the text fields in `changes` to a title clip (one undo step).
+    Q_INVOKABLE bool setClipText(double clipId, const QVariantMap& changes);
 
     // Transport
     Q_INVOKABLE void play();

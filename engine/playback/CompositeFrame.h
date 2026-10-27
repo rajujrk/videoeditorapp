@@ -23,13 +23,15 @@ struct LayerTransition {
 };
 
 // One clip's picture at a moment of the timeline, with how to show it. During a
-// transition this is the outgoing clip and `transition` holds the incoming one.
+// transition this is the outgoing clip and `transition` holds the incoming one. A title
+// has `text` and an empty frame.
 struct VideoLayer {
     Id clipId = kNoId;
     DecodedFrame frame;
     ClipVisual visual;
     std::vector<ClipEffect> effects;
     std::optional<LayerTransition> transition;
+    std::optional<ClipText> text; // a title: drawn from this, with no frame
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.

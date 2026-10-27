@@ -154,6 +154,11 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
             return clip.reversed ? reversedFrameAt(state, *media, sourceTime) : frameAt(state, *media, sourceTime);
         };
         for (const VisibleClip& layer : visible) {
+            if (layer.clip->text) {
+                composite.layers.push_back(VideoLayer{layer.clip->id, DecodedFrame{}, layer.clip->visual,
+                                                      layer.clip->effects, std::nullopt, layer.clip->text});
+                continue;
+            }
             const DecodedFrame* frame = pictureOf(*layer.clip, layer.sourceTime);
             const DecodedFrame* incoming =
                 layer.transition ? pictureOf(*layer.transition->to, layer.transition->toSourceTime) : nullptr;
@@ -162,12 +167,13 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
                 composite.layers.push_back(VideoLayer{
                     layer.clip->id, frame->share(), layer.clip->visual, layer.clip->effects,
                     LayerTransition{t.spec->transitionId, t.spec->values, float(t.progress), t.to->id,
-                                    incoming->share(), t.to->visual, t.to->effects}});
+                                    incoming->share(), t.to->visual, t.to->effects},
+                    std::nullopt});
             } else if (frame || incoming) {
                 // One side unreadable: show the other alone.
                 const Clip& clip = frame ? *layer.clip : *layer.transition->to;
-                composite.layers.push_back(
-                    VideoLayer{clip.id, (frame ? frame : incoming)->share(), clip.visual, clip.effects, std::nullopt});
+                composite.layers.push_back(VideoLayer{clip.id, (frame ? frame : incoming)->share(), clip.visual,
+                                                      clip.effects, std::nullopt, std::nullopt});
             }
         }
         if (!m_queue.push(std::move(composite)))

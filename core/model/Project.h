@@ -81,6 +81,42 @@ struct ClipEffect {
     friend bool operator==(const ClipEffect&, const ClipEffect&) = default;
 };
 
+struct ColorRgba {
+    double r = 1.0;
+    double g = 1.0;
+    double b = 1.0;
+    double a = 1.0;
+
+    friend bool operator==(const ColorRgba&, const ColorRgba&) = default;
+};
+
+enum class TextAlignment { Left, Center, Right };
+
+// The text of a title clip. Sizes are fractions so a title looks the same on any canvas:
+// the font size of the canvas height, spacing and outline of the font size. The text is
+// laid out across the canvas (wrapping at 90 % of its width), centred vertically, then
+// placed by the clip's visual like any picture.
+struct ClipText {
+    std::string text = "Title";
+    std::string fontFamily; // empty: the app's default
+    double size = 0.08;
+    bool bold = false;
+    bool italic = false;
+    ColorRgba color;
+    TextAlignment alignment = TextAlignment::Center;
+    double lineSpacing = 1.0;   // times the font's line height
+    double letterSpacing = 0.0; // extra space between letters
+    ColorRgba outlineColor{0.0, 0.0, 0.0, 1.0};
+    double outlineWidth = 0.0;
+    bool shadow = false;
+
+    friend bool operator==(const ClipText&, const ClipText&) = default;
+};
+
+inline constexpr double kMinTextSize = 0.01;
+inline constexpr double kMaxTextSize = 0.5;
+inline constexpr std::size_t kMaxTextLength = 2000;
+
 // Where a transition sits around the cut between two touching clips.
 enum class TransitionAlignment {
     Center,      // half before the cut, half after
@@ -129,6 +165,9 @@ struct Clip {
 
     // Transition from the previous clip; plays only while a clip ends where this one starts.
     std::optional<ClipTransition> transitionIn;
+
+    // A title: drawn text instead of media (mediaId is kNoId).
+    std::optional<ClipText> text;
 
     Ticks end() const { return start + duration; }
 

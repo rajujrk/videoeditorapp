@@ -3,15 +3,16 @@
 A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
-**Status: Phase 1 (MVP editor), slices 1, 2, 3a, 3b and 4a done.** You can import video
-and audio files, arrange them on a multi-track timeline (move, trim, split, delete with
-ripple on the main track, undo/redo), layer clips with position, scale, rotation, crop,
-opacity and blend modes, give each clip its own effects, put any of 21 transitions on the
-cuts between clips (with a constant-power sound crossfade), change a clip's speed
-(0.1–10×), play it in reverse or insert freeze frames, hear and see their sound (waveforms,
-volume, fades, detach audio, track mute/hide/lock, meter), see thumbnails in the media bin
-and on the timeline, play and scrub, and save/open `.tve` projects. Not yet: titles,
-voice-over, export.
+**Status: Phase 1 (MVP editor), slices 1–4 done (4a transitions, 4b titles); slice 5
+next.** You can import video and audio files, arrange them on a multi-track timeline
+(move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
+position, scale, rotation, crop, opacity and blend modes, give each clip its own effects,
+put any of 21 transitions on the cuts between clips (with a constant-power sound
+crossfade), add titles (font, size, colour, bold/italic, alignment, letter and line
+spacing, outline, shadow), change a clip's speed (0.1–10×), play it in reverse or insert
+freeze frames, hear and see their sound (waveforms, volume, fades, detach audio, track
+mute/hide/lock, meter), see thumbnails in the media bin and on the timeline, play and
+scrub, and save/open `.tve` projects. Not yet: voice-over, export.
 
 What's in the repo:
 
@@ -34,8 +35,8 @@ What's in the repo:
 - `ui/player/` — `VideoView` (zero-copy CVPixelBuffer → Metal textures, YUV → RGB per
   layer, per-clip effects, compositor, output effects, aspect-fit, live preview of
   uncommitted slider changes), `ProjectController`, which exposes the project, edits,
-  transport and file I/O to QML, and `ThumbnailProvider` (`image://tvethumb/…`, decoded on
-  a small thread pool and cached).
+  transport and file I/O to QML, the title text renderer, and image providers for video
+  thumbnails, transition previews and title previews.
 - `ui/theme/` — design system: color/type/spacing tokens (dark and light), original icon
   set and base components. See [docs/design-system.md](docs/design-system.md).
 - `ui/shell/` — Home screen and Editor workspace: media bin, player with transport,
@@ -73,6 +74,15 @@ with it. Reversed clips play their sound backwards too. "Freeze frame at playhea
 the clip there and inserts a 2-second still (silent; trim it to change its length). Clip
 labels show `2× ·`, `Reverse ·` or `Still ·` badges.
 
+**Titles.** Click a style in the library's Titles tab to add a 5-second title at the
+playhead (on the lowest free video track above the main one, or a new track on top), or
+drag it onto a track. Titles are clips like any other: move, trim (to any length), split,
+place and fade them with the Video tab, add effects. The Video tab's Text section edits
+the words (committed when typing pauses), font, size, bold/italic, alignment, colour,
+letter and line spacing, outline and shadow. Sizes are fractions of the canvas, so a title
+looks the same at any resolution. Titles are drawn by Qt's text engine (HarfBuzz shaping)
+to a canvas-sized texture, redrawn only when they change.
+
 **Transitions.** Click one in the library's Transitions tab to put it on the cut nearest
 the playhead (on the selected clip's track, else the main track), or drag it onto a cut.
 It shows as a marker over the cut; click the marker to edit it in the inspector: kind,
@@ -85,7 +95,7 @@ whenever the clips touch.
 
 On an M-series Mac a 4K60 H.264 clip plays at 60 fps forwards, in reverse and at 2×, and
 through any transition between two 4K60 clips (about 59–60 fps; the second the incoming
-clip's decoder opens can dip to the low 50s); 4K30
+clip's decoder opens can dip to the low 50s), and with titles over it; 4K30
 plays at 2× in reverse at 30 fps. 4K60 at 2× in reverse needs about 120 hardware decodes
 a second, the decoder's ceiling, so it can drop frames under load; proxies (slice 5) are
 the answer there. `tve_engine_tests "[perf]"` runs the playback throughput benchmarks.

@@ -8,6 +8,7 @@ add_executable(tve_core_tests
     core/test_visual_model.cpp
     core/test_time_model.cpp
     core/test_transitions.cpp
+    core/test_titles.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)

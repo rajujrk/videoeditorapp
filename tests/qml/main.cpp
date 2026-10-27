@@ -9,6 +9,7 @@
 
 #include "ThumbnailProvider.h"
 #include "TransitionPreviewProvider.h"
+#include "TitleRenderer.h"
 
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ThemePlugin)
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_PlayerPlugin)
@@ -24,6 +25,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("tempDir"), QDir::tempPath());
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
         engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
+        engine->addImageProvider(QString::fromLatin1(TitlePreviewProvider::kId), new TitlePreviewProvider);
     }
 };
 

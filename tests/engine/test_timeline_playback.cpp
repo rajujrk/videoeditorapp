@@ -368,6 +368,53 @@ TEST_CASE("during a transition each composite carries both clips' frames and the
     CHECK_FALSE(frames.at(38 * kFrame30).layers[0].transition);         // t = 1.267 s, after it
 }
 
+TEST_CASE("titles play as text layers above the video, with no media")
+{
+    requireSamples();
+    auto project = std::make_shared<Project>();
+    CommandStack stack(*project);
+    auto push = [&](std::unique_ptr<Command> command) { REQUIRE_FALSE(stack.push(std::move(command))); };
+    auto track = std::make_unique<AddTrackCommand>(TrackKind::Video, "V1");
+    const auto* trackCmd = track.get();
+    push(std::move(track));
+    auto media = std::make_unique<ImportMediaCommand>(sample("test_1080p30_h264.mp4"), 2 * kSec);
+    const auto* mediaCmd = media.get();
+    push(std::move(media));
+    push(std::make_unique<AddClipCommand>(trackCmd->trackId(), mediaCmd->mediaId(), 0, kSec, 0));
+    // A title over the clip's second half and on past it, alone, to 1.5 s.
+    ClipText text;
+    text.text = "Hello";
+    auto title = std::make_unique<AddTitleCommand>(kNoId, kSec / 2, kSec, text);
+    const auto* titleCmd = title.get();
+    push(std::move(title));
+
+    TimelinePlayback playback;
+    playback.setProject(project);
+    std::vector<CompositeFrame> frames;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+    while (std::chrono::steady_clock::now() < deadline && !(playback.producerFinished() && !playback.queue().frontPts())) {
+        if (auto front = playback.queue().frontPts()) {
+            int skipped = 0;
+            frames.push_back(std::move(*playback.queue().takeLatestDue(*front, skipped)));
+            continue;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    REQUIRE(frames.size() == 45); // 1.5 s at 30 fps
+    CHECK(frames[10].layers.size() == 1);
+    CHECK_FALSE(frames[10].layers[0].text);
+
+    const CompositeFrame& both = frames[20]; // 0.67 s: clip and title
+    REQUIRE(both.layers.size() == 2);
+    REQUIRE(both.layers[1].text);
+    CHECK(both.layers[1].clipId == titleCmd->clipId());
+    CHECK(both.layers[1].text->text == "Hello");
+    CHECK_FALSE(both.layers[1].frame.pixelBuffer());
+
+    REQUIRE(frames[40].layers.size() == 1); // 1.33 s: the title alone
+    CHECK(frames[40].layers[0].text);
+}
+
 // Not run by default: `tve_engine_tests "[perf]"`. Unpaced producer throughput, in project
 // frames per second, for a 4K60 clip played forwards and in reverse at 60 fps, and the
 // longest wait for a frame.

@@ -9,6 +9,7 @@
 #include "model/TimelineQuery.h"
 #include "gpu/EffectLibrary.h"
 #include "EffectInfo.h"
+#include "TitleRenderer.h"
 #include "model/TimelineQuery.h"
 #include "playback/TimelinePlayback.h"
 
@@ -228,10 +229,14 @@ QVariantList ProjectController::tracks() const
         QVariantList clips;
         for (const Clip& clip : track->clips) {
             const MediaItem* media = m_project.findMedia(clip.mediaId);
+            const QString label = clip.text ? QString::fromStdString(clip.text->text).section(QLatin1Char('\n'), 0, 0)
+                                  : media     ? fileName(media->path)
+                                              : QStringLiteral("Missing media");
             clips << QVariantMap{
                 {QStringLiteral("id"), double(clip.id)},
                 {QStringLiteral("mediaId"), double(clip.mediaId)},
-                {QStringLiteral("label"), media ? fileName(media->path) : QStringLiteral("Missing media")},
+                {QStringLiteral("label"), label},
+                {QStringLiteral("isTitle"), clip.text.has_value()},
                 {QStringLiteral("start"), seconds(clip.start)},
                 {QStringLiteral("duration"), seconds(clip.duration)},
                 {QStringLiteral("sourceIn"), seconds(clip.sourceIn)},
@@ -651,7 +656,9 @@ QVariantMap ProjectController::selectedClipInfo() const
         const MediaItem* media = m_project.findMedia(clip->mediaId);
         return {
             {QStringLiteral("id"), double(clip->id)},
-            {QStringLiteral("label"), media ? fileName(media->path) : QString()},
+            {QStringLiteral("label"), clip->text ? QStringLiteral("Title") : media ? fileName(media->path) : QString()},
+            {QStringLiteral("isTitle"), clip->text.has_value()},
+            {QStringLiteral("text"), clip->text ? textMap(*clip->text) : QVariantMap()},
             {QStringLiteral("trackKind"), track.kind == TrackKind::Audio ? QStringLiteral("audio") : QStringLiteral("video")},
             {QStringLiteral("locked"), track.locked},
             {QStringLiteral("duration"), seconds(clip->duration)},
@@ -753,10 +760,17 @@ bool ProjectController::freezeFrame(double holdSeconds)
     const Ticks at = ticks(m_playhead);
     // The selected clip if the playhead is on it, else the visible clip there.
     Id target = kNoId;
-    if (const Clip* selected = findClip(m_selectedClip); selected && selected->start <= at && at < selected->end())
+    if (const Clip* selected = findClip(m_selectedClip);
+        selected && !selected->text && selected->start <= at && at < selected->end()) {
         target = selected->id;
-    else if (auto visible = visibleVideoAt(m_project, at))
-        target = visible->clip->id;
+    } else {
+        // The topmost video clip there (titles have no frames to freeze).
+        const auto layers = visibleVideoLayersAt(m_project, at);
+        for (auto layer = layers.rbegin(); layer != layers.rend() && target == kNoId; ++layer) {
+            if (!layer->clip->text)
+                target = layer->clip->id;
+        }
+    }
     if (target == kNoId) {
         reportError(QStringLiteral("Put the playhead on a video clip to freeze a frame"));
         return false;
@@ -767,6 +781,50 @@ bool ProjectController::freezeFrame(double holdSeconds)
         return false;
     setSelectedClip(double(raw->freezeClipId()));
     return true;
+}
+
+// --- Titles ---
+
+QStringList ProjectController::titleFonts() const
+{
+    return titleFontFamilies();
+}
+
+bool ProjectController::addTitle(const QVariantMap& style, double trackId, double start)
+{
+    constexpr Ticks kTitleLength = 5 * kTicksPerSecond;
+    const Ticks at = start < 0 ? ticks(m_playhead) : ticks(start);
+    Id track = toId(trackId);
+    if (trackId < 0) {
+        // The lowest free picture track above the main one; else a new track on top.
+        const auto main = m_project.trackIndex(mainTrackId());
+        for (std::size_t i = main ? *main + 1 : 0; i < m_project.tracks.size() && track == kNoId; ++i) {
+            const Track& candidate = m_project.tracks[i];
+            if (candidate.kind != TrackKind::Audio && !candidate.locked && !candidate.hidden
+                && !candidate.overlaps(at, kTitleLength))
+                track = candidate.id;
+        }
+    }
+    ClipVisual visual;
+    visual.transform.x = style.value(QStringLiteral("x")).toDouble();
+    visual.transform.y = style.value(QStringLiteral("y")).toDouble();
+    auto command = std::make_unique<AddTitleCommand>(track, at, kTitleLength, textFrom(style), visual);
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return false;
+    setSelectedClip(double(raw->clipId()));
+    return true;
+}
+
+bool ProjectController::setClipText(double clipId, const QVariantMap& changes)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->text)
+        return false;
+    ClipText text = textFrom(changes, *clip->text);
+    if (text == *clip->text)
+        return true;
+    return apply(std::make_unique<SetClipTextCommand>(clip->id, std::move(text)));
 }
 
 // --- Transitions ---
