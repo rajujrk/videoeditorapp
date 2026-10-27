@@ -152,6 +152,10 @@ int main(int argc, char* argv[])
     // appended to the main track in order.
     auto* project = engine.rootObjects().constFirst()->findChild<ProjectController*>(QStringLiteral("project"));
     if (project) {
+        // Scripted runs (measurements, screenshots, exports) leave no unsaved work behind.
+        if (parser.isSet(statsOption) || parser.isSet(quitOption) || parser.isSet(screenshotOption)
+            || parser.isSet(exportOption))
+            project->setAutosaveEnabled(false);
         for (const QString& argument : parser.positionalArguments()) {
             const QUrl url = QUrl::fromLocalFile(QFileInfo(argument).absoluteFilePath());
             if (argument.endsWith(QLatin1String(".tve")))

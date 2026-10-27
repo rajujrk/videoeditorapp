@@ -11,11 +11,22 @@
 #include "EffectInfo.h"
 #include "Exporter.h"
 #include "TitleRenderer.h"
-#include "model/TimelineQuery.h"
 #include "playback/TimelinePlayback.h"
 
+#include <QDateTime>
+#include <QDir>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSaveFile>
+#include <QStandardPaths>
+#include <QUuid>
 #include <QtGlobal>
+
+#include <cerrno>
+#include <csignal>
+#include <set>
+#include <unistd.h>
 
 #include <algorithm>
 #include <cmath>
@@ -139,6 +150,27 @@ QVariantMap transitionMap(const Track& track, const Clip& clip)
     };
 }
 
+// Autosave sessions of documents open in this process (another process's are told apart
+// by whether its pid is alive).
+std::set<QString>& liveSessions()
+{
+    static std::set<QString> sessions;
+    return sessions;
+}
+
+QString newSessionId()
+{
+    return QUuid::createUuid().toString(QUuid::WithoutBraces);
+}
+
+bool processAlive(qint64 pid)
+{
+    return pid > 0 && (::kill(pid_t(pid), 0) == 0 || errno == EPERM);
+}
+
+constexpr int kAutosaveDelayMs = 2000;       // after edits settle
+constexpr qint64 kAutosaveMaxDelayMs = 30000; // even while edits keep coming
+
 // Default track layout for a new project, bottom to top: audio, main video, overlay.
 Project emptyProject(int width, int height)
 {
@@ -170,6 +202,17 @@ ProjectController::ProjectController(QObject* parent)
     m_playheadTimer.setInterval(16);
     connect(&m_playheadTimer, &QTimer::timeout, this, &ProjectController::updatePlayhead);
     m_playheadTimer.start();
+
+    const QByteArray autosaveOverride = qgetenv("TVE_AUTOSAVE_DIR");
+    m_autosaveDir = !autosaveOverride.isEmpty()
+                        ? QString::fromLocal8Bit(autosaveOverride)
+                        : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/Autosave");
+    m_sessionId = newSessionId();
+    liveSessions().insert(m_sessionId);
+    m_autosaveTimer.setSingleShot(true);
+    m_autosaveTimer.setInterval(kAutosaveDelayMs);
+    connect(&m_autosaveTimer, &QTimer::timeout, this, &ProjectController::autosaveNow);
+
     resetProject(emptyProject(1920, 1080), {});
 }
 
@@ -179,6 +222,13 @@ ProjectController::~ProjectController()
     m_cancelExport = true;
     if (m_exportThread.joinable())
         m_exportThread.join();
+    // Quitting with unsaved changes keeps them recoverable; otherwise nothing is left behind.
+    blockSignals(true); // nothing should react to a half-destroyed controller
+    if (m_autosaveEnabled && modified())
+        autosaveNow();
+    else
+        removeAutosave();
+    liveSessions().erase(m_sessionId);
     m_audioOutput.reset(); // stop the device callback before the playback it reads from
 }
 
@@ -377,6 +427,17 @@ QVariantMap ProjectController::selectedTransitionInfo() const
 void ProjectController::resetProject(Project project, const QString& filePath)
 {
     pause();
+    // Unsaved work being replaced stays recoverable under its own session; the new
+    // document gets a new one.
+    if (m_stack && modified() && m_autosaveEnabled) {
+        autosaveNow();
+        liveSessions().erase(m_sessionId);
+        m_sessionId = newSessionId();
+        liveSessions().insert(m_sessionId);
+        emit recoveryChanged();
+    } else if (m_stack) {
+        removeAutosave();
+    }
     m_project = std::move(project);
     m_stack = std::make_unique<CommandStack>(m_project);
     m_filePath = filePath;
@@ -422,6 +483,7 @@ bool ProjectController::save(const QUrl& file)
     }
     m_filePath = path;
     m_stack->setClean();
+    removeAutosave(); // the file has it all now
     emit projectChanged();
     return true;
 }
@@ -605,6 +667,183 @@ void ProjectController::publish()
     m_trackModel.update(tracks());
     emit projectChanged();
     emit selectedClipInfoChanged();
+    scheduleAutosave();
+}
+
+// --- Autosave and recovery ---
+
+QString ProjectController::autosavePath(const QString& id, const char* suffix) const
+{
+    return m_autosaveDir + QLatin1Char('/') + id + QLatin1String(suffix);
+}
+
+void ProjectController::setAutosaveEnabled(bool enabled)
+{
+    if (enabled == m_autosaveEnabled)
+        return;
+    m_autosaveEnabled = enabled;
+    if (!enabled) {
+        m_autosaveTimer.stop();
+        removeAutosave();
+    } else {
+        scheduleAutosave();
+    }
+    emit recoveryChanged();
+}
+
+void ProjectController::setAutosaveDirectory(const QString& directory)
+{
+    if (directory == m_autosaveDir)
+        return;
+    removeAutosave();
+    m_autosaveDir = directory;
+    scheduleAutosave();
+    emit recoveryChanged();
+}
+
+void ProjectController::scheduleAutosave()
+{
+    if (!m_stack || !m_autosaveEnabled)
+        return;
+    if (!modified()) {
+        m_autosaveTimer.stop();
+        removeAutosave();
+        return;
+    }
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (m_unsavedSince == 0)
+        m_unsavedSince = now;
+    if (now - m_unsavedSince >= kAutosaveMaxDelayMs)
+        autosaveNow();
+    else
+        m_autosaveTimer.start(); // restarts: waits for edits to settle
+}
+
+void ProjectController::autosaveNow()
+{
+    m_autosaveTimer.stop();
+    if (!m_autosaveEnabled || !modified()) {
+        removeAutosave();
+        return;
+    }
+    if (!QDir().mkpath(m_autosaveDir)) {
+        reportError(QStringLiteral("Could not autosave to %1").arg(m_autosaveDir));
+        return;
+    }
+    try {
+        saveProject(m_project, autosavePath(m_sessionId, ".tve").toStdString());
+    } catch (const std::exception& e) {
+        reportError(QStringLiteral("Could not autosave: %1").arg(QString::fromUtf8(e.what())));
+        return;
+    }
+    int clips = 0;
+    for (const Track& track : m_project.tracks)
+        clips += int(track.clips.size());
+    const QJsonObject meta{
+        {QStringLiteral("sessionId"), m_sessionId},
+        {QStringLiteral("pid"), qint64(QCoreApplication::applicationPid())},
+        {QStringLiteral("name"), name()},
+        {QStringLiteral("originalPath"), m_filePath},
+        {QStringLiteral("savedAt"), QDateTime::currentMSecsSinceEpoch()},
+        {QStringLiteral("clipCount"), clips},
+    };
+    QSaveFile file(autosavePath(m_sessionId, ".json"));
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QJsonDocument(meta).toJson());
+        file.commit();
+    }
+    m_unsavedSince = 0;
+    m_lastAutosave = QDateTime::currentMSecsSinceEpoch();
+    emit recoveryChanged();
+}
+
+void ProjectController::removeAutosave()
+{
+    m_unsavedSince = 0;
+    if (m_lastAutosave != 0) {
+        m_lastAutosave = 0;
+        emit recoveryChanged();
+    }
+    if (m_sessionId.isEmpty() || m_autosaveDir.isEmpty())
+        return;
+    QFile::remove(autosavePath(m_sessionId, ".json"));
+    QFile::remove(autosavePath(m_sessionId, ".tve"));
+}
+
+QVariantList ProjectController::recoverableProjects() const
+{
+    struct Entry {
+        qint64 savedAt;
+        QVariantMap map;
+    };
+    std::vector<Entry> entries;
+    const QDir dir(m_autosaveDir);
+    for (const QString& fileName : dir.entryList({QStringLiteral("*.json")}, QDir::Files)) {
+        QFile file(dir.filePath(fileName));
+        if (!file.open(QIODevice::ReadOnly))
+            continue;
+        const QJsonObject meta = QJsonDocument::fromJson(file.readAll()).object();
+        const QString id = meta.value(QStringLiteral("sessionId")).toString();
+        const qint64 pid = meta.value(QStringLiteral("pid")).toInteger();
+        // Not work still open here or in another running copy of the app.
+        if (id.isEmpty() || liveSessions().contains(id) || !QFileInfo::exists(autosavePath(id, ".tve")))
+            continue;
+        if (pid != QCoreApplication::applicationPid() && processAlive(pid))
+            continue;
+        const qint64 savedAt = meta.value(QStringLiteral("savedAt")).toInteger();
+        entries.push_back({savedAt,
+                           {
+                               {QStringLiteral("id"), id},
+                               {QStringLiteral("name"), meta.value(QStringLiteral("name")).toString()},
+                               {QStringLiteral("originalPath"), meta.value(QStringLiteral("originalPath")).toString()},
+                               {QStringLiteral("savedAt"), double(savedAt)},
+                               {QStringLiteral("clipCount"), meta.value(QStringLiteral("clipCount")).toInt()},
+                           }});
+    }
+    std::ranges::sort(entries, std::greater<>{}, &Entry::savedAt);
+    QVariantList list;
+    for (const Entry& entry : entries)
+        list << entry.map;
+    return list;
+}
+
+bool ProjectController::recoverProject(const QString& id)
+{
+    QVariantMap found;
+    for (const QVariant& entry : recoverableProjects()) {
+        if (entry.toMap().value(QStringLiteral("id")).toString() == id)
+            found = entry.toMap();
+    }
+    if (found.isEmpty()) {
+        reportError(QStringLiteral("That unsaved work is no longer there"));
+        return false;
+    }
+    Project recovered;
+    try {
+        recovered = loadProject(autosavePath(id, ".tve").toStdString());
+    } catch (const std::exception& e) {
+        reportError(QStringLiteral("Could not recover: %1").arg(QString::fromUtf8(e.what())));
+        return false;
+    }
+    resetProject(std::move(recovered), found.value(QStringLiteral("originalPath")).toString());
+    m_canvasChosen = true;
+    m_stack->setUnsaved(); // it differs from any saved file until saved
+    // The work now lives in this session: autosave it here, then drop the old copy.
+    autosaveNow();
+    QFile::remove(autosavePath(id, ".json"));
+    QFile::remove(autosavePath(id, ".tve"));
+    emit projectChanged();
+    emit recoveryChanged();
+    return true;
+}
+
+void ProjectController::discardRecovery(const QString& id)
+{
+    if (id.isEmpty() || liveSessions().contains(id))
+        return;
+    QFile::remove(autosavePath(id, ".json"));
+    QFile::remove(autosavePath(id, ".tve"));
+    emit recoveryChanged();
 }
 
 void ProjectController::reportError(const QString& message)

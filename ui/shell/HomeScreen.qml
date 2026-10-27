@@ -6,9 +6,12 @@ import TechieVideoEditor.Theme
 // Start screen: pick a canvas shape for a new project, or drop media to start one.
 Rectangle {
     id: home
+    // For the list of unsaved work to recover (none shown without it).
+    property var project: null
     signal newProject(string name, int width, int height)
     signal openRequested()
     signal mediaDropped(url file)
+    signal recoverRequested(string id)
 
     color: Theme.color.canvas
 
@@ -120,6 +123,79 @@ Rectangle {
                     text: "Start creating"
                     font: Theme.type.display
                     color: Theme.color.textPrimary
+                }
+
+                // Unsaved work from a session that crashed or closed without saving.
+                ColumnLayout {
+                    id: recovery
+                    objectName: "recoverySection"
+                    readonly property var items: home.project ? home.project.recoverableProjects : []
+                    visible: items.length > 0
+                    Layout.fillWidth: true
+                    spacing: Theme.space.s
+
+                    Text { text: "Unsaved work"; font: Theme.type.title; color: Theme.color.textPrimary }
+                    Text {
+                        Layout.fillWidth: true
+                        text: "TechieVideoEditor kept these changes when it last closed without saving."
+                        font: Theme.type.label
+                        color: Theme.color.textSecondary
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Repeater {
+                        model: recovery.items
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: 640
+                            implicitHeight: row.implicitHeight + Theme.space.m * 2
+                            radius: Theme.radius.l
+                            color: Theme.color.surface
+                            border.color: Theme.color.warning
+
+                            RowLayout {
+                                id: row
+                                anchors.fill: parent
+                                anchors.margins: Theme.space.m
+                                spacing: Theme.space.m
+                                Icon { name: "save"; color: Theme.color.warning }
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: Theme.space.xxs
+                                    Text {
+                                        text: modelData.name
+                                        font: Theme.type.heading
+                                        color: Theme.color.textPrimary
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+                                    Text {
+                                        text: "Last saved automatically "
+                                              + new Date(modelData.savedAt).toLocaleString(Qt.locale(), Locale.ShortFormat)
+                                              + " · " + modelData.clipCount + (modelData.clipCount === 1 ? " clip" : " clips")
+                                              + (modelData.originalPath ? " · " + modelData.originalPath : "")
+                                        font: Theme.type.label
+                                        color: Theme.color.textSecondary
+                                        elide: Text.ElideMiddle
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                                TextButton {
+                                    objectName: "discardRecovery:" + modelData.id
+                                    text: "Discard"
+                                    variant: "ghost"
+                                    onClicked: home.project.discardRecovery(modelData.id)
+                                }
+                                TextButton {
+                                    objectName: "recover:" + modelData.id
+                                    text: "Recover"
+                                    variant: "primary"
+                                    onClicked: home.recoverRequested(modelData.id)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // New project: one card per canvas shape

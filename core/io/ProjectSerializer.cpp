@@ -96,7 +96,12 @@ void saveProject(const Project& project, const std::filesystem::path& path)
         if (!out)
             throw std::runtime_error("failed writing " + temp.string());
     }
-    std::filesystem::rename(temp, path);
+    std::error_code error;
+    std::filesystem::rename(temp, path, error);
+    if (error) {
+        std::filesystem::remove(temp, error);
+        throw std::runtime_error("cannot replace " + path.string());
+    }
 }
 
 Project loadProject(const std::filesystem::path& path)
