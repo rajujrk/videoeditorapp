@@ -525,6 +525,8 @@ Rectangle {
                             readonly property real sourceTime: {
                                 const c = item.clip
                                 if (c.freeze) return c.sourceIn
+                                if (c.speedRamp && c.speedRamp.length > 0)
+                                    return timeline.project.clipSourceTime(c.id, Math.min(offset, c.duration))
                                 const span = c.duration * c.speed
                                 const into = Math.min(offset, c.duration) * c.speed
                                 return c.reversed ? c.sourceIn + span - into : c.sourceIn + into
@@ -546,6 +548,7 @@ Rectangle {
                 sourceIn: item.clip.sourceIn
                 duration: item.previewDuration
                 speed: item.clip.speed
+                ramp: item.clip.speedRamp || []
                 reversed: item.clip.reversed
                 gainDb: item.clip.gainDb
                 fadeIn: item.clip.fadeIn
@@ -590,7 +593,8 @@ Rectangle {
                     // Badges first so a short clip still shows them.
                     text: (item.clip.isTitle ? "Title · " : "")
                           + (item.clip.freeze ? "Still · " : "")
-                          + (!item.clip.freeze && item.clip.speed !== 1 ? Number(item.clip.speed.toFixed(2)) + "× · " : "")
+                          + (item.clip.speedRamp && item.clip.speedRamp.length > 0 ? "Ramp · "
+                             : !item.clip.freeze && item.clip.speed !== 1 ? Number(item.clip.speed.toFixed(2)) + "× · " : "")
                           + (item.clip.reversed ? "Reverse · " : "")
                           + item.clip.label
                     font: Theme.type.caption

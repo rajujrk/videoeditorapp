@@ -64,6 +64,8 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantMap selectedTransitionInfo READ selectedTransitionInfo NOTIFY selectedClipInfoChanged)
     // The transition library: [{id, title, categories, params}].
     Q_PROPERTY(QVariantList availableTransitions READ availableTransitions CONSTANT)
+    // Ready-made speed ramps: [{id, title, points: [{at, speed}]}].
+    Q_PROPERTY(QVariantList speedRampPresets READ speedRampPresets CONSTANT)
     // Font families offered for titles.
     Q_PROPERTY(QStringList titleFonts READ titleFonts CONSTANT)
 
@@ -145,6 +147,7 @@ public:
     QVariantMap selectedTransitionInfo() const;
     QVariantList availableTransitions() const;
     QStringList titleFonts() const;
+    QVariantList speedRampPresets() const;
     bool autosaveEnabled() const { return m_autosaveEnabled; }
     void setAutosaveEnabled(bool enabled);
     QString autosaveDirectory() const { return m_autosaveDir; }
@@ -240,6 +243,15 @@ public:
     // Inserts a still of the frame at the playhead into the clip under it (or the selected
     // clip) for `holdSeconds`.
     Q_INVOKABLE bool freezeFrame(double holdSeconds = 2.0);
+    // Speed ramps: `points` [{at (0–1 of the clip), speed}], first at 0, last at 1. The clip
+    // keeps its source span, so its length follows the average speed. Clip maps carry
+    // speedRamp (the same list; empty when constant).
+    Q_INVOKABLE bool setClipSpeedRamp(double clipId, const QVariantList& points);
+    Q_INVOKABLE bool applySpeedRampPreset(double clipId, const QString& presetId);
+    // Back to a constant speed (the ramp's average, keeping the clip's length).
+    Q_INVOKABLE bool removeSpeedRamp(double clipId);
+    // Source time (seconds) a clip shows `offset` seconds after its start (for thumbnails).
+    Q_INVOKABLE double clipSourceTime(double clipId, double offset) const;
 
     // Per-clip effects (by index in the clip's stack).
     Q_INVOKABLE bool addClipEffect(double clipId, const QString& effectId);

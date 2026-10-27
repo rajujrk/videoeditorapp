@@ -18,6 +18,7 @@ qt_add_qml_module(tve_shell
         VoiceOverPanel.qml
         KeyframeToggle.qml
         CurveEditor.qml
+        SpeedRampEditor.qml
     IMPORTS
         TechieVideoEditor.Theme
         TechieVideoEditor.Player

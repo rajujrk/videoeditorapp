@@ -353,6 +353,26 @@ TEST_CASE("double speed raises a tone by an octave")
     CHECK(peak(mix, 74000, 96000) == 0.0f); // ends at 1.5 s
 }
 
+TEST_CASE("a speed ramp sweeps a tone's pitch")
+{
+    requireSamples();
+    AudioProject p;
+    const Id toneMedia = p.importAudio("test_tone_440.wav", 3 * kSec);
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, toneMedia, 0, 3 * kSec).clipId();
+    // 0.5× up to 2×, average 1.25×: 2.4 s long; speed 0.65× at 0.24 s and 1.85× at 2.16 s.
+    p.push<SetClipSpeedRampCommand>(clip, SpeedRamp{{0.0, 0.5}, {1.0, 2.0}});
+    REQUIRE(p.project->locateClip(clip)->clip->duration == kSec * 24 / 10);
+
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    const auto mix = drainMix(mixer);
+    // 0.2 s windows centred there: 2 × 440 Hz × speed × 0.2 s crossings.
+    CHECK(zeroCrossings(mix, 6720, 16320) == Catch::Approx(2 * 440 * 0.65 * 0.2).margin(4));
+    CHECK(zeroCrossings(mix, 98880, 108480) == Catch::Approx(2 * 440 * 1.85 * 0.2).margin(4));
+    CHECK(peak(mix, 6720, 108480) == Catch::Approx(0.5f).margin(0.01));
+    CHECK(peak(mix, 116000, 130000) == 0.0f); // ends at 2.4 s
+}
+
 TEST_CASE("reversed audio plays the clicks backwards")
 {
     requireSamples();
@@ -408,4 +428,19 @@ TEST_CASE("a transition crossfades the outgoing clip's sound into its handle")
     // After the cut A runs on into its handle (t = 1.25 s, progress 3/4), silent by 1.5 s.
     CHECK(peak(mix, at(1.245), at(1.255)) == Catch::Approx(0.5 * std::cos(3 * std::numbers::pi / 8)).margin(0.01));
     CHECK(peak(mix, at(1.55), at(1.95)) < kQuantization);
+}
+
+TEST_CASE("seeking part-way through a sample starts with that sample")
+{
+    requireSamples();
+    auto sequential = AudioDecoder::open(sample("test_tone_440.wav"));
+    std::vector<float> expected(4000 * 2);
+    REQUIRE(sequential->read(expected.data(), 4000) == 4000);
+    auto decoder = AudioDecoder::open(sample("test_tone_440.wav"));
+    // Two thirds of the way into sample 2730: the next read starts at sample 2730.
+    REQUIRE(decoder->seek(Ticks(2730) * audio::kTicksPerSample + audio::kTicksPerSample * 2 / 3));
+    std::vector<float> got(8 * 2);
+    REQUIRE(decoder->read(got.data(), 8) == 8);
+    for (std::size_t i = 0; i < 8; ++i)
+        CHECK(got[i * 2] == expected[(2730 + i) * 2]);
 }

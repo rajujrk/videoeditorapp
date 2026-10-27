@@ -520,6 +520,7 @@ Rectangle {
                     Layout.topMargin: Theme.space.s
                     title: "Speed"
                     readonly property bool still: inspector.clipInfo.freeze === true
+                    readonly property bool ramped: (inspector.clipInfo.speedRamp || []).length > 0
 
                     Text {
                         visible: speedSection.still
@@ -533,7 +534,7 @@ Rectangle {
                     AudioSlider {
                         objectName: "speedSlider"
                         visible: !speedSection.still
-                        label: "Speed"
+                        label: speedSection.ramped ? "Average speed" : "Speed"
                         from: -1
                         to: 1
                         value: Math.log10(inspector.clipInfo.speed || 1)
@@ -550,7 +551,8 @@ Rectangle {
                                 required property real modelData
                                 objectName: "speedPreset:" + modelData
                                 text: modelData + "×"
-                                variant: Math.abs((inspector.clipInfo.speed || 1) - modelData) < 0.001 ? "primary" : "secondary"
+                                variant: !speedSection.ramped && Math.abs((inspector.clipInfo.speed || 1) - modelData) < 0.001
+                                         ? "primary" : "secondary"
                                 onClicked: inspector.project.setClipSpeed(inspector.clipInfo.id, modelData,
                                                                           inspector.clipInfo.reversed === true)
                             }
@@ -570,6 +572,80 @@ Rectangle {
                         iconName: "pause"
                         tip: "Insert a 2-second still of the frame under the playhead"
                         onClicked: inspector.project.freezeFrame(2)
+                    }
+                }
+
+                // Speed ramp: the speed changes through the clip; the footage stays the same.
+                Section {
+                    id: rampSection
+                    objectName: "speedRampSection"
+                    visible: speedSection.visible && !speedSection.still
+                    Layout.fillWidth: true
+                    title: "Speed ramp"
+                    readonly property var points: inspector.clipInfo.speedRamp || []
+                    readonly property bool ramped: points.length > 0
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xs
+                        Repeater {
+                            model: inspector.project.speedRampPresets
+                            delegate: TextButton {
+                                required property var modelData
+                                objectName: "rampPreset:" + modelData.id
+                                text: modelData.title
+                                variant: JSON.stringify(rampSection.points) === JSON.stringify(modelData.points) ? "primary" : "secondary"
+                                onClicked: inspector.project.applySpeedRampPreset(inspector.clipInfo.id, modelData.id)
+                            }
+                        }
+                    }
+                    SpeedRampEditor {
+                        id: rampEditor
+                        objectName: "speedRampEditor"
+                        visible: rampSection.ramped
+                        Layout.fillWidth: true
+                        points: rampSection.points
+                        playheadAt: inspector.clipInfo.duration > 0
+                                    ? (inspector.project.playhead - (inspector.clipInfo.start || 0)) / inspector.clipInfo.duration : -1
+                        onCommitted: (points) => inspector.project.setClipSpeedRamp(inspector.clipInfo.id, points)
+                    }
+                    RowLayout {
+                        visible: rampSection.ramped
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xs
+                        TextButton {
+                            objectName: "removeRampPoint"
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            text: "Remove point"
+                            variant: "secondary"
+                            enabled: rampEditor.selected > 0 && rampEditor.selected < rampSection.points.length - 1
+                            onClicked: {
+                                const next = rampSection.points.filter((p, i) => i !== rampEditor.selected)
+                                rampEditor.selected = -1
+                                inspector.project.setClipSpeedRamp(inspector.clipInfo.id, next)
+                            }
+                        }
+                        TextButton {
+                            objectName: "removeRampButton"
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            text: "Remove ramp"
+                            variant: "secondary"
+                            tip: "Back to a constant speed (the ramp's average), keeping the clip's length"
+                            onClicked: inspector.project.removeSpeedRamp(inspector.clipInfo.id)
+                        }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        wrapMode: Text.WordWrap
+                        text: rampSection.ramped
+                              ? "Plays the same footage in " + (inspector.clipInfo.duration || 0).toFixed(1) + " s (average "
+                                + (inspector.clipInfo.speed || 1).toFixed(2) + "×). Drag points; double-click the graph to add one. A constant speed above replaces the ramp."
+                              : "Pick a ramp to change the speed through the clip. It plays the same footage, so its length follows."
+                        font: Theme.type.caption
+                        color: Theme.color.textSecondary
                     }
                 }
             }

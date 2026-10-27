@@ -74,6 +74,19 @@ void WaveformItem::setSpeed(double speed)
     }
 }
 
+void WaveformItem::setRamp(const QVariantList& ramp)
+{
+    if (ramp == m_rampList)
+        return;
+    m_rampList = ramp;
+    m_ramp.clear();
+    for (const QVariant& point : ramp) {
+        const QVariantMap map = point.toMap();
+        m_ramp.push_back({map.value(QStringLiteral("at")).toDouble(), map.value(QStringLiteral("speed")).toDouble()});
+    }
+    emit changed();
+}
+
 void WaveformItem::setReversed(bool reversed)
 {
     if (reversed != m_reversed) {
@@ -149,10 +162,14 @@ void WaveformItem::paint(QPainter* painter)
             fade *= t / m_fadeIn;
         if (m_fadeOut > 0 && m_duration - t < m_fadeOut)
             fade *= (m_duration - t) / m_fadeOut;
-        // Source range under this column; a reversed clip reads its source from the top down.
+        // Source range under this column (through the ramp, if any); a reversed clip reads
+        // its source from the top down.
         const double span = m_duration * m_speed;
-        const double into = m_reversed ? span - (t + secondsPerPixel) * m_speed : t * m_speed;
-        const double peak = peaks->maxIn(ticks(m_sourceIn + into), ticks(m_sourceIn + into + secondsPerPixel * m_speed));
+        const double a = span * tve::rampProgress(m_ramp, t / m_duration);
+        const double b = span * tve::rampProgress(m_ramp, (t + secondsPerPixel) / m_duration);
+        const double from = m_reversed ? span - b : a;
+        const double to = m_reversed ? span - a : b;
+        const double peak = peaks->maxIn(ticks(m_sourceIn + from), ticks(m_sourceIn + to));
         amplitude[std::size_t(x)] = std::min(1.0, peak * gain * fade) * mid;
         path.lineTo(x, mid - amplitude[std::size_t(x)]);
     }

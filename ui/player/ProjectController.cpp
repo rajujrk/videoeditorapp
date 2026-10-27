@@ -402,6 +402,14 @@ void setChannelStatic(Clip& clip, const std::string& id, double value)
     }
 }
 
+QVariantList rampList(const SpeedRamp& ramp)
+{
+    QVariantList list;
+    for (const SpeedPoint& p : ramp)
+        list << QVariantMap{{QStringLiteral("at"), p.at}, {QStringLiteral("speed"), p.speed}};
+    return list;
+}
+
 // Times of a clip's keyframes inside it (any channel), seconds from its start, unique.
 QVariantList keyframeTimes(const Clip& clip)
 {
@@ -543,6 +551,7 @@ QVariantList ProjectController::tracks() const
                 {QStringLiteral("speed"), clip.speed},
                 {QStringLiteral("reversed"), clip.reversed},
                 {QStringLiteral("freeze"), clip.freeze},
+                {QStringLiteral("speedRamp"), rampList(clip.speedRamp)},
                 {QStringLiteral("keyframeTimes"), keyframeTimes(clip)},
                 {QStringLiteral("mediaWidth"), media ? media->width : 0},
                 {QStringLiteral("mediaHeight"), media ? media->height : 0},
@@ -1245,6 +1254,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("text"), clip->text ? textMap(*clip->text) : QVariantMap()},
             {QStringLiteral("trackKind"), track.kind == TrackKind::Audio ? QStringLiteral("audio") : QStringLiteral("video")},
             {QStringLiteral("locked"), track.locked},
+            {QStringLiteral("start"), seconds(clip->start)},
             {QStringLiteral("duration"), seconds(clip->duration)},
             {QStringLiteral("hasAudio"), media && media->hasAudio},
             {QStringLiteral("audioEnabled"), clip->audioEnabled},
@@ -1261,6 +1271,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("speed"), clip->speed},
             {QStringLiteral("reversed"), clip->reversed},
             {QStringLiteral("freeze"), clip->freeze},
+            {QStringLiteral("speedRamp"), rampList(clip->speedRamp)},
         };
     }
     return {};
@@ -1630,7 +1641,57 @@ bool ProjectController::seekKeyframe(double clipId, int direction)
 
 bool ProjectController::setClipSpeed(double clipId, double speed, bool reversed)
 {
+    // Turning a ramped clip around keeps its ramp; a new speed replaces it.
+    if (const Clip* clip = findClip(toId(clipId)); clip && !clip->speedRamp.empty() && speed == clip->speed)
+        return apply(std::make_unique<SetClipSpeedRampCommand>(clip->id, clip->speedRamp, reversed));
     return apply(std::make_unique<SetClipSpeedCommand>(toId(clipId), std::clamp(speed, kMinSpeed, kMaxSpeed), reversed));
+}
+
+QVariantList ProjectController::speedRampPresets() const
+{
+    QVariantList list;
+    for (const SpeedRampPreset& preset : tve::speedRampPresets())
+        list << QVariantMap{{QStringLiteral("id"), QString::fromStdString(preset.id)},
+                            {QStringLiteral("title"), QString::fromStdString(preset.title)},
+                            {QStringLiteral("points"), rampList(preset.ramp)}};
+    return list;
+}
+
+bool ProjectController::setClipSpeedRamp(double clipId, const QVariantList& points)
+{
+    SpeedRamp ramp;
+    for (const QVariant& point : points) {
+        const QVariantMap map = point.toMap();
+        ramp.push_back({map.value(QStringLiteral("at")).toDouble(), map.value(QStringLiteral("speed")).toDouble()});
+    }
+    if (ramp.empty()) {
+        reportError(QStringLiteral("A speed ramp needs points"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipSpeedRampCommand>(toId(clipId), std::move(ramp)));
+}
+
+bool ProjectController::applySpeedRampPreset(double clipId, const QString& presetId)
+{
+    for (const SpeedRampPreset& preset : tve::speedRampPresets()) {
+        if (QString::fromStdString(preset.id) == presetId)
+            return apply(std::make_unique<SetClipSpeedRampCommand>(toId(clipId), preset.ramp));
+    }
+    reportError(QStringLiteral("Unknown speed ramp %1").arg(presetId));
+    return false;
+}
+
+bool ProjectController::removeSpeedRamp(double clipId)
+{
+    return apply(std::make_unique<SetClipSpeedRampCommand>(toId(clipId), SpeedRamp{}));
+}
+
+double ProjectController::clipSourceTime(double clipId, double offset) const
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return 0.0;
+    return ::seconds(clip->sourceTimeAt(clip->start + std::clamp(ticks(offset), Ticks(0), clip->duration - 1)));
 }
 
 bool ProjectController::freezeFrame(double holdSeconds)

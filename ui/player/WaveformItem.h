@@ -1,6 +1,9 @@
 #pragma once
 
+#include "model/SpeedRamp.h"
+
 #include <QColor>
+#include <QVariantList>
 #include <QQuickPaintedItem>
 #include <QtQml/qqmlregistration.h>
 
@@ -15,6 +18,8 @@ class WaveformItem : public QQuickPaintedItem {
     Q_PROPERTY(double duration READ duration WRITE setDuration NOTIFY changed)
     Q_PROPERTY(double speed READ speed WRITE setSpeed NOTIFY changed)
     Q_PROPERTY(bool reversed READ reversed WRITE setReversed NOTIFY changed)
+    // A speed ramp, [{at, speed}] (empty: constant `speed`, which is then the average).
+    Q_PROPERTY(QVariantList ramp READ ramp WRITE setRamp NOTIFY changed)
     Q_PROPERTY(double gainDb READ gainDb WRITE setGainDb NOTIFY changed)
     Q_PROPERTY(double fadeIn READ fadeIn WRITE setFadeIn NOTIFY changed)
     Q_PROPERTY(double fadeOut READ fadeOut WRITE setFadeOut NOTIFY changed)
@@ -34,6 +39,8 @@ public:
     void setSpeed(double speed);
     bool reversed() const { return m_reversed; }
     void setReversed(bool reversed);
+    QVariantList ramp() const { return m_rampList; }
+    void setRamp(const QVariantList& ramp);
     double gainDb() const { return m_gainDb; }
     void setGainDb(double db);
     double fadeIn() const { return m_fadeIn; }
@@ -58,6 +65,8 @@ private:
     double m_duration = 0;
     double m_speed = 1;
     bool m_reversed = false;
+    QVariantList m_rampList;
+    tve::SpeedRamp m_ramp;
     double m_gainDb = 0;
     double m_fadeIn = 0;
     double m_fadeOut = 0;

@@ -333,8 +333,19 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     if (!clip.freeze) {
         // Forward: the right part continues further into the source. Reversed: the left
         // part keeps the top of the span and the right part the bottom.
-        const Ticks leftSpan = Ticks(std::llround(double(leftDuration) * clip.speed));
-        const Ticks rightSpan = Ticks(std::llround(double(rightDuration) * clip.speed));
+        Ticks leftSpan = Ticks(std::llround(double(leftDuration) * clip.speed));
+        Ticks rightSpan = Ticks(std::llround(double(rightDuration) * clip.speed));
+        if (!clip.speedRamp.empty()) {
+            // Each half keeps its part of the ramp, so every frame stays where it was.
+            const double u = double(leftDuration) / double(clip.duration);
+            const Ticks span = clip.sourceSpan();
+            leftSpan = Ticks(std::llround(double(span) * rampProgress(clip.speedRamp, u)));
+            rightSpan = span - leftSpan;
+            right.speedRamp = subRamp(clip.speedRamp, u, 1.0);
+            clip.speedRamp = subRamp(clip.speedRamp, 0.0, u);
+            right.speed = double(rightSpan) / double(rightDuration);
+            clip.speed = double(leftSpan) / double(leftDuration);
+        }
         if (clip.reversed)
             clip.sourceIn += rightSpan;
         else
@@ -691,6 +702,7 @@ std::optional<std::string> SetClipSpeedCommand::redo(Project& project)
     m_original = clip;
     m_delta = newDuration - clip.duration;
     const Ticks oldEnd = clip.end();
+    clip.speedRamp.clear(); // constant from here
     clip.speed = m_speed;
     clip.reversed = m_reversed;
     scaleKeyframes(clip, double(newDuration) / double(clip.duration));
@@ -701,6 +713,54 @@ std::optional<std::string> SetClipSpeedCommand::redo(Project& project)
 }
 
 void SetClipSpeedCommand::undo(Project& project)
+{
+    Track* track = project.findTrack(m_trackId);
+    assert(track);
+    shiftClipsFrom(*track, m_original.end() + m_delta, -m_delta);
+    *track->findClip(m_clipId) = m_original;
+}
+
+// --- SetClipSpeedRampCommand ---
+
+std::optional<std::string> SetClipSpeedRampCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    Clip& clip = *location->clip;
+    if (clip.freeze)
+        return "a freeze frame has no speed";
+    if (clip.text)
+        return "titles have no speed";
+    if (!m_ramp.empty()) {
+        if (auto error = validateSpeedRamp(m_ramp))
+            return error;
+    } else if (clip.speedRamp.empty()) {
+        return "this clip has no speed ramp";
+    }
+
+    // Same source span, new average speed: the length follows.
+    const Ticks span = clip.sourceSpan();
+    const double average = m_ramp.empty() ? clip.speed : rampAverage(m_ramp);
+    const Ticks newDuration = std::max<Ticks>(1, Ticks(std::llround(double(span) / average)));
+    m_trackId = location->track->id;
+    m_original = clip;
+    m_delta = newDuration - clip.duration;
+    const Ticks oldEnd = clip.end();
+    scaleKeyframes(clip, double(newDuration) / double(clip.duration));
+    clip.speedRamp = m_ramp;
+    clip.speed = double(span) / double(newDuration);
+    if (m_reversed)
+        clip.reversed = *m_reversed;
+    clip.duration = newDuration;
+    clampFades(clip);
+    shiftClipsFrom(*location->track, oldEnd, m_delta);
+    return std::nullopt;
+}
+
+void SetClipSpeedRampCommand::undo(Project& project)
 {
     Track* track = project.findTrack(m_trackId);
     assert(track);
@@ -755,6 +815,7 @@ std::optional<std::string> FreezeFrameCommand::redo(Project& project)
     still.sourceIn = clip.sourceTimeAt(m_at);
     still.freeze = true;
     still.speed = 1.0;
+    still.speedRamp.clear();
     still.reversed = false;
     still.audioEnabled = false;
     still.fadeIn = still.fadeOut = 0;
