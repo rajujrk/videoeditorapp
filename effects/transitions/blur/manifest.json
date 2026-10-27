@@ -1,0 +1,29 @@
+{
+  "id": "tve.transition.blur",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "blur"
+  ],
+  "title": {
+    "en": "Blur"
+  },
+  "params": [
+    {
+      "id": "radius",
+      "type": "float",
+      "title": {
+        "en": "Radius"
+      },
+      "min": 0,
+      "max": 100,
+      "default": 30
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "blur.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

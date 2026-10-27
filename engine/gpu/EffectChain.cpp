@@ -117,41 +117,9 @@ bool EffectChain::bindInput(Pass& pass, QRhiTexture* input)
 
 void EffectChain::writeUniforms(const Pass& pass, QRhiResourceUpdateBatch* updates, QSize size, float timeSeconds) const
 {
-    const LoadedEffectPass& loaded = pass.effect->passes[pass.passIndex];
-    const EffectInstance& instance = m_instances[pass.instanceIndex];
     std::vector<char> data(std::size_t(pass.uniforms->size()), 0);
-
-    const float header[4] = {1.0f / float(size.width()), 1.0f / float(size.height()), timeSeconds,
-                             m_rhi->isYUpInNDC() ? 1.0f : 0.0f};
-    std::memcpy(data.data(), header, sizeof header);
-
-    for (const auto& [paramId, slot] : loaded.uniformSlots) {
-        const EffectParamSpec& spec = *pass.effect->manifest.findParam(paramId);
-        auto found = instance.values.find(paramId);
-        std::vector<float> value = found != instance.values.end() && found->second.size() >= spec.componentCount()
-            ? found->second
-            : spec.defaultValue;
-        if (spec.type != ParamType::Color)
-            value[0] = std::clamp(value[0], float(spec.min), float(spec.max));
-
-        char* dst = data.data() + slot.offset;
-        switch (slot.kind) {
-        case UniformSlot::Kind::Float:
-            std::memcpy(dst, &value[0], sizeof(float));
-            break;
-        case UniformSlot::Kind::Int: {
-            const auto integer = static_cast<std::int32_t>(std::lround(value[0]));
-            std::memcpy(dst, &integer, sizeof integer);
-            break;
-        }
-        case UniformSlot::Kind::Vec3:
-            std::memcpy(dst, value.data(), 3 * sizeof(float));
-            break;
-        case UniformSlot::Kind::Vec4:
-            std::memcpy(dst, value.data(), 4 * sizeof(float));
-            break;
-        }
-    }
+    writeEffectUniforms(*pass.effect, pass.passIndex, m_instances[pass.instanceIndex].values, size, timeSeconds,
+                        m_rhi->isYUpInNDC(), 0.0f, data);
     updates->updateDynamicBuffer(pass.uniforms.get(), 0, quint32(data.size()), data.data());
 }
 

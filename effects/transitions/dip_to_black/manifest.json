@@ -1,0 +1,31 @@
+{
+  "id": "tve.transition.dip_to_black",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "basic"
+  ],
+  "title": {
+    "en": "Dip to Black"
+  },
+  "params": [
+    {
+      "id": "color",
+      "type": "color",
+      "title": {
+        "en": "Color"
+      },
+      "default": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "dip_to_black.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

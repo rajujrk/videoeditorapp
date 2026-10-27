@@ -1,0 +1,33 @@
+{
+  "id": "tve.transition.push",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "slide"
+  ],
+  "title": {
+    "en": "Push"
+  },
+  "params": [
+    {
+      "id": "direction",
+      "type": "enum",
+      "title": {
+        "en": "Direction"
+      },
+      "values": [
+        "left",
+        "right",
+        "up",
+        "down"
+      ],
+      "default": "left"
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "push.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

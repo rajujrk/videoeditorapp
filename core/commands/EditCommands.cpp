@@ -185,6 +185,18 @@ std::optional<std::string> MoveClipCommand::redo(Project& project)
 
     m_fromTrackId = from->id;
     m_oldStart = location->clip->start;
+    m_ownTransition.reset();
+    m_followerId = kNoId;
+    m_followerTransition.reset();
+    const bool moves = m_toTrackId != from->id || m_newStart != m_oldStart;
+    if (moves) {
+        m_ownTransition = std::exchange(location->clip->transitionIn, std::nullopt);
+        auto follower = std::ranges::find(from->clips, location->clip->end(), &Clip::start);
+        if (follower != from->clips.end() && follower->transitionIn) {
+            m_followerId = follower->id;
+            m_followerTransition = std::exchange(follower->transitionIn, std::nullopt);
+        }
+    }
     Clip clip = *from->removeClip(m_clipId);
     clip.start = m_newStart;
     to->insertClip(std::move(clip));
@@ -198,7 +210,10 @@ void MoveClipCommand::undo(Project& project)
     assert(to && from);
     Clip clip = *to->removeClip(m_clipId);
     clip.start = m_oldStart;
+    clip.transitionIn = m_ownTransition;
     from->insertClip(std::move(clip));
+    if (m_followerId != kNoId)
+        from->findClip(m_followerId)->transitionIn = m_followerTransition;
 }
 
 // --- SplitClipCommand ---
@@ -273,6 +288,14 @@ std::optional<std::string> DeleteClipCommand::redo(Project& project)
         return error;
 
     m_trackId = location->track->id;
+    m_followerId = kNoId;
+    m_followerTransition.reset();
+    Track& track = *location->track;
+    auto follower = std::ranges::find(track.clips, location->clip->end(), &Clip::start);
+    if (follower != track.clips.end() && follower->transitionIn) {
+        m_followerId = follower->id;
+        m_followerTransition = std::exchange(follower->transitionIn, std::nullopt);
+    }
     m_removed = *location->track->removeClip(m_clipId);
     if (m_ripple)
         shiftClipsFrom(*location->track, m_removed.end(), -m_removed.duration);
@@ -286,6 +309,8 @@ void DeleteClipCommand::undo(Project& project)
     if (m_ripple)
         shiftClipsFrom(*track, m_removed.start, m_removed.duration);
     track->insertClip(m_removed);
+    if (m_followerId != kNoId)
+        track->findClip(m_followerId)->transitionIn = m_followerTransition;
 }
 
 // --- SetClipAudioCommand ---
@@ -570,6 +595,45 @@ void FreezeFrameCommand::undo(Project& project)
     if (m_at > m_original.start)
         track.removeClip(m_rightClipId);
     *track.findClip(m_clipId) = m_original;
+}
+
+// --- SetClipTransitionCommand ---
+
+std::string SetClipTransitionCommand::label() const
+{
+    if (!m_transition)
+        return "Remove Transition";
+    return m_previous ? "Change Transition" : "Add Transition";
+}
+
+std::optional<std::string> SetClipTransitionCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    Clip& clip = *location->clip;
+    if (m_transition) {
+        if (location->track->kind != TrackKind::Video)
+            return "transitions go between video clips";
+        if (m_transition->transitionId.empty())
+            return "no transition chosen";
+        if (m_transition->duration < kMinTransitionDuration || m_transition->duration > kMaxTransitionDuration)
+            return "transition length is out of range";
+        const auto& clips = location->track->clips;
+        const bool touching = std::ranges::any_of(clips, [&](const Clip& c) { return c.end() == clip.start; });
+        if (!touching)
+            return "a transition needs a clip ending where this one starts";
+    }
+    m_previous = clip.transitionIn;
+    clip.transitionIn = m_transition;
+    return std::nullopt;
+}
+
+void SetClipTransitionCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->transitionIn = m_previous;
 }
 
 } // namespace tve

@@ -146,16 +146,29 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
     while (!m_stop && time < end) {
         const auto visible = visibleVideoLayersAt(*project, time);
         CompositeFrame composite{time, {}};
-        for (const VisibleClip& layer : visible) {
-            const MediaItem* media = project->findMedia(layer.clip->mediaId);
+        const auto pictureOf = [&](const Clip& clip, Ticks sourceTime) -> const DecodedFrame* {
+            const MediaItem* media = project->findMedia(clip.mediaId);
             if (!media)
-                continue;
-            LayerState& state = m_layers[layer.clip->id];
-            const DecodedFrame* frame = layer.clip->reversed ? reversedFrameAt(state, *media, layer.sourceTime)
-                                                             : frameAt(state, *media, layer.sourceTime);
-            if (frame)
+                return nullptr;
+            LayerState& state = m_layers[clip.id];
+            return clip.reversed ? reversedFrameAt(state, *media, sourceTime) : frameAt(state, *media, sourceTime);
+        };
+        for (const VisibleClip& layer : visible) {
+            const DecodedFrame* frame = pictureOf(*layer.clip, layer.sourceTime);
+            const DecodedFrame* incoming =
+                layer.transition ? pictureOf(*layer.transition->to, layer.transition->toSourceTime) : nullptr;
+            if (frame && incoming) {
+                const TransitionLayer& t = *layer.transition;
+                composite.layers.push_back(VideoLayer{
+                    layer.clip->id, frame->share(), layer.clip->visual, layer.clip->effects,
+                    LayerTransition{t.spec->transitionId, t.spec->values, float(t.progress), t.to->id,
+                                    incoming->share(), t.to->visual, t.to->effects}});
+            } else if (frame || incoming) {
+                // One side unreadable: show the other alone.
+                const Clip& clip = frame ? *layer.clip : *layer.transition->to;
                 composite.layers.push_back(
-                    VideoLayer{layer.clip->id, frame->share(), layer.clip->visual, layer.clip->effects});
+                    VideoLayer{clip.id, (frame ? frame : incoming)->share(), clip.visual, clip.effects, std::nullopt});
+            }
         }
         if (!m_queue.push(std::move(composite)))
             return;
@@ -180,7 +193,9 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
 
         // Release decoders of clips that are no longer on screen.
         std::erase_if(m_layers, [&](const auto& entry) {
-            return std::ranges::none_of(visible, [&](const VisibleClip& v) { return v.clip->id == entry.first; });
+            return std::ranges::none_of(visible, [&](const VisibleClip& v) {
+                return v.clip->id == entry.first || (v.transition && v.transition->to->id == entry.first);
+            });
         });
     }
     m_finished = true;

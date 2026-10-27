@@ -74,7 +74,7 @@ private:
 
     void stopProducer();
     void run(std::shared_ptr<const Project> project, Ticks start, std::uint64_t generation);
-    void mixClip(const Project& project, const Clip& clip, Ticks chunkStart, float* mix,
+    void mixClip(const Project& project, const Track& track, const Clip& clip, Ticks chunkStart, float* mix,
                  std::vector<float>& scratch);
 
     std::mutex m_control;

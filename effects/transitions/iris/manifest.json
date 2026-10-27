@@ -1,0 +1,29 @@
+{
+  "id": "tve.transition.iris",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "shape"
+  ],
+  "title": {
+    "en": "Iris"
+  },
+  "params": [
+    {
+      "id": "softness",
+      "type": "float",
+      "title": {
+        "en": "Softness"
+      },
+      "min": 0,
+      "max": 0.5,
+      "default": 0.05
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "iris.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

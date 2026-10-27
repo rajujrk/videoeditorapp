@@ -1,5 +1,7 @@
 #include "playback/TimelineAudio.h"
 
+#include "model/TimelineQuery.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -101,12 +103,14 @@ void TimelineAudio::restart(std::shared_ptr<const Project> project, Ticks time)
         m_producer = std::thread([this, p = m_project, start, generation] { run(p, start, generation); });
 }
 
-void TimelineAudio::mixClip(const Project& project, const Clip& clip, Ticks chunkStart, float* mix,
-                            std::vector<float>& scratch)
+void TimelineAudio::mixClip(const Project& project, const Track& track, const Clip& clip, Ticks chunkStart,
+                            float* mix, std::vector<float>& scratch)
 {
+    // A clip is heard over its own span plus the handles its transitions reach into.
     const Ticks chunkEnd = chunkStart + audio::ticksFromSamples(AudioChunk::kFrames);
-    const Ticks from = std::max(chunkStart, clip.start);
-    const Ticks to = std::min(chunkEnd, clip.end());
+    const AudibleSpan span = audibleSpan(track, clip);
+    const Ticks from = std::max(chunkStart, span.start);
+    const Ticks to = std::min(chunkEnd, span.end);
     if (from >= to)
         return;
 
@@ -125,19 +129,27 @@ void TimelineAudio::mixClip(const Project& project, const Clip& clip, Ticks chun
     out.assign(std::size_t(frames) * audio::kChannels, 0.0f);
 
     if (plainSpeed) {
-        const Ticks sourceTime = clip.sourceTimeAt(from);
+        // Before the media's start (a head handle that is not there) is silence.
+        Ticks sourceTime = clip.sourceTimeBeyond(from);
+        int silent = 0;
+        if (sourceTime < 0) {
+            silent = int(std::min<std::int64_t>(audio::samplesFromTicks(-sourceTime), frames));
+            sourceTime = 0;
+        }
+        if (silent == frames)
+            return;
         if (stream.nextSourceTime != sourceTime && !stream.decoder->seek(sourceTime))
             return;
-        read = stream.decoder->read(out.data(), frames);
-        stream.nextSourceTime = sourceTime + audio::ticksFromSamples(frames);
+        read = silent + stream.decoder->read(out.data() + std::size_t(silent) * audio::kChannels, frames - silent);
+        stream.nextSourceTime = sourceTime + audio::ticksFromSamples(frames - silent);
     } else {
         // Read the source span these output samples cover and resample it (pitch follows
         // speed, like tape). Reversed clips read the span and walk it backwards.
         const double step = clip.speed;
         const int needed = int(std::ceil(double(frames) * step)) + 2;
         const Ticks spanTicks = Ticks(std::llround(double(to - from) * step));
-        const Ticks blockStart = clip.reversed ? std::max(clip.sourceIn, clip.sourceTimeAt(from) + 1 - spanTicks)
-                                               : clip.sourceTimeAt(from);
+        const Ticks sourceFrom = clip.sourceTimeBeyond(from);
+        const Ticks blockStart = std::max<Ticks>(0, clip.reversed ? sourceFrom + 1 - spanTicks : sourceFrom);
         if (!stream.decoder->seek(blockStart))
             return;
         stream.nextSourceTime = -1; // resampled reads always seek
@@ -145,8 +157,7 @@ void TimelineAudio::mixClip(const Project& project, const Clip& clip, Ticks chun
         const int available = stream.decoder->read(scratch.data(), needed);
         if (available < 2)
             return;
-        const double top = clip.reversed ? double(audio::samplesFromTicks(clip.sourceTimeAt(from) + 1 - blockStart)) - 1.0
-                                         : 0.0;
+        const double top = clip.reversed ? double(audio::samplesFromTicks(sourceFrom + 1 - blockStart)) - 1.0 : 0.0;
         for (int i = 0; i < frames; ++i) {
             double position = clip.reversed ? top - double(i) * step : double(i) * step;
             position = std::clamp(position, 0.0, double(available - 1));
@@ -161,9 +172,14 @@ void TimelineAudio::mixClip(const Project& project, const Clip& clip, Ticks chun
         read = frames;
     }
 
-    // Fades are linear, so interpolating the gain across the span is exact.
-    const float gainFrom = clip.gainAt(from);
-    const float gainTo = clip.gainAt(to);
+    // Fades are linear, so interpolating the gain across the span is exact; transition
+    // crossfades are curves, close enough to linear over one chunk. Fades apply inside the
+    // clip and hold their edge value in the handles.
+    const auto gainAt = [&](Ticks time) {
+        return clip.gainAt(std::clamp(time, clip.start, clip.end())) * transitionGainAt(track, clip, time);
+    };
+    const float gainFrom = gainAt(from);
+    const float gainTo = gainAt(to);
     const float gainStep = frames > 1 ? (gainTo - gainFrom) / float(frames) : 0.0f;
     float* target = mix + offset * audio::kChannels;
     for (int i = 0; i < read; ++i) {
@@ -181,16 +197,17 @@ void TimelineAudio::run(std::shared_ptr<const Project> project, Ticks start, std
     std::map<Id, Ticks> clipEnds;
     for (const Track& track : project->tracks) {
         for (const Clip& clip : track.clips)
-            clipEnds[clip.id] = clip.end();
+            clipEnds[clip.id] = audibleSpan(track, clip).end;
     }
 
     for (Ticks time = start; !m_stop && time < end; time += chunkTicks) {
         AudioChunk chunk{time, generation, std::vector<float>(AudioChunk::kFrames * audio::kChannels, 0.0f)};
         for (const Track& track : project->tracks) {
             for (const Clip& clip : track.clips) {
-                if (clip.end() <= time || clip.start >= chunk.end() || !isAudible(*project, track, clip))
+                const AudibleSpan span = audibleSpan(track, clip);
+                if (span.end <= time || span.start >= chunk.end() || !isAudible(*project, track, clip))
                     continue;
-                mixClip(*project, clip, time, chunk.samples.data(), scratch);
+                mixClip(*project, track, clip, time, chunk.samples.data(), scratch);
             }
         }
         // Close decoders of clips that are behind us.

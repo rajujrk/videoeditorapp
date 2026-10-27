@@ -92,6 +92,11 @@ private:
     Ticks m_newStart;
     Id m_fromTrackId = kNoId;
     Ticks m_oldStart = 0;
+    // A moved clip leaves its transitions behind: its own, and the one into the clip that
+    // followed it.
+    std::optional<ClipTransition> m_ownTransition;
+    Id m_followerId = kNoId;
+    std::optional<ClipTransition> m_followerTransition;
 };
 
 // Splits a clip in two at a timeline position strictly inside it. The left part keeps
@@ -130,6 +135,9 @@ private:
     bool m_ripple;
     Id m_trackId = kNoId;
     Clip m_removed;
+    // The transition into the clip that followed the removed one goes with it.
+    Id m_followerId = kNoId;
+    std::optional<ClipTransition> m_followerTransition;
 };
 
 struct ClipAudio {
@@ -276,6 +284,23 @@ private:
     Clip m_original;
     Id m_rightClipId = kNoId;
     Id m_freezeClipId = kNoId;
+};
+
+// Sets, changes or (with nullopt) removes the transition into a clip. Setting one needs a
+// clip ending where this one starts on the same track.
+class SetClipTransitionCommand final : public Command {
+public:
+    SetClipTransitionCommand(Id clipId, std::optional<ClipTransition> transition)
+        : m_clipId(clipId), m_transition(std::move(transition)) {}
+
+    std::string label() const override;
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    std::optional<ClipTransition> m_transition;
+    std::optional<ClipTransition> m_previous;
 };
 
 } // namespace tve

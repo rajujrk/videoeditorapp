@@ -2,10 +2,13 @@
 #   :/effects/common/fullscreen.vert.qsb
 #   :/effects/video/<folder>/manifest.json
 #   :/effects/video/<folder>/<pass>.frag.qsb
+#   :/effects/transitions/<folder>/manifest.json
+#   :/effects/transitions/<folder>/<pass>.frag.qsb
 # Shaders that fail to compile fail the build.
 
-file(GLOB TVE_EFFECT_MANIFESTS CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} video/*/manifest.json)
-file(GLOB TVE_EFFECT_SHADERS CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} video/*/*.frag)
+file(GLOB TVE_EFFECT_MANIFESTS CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+     video/*/manifest.json transitions/*/manifest.json)
+file(GLOB TVE_EFFECT_SHADERS CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} video/*/*.frag transitions/*/*.frag)
 
 qt_add_library(tve_effects STATIC BuiltinEffects.cpp)
 

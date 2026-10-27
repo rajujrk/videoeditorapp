@@ -13,6 +13,8 @@ Rectangle {
     readonly property var clipInfo: project.selectedClipInfo
     readonly property bool clipIsVideo: clipInfo.trackKind === "video"
     readonly property var visual: clipInfo.visual || ({})
+    readonly property var transitionInfo: project.selectedTransitionInfo
+    readonly property bool showsTransition: transitionInfo.clipId !== undefined
 
     color: Theme.color.surface
 
@@ -24,6 +26,7 @@ Rectangle {
 
         // Segmented tab bar
         Rectangle {
+            visible: !inspector.showsTransition
             Layout.fillWidth: true
             implicitHeight: Theme.size.toolBar
             color: Theme.color.surface
@@ -67,7 +70,104 @@ Rectangle {
             Divider { anchors.bottom: parent.bottom; width: parent.width }
         }
 
+        // The selected transition replaces the clip tabs.
+        InspectorPage {
+            objectName: "transitionPage"
+            visible: inspector.showsTransition
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: Theme.space.s
+                Icon { name: "transitions"; color: Theme.color.accentText }
+                Text {
+                    text: "Transition"
+                    font: Theme.type.heading
+                    color: Theme.color.textPrimary
+                    Layout.fillWidth: true
+                }
+                TextButton {
+                    objectName: "removeTransitionButton"
+                    text: "Remove"
+                    variant: "ghost"
+                    iconName: "delete"
+                    onClicked: inspector.project.removeTransition(inspector.transitionInfo.clipId)
+                }
+            }
+
+            ComboBox {
+                id: transitionPicker
+                objectName: "transitionPicker"
+                Layout.fillWidth: true
+                model: inspector.project.availableTransitions
+                textRole: "title"
+                valueRole: "id"
+                currentIndex: Math.max(0, indexOfValue(inspector.transitionInfo.transitionId))
+                onActivated: inspector.project.addTransition(currentValue, inspector.transitionInfo.clipId)
+            }
+
+            Section {
+                title: "Timing"
+                AudioSlider {
+                    objectName: "transitionDuration"
+                    label: "Duration"
+                    from: 0.1
+                    to: 5
+                    value: inspector.transitionInfo.requestedDuration || 1
+                    format: (v) => v.toFixed(1) + " s"
+                    onCommitted: (v) => inspector.project.setTransition(inspector.transitionInfo.clipId, { duration: v })
+                }
+                Text {
+                    visible: inspector.showsTransition
+                             && inspector.transitionInfo.duration < inspector.transitionInfo.requestedDuration - 0.01
+                    Layout.fillWidth: true
+                    text: "Plays for " + (inspector.transitionInfo.duration || 0).toFixed(1)
+                          + " s: each side is limited to half its clip."
+                    font: Theme.type.label
+                    color: Theme.color.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+                Text { text: "Position"; font: Theme.type.label; color: Theme.color.textSecondary }
+                RowLayout {
+                    spacing: Theme.space.xs
+                    Repeater {
+                        model: [{ id: "endsAtCut", label: "Before cut" }, { id: "center", label: "Centered" },
+                                { id: "startsAtCut", label: "After cut" }]
+                        delegate: TextButton {
+                            required property var modelData
+                            objectName: "alignment:" + modelData.id
+                            text: modelData.label
+                            variant: inspector.transitionInfo.alignment === modelData.id ? "primary" : "secondary"
+                            onClicked: inspector.project.setTransition(inspector.transitionInfo.clipId, { alignment: modelData.id })
+                        }
+                    }
+                }
+            }
+
+            Section {
+                title: "Settings"
+                visible: (inspector.transitionInfo.params || []).length > 0
+                Repeater {
+                    model: inspector.transitionInfo.params || []
+                    delegate: ParamControl {
+                        required property var modelData
+                        objectName: "transitionParam:" + modelData.id
+                        Layout.fillWidth: true
+                        param: Object.assign({}, modelData, (inspector.transitionInfo.values || {})[modelData.id] !== undefined
+                                                            ? { default: inspector.transitionInfo.values[modelData.id] } : {})
+                        onValueCommitted: (value) => {
+                            const values = {}
+                            values[modelData.id] = value
+                            inspector.project.setTransition(inspector.transitionInfo.clipId, { values: values })
+                        }
+                    }
+                }
+            }
+        }
+
         StackLayout {
+            visible: !inspector.showsTransition
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: inspector.currentTab

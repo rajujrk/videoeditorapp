@@ -1,7 +1,8 @@
-# Built-in effects
+# Built-in effects and transitions
 
 Each effect is a folder under `video/` holding a `manifest.json` and one GLSL fragment
-shader per pass. The build compiles the shaders with Qt's `qsb` (Metal, Vulkan, D3D and
+shader per pass; each transition is a folder under `transitions/` with a manifest of kind
+`transition` and exactly one pass (see [Transitions](#transitions)). The build compiles the shaders with Qt's `qsb` (Metal, Vulkan, D3D and
 OpenGL variants) and embeds everything as Qt resources. A shader that does not compile
 fails the build; a manifest that does not validate, or a parameter the shaders do not
 declare, is reported when the effect library loads and the effect is skipped.
@@ -54,3 +55,50 @@ effect's input. All passes render at the input's resolution.
 | `vignette` | `tve.stylize.vignette` | 1 | amount, size, softness, color |
 | `rgb_split` | `tve.glitch.rgb_split` | 1 | amount, angle, channels |
 | `pixelate` | `tve.stylize.pixelate` | 1 | blockSize |
+
+## Transitions
+
+A transition package is a manifest with `"kind": "transition"` and one pass. Its shader
+blends two pictures of the same size (the outgoing and incoming clips, each already placed
+on a transparent canvas) by `tve_progress`, which runs from 0 (all outgoing) to 1 (all
+incoming):
+
+```glsl
+layout(std140, binding = 0) uniform EffectParams {
+    vec2 tve_texelSize;
+    float tve_time;
+    float tve_flipY;
+    float tve_progress; // 0 → 1 across the transition
+    // then any of the transition's params, named exactly like their manifest ids
+};
+
+layout(binding = 1) uniform sampler2D tve_from; // outgoing clip
+layout(binding = 2) uniform sampler2D tve_to;   // incoming clip
+```
+
+Colours are straight (not premultiplied) alpha; outside a picture's edges it is
+transparent. `v_uv` has (0, 0) at the top-left of the picture and y pointing down, so
+"up" is −y. Every transition must show exactly the outgoing picture at progress 0 and the
+incoming one at progress 1; `tve_gpu_tests` checks this for every package. Packages are
+original work (`"license": "TVE-Original"`).
+
+| Folder | Id | Params |
+|---|---|---|
+| `dissolve` | `tve.transition.dissolve` | — |
+| `dip_to_black`, `dip_to_white` | `tve.transition.dip_to_black`, `…dip_to_white` | color |
+| `flash` | `tve.transition.flash` | intensity |
+| `push`, `slide`, `reveal` | `tve.transition.push`, `…slide`, `…reveal` | direction |
+| `squeeze` | `tve.transition.squeeze` | orientation |
+| `wipe` | `tve.transition.wipe` | direction, softness |
+| `split` | `tve.transition.split` | orientation, softness |
+| `radial_wipe` | `tve.transition.radial_wipe` (Clock Wipe) | softness |
+| `blinds` | `tve.transition.blinds` | count, orientation, softness |
+| `checkerboard` | `tve.transition.checkerboard` | squares |
+| `iris` | `tve.transition.iris` | softness |
+| `zoom_in`, `cross_zoom` | `tve.transition.zoom_in`, `…cross_zoom` | strength |
+| `spin` | `tve.transition.spin` | turns |
+| `pixelate` | `tve.transition.pixelate` | blockSize |
+| `blur` | `tve.transition.blur` | radius |
+| `ripple` | `tve.transition.ripple` | amplitude, waves |
+| `door` | `tve.transition.door` | — |
+

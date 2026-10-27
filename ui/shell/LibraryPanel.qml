@@ -17,7 +17,7 @@ Rectangle {
         { icon: "media", label: "Media", phase: "" },
         { icon: "audio", label: "Audio", phase: "Music and sound library — Phase 4" },
         { icon: "titles", label: "Titles", phase: "Title templates — Phase 2" },
-        { icon: "transitions", label: "Transitions", phase: "Transition library — Phase 1–2" },
+        { icon: "transitions", label: "Transitions", phase: "" },
         { icon: "effects", label: "Effects", phase: "" },
         { icon: "stickers", label: "Stickers", phase: "Stickers and elements — Phase 2" },
         { icon: "templates", label: "Templates", phase: "Template mode — Phase 4" }
@@ -164,6 +164,105 @@ Rectangle {
                                 Layout.maximumWidth: tile.width - Theme.space.xl
                             }
                         }
+                    }
+                }
+            }
+
+            // Transitions tab: click to put one on the cut nearest the playhead, or drag it
+            // onto a cut.
+            GridView {
+                id: transitionsGrid
+                visible: library.tabs[library.currentTab].label === "Transitions"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.leftMargin: Theme.space.m
+                clip: true
+                cellWidth: Math.floor(width / 2)
+                cellHeight: 112
+                model: library.project.availableTransitions
+
+                delegate: Item {
+                    id: transitionTile
+                    required property var modelData
+                    readonly property string transitionId: modelData.id // read by the timeline's drop area
+                    width: transitionsGrid.cellWidth
+                    height: transitionsGrid.cellHeight
+                    readonly property bool active: library.project.selectedTransitionInfo.transitionId === modelData.id
+
+                    Drag.active: transitionMouse.drag.active
+                    Drag.dragType: Drag.Automatic
+                    Drag.supportedActions: Qt.CopyAction
+                    Drag.keys: ["application/x-tve-transition"]
+                    Drag.mimeData: { "application/x-tve-transition": modelData.id }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.rightMargin: Theme.space.m
+                        anchors.bottomMargin: Theme.space.m
+                        radius: Theme.radius.m
+                        color: Theme.color.surfaceRaised
+                        border.width: transitionTile.active ? 2 : 1
+                        border.color: transitionTile.active ? Theme.color.accent
+                                    : transitionMouse.containsMouse ? Theme.color.borderStrong : Theme.color.borderSubtle
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: Theme.space.xs
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                Layout.margins: Theme.space.xs
+                                radius: Theme.radius.s
+                                color: Theme.color.surfaceSunken
+                                clip: true
+                                Icon { anchors.centerIn: parent; name: "transitions"; color: Theme.color.textDisabled }
+                                // A still of the transition under way (rendered on the GPU); plays on hover.
+                                Image {
+                                    id: preview
+                                    objectName: "transitionPreview:" + transitionTile.modelData.id
+                                    anchors.fill: parent
+                                    asynchronous: true
+                                    fillMode: Image.PreserveAspectCrop
+                                    property real progress: 0.3
+                                    source: "image://tvetransition/" + transitionTile.modelData.id + "@" + progress.toFixed(1)
+                                    Timer {
+                                        running: transitionMouse.containsMouse
+                                        repeat: true
+                                        interval: 120
+                                        onTriggered: preview.progress = preview.progress >= 1.0 ? 0.0 : preview.progress + 0.1
+                                        onRunningChanged: if (!running) preview.progress = 0.3
+                                    }
+                                }
+                            }
+                            Text {
+                                Layout.leftMargin: Theme.space.s
+                                Layout.bottomMargin: Theme.space.s
+                                text: transitionTile.modelData.title
+                                font: Theme.type.label
+                                color: Theme.color.textPrimary
+                                elide: Text.ElideRight
+                                Layout.maximumWidth: transitionTile.width - Theme.space.xl
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: transitionMouse
+                        objectName: "libraryTransition:" + transitionTile.modelData.id
+                        anchors.fill: parent
+                        anchors.rightMargin: Theme.space.m
+                        anchors.bottomMargin: Theme.space.m
+                        hoverEnabled: true
+                        drag.target: transitionDragProxy
+                        onClicked: library.project.addTransition(transitionTile.modelData.id)
+                        onPressed: transitionTile.grabToImage((result) => transitionTile.Drag.imageSource = result.url, Qt.size(120, 90))
+                    }
+                    Item { id: transitionDragProxy }
+
+                    ToolTip {
+                        visible: transitionMouse.containsMouse && !transitionMouse.drag.active
+                        delay: 800
+                        text: "Click to add at the cut nearest the playhead, or drag onto a cut"
                     }
                 }
             }
@@ -325,7 +424,7 @@ Rectangle {
             }
 
             Item {
-                visible: !effectsGrid.visible && !mediaBin.visible
+                visible: !effectsGrid.visible && !transitionsGrid.visible && !mediaBin.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 

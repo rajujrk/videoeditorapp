@@ -31,10 +31,13 @@ struct EffectPassSpec {
     std::string fragment; // shader file name inside the effect's folder, e.g. "blur_h.frag"
 };
 
+inline constexpr const char* kVideoEffectKind = "video-effect";
+inline constexpr const char* kTransitionKind = "transition"; // one pass, two inputs
+
 struct EffectManifest {
     std::string id; // reverse-DNS style, e.g. "tve.blur.gaussian"
     int version = 1;
-    std::string kind; // "video-effect"
+    std::string kind; // kVideoEffectKind or kTransitionKind
     std::vector<std::string> categories;
     std::map<std::string, std::string> title;
     std::vector<EffectParamSpec> params;

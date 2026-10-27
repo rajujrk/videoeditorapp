@@ -1,0 +1,29 @@
+{
+  "id": "tve.transition.pixelate",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "stylize"
+  ],
+  "title": {
+    "en": "Pixelate"
+  },
+  "params": [
+    {
+      "id": "blockSize",
+      "type": "float",
+      "title": {
+        "en": "Largest block"
+      },
+      "min": 2,
+      "max": 200,
+      "default": 60
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "pixelate.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

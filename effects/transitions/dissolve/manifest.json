@@ -1,0 +1,18 @@
+{
+  "id": "tve.transition.dissolve",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "basic"
+  ],
+  "title": {
+    "en": "Cross Dissolve"
+  },
+  "params": [],
+  "passes": [
+    {
+      "fragment": "dissolve.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

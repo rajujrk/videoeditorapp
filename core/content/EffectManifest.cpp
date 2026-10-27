@@ -57,8 +57,8 @@ private:
         }
 
         m_manifest.kind = requiredString(m_root, "kind", "kind");
-        if (!m_manifest.kind.empty() && m_manifest.kind != "video-effect")
-            fail("kind \"" + m_manifest.kind + "\" is not supported (expected \"video-effect\")");
+        if (!m_manifest.kind.empty() && m_manifest.kind != kVideoEffectKind && m_manifest.kind != kTransitionKind)
+            fail("kind \"" + m_manifest.kind + "\" is not supported (expected \"video-effect\" or \"transition\")");
 
         m_manifest.title = localized(m_root, "title", "title");
         m_manifest.license = requiredString(m_root, "license", "license");
@@ -214,6 +214,8 @@ private:
                 fail(where + ": fragment \"" + spec.fragment + "\" must be a file name ending in .frag");
             m_manifest.passes.push_back(std::move(spec));
         }
+        if (m_manifest.kind == kTransitionKind && m_manifest.passes.size() != 1)
+            fail("a transition has exactly one pass");
     }
 
     // Helpers that record a problem for missing/mistyped required fields.

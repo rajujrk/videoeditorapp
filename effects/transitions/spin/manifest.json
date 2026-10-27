@@ -1,0 +1,30 @@
+{
+  "id": "tve.transition.spin",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "zoom",
+    "3d"
+  ],
+  "title": {
+    "en": "Spin"
+  },
+  "params": [
+    {
+      "id": "turns",
+      "type": "float",
+      "title": {
+        "en": "Turns"
+      },
+      "min": 0,
+      "max": 3,
+      "default": 0.5
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "spin.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

@@ -43,4 +43,9 @@ make 4k60_h264.mp4 -f lavfi -i testsrc2=size=3840x2160:rate=60 -t 20 \
 make 4k60_hevc_10bit.mp4 -f lavfi -i testsrc2=size=3840x2160:rate=60 -t 20 \
     -c:v hevc_videotoolbox -profile:v main10 -b:v 80M -pix_fmt p010le -tag:v hvc1
 
+# Footage that looks unlike the test pattern, so transitions between the two are visible
+# (screenshots, manual checks): 10 s of slowly moving colour gradients.
+make gradients_1080p30_h264.mp4 -f lavfi -i gradients=size=1920x1080:rate=30:speed=0.02:nb_colors=4 -t 10 \
+    -c:v h264_videotoolbox -b:v 12M -pix_fmt yuv420p
+
 echo "done: $out"

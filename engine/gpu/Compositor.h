@@ -31,8 +31,9 @@ public:
     Compositor(const Compositor&) = delete;
     Compositor& operator=(const Compositor&) = delete;
 
-    // Starts a black canvas. Must be called outside a render pass.
-    void begin(QRhiCommandBuffer* cb, QSize canvasSize);
+    // Starts a black canvas, or a transparent one (to place a layer by itself, e.g. one
+    // side of a transition). Must be called outside a render pass.
+    void begin(QRhiCommandBuffer* cb, QSize canvasSize, bool transparent = false);
     // Draws `layer` (any RGBA texture of the clip's picture) with `visual`.
     void draw(QRhiCommandBuffer* cb, QRhiTexture* layer, const ClipVisual& visual);
     // The canvas as drawn so far; valid until the next begin().

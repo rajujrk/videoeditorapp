@@ -53,6 +53,12 @@ class ProjectController : public QObject {
     Q_PROPERTY(QString lastError READ lastError NOTIFY errorOccurred)
     // The selected clip's details for the inspector (empty map when nothing is selected).
     Q_PROPERTY(QVariantMap selectedClipInfo READ selectedClipInfo NOTIFY selectedClipInfoChanged)
+    // A selected transition is named by the clip it leads into (0 = none). Selecting one
+    // clears the clip selection and the other way round.
+    Q_PROPERTY(double selectedTransition READ selectedTransition WRITE setSelectedTransition NOTIFY selectionChanged)
+    Q_PROPERTY(QVariantMap selectedTransitionInfo READ selectedTransitionInfo NOTIFY selectedClipInfoChanged)
+    // The transition library: [{id, title, categories, params}].
+    Q_PROPERTY(QVariantList availableTransitions READ availableTransitions CONSTANT)
 
     // Output meters (0..1 peak per channel) and the audio device.
     Q_PROPERTY(double levelLeft READ levelLeft NOTIFY levelsChanged)
@@ -88,6 +94,10 @@ public:
     void setSelectedClip(double clipId);
     QString lastError() const { return m_lastError; }
     QVariantMap selectedClipInfo() const;
+    double selectedTransition() const { return double(m_selectedTransition); }
+    void setSelectedTransition(double clipId);
+    QVariantMap selectedTransitionInfo() const;
+    QVariantList availableTransitions() const;
     double levelLeft() const { return m_levelLeft; }
     double levelRight() const { return m_levelRight; }
     QString audioDevice() const;
@@ -142,6 +152,17 @@ public:
     Q_INVOKABLE bool setClipEffectParam(double clipId, int index, const QString& paramId, const QVariant& value);
     Q_INVOKABLE void previewClipEffectParam(double clipId, int index, const QString& paramId, const QVariant& value);
 
+    // Transitions, named by the clip they lead into. addTransition puts one on that clip's
+    // cut (replacing any there, keeping its length); with clipId < 0, on the cut nearest the
+    // playhead on the selected clip's track or the main track. addTransitionAt uses the cut
+    // on `trackId` nearest `seconds`, within `tolerance`. Selects the new transition.
+    Q_INVOKABLE bool addTransition(const QString& transitionId, double clipId = -1);
+    Q_INVOKABLE bool addTransitionAt(const QString& transitionId, double trackId, double seconds, double tolerance);
+    // `changes` keys: duration (seconds), alignment ("center", "endsAtCut", "startsAtCut"),
+    // values ({paramId: value}, merged). One undo step.
+    Q_INVOKABLE bool setTransition(double clipId, const QVariantMap& changes);
+    Q_INVOKABLE bool removeTransition(double clipId);
+
     // Transport
     Q_INVOKABLE void play();
     Q_INVOKABLE void pause();
@@ -183,6 +204,9 @@ private:
                                                                  const QVariant& value) const;
     tve::Ticks frameTicks() const;
     std::optional<tve::Id> clipAtPlayhead() const;
+    // The clip after the cut nearest `time` on `track` (a cut: a clip starting where another
+    // ends), within `tolerance`.
+    std::optional<tve::Id> cutNear(const tve::Track& track, tve::Ticks time, tve::Ticks tolerance) const;
 
     tve::Project m_project;
     std::unique_ptr<tve::CommandStack> m_stack;
@@ -195,6 +219,7 @@ private:
     QString m_filePath;
     QString m_lastError;
     tve::Id m_selectedClip = tve::kNoId;
+    tve::Id m_selectedTransition = tve::kNoId;
     double m_playhead = 0;
     bool m_canvasChosen = false; // false: the first video clip sets the canvas
     bool m_wasPlaying = false;

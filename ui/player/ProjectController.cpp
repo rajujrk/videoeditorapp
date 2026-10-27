@@ -8,6 +8,8 @@
 #include "io/ProjectSerializer.h"
 #include "model/TimelineQuery.h"
 #include "gpu/EffectLibrary.h"
+#include "EffectInfo.h"
+#include "model/TimelineQuery.h"
 #include "playback/TimelinePlayback.h"
 
 #include <QFileInfo>
@@ -91,6 +93,48 @@ std::vector<float> componentsOf(const QVariant& value)
     }
     components.push_back(value.toFloat());
     return components;
+}
+
+QVariantList valueList(const std::vector<float>& value)
+{
+    QVariantList list;
+    for (float c : value)
+        list << double(c);
+    return list;
+}
+
+const char* alignmentName(TransitionAlignment alignment)
+{
+    switch (alignment) {
+    case TransitionAlignment::EndsAtCut:
+        return "endsAtCut";
+    case TransitionAlignment::StartsAtCut:
+        return "startsAtCut";
+    case TransitionAlignment::Center:
+        break;
+    }
+    return "center";
+}
+
+// The transition into `clip` as it plays (empty when it has none or it is inactive):
+// {clipId, transitionId, title, start, end, cut, duration, alignment}, times in seconds.
+QVariantMap transitionMap(const Track& track, const Clip& clip)
+{
+    const auto window = transitionInto(track, clip);
+    if (!window)
+        return {};
+    const LoadedEffect* loaded = EffectLibrary::builtIn().findTransition(window->spec->transitionId);
+    return {
+        {QStringLiteral("clipId"), double(clip.id)},
+        {QStringLiteral("transitionId"), QString::fromStdString(window->spec->transitionId)},
+        {QStringLiteral("title"), loaded ? QString::fromStdString(loaded->manifest.displayTitle())
+                                         : QStringLiteral("Unknown transition")},
+        {QStringLiteral("start"), seconds(window->start)},
+        {QStringLiteral("end"), seconds(window->end)},
+        {QStringLiteral("cut"), seconds(window->cut)},
+        {QStringLiteral("duration"), seconds(window->end - window->start)},
+        {QStringLiteral("alignment"), QString::fromLatin1(alignmentName(window->spec->alignment))},
+    };
 }
 
 // Default track layout for a new project, bottom to top: audio, main video, overlay.
@@ -203,6 +247,7 @@ QVariantList ProjectController::tracks() const
                 {QStringLiteral("freeze"), clip.freeze},
                 {QStringLiteral("mediaWidth"), media ? media->width : 0},
                 {QStringLiteral("mediaHeight"), media ? media->height : 0},
+                {QStringLiteral("transition"), transitionMap(*track, clip)},
             };
         }
         list << QVariantMap{
@@ -258,11 +303,63 @@ bool ProjectController::playing() const
 void ProjectController::setSelectedClip(double clipId)
 {
     const Id id = toId(clipId);
-    if (id == m_selectedClip)
+    if (id == m_selectedClip && (id == kNoId || m_selectedTransition == kNoId))
         return;
     m_selectedClip = id;
+    if (id != kNoId)
+        m_selectedTransition = kNoId;
     emit selectionChanged();
     emit selectedClipInfoChanged();
+}
+
+void ProjectController::setSelectedTransition(double clipId)
+{
+    const Id id = toId(clipId);
+    if (id == m_selectedTransition && (id == kNoId || m_selectedClip == kNoId))
+        return;
+    m_selectedTransition = id;
+    if (id != kNoId)
+        m_selectedClip = kNoId;
+    emit selectionChanged();
+    emit selectedClipInfoChanged();
+}
+
+QVariantList ProjectController::availableTransitions() const
+{
+    // Everyday ones first: by the first category in this order, then as loaded.
+    static const std::vector<std::string> kOrder = {"basic", "slide", "wipe", "shape", "zoom", "blur", "stylize", "3d"};
+    const auto rank = [](const LoadedEffect& t) {
+        const auto& categories = t.manifest.categories;
+        const auto it = categories.empty() ? kOrder.end() : std::ranges::find(kOrder, categories.front());
+        return std::distance(kOrder.begin(), it);
+    };
+    std::vector<const LoadedEffect*> sorted;
+    for (const LoadedEffect& transition : EffectLibrary::builtIn().transitions())
+        sorted.push_back(&transition);
+    std::ranges::stable_sort(sorted, {}, [&](const LoadedEffect* t) { return rank(*t); });
+    QVariantList list;
+    for (const LoadedEffect* transition : sorted)
+        list << describeEffect(*transition);
+    return list;
+}
+
+QVariantMap ProjectController::selectedTransitionInfo() const
+{
+    auto location = const_cast<Project&>(m_project).locateClip(m_selectedTransition);
+    if (!location || !location->clip->transitionIn)
+        return {};
+    QVariantMap info = transitionMap(*location->track, *location->clip);
+    if (info.isEmpty())
+        return {};
+    const ClipTransition& spec = *location->clip->transitionIn;
+    QVariantMap values;
+    for (const auto& [id, value] : spec.values)
+        values[QString::fromStdString(id)] = value.size() == 1 ? QVariant(double(value[0])) : QVariant(valueList(value));
+    info[QStringLiteral("values")] = values;
+    info[QStringLiteral("requestedDuration")] = seconds(spec.duration);
+    if (const LoadedEffect* loaded = EffectLibrary::builtIn().findTransition(spec.transitionId))
+        info[QStringLiteral("params")] = describeEffect(*loaded).value(QStringLiteral("params"));
+    return info;
 }
 
 // --- Lifecycle ---
@@ -669,6 +766,112 @@ bool ProjectController::freezeFrame(double holdSeconds)
     if (!apply(std::move(command)))
         return false;
     setSelectedClip(double(raw->freezeClipId()));
+    return true;
+}
+
+// --- Transitions ---
+
+std::optional<Id> ProjectController::cutNear(const Track& track, Ticks time, Ticks tolerance) const
+{
+    std::optional<Id> best;
+    Ticks bestDistance = tolerance;
+    for (std::size_t i = 1; i < track.clips.size(); ++i) {
+        const Clip& clip = track.clips[i];
+        if (track.clips[i - 1].end() != clip.start)
+            continue;
+        const Ticks distance = std::abs(clip.start - time);
+        if (distance <= bestDistance) {
+            bestDistance = distance;
+            best = clip.id;
+        }
+    }
+    return best;
+}
+
+bool ProjectController::addTransition(const QString& transitionId, double clipId)
+{
+    if (!EffectLibrary::builtIn().findTransition(transitionId.toStdString())) {
+        reportError(QStringLiteral("Unknown transition %1").arg(transitionId));
+        return false;
+    }
+    Id target = toId(clipId);
+    if (clipId < 0) {
+        // The cut nearest the playhead, on the selected clip's track or else the main track.
+        const Track* track = nullptr;
+        if (auto location = m_project.locateClip(m_selectedClip))
+            track = location->track;
+        if (!track)
+            track = m_project.findTrack(mainTrackId());
+        const auto cut = track ? cutNear(*track, ticks(m_playhead), std::numeric_limits<Ticks>::max()) : std::nullopt;
+        if (!cut) {
+            reportError(QStringLiteral("Put two clips side by side to add a transition between them"));
+            return false;
+        }
+        target = *cut;
+    }
+    const Clip* clip = findClip(target);
+    if (!clip) {
+        reportError(QStringLiteral("Drop the transition on a cut between two clips"));
+        return false;
+    }
+    ClipTransition transition{transitionId.toStdString()};
+    if (clip->transitionIn) {
+        transition.duration = clip->transitionIn->duration;
+        transition.alignment = clip->transitionIn->alignment;
+    }
+    if (!apply(std::make_unique<SetClipTransitionCommand>(target, std::move(transition))))
+        return false;
+    setSelectedTransition(double(target));
+    return true;
+}
+
+bool ProjectController::addTransitionAt(const QString& transitionId, double trackId, double time, double tolerance)
+{
+    const Track* track = m_project.findTrack(toId(trackId));
+    const auto cut = track ? cutNear(*track, ticks(time), ticks(tolerance)) : std::nullopt;
+    if (!cut) {
+        reportError(QStringLiteral("Drop the transition on a cut between two clips"));
+        return false;
+    }
+    return addTransition(transitionId, double(*cut));
+}
+
+bool ProjectController::setTransition(double clipId, const QVariantMap& changes)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->transitionIn)
+        return false;
+    ClipTransition transition = *clip->transitionIn;
+    if (changes.contains(QStringLiteral("duration")))
+        transition.duration = ticks(changes.value(QStringLiteral("duration")).toDouble());
+    if (changes.contains(QStringLiteral("alignment"))) {
+        const QString alignment = changes.value(QStringLiteral("alignment")).toString();
+        if (alignment == QLatin1String("center"))
+            transition.alignment = TransitionAlignment::Center;
+        else if (alignment == QLatin1String("endsAtCut"))
+            transition.alignment = TransitionAlignment::EndsAtCut;
+        else if (alignment == QLatin1String("startsAtCut"))
+            transition.alignment = TransitionAlignment::StartsAtCut;
+        else
+            return false;
+    }
+    const QVariantMap values = changes.value(QStringLiteral("values")).toMap();
+    for (auto it = values.begin(); it != values.end(); ++it)
+        transition.values[it.key().toStdString()] = componentsOf(it.value());
+    if (transition == *clip->transitionIn)
+        return true;
+    return apply(std::make_unique<SetClipTransitionCommand>(clip->id, std::move(transition)));
+}
+
+bool ProjectController::removeTransition(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->transitionIn)
+        return false;
+    if (!apply(std::make_unique<SetClipTransitionCommand>(clip->id, std::nullopt)))
+        return false;
+    if (m_selectedTransition == clip->id)
+        setSelectedTransition(0);
     return true;
 }
 

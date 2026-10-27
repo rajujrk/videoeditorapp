@@ -36,6 +36,16 @@ Ticks Clip::sourceTimeAt(Ticks time) const
     return std::max(sourceIn, sourceIn + sourceSpan() - offset - 1);
 }
 
+Ticks Clip::sourceTimeBeyond(Ticks time) const
+{
+    if (time >= start && time < end())
+        return sourceTimeAt(time);
+    if (freeze)
+        return sourceIn;
+    const Ticks offset = Ticks(std::llround(double(time - start) * speed));
+    return reversed ? sourceIn + sourceSpan() - offset - 1 : sourceIn + offset;
+}
+
 const Clip* Track::findClip(Id clipId) const
 {
     auto it = std::ranges::find(clips, clipId, &Clip::id);

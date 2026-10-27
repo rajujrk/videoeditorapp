@@ -88,13 +88,13 @@ bool Compositor::ensurePipeline(QRhiShaderResourceBindings* layout)
     return true;
 }
 
-void Compositor::begin(QRhiCommandBuffer* cb, QSize canvasSize)
+void Compositor::begin(QRhiCommandBuffer* cb, QSize canvasSize, bool transparent)
 {
     if (!ensureTargets(canvasSize))
         return;
     m_current = 0;
     m_drawIndex = 0;
-    cb->beginPass(m_targets[0].get(), Qt::black, {1.0f, 0});
+    cb->beginPass(m_targets[0].get(), transparent ? QColor(0, 0, 0, 0) : QColor(Qt::black), {1.0f, 0});
     cb->endPass();
 }
 

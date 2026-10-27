@@ -5,7 +5,10 @@
 #include <rhi/qshaderdescription.h>
 
 #include <algorithm>
+#include <cmath>
+#include <cstring>
 #include <set>
+#include <span>
 #include <stdexcept>
 
 namespace tve {
@@ -28,6 +31,7 @@ QShader readShader(const QString& path)
 }
 
 // The fixed header every EffectParams block starts with (see effects/README.md).
+// Transitions add their progress after it.
 struct HeaderMember {
     const char* name;
     Desc::VariableType type;
@@ -38,6 +42,14 @@ constexpr HeaderMember kHeader[] = {
     {"tve_time", Desc::Float, 8},
     {"tve_flipY", Desc::Float, 12},
 };
+constexpr HeaderMember kProgress{"tve_progress", Desc::Float, 16};
+
+struct SamplerSpec {
+    const char* name;
+    int binding;
+};
+constexpr SamplerSpec kEffectSamplers[] = {{"tve_source", 1}};
+constexpr SamplerSpec kTransitionSamplers[] = {{"tve_from", 1}, {"tve_to", 2}};
 
 UniformSlot slotFor(const EffectParamSpec& param, const Desc::BlockVariable& member, const std::string& where)
 {
@@ -82,18 +94,29 @@ LoadedEffectPass loadPass(const EffectManifest& manifest, const QString& folder,
         fail(where + ": no EffectParams uniform block at binding 0");
     pass.uniformBlockSize = block->size;
 
-    for (const HeaderMember& header : kHeader) {
+    const bool transition = manifest.kind == kTransitionKind;
+    const auto hasMember = [&](const HeaderMember& header) {
         const auto member = std::ranges::find(block->members, QByteArray(header.name), &Desc::BlockVariable::name);
-        if (member == block->members.end() || member->type != header.type || member->offset != header.offset)
+        return member != block->members.end() && member->type == header.type && member->offset == header.offset;
+    };
+    for (const HeaderMember& header : kHeader) {
+        if (!hasMember(header))
             fail(where + ": EffectParams must start with tve_texelSize, tve_time, tve_flipY");
     }
+    if (transition && !hasMember(kProgress))
+        fail(where + ": a transition's EffectParams must have tve_progress right after tve_flipY");
 
     const auto samplers = description.combinedImageSamplers();
-    const bool hasSource = std::ranges::any_of(samplers, [](const Desc::InOutVariable& s) {
-        return s.name == "tve_source" && s.binding == 1 && s.type == Desc::Sampler2D;
-    });
-    if (!hasSource)
-        fail(where + ": needs \"uniform sampler2D tve_source\" at binding 1");
+    const auto requiredSamplers = transition ? std::span<const SamplerSpec>(kTransitionSamplers)
+                                             : std::span<const SamplerSpec>(kEffectSamplers);
+    for (const SamplerSpec& required : requiredSamplers) {
+        const bool found = std::ranges::any_of(samplers, [&](const Desc::InOutVariable& s) {
+            return s.name == required.name && s.binding == required.binding && s.type == Desc::Sampler2D;
+        });
+        if (!found)
+            fail(where + ": needs \"uniform sampler2D " + required.name + "\" at binding "
+                 + std::to_string(required.binding));
+    }
 
     for (const Desc::BlockVariable& member : block->members) {
         const std::string name = member.name.toStdString();
@@ -130,10 +153,49 @@ LoadedEffect loadEffect(const QString& folder)
 
 } // namespace
 
+void writeEffectUniforms(const LoadedEffect& effect, std::size_t passIndex,
+                         const std::map<std::string, std::vector<float>>& values, QSize size, float timeSeconds,
+                         bool yUpInNdc, float progress, std::vector<char>& data)
+{
+    std::ranges::fill(data, 0);
+    const float header[5] = {1.0f / float(size.width()), 1.0f / float(size.height()), timeSeconds,
+                             yUpInNdc ? 1.0f : 0.0f, progress};
+    const bool transition = effect.manifest.kind == kTransitionKind;
+    std::memcpy(data.data(), header, transition ? sizeof header : 4 * sizeof(float));
+
+    for (const auto& [paramId, slot] : effect.passes[passIndex].uniformSlots) {
+        const EffectParamSpec& spec = *effect.manifest.findParam(paramId);
+        auto found = values.find(paramId);
+        std::vector<float> value =
+            found != values.end() && found->second.size() >= spec.componentCount() ? found->second : spec.defaultValue;
+        if (spec.type != ParamType::Color)
+            value[0] = std::clamp(value[0], float(spec.min), float(spec.max));
+
+        char* dst = data.data() + slot.offset;
+        switch (slot.kind) {
+        case UniformSlot::Kind::Float:
+            std::memcpy(dst, &value[0], sizeof(float));
+            break;
+        case UniformSlot::Kind::Int: {
+            const auto integer = static_cast<std::int32_t>(std::lround(value[0]));
+            std::memcpy(dst, &integer, sizeof integer);
+            break;
+        }
+        case UniformSlot::Kind::Vec3:
+            std::memcpy(dst, value.data(), 3 * sizeof(float));
+            break;
+        case UniformSlot::Kind::Vec4:
+            std::memcpy(dst, value.data(), 4 * sizeof(float));
+            break;
+        }
+    }
+}
+
 const EffectLibrary& EffectLibrary::builtIn()
 {
     static const EffectLibrary library = [] {
-        EffectLibrary lib = load(QStringLiteral(":/effects/video"), QStringLiteral(":/effects/common/fullscreen.vert.qsb"));
+        EffectLibrary lib = load(QStringLiteral(":/effects/video"), QStringLiteral(":/effects/common/fullscreen.vert.qsb"),
+                                 QStringLiteral(":/effects/transitions"));
         for (const QString& error : lib.errors())
             qWarning("Effect library: %s", qPrintable(error));
         return lib;
@@ -141,31 +203,46 @@ const EffectLibrary& EffectLibrary::builtIn()
     return library;
 }
 
-EffectLibrary EffectLibrary::load(const QString& videoEffectsRoot, const QString& vertexShaderPath)
+EffectLibrary EffectLibrary::load(const QString& videoEffectsRoot, const QString& vertexShaderPath,
+                                  const QString& transitionsRoot)
 {
     EffectLibrary lib;
     lib.m_vertexShader = readShader(vertexShaderPath);
     if (!lib.m_vertexShader.isValid())
         lib.m_errors << QStringLiteral("vertex shader not found: %1").arg(vertexShaderPath);
+    lib.loadFolder(videoEffectsRoot, kVideoEffectKind, lib.m_effects);
+    if (!transitionsRoot.isEmpty())
+        lib.loadFolder(transitionsRoot, kTransitionKind, lib.m_transitions);
+    return lib;
+}
 
-    const QDir root(videoEffectsRoot);
+void EffectLibrary::loadFolder(const QString& rootPath, const char* kind, std::vector<LoadedEffect>& into)
+{
+    const QDir root(rootPath);
     for (const QString& folder : root.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
         try {
             LoadedEffect effect = loadEffect(root.filePath(folder));
-            if (lib.find(effect.manifest.id))
-                fail("duplicate effect id \"" + effect.manifest.id + "\"");
-            lib.m_effects.push_back(std::move(effect));
+            if (effect.manifest.kind != kind)
+                fail("kind \"" + effect.manifest.kind + "\" does not belong in this folder (expected \"" + kind + "\")");
+            if (std::ranges::any_of(into, [&](const LoadedEffect& e) { return e.manifest.id == effect.manifest.id; }))
+                fail("duplicate id \"" + effect.manifest.id + "\"");
+            into.push_back(std::move(effect));
         } catch (const std::exception& e) {
-            lib.m_errors << folder + QStringLiteral(": ") + QString::fromUtf8(e.what());
+            m_errors << folder + QStringLiteral(": ") + QString::fromUtf8(e.what());
         }
     }
-    return lib;
 }
 
 const LoadedEffect* EffectLibrary::find(std::string_view id) const
 {
     auto it = std::ranges::find_if(m_effects, [&](const LoadedEffect& e) { return e.manifest.id == id; });
     return it == m_effects.end() ? nullptr : &*it;
+}
+
+const LoadedEffect* EffectLibrary::findTransition(std::string_view id) const
+{
+    auto it = std::ranges::find_if(m_transitions, [&](const LoadedEffect& e) { return e.manifest.id == id; });
+    return it == m_transitions.end() ? nullptr : &*it;
 }
 
 } // namespace tve

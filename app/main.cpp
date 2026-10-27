@@ -1,5 +1,6 @@
 #include "ProjectController.h"
 #include "ThumbnailProvider.h"
+#include "TransitionPreviewProvider.h"
 #include "VideoView.h"
 
 #include <QCommandLineParser>
@@ -110,6 +111,7 @@ int main(int argc, char* argv[])
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
+    engine.addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     if (auto* theme = engine.singletonInstance<QObject*>("TechieVideoEditor.Theme", "Theme"))

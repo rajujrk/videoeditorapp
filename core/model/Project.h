@@ -81,6 +81,28 @@ struct ClipEffect {
     friend bool operator==(const ClipEffect&, const ClipEffect&) = default;
 };
 
+// Where a transition sits around the cut between two touching clips.
+enum class TransitionAlignment {
+    Center,      // half before the cut, half after
+    EndsAtCut,   // entirely before the cut: the incoming clip starts early
+    StartsAtCut, // entirely after the cut: the outgoing clip runs on
+};
+
+// A transition into a clip from the clip that ends where it starts (same track). Outside
+// the clips the media's extra frames ("handles") are used; where the media runs out, its
+// edge frame is held. Missing values use the transition's defaults.
+struct ClipTransition {
+    std::string transitionId;
+    Ticks duration = kTicksPerSecond;
+    TransitionAlignment alignment = TransitionAlignment::Center;
+    std::map<std::string, std::vector<float>> values;
+
+    friend bool operator==(const ClipTransition&, const ClipTransition&) = default;
+};
+
+inline constexpr Ticks kMinTransitionDuration = kTicksPerSecond / 10;
+inline constexpr Ticks kMaxTransitionDuration = 10 * kTicksPerSecond;
+
 struct Clip {
     Id id = kNoId;
     Id mediaId = kNoId;
@@ -105,12 +127,18 @@ struct Clip {
     bool reversed = false;
     bool freeze = false;
 
+    // Transition from the previous clip; plays only while a clip ends where this one starts.
+    std::optional<ClipTransition> transitionIn;
+
     Ticks end() const { return start + duration; }
 
     // Source media the clip plays: duration × speed (0 for a freeze frame).
     Ticks sourceSpan() const;
     // Media time shown at a timeline time inside the clip.
     Ticks sourceTimeAt(Ticks time) const;
+    // The same mapping continued past the clip's edges (into its handles, for transitions).
+    // May fall outside the media; callers clamp.
+    Ticks sourceTimeBeyond(Ticks time) const;
 
     // Linear amplitude at a timeline time inside the clip: gain × fade ramps.
     float gainAt(Ticks time) const;

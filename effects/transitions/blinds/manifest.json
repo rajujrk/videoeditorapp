@@ -1,0 +1,51 @@
+{
+  "id": "tve.transition.blinds",
+  "version": 1,
+  "kind": "transition",
+  "category": [
+    "wipe"
+  ],
+  "title": {
+    "en": "Blinds"
+  },
+  "params": [
+    {
+      "id": "count",
+      "type": "int",
+      "title": {
+        "en": "Slats"
+      },
+      "min": 2,
+      "max": 40,
+      "default": 10
+    },
+    {
+      "id": "orientation",
+      "type": "enum",
+      "title": {
+        "en": "Orientation"
+      },
+      "values": [
+        "horizontal",
+        "vertical"
+      ],
+      "default": "horizontal"
+    },
+    {
+      "id": "softness",
+      "type": "float",
+      "title": {
+        "en": "Softness"
+      },
+      "min": 0,
+      "max": 0.5,
+      "default": 0.05
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "blinds.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}
