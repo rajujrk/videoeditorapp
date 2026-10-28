@@ -1,10 +1,11 @@
 #pragma once
 
+#include "Exporter.h"
 #include "ProxyManager.h"
 #include "TrackListModel.h"
 #include "VideoView.h"
 #include "commands/CommandStack.h"
-#include "encode/Mp4Writer.h"
+#include "encode/MediaWriter.h"
 #include "model/Project.h"
 
 #include <QObject>
@@ -15,6 +16,8 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <memory>
 #include <optional>
 #include <thread>
@@ -112,9 +115,18 @@ class ProjectController : public QObject {
     Q_PROPERTY(bool autoProxies READ autoProxies WRITE setAutoProxies NOTIFY proxiesChanged)
     Q_PROPERTY(QVariantMap proxyStates READ proxyStates NOTIFY proxiesChanged)
 
-    // Export: running, and how far (0–1).
+    // Export: the render queue. Jobs run one at a time, in order; `exporting` while one is
+    // running (or paused), with its progress (0–1).
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportChanged)
     Q_PROPERTY(double exportProgress READ exportProgress NOTIFY exportChanged)
+    Q_PROPERTY(bool exportPaused READ exportPaused NOTIFY exportChanged)
+    // {id, name, path, format, state ("waiting", "running", "done", "failed", "cancelled"),
+    // progress, error, duration (seconds)} in queue order.
+    Q_PROPERTY(QVariantList exportJobs READ exportJobs NOTIFY exportChanged)
+    // {id, title, description, format, …} from export_presets.json.
+    Q_PROPERTY(QVariantList exportPresets READ exportPresets CONSTANT)
+    // {id, label, extension, video, quality}: the file formats export can write.
+    Q_PROPERTY(QVariantList exportFormats READ exportFormats CONSTANT)
 
     // Output meters (0..1 peak per channel) and the audio device.
     // Audio effect packages for the Audio tab, by category: {id, title, categories, params}.
@@ -210,6 +222,10 @@ public:
     ProxyManager& proxies() { return m_proxies; }
     bool exporting() const { return m_exportThread.joinable(); }
     double exportProgress() const { return m_exportProgress; }
+    bool exportPaused() const;
+    QVariantList exportJobs() const;
+    QVariantList exportPresets() const;
+    QVariantList exportFormats() const;
     QVariantList audioEffects() const;
     void updateMixLevels(tve::Ticks now);
     QVariantMap mixLevels() const { return m_mixLevels; }
@@ -442,14 +458,31 @@ public:
     Q_INVOKABLE bool recoverProject(const QString& id);
     Q_INVOKABLE void discardRecovery(const QString& id);
 
-    // Renders the project to an MP4 file in the background; exportFinished reports the end.
-    // `options`: width and height (0 or missing: the canvas; made even), codec ("h264" or
-    // "hevc"), quality ("high", "standard" or "small": the bitrate). Returns false if it
-    // cannot start (an export is running, or the project is empty).
+    // Queues an export of the project as it is now; it runs when the jobs before it are done,
+    // and exportFinished reports its end. `options`: preset (an exportPresets id, whose values
+    // come first), format (an exportFormats id; "mp4-h264" by default; codec "hevc" also picks
+    // HEVC MP4), width and height (missing: the canvas, or shortSide high in its shape),
+    // fill (another shape: fill and crop rather than letterbox), frameRate (missing: the
+    // project's), quality ("high", "standard", "small") or videoBitrate (bits/s), audio
+    // (false: no sound track), normalizeLoudness and loudnessTarget (LUFS), and range: "all"
+    // (default), "selection" (the selected clips' span), "marker" (markerId, a marker with a
+    // length) or "custom" (from, to in seconds). Returns false (with lastError) if it cannot:
+    // an empty range, a file already in the queue, or settings that do not go together.
     Q_INVOKABLE bool exportVideo(const QUrl& file, const QVariantMap& options = {});
-    Q_INVOKABLE void cancelExport();
+    // Queues one export per marker with a length into `folder`, named by their notes; returns
+    // how many.
+    Q_INVOKABLE int exportMarkerRanges(const QUrl& folder, const QVariantMap& options = {});
+    // Stops the running job (jobId 0) or the job given; a waiting one just leaves the queue.
+    Q_INVOKABLE void cancelExport(double jobId = 0);
+    Q_INVOKABLE void pauseExport();
+    Q_INVOKABLE void resumeExport();
+    // Takes a waiting or finished job off the list.
+    Q_INVOKABLE bool removeExportJob(double jobId);
+    Q_INVOKABLE void clearFinishedExports();
     // Bits per second an export with these options would use (for size estimates).
     Q_INVOKABLE double exportBitrate(const QVariantMap& options) const;
+    // {from, to, duration} in seconds of the range `options` cover; empty when there is none.
+    Q_INVOKABLE QVariantMap exportRange(const QVariantMap& options) const;
 
     // Transport
     Q_INVOKABLE void play();
@@ -490,7 +523,7 @@ signals:
     void colorPresetsChanged();
     void inputLevelChanged();
     // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
-    void exportFinished(bool ok, const QString& message);
+    void exportFinished(bool ok, const QString& message, double jobId);
 
 private:
     bool apply(std::unique_ptr<tve::Command> command);
@@ -517,7 +550,10 @@ private:
     std::optional<tve::Id> clipAtPlayhead() const;
     // The clip after the cut nearest `time` on `track` (a cut: a clip starting where another
     // ends), within `tolerance`.
-    tve::Mp4Settings exportSettings(const QVariantMap& options) const;
+    // The settings and range `options` ask for (a preset's values first), or why they cannot be.
+    std::optional<Exporter::Options> exportOptions(const QVariantMap& options, QString* error = nullptr) const;
+    // Runs the first waiting job, if none is running.
+    void startNextExport();
     std::optional<tve::Id> cutNear(const tve::Track& track, tve::Ticks time, tve::Ticks tolerance) const;
     // The clips that start a cut a transition can go on (see applyTransitionToAll).
     std::vector<tve::Id> transitionCuts() const;
@@ -584,7 +620,25 @@ private:
     bool m_muteWhileRecording = true;
     bool m_requestingAccess = false;
 
+    struct ExportJob {
+        tve::Id id = tve::kNoId;
+        QString path;
+        QString format; // its label
+        Exporter::Options options;
+        std::shared_ptr<const tve::Project> snapshot; // the project when it was queued
+        QString state = QStringLiteral("waiting");
+        double progress = 0;
+        QString error;
+    };
+    ExportJob* findExportJob(tve::Id id);
+    std::vector<ExportJob> m_exportJobs;
+    tve::Id m_nextExportJob = 1;
+    tve::Id m_runningExport = tve::kNoId;
     std::thread m_exportThread;
     std::atomic<bool> m_cancelExport{false};
     double m_exportProgress = 0;
+    // Pausing holds the running job between frames.
+    mutable std::mutex m_pauseMutex;
+    std::condition_variable m_pauseChanged;
+    bool m_exportPausedFlag = false;
 };

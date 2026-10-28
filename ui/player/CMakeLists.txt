@@ -52,6 +52,12 @@ qt_add_shaders(tve_player "tve_player_shaders"
         shaders/export_yuv.frag
 )
 
+qt_add_resources(tve_player "tve_player_data"
+    PREFIX "/"
+    FILES
+        export_presets.json
+)
+
 target_include_directories(tve_player PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tve_player
     PUBLIC

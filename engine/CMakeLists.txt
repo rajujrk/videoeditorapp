@@ -8,8 +8,10 @@ add_library(tve_engine STATIC
     decode/Thumbnail.cpp
     decode/LottieAnimation.h
     decode/LottieAnimation.cpp
-    encode/Mp4Writer.h
-    encode/Mp4Writer.cpp
+    encode/MediaWriter.h
+    encode/MediaWriter.cpp
+    encode/GifPalette.h
+    encode/GifPalette.cpp
     encode/Proxy.h
     encode/Proxy.cpp
     encode/WavWriter.h

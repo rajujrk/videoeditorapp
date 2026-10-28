@@ -34,6 +34,8 @@
 #include <QJsonDocument>
 #include <QGuiApplication>
 #include <QJsonObject>
+#include <QJsonArray>
+#include <QRegularExpression>
 #include <QPointer>
 #include <QSaveFile>
 #include <QStandardPaths>
@@ -628,8 +630,13 @@ ProjectController::ProjectController(QObject* parent)
 
 ProjectController::~ProjectController()
 {
-    // A running export is cancelled; its queued notifications die with this object.
-    m_cancelExport = true;
+    // A running export is cancelled (even while paused); its queued notifications die with
+    // this object.
+    {
+        std::lock_guard lock(m_pauseMutex);
+        m_cancelExport = true;
+    }
+    m_pauseChanged.notify_all();
     if (m_exportThread.joinable())
         m_exportThread.join();
     // Quitting with unsaved changes keeps them recoverable; otherwise nothing is left behind.
@@ -2892,79 +2899,440 @@ void ProjectController::previewClipEffectParam(double clipId, int index, const Q
 
 // --- Export ---
 
-Mp4Settings ProjectController::exportSettings(const QVariantMap& options) const
+namespace {
+
+struct ExportFormat {
+    const char* id;
+    const char* label;
+    Container container;
+    VideoCodec codec;
+    ProResProfile proRes;
+    AudioCodec audio;
+};
+
+constexpr ExportFormat kExportFormats[] = {
+    {"mp4-h264", "MP4 · H.264 (plays everywhere)", Container::Mp4, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Aac},
+    {"mp4-hevc", "MP4 · HEVC (smaller files)", Container::Mp4, VideoCodec::Hevc, ProResProfile::Hq, AudioCodec::Aac},
+    {"mov-h264", "MOV · H.264", Container::Mov, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Aac},
+    {"mov-prores-proxy", "MOV · ProRes Proxy", Container::Mov, VideoCodec::ProRes, ProResProfile::Proxy, AudioCodec::Pcm24},
+    {"mov-prores-lt", "MOV · ProRes LT", Container::Mov, VideoCodec::ProRes, ProResProfile::Lt, AudioCodec::Pcm24},
+    {"mov-prores-422", "MOV · ProRes 422", Container::Mov, VideoCodec::ProRes, ProResProfile::Standard, AudioCodec::Pcm24},
+    {"mov-prores-hq", "MOV · ProRes 422 HQ", Container::Mov, VideoCodec::ProRes, ProResProfile::Hq, AudioCodec::Pcm24},
+    {"mov-prores-4444", "MOV · ProRes 4444", Container::Mov, VideoCodec::ProRes, ProResProfile::P4444, AudioCodec::Pcm24},
+    {"gif", "GIF · animated, no sound", Container::Gif, VideoCodec::Gif, ProResProfile::Hq, AudioCodec::Aac},
+    {"m4a", "M4A · AAC, sound only", Container::M4a, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Aac},
+    {"wav-16", "WAV · 16-bit, sound only", Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm16},
+    {"wav-24", "WAV · 24-bit, sound only", Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm24},
+    {"flac", "FLAC · lossless, sound only", Container::Flac, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Flac},
+};
+
+const ExportFormat* findExportFormat(const QString& id)
 {
-    Mp4Settings settings;
-    const auto even = [](int v) { return std::max(2, v - v % 2); };
+    for (const ExportFormat& format : kExportFormats)
+        if (id == QLatin1String(format.id))
+            return &format;
+    return nullptr;
+}
+
+const QVariantList& presetList()
+{
+    static const QVariantList presets = [] {
+        QFile file(QStringLiteral(":/export_presets.json"));
+        if (!file.open(QIODevice::ReadOnly))
+            return QVariantList();
+        return QJsonDocument::fromJson(file.readAll()).object().value(QStringLiteral("presets")).toArray().toVariantList();
+    }();
+    return presets;
+}
+
+// Common rates as exact fractions (29.97 is 30000/1001).
+FrameRate frameRateFrom(double fps)
+{
+    for (const int whole : {24, 30, 60}) {
+        if (std::abs(fps - whole * 1000.0 / 1001.0) < 0.01)
+            return {whole * 1000, 1001};
+    }
+    return {std::max(1, int(std::lround(fps))), 1};
+}
+
+} // namespace
+
+QVariantList ProjectController::exportPresets() const
+{
+    return presetList();
+}
+
+QVariantList ProjectController::exportFormats() const
+{
+    QVariantList list;
+    for (const ExportFormat& format : kExportFormats) {
+        MediaSettings settings;
+        settings.container = format.container;
+        list << QVariantMap{
+            {QStringLiteral("id"), QString::fromLatin1(format.id)},
+            {QStringLiteral("label"), QString::fromUtf8(format.label)},
+            {QStringLiteral("extension"), QString::fromLatin1(fileExtension(format.container))},
+            {QStringLiteral("video"), settings.hasVideo()},
+            {QStringLiteral("sound"), format.container != Container::Gif},
+            {QStringLiteral("quality"), format.codec == VideoCodec::H264 || format.codec == VideoCodec::Hevc},
+        };
+    }
+    return list;
+}
+
+std::optional<Exporter::Options> ProjectController::exportOptions(const QVariantMap& given, QString* error) const
+{
+    const auto refuse = [&](const QString& why) -> std::optional<Exporter::Options> {
+        if (error)
+            *error = why;
+        return std::nullopt;
+    };
+    // A preset's values, then what was asked for.
+    QVariantMap options;
+    if (const QString preset = given.value(QStringLiteral("preset")).toString(); !preset.isEmpty()) {
+        const auto found = std::ranges::find_if(presetList(), [&](const QVariant& p) {
+            return p.toMap().value(QStringLiteral("id")).toString() == preset;
+        });
+        if (found == presetList().end())
+            return refuse(QStringLiteral("Unknown export preset: ") + preset);
+        options = found->toMap();
+    }
+    for (auto it = given.begin(); it != given.end(); ++it)
+        options.insert(it.key(), it.value());
+
+    QString formatId = options.value(QStringLiteral("format")).toString();
+    if (formatId.isEmpty())
+        formatId = options.value(QStringLiteral("codec")).toString() == QLatin1String("hevc") ? QStringLiteral("mp4-hevc")
+                                                                                              : QStringLiteral("mp4-h264");
+    const ExportFormat* format = findExportFormat(formatId);
+    if (!format)
+        return refuse(QStringLiteral("Unknown export format: ") + formatId);
+
+    Exporter::Options result;
+    MediaSettings& settings = result.settings;
+    settings.container = format->container;
+    settings.codec = format->codec;
+    settings.proRes = format->proRes;
+    settings.audioCodec = format->audio;
+    settings.audioBitrate = format->container == Container::M4a ? 256'000 : 192'000;
+    if (options.contains(QStringLiteral("audio")) && settings.hasVideo())
+        settings.audio = options.value(QStringLiteral("audio")).toBool();
+    const bool gif = format->codec == VideoCodec::Gif && settings.hasVideo();
+
+    // Size: exact, or a short side in the canvas's shape, or the canvas.
+    const int canvasW = m_project.settings.width;
+    const int canvasH = m_project.settings.height;
+    const auto even = [&](int v) { return gif ? std::max(1, v) : std::max(2, v - v % 2); };
     const int width = options.value(QStringLiteral("width")).toInt();
     const int height = options.value(QStringLiteral("height")).toInt();
-    settings.width = even(width > 0 ? width : m_project.settings.width);
-    settings.height = even(height > 0 ? height : m_project.settings.height);
-    settings.frameRate = m_project.settings.frameRate;
-    settings.codec = options.value(QStringLiteral("codec")).toString() == QLatin1String("hevc") ? VideoCodec::Hevc
-                                                                                             : VideoCodec::H264;
+    int shortSide = options.value(QStringLiteral("shortSide")).toInt();
+    if (gif && shortSide <= 0 && (width <= 0 || height <= 0))
+        shortSide = 360;
+    if (width > 0 && height > 0) {
+        settings.width = even(width);
+        settings.height = even(height);
+    } else if (shortSide > 0) {
+        const double scale = double(shortSide) / std::min(canvasW, canvasH);
+        settings.width = even(int(std::lround(canvasW * scale)));
+        settings.height = even(int(std::lround(canvasH * scale)));
+    } else {
+        settings.width = even(canvasW);
+        settings.height = even(canvasH);
+    }
+    result.fill = options.value(QStringLiteral("fill")).toBool();
+
+    const double fps = options.value(QStringLiteral("frameRate")).toDouble();
+    settings.frameRate = fps > 0 ? frameRateFrom(fps) : gif ? FrameRate{15, 1} : m_project.settings.frameRate;
     const QString quality = options.value(QStringLiteral("quality")).toString();
     const double factor = quality == QLatin1String("high") ? 1.5 : quality == QLatin1String("small") ? 0.5 : 1.0;
-    settings.videoBitrate = std::int64_t(double(defaultVideoBitrate(settings)) * factor);
-    return settings;
+    const double bitrate = options.value(QStringLiteral("videoBitrate")).toDouble();
+    // H.264 and HEVC take a bitrate; ProRes and GIF set their own.
+    if (settings.codec == VideoCodec::H264 || settings.codec == VideoCodec::Hevc)
+        settings.videoBitrate = bitrate > 0 ? std::int64_t(bitrate) : std::int64_t(double(defaultVideoBitrate(settings)) * factor);
+    if (auto invalid = validateSettings(settings))
+        return refuse(QString::fromStdString(*invalid));
+
+    if (options.value(QStringLiteral("normalizeLoudness")).toBool())
+        result.loudnessTarget = options.value(QStringLiteral("loudnessTarget"), -14.0).toDouble();
+
+    // Range
+    const Ticks end = m_project.duration();
+    const QString range = options.value(QStringLiteral("range"), QStringLiteral("all")).toString();
+    if (range == QLatin1String("custom")) {
+        result.from = std::max<Ticks>(0, ticks(options.value(QStringLiteral("from")).toDouble()));
+        result.to = std::min(end, ticks(options.value(QStringLiteral("to")).toDouble()));
+    } else if (range == QLatin1String("selection")) {
+        bool any = false;
+        for (const QVariant& id : selectedClips()) {
+            const Clip* clip = findClip(toId(id.toDouble()));
+            result.from = any ? std::min(result.from, clip->start) : clip->start;
+            result.to = any ? std::max(result.to, clip->end()) : clip->end();
+            any = true;
+        }
+        if (!any)
+            return refuse(QStringLiteral("Select the clips to export"));
+    } else if (range == QLatin1String("marker")) {
+        const auto marker = std::ranges::find(m_project.markers, toId(options.value(QStringLiteral("markerId")).toDouble()),
+                                              &tve::Marker::id);
+        if (marker == m_project.markers.end() || marker->duration <= 0)
+            return refuse(QStringLiteral("Pick a marker with a length (a range) to export"));
+        result.from = marker->time;
+        result.to = std::min(end, marker->time + marker->duration);
+    } else if (range == QLatin1String("all")) {
+        result.from = 0;
+        result.to = end;
+    } else {
+        return refuse(QStringLiteral("Unknown export range: ") + range);
+    }
+    if (end == 0)
+        return refuse(QStringLiteral("Add something to the timeline to export"));
+    if (result.to <= result.from)
+        return refuse(QStringLiteral("There is nothing to export in that range"));
+    return result;
 }
 
 double ProjectController::exportBitrate(const QVariantMap& options) const
 {
-    const Mp4Settings settings = exportSettings(options);
-    return double(settings.videoBitrate + settings.audioBitrate);
+    const auto planned = exportOptions(options);
+    if (!planned)
+        return 0;
+    const MediaSettings& settings = planned->settings;
+    const std::int64_t video = !settings.hasVideo() ? 0
+                             : settings.videoBitrate > 0 ? settings.videoBitrate
+                                                         : defaultVideoBitrate(settings);
+    return double(video + audioBitrate(settings));
+}
+
+QVariantMap ProjectController::exportRange(const QVariantMap& options) const
+{
+    const auto planned = exportOptions(options);
+    if (!planned)
+        return {};
+    return {{QStringLiteral("from"), seconds(planned->from)},
+            {QStringLiteral("to"), seconds(planned->to)},
+            {QStringLiteral("duration"), seconds(planned->to - planned->from)}};
 }
 
 bool ProjectController::exportVideo(const QUrl& file, const QVariantMap& options)
 {
-    if (exporting()) {
-        reportError(QStringLiteral("An export is already running"));
-        return false;
-    }
-    if (m_project.duration() == 0) {
-        reportError(QStringLiteral("Add something to the timeline to export"));
-        return false;
-    }
     const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
     if (path.isEmpty()) {
         reportError(QStringLiteral("Choose where to save the video"));
         return false;
     }
-    pause();
-    m_cancelExport = false;
-    m_exportProgress = 0;
-    auto snapshot = std::make_shared<const Project>(m_project);
-    const Mp4Settings settings = exportSettings(options);
-    std::optional<double> loudness;
-    if (options.value(QStringLiteral("normalizeLoudness")).toBool())
-        loudness = options.value(QStringLiteral("loudnessTarget"), -14.0).toDouble();
-    m_exportThread = std::thread([this, snapshot, path, settings, loudness] {
-        // Progress goes to the UI thread at most every 1 %.
-        double reported = 0;
-        const Exporter::Result result = Exporter::run(snapshot, path, settings, [&](double progress) {
-            if (progress - reported >= 0.01 || progress >= 1.0) {
-                reported = progress;
-                QMetaObject::invokeMethod(this, [this, progress] {
-                    m_exportProgress = progress;
-                    emit exportChanged();
-                }, Qt::QueuedConnection);
-            }
-            return !m_cancelExport.load();
-        }, loudness);
-        QMetaObject::invokeMethod(this, [this, result, path] {
-            if (m_exportThread.joinable())
-                m_exportThread.join();
-            emit exportChanged();
-            emit exportFinished(result.ok, result.ok ? path : result.error);
-        }, Qt::QueuedConnection);
+    const bool queued = std::ranges::any_of(m_exportJobs, [&](const ExportJob& job) {
+        return job.path == path && (job.state == QLatin1String("waiting") || job.state == QLatin1String("running"));
     });
+    if (queued) {
+        reportError(QStringLiteral("That file is already being exported"));
+        return false;
+    }
+    QString error;
+    auto planned = exportOptions(options, &error);
+    if (!planned) {
+        reportError(error);
+        return false;
+    }
+    pause();
+    ExportJob job;
+    job.id = m_nextExportJob++;
+    job.path = path;
+    for (const ExportFormat& format : kExportFormats) {
+        if (format.container == planned->settings.container && format.codec == planned->settings.codec
+            && format.audio == planned->settings.audioCodec
+            && (format.codec != VideoCodec::ProRes || format.proRes == planned->settings.proRes))
+            job.format = QString::fromUtf8(format.label).section(QStringLiteral(" ("), 0, 0);
+    }
+    job.options = std::move(*planned);
+    job.snapshot = std::make_shared<const Project>(m_project);
+    m_exportJobs.push_back(std::move(job));
     emit exportChanged();
+    startNextExport();
     return true;
 }
 
-void ProjectController::cancelExport()
+int ProjectController::exportMarkerRanges(const QUrl& folder, const QVariantMap& options)
 {
-    m_cancelExport = true;
+    const QString directory = folder.isLocalFile() ? folder.toLocalFile() : folder.toString();
+    QString error;
+    const auto planned = exportOptions(options, &error);
+    if (!planned) {
+        reportError(error);
+        return 0;
+    }
+    const QString extension = QString::fromLatin1(fileExtension(planned->settings.container));
+    const QString base = name().isEmpty() ? QStringLiteral("Untitled") : name();
+    int count = 0;
+    std::set<QString> used;
+    for (const tve::Marker& marker : m_project.markers) {
+        if (marker.duration <= 0 || marker.time >= m_project.duration())
+            continue;
+        QString title = QString::fromStdString(marker.note).trimmed();
+        title.replace(QRegularExpression(QStringLiteral("[\\\\/:*?\"<>|\\n]")), QStringLiteral("-"));
+        if (title.isEmpty())
+            title = QStringLiteral("Range %1").arg(count + 1);
+        QString fileName = base + QStringLiteral(" - ") + title;
+        for (int n = 2; used.contains(fileName); ++n)
+            fileName = base + QStringLiteral(" - ") + title + QStringLiteral(" %1").arg(n);
+        used.insert(fileName);
+        QVariantMap each = options;
+        each.insert(QStringLiteral("range"), QStringLiteral("marker"));
+        each.insert(QStringLiteral("markerId"), double(marker.id));
+        if (exportVideo(QUrl::fromLocalFile(QDir(directory).filePath(fileName + QLatin1Char('.') + extension)), each))
+            ++count;
+    }
+    if (count == 0 && used.empty())
+        reportError(QStringLiteral("Give markers a length (a range) to export them one by one"));
+    return count;
+}
+
+ProjectController::ExportJob* ProjectController::findExportJob(Id id)
+{
+    const auto found = std::ranges::find(m_exportJobs, id, &ExportJob::id);
+    return found == m_exportJobs.end() ? nullptr : &*found;
+}
+
+void ProjectController::startNextExport()
+{
+    if (m_exportThread.joinable())
+        return;
+    const auto next = std::ranges::find(m_exportJobs, QStringLiteral("waiting"), &ExportJob::state);
+    if (next == m_exportJobs.end())
+        return;
+    next->state = QStringLiteral("running");
+    m_runningExport = next->id;
+    m_cancelExport = false;
+    m_exportProgress = 0;
+    m_exportThread = std::thread([this, id = next->id, snapshot = next->snapshot, path = next->path,
+                                  options = next->options] {
+        // Progress goes to the UI thread at most every 1 %. While paused, the export waits
+        // here between frames.
+        double reported = 0;
+        const Exporter::Result result = Exporter::run(snapshot, path, options, [&](double progress) {
+            if (progress - reported >= 0.01 || progress >= 1.0) {
+                reported = progress;
+                QMetaObject::invokeMethod(this, [this, id, progress] {
+                    m_exportProgress = progress;
+                    if (ExportJob* job = findExportJob(id))
+                        job->progress = progress;
+                    emit exportChanged();
+                }, Qt::QueuedConnection);
+            }
+            std::unique_lock lock(m_pauseMutex);
+            m_pauseChanged.wait(lock, [&] { return !m_exportPausedFlag || m_cancelExport.load(); });
+            return !m_cancelExport.load();
+        });
+        QMetaObject::invokeMethod(this, [this, id, result, path] {
+            if (m_exportThread.joinable())
+                m_exportThread.join();
+            m_runningExport = kNoId;
+            {
+                std::lock_guard lock(m_pauseMutex); // a pause ends with its job
+                m_exportPausedFlag = false;
+            }
+            if (ExportJob* job = findExportJob(id)) {
+                job->state = result.ok ? QStringLiteral("done") : result.error.isEmpty() ? QStringLiteral("cancelled")
+                                                                                         : QStringLiteral("failed");
+                job->error = result.error;
+                job->snapshot.reset();
+                if (result.ok)
+                    job->progress = 1.0;
+            }
+            emit exportChanged();
+            emit exportFinished(result.ok, result.ok ? path : result.error, double(id));
+            startNextExport();
+        }, Qt::QueuedConnection);
+    });
+    emit exportChanged();
+}
+
+bool ProjectController::exportPaused() const
+{
+    std::lock_guard lock(m_pauseMutex);
+    return m_exportPausedFlag;
+}
+
+QVariantList ProjectController::exportJobs() const
+{
+    QVariantList list;
+    for (const ExportJob& job : m_exportJobs) {
+        list << QVariantMap{
+            {QStringLiteral("id"), double(job.id)},
+            {QStringLiteral("name"), QFileInfo(job.path).fileName()},
+            {QStringLiteral("path"), job.path},
+            {QStringLiteral("format"), job.format},
+            {QStringLiteral("state"), job.state},
+            {QStringLiteral("progress"), job.progress},
+            {QStringLiteral("error"), job.error},
+            {QStringLiteral("duration"), seconds(job.options.to - job.options.from)},
+        };
+    }
+    return list;
+}
+
+void ProjectController::cancelExport(double jobId)
+{
+    const Id id = jobId > 0 ? toId(jobId) : m_runningExport;
+    ExportJob* job = findExportJob(id);
+    if (!job)
+        return;
+    if (job->state == QLatin1String("waiting")) {
+        job->state = QStringLiteral("cancelled");
+        job->snapshot.reset();
+        emit exportChanged();
+        return;
+    }
+    if (id != m_runningExport)
+        return;
+    {
+        std::lock_guard lock(m_pauseMutex);
+        m_cancelExport = true;
+    }
+    m_pauseChanged.notify_all();
+}
+
+void ProjectController::pauseExport()
+{
+    if (!exporting())
+        return;
+    {
+        std::lock_guard lock(m_pauseMutex);
+        m_exportPausedFlag = true;
+    }
+    emit exportChanged();
+}
+
+void ProjectController::resumeExport()
+{
+    {
+        std::lock_guard lock(m_pauseMutex);
+        if (!m_exportPausedFlag)
+            return;
+        m_exportPausedFlag = false;
+    }
+    m_pauseChanged.notify_all();
+    emit exportChanged();
+}
+
+bool ProjectController::removeExportJob(double jobId)
+{
+    const Id id = toId(jobId);
+    if (id == m_runningExport)
+        return false;
+    const auto removed = std::erase_if(m_exportJobs, [&](const ExportJob& job) { return job.id == id; });
+    if (removed)
+        emit exportChanged();
+    return removed > 0;
+}
+
+void ProjectController::clearFinishedExports()
+{
+    const auto removed = std::erase_if(m_exportJobs, [](const ExportJob& job) {
+        return job.state == QLatin1String("done") || job.state == QLatin1String("failed")
+            || job.state == QLatin1String("cancelled");
+    });
+    if (removed)
+        emit exportChanged();
 }
 
 // --- Transport ---

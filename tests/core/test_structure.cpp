@@ -234,3 +234,21 @@ TEST_CASE("chapters run from one chapter marker to the next", "[structure]")
     CHECK(p.project.chapters().front() == Chapter{0, 2 * kSec, "Intro"});
     CHECK(p.project.chapters().size() == 3);
 }
+
+TEST_CASE("an export of part of the timeline gets the chapters in that part", "[structure]")
+{
+    StructureProject p;
+    p.push<AddClipCommand>(p.main, p.av, 0, 10 * kSec);
+    for (auto [time, note] : {std::pair{2 * kSec, "Setup"}, std::pair{6 * kSec, "Payoff"}}) {
+        Marker marker;
+        marker.time = time;
+        marker.note = note;
+        marker.chapter = true;
+        p.push<AddMarkerCommand>(marker);
+    }
+    // 4–8 s: the end of Setup (now from 0) and the start of Payoff.
+    const std::vector<Chapter> expected{{0, 2 * kSec, "Setup"}, {2 * kSec, 4 * kSec, "Payoff"}};
+    CHECK(p.project.chapters(4 * kSec, 8 * kSec) == expected);
+    CHECK(p.project.chapters(7 * kSec, 9 * kSec) == std::vector<Chapter>{{0, 2 * kSec, "Payoff"}});
+    CHECK(p.project.chapters(0, 10 * kSec) == p.project.chapters());
+}

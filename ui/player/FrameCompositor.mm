@@ -49,16 +49,30 @@ PlaneFormats planeFormats(OSType pixelFormat)
     case kCVPixelFormatType_32BGRA:
         return {.supported = true, .rgba = true, .luma = QRhiTexture::BGRA8, .chroma = QRhiTexture::BGRA8,
                 .metalLuma = MTLPixelFormatBGRA8Unorm, .metalChroma = MTLPixelFormatBGRA8Unorm};
+    // 4:2:0, 4:2:2 (ProRes 422) and 4:4:4: the chroma plane's size says which, and the
+    // shader samples it by normalized coordinates either way.
     case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
+    case kCVPixelFormatType_422YpCbCr8BiPlanarVideoRange:
+    case kCVPixelFormatType_444YpCbCr8BiPlanarVideoRange:
         return {.supported = true};
     case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+    case kCVPixelFormatType_422YpCbCr8BiPlanarFullRange:
+    case kCVPixelFormatType_444YpCbCr8BiPlanarFullRange:
         return {.supported = true, .fullRange = true};
     case kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange:
     case kCVPixelFormatType_420YpCbCr10BiPlanarFullRange:
+    case kCVPixelFormatType_422YpCbCr10BiPlanarVideoRange:
+    case kCVPixelFormatType_422YpCbCr10BiPlanarFullRange:
+    case kCVPixelFormatType_444YpCbCr10BiPlanarVideoRange:
+    case kCVPixelFormatType_444YpCbCr10BiPlanarFullRange:
+    case kCVPixelFormatType_422YpCbCr16BiPlanarVideoRange:
+    case kCVPixelFormatType_444YpCbCr16BiPlanarVideoRange:
         // 10-bit samples sit in the high bits of 16-bit words, so normalized values
         // match the 8-bit ones closely enough for the same matrix.
         return {.supported = true,
-                .fullRange = pixelFormat == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange,
+                .fullRange = pixelFormat == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange
+                          || pixelFormat == kCVPixelFormatType_422YpCbCr10BiPlanarFullRange
+                          || pixelFormat == kCVPixelFormatType_444YpCbCr10BiPlanarFullRange,
                 .luma = QRhiTexture::R16,
                 .chroma = QRhiTexture::RG16,
                 .metalLuma = MTLPixelFormatR16Unorm,

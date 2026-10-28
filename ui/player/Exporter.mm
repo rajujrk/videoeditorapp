@@ -112,16 +112,23 @@ std::vector<std::uint8_t> packedRows(const QRhiReadbackResult& result, int width
 
 } // namespace
 
-Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, const QString& path,
-                               const tve::Mp4Settings& settings, const std::function<bool(double)>& progress,
-                               std::optional<double> loudnessTarget)
+Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, const QString& path, const Options& options,
+                               const std::function<bool(double)>& progress)
 {
     Result result;
+    const tve::MediaSettings& settings = options.settings;
+    const tve::Ticks from = std::clamp<tve::Ticks>(options.from, 0, project->duration());
+    const tve::Ticks to = options.to > from ? std::min(options.to, project->duration()) : project->duration();
+    if (to <= from) {
+        result.error = QStringLiteral("nothing to export in that range");
+        return result;
+    }
+    const tve::Ticks duration = to - from;
     std::string error;
-    // The project's chapter markers become the file's chapters.
-    tve::Mp4Settings fileSettings = settings;
-    fileSettings.chapters = project->chapters();
-    auto writer = tve::Mp4Writer::open(path.toStdString(), fileSettings, &error);
+    // The chapter markers in the range become the file's chapters.
+    tve::MediaSettings fileSettings = settings;
+    fileSettings.chapters = project->chapters(from, to);
+    auto writer = tve::MediaWriter::open(path.toStdString(), fileSettings, &error);
     if (!writer) {
         result.error = QString::fromStdString(error);
         return result;
@@ -132,6 +139,68 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
         result.error = message;
         return result;
     };
+
+    // Loudness normalization: measure the mix over the range, then play it louder or quieter
+    // by the difference, the limiter catching peaks the gain pushes past -1 dBFS.
+    float loudnessGain = 1.0f;
+    std::unique_ptr<tve::dsp::Processor> limiter;
+    const bool sound = settings.hasAudio() || !settings.hasVideo();
+    if (options.loudnessTarget && sound) {
+        const double measured = tve::measureLoudness(project, from, to);
+        if (std::isfinite(measured)) {
+            loudnessGain = tve::dsp::dbToGain(std::clamp(*options.loudnessTarget - measured, -24.0, 24.0));
+            const tve::dsp::ProcessorInfo& info = *tve::dsp::findProcessor("limiter");
+            limiter = info.make();
+            limiter->configure(info.complete({{"ceiling", -1.0f}}));
+        }
+    }
+    tve::TimelineAudio mixer;
+    if (sound)
+        mixer.restart(project, from);
+    std::int64_t samplesWritten = 0;
+    std::vector<float> silence;
+    // Sound up to `wanted` samples into the range.
+    const auto writeSoundUntil = [&](std::int64_t wanted) -> std::optional<QString> {
+        while (sound && samplesWritten < wanted) {
+            if (auto chunk = mixer.queue().tryPop()) {
+                if (limiter) {
+                    for (float& sample : chunk->samples)
+                        sample *= loudnessGain;
+                    limiter->process(chunk->samples.data(), tve::AudioChunk::kFrames);
+                }
+                const int frames = int(std::min<std::int64_t>(tve::AudioChunk::kFrames, wanted - samplesWritten));
+                if (!writer->writeAudio(chunk->samples.data(), frames))
+                    return QString::fromStdString(writer->lastError());
+                samplesWritten += frames;
+            } else if (mixer.producerFinished() && mixer.queue().size() == 0) {
+                const int frames = int(wanted - samplesWritten);
+                silence.assign(std::size_t(frames) * tve::audio::kChannels, 0.0f);
+                if (!writer->writeAudio(silence.data(), frames))
+                    return QString::fromStdString(writer->lastError());
+                samplesWritten = wanted;
+            } else {
+                std::this_thread::sleep_for(1ms);
+            }
+        }
+        return std::nullopt;
+    };
+
+    if (!settings.hasVideo()) {
+        // Sound only: no pictures to render.
+        const std::int64_t total = tve::audio::samplesFromTicks(duration);
+        constexpr std::int64_t kStep = 48000 / 10;
+        for (std::int64_t done = 0; done < total;) {
+            done = std::min(total, done + kStep);
+            if (auto failed = writeSoundUntil(done))
+                return abandon(*failed);
+            if (progress && !progress(double(done) / double(total)))
+                return abandon(QString()); // cancelled
+        }
+        if (!writer->finish())
+            return abandon(QString::fromStdString(writer->lastError()));
+        result.ok = true;
+        return result;
+    }
 
     QRhiMetalInitParams params;
     std::unique_ptr<QRhi> rhi(QRhi::create(QRhi::Metal, &params));
@@ -144,47 +213,39 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
             return abandon(QStringLiteral("cannot set up the renderer"));
         const QSize canvas(project->settings.width, project->settings.height);
         const QSize output(settings.width, settings.height);
+        const bool rgba = tve::pictureInput(settings) == tve::PictureInput::Rgba;
         tve::Compositor scaler(rhi.get());
         const QShader vertex = loadShader(QStringLiteral(":/effects/common/fullscreen.vert.qsb"));
         const QShader fragment = loadShader(QStringLiteral(":/shaders/export_yuv.frag.qsb"));
         std::unique_ptr<QRhiSampler> sampler(rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
                                                              QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
+        // NV12 as two planes, or 8-bit RGBA as one.
         PlanePass luma;
         PlanePass chroma;
         if (!sampler->create() || !vertex.isValid() || !fragment.isValid()
-            || !luma.create(rhi.get(), QRhiTexture::R8, output)
-            || !chroma.create(rhi.get(), QRhiTexture::RG8, output / 2))
+            || !luma.create(rhi.get(), rgba ? QRhiTexture::RGBA8 : QRhiTexture::R8, output)
+            || (!rgba && !chroma.create(rhi.get(), QRhiTexture::RG8, output / 2)))
             return abandon(QStringLiteral("cannot set up the renderer"));
+        // Another shape than the canvas: letterboxed, or (fill) scaled up to cover it and cropped.
+        tve::ClipVisual placement;
+        if (options.fill) {
+            const double canvasAspect = double(canvas.width()) / canvas.height();
+            const double outputAspect = double(output.width()) / output.height();
+            placement.transform.scale = std::max(canvasAspect / outputAspect, outputAspect / canvasAspect);
+        }
 
         // Pictures: the timeline playback engine, never started, produces every frame
         // as fast as it can. Sound: the mixer, likewise.
         tve::TimelinePlayback playback;
         playback.setProject(project);
+        if (from > 0)
+            playback.seek(from);
         const tve::Ticks frameTicks = tve::frameDuration(settings.frameRate);
-        const tve::Ticks duration = project->duration();
-
-        // Loudness normalization: measure the whole mix, then play it louder or quieter by the
-        // difference, the limiter catching peaks the gain pushes past -1 dBFS.
-        float loudnessGain = 1.0f;
-        std::unique_ptr<tve::dsp::Processor> limiter;
-        if (loudnessTarget) {
-            const double measured = tve::measureLoudness(project, 0, duration);
-            if (std::isfinite(measured)) {
-                loudnessGain = tve::dsp::dbToGain(std::clamp(*loudnessTarget - measured, -24.0, 24.0));
-                const tve::dsp::ProcessorInfo& info = *tve::dsp::findProcessor("limiter");
-                limiter = info.make();
-                limiter->configure(info.complete({{"ceiling", -1.0f}}));
-            }
-        }
-        tve::TimelineAudio mixer;
-        mixer.restart(project, 0);
         const std::int64_t totalFrames = std::max<std::int64_t>(1, (duration + frameTicks - 1) / frameTicks);
         tve::CompositeFrame current{0, {}};
-        std::int64_t samplesWritten = 0;
-        std::vector<float> silence;
 
         for (std::int64_t n = 0; n < totalFrames; ++n) {
-            const tve::Ticks time = n * frameTicks;
+            const tve::Ticks time = from + n * frameTicks;
             // The newest composite at or before this frame's time (a gap keeps its black).
             for (;;) {
                 const auto front = playback.queue().frontPts();
@@ -203,56 +264,45 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
                 return abandon(QStringLiteral("the GPU stopped responding"));
             std::vector<CVMetalTextureRef> retained;
             QRhiTexture* picture = compositor.render(cb, current, canvas, float(tve::toSeconds(time)), nullptr, retained);
-            if (picture && output != canvas) {
+            if (picture && (output != canvas || options.fill)) {
                 scaler.begin(cb, output);
-                scaler.draw(cb, picture, tve::ClipVisual{});
+                scaler.draw(cb, picture, placement);
                 picture = scaler.result();
             }
             QRhiReadbackResult lumaData;
             QRhiReadbackResult chromaData;
             if (picture && luma.bind(rhi.get(), picture, sampler.get(), vertex, fragment)
-                && chroma.bind(rhi.get(), picture, sampler.get(), vertex, fragment)) {
-                luma.draw(rhi.get(), cb, 0);
-                chroma.draw(rhi.get(), cb, 1);
+                && (rgba || chroma.bind(rhi.get(), picture, sampler.get(), vertex, fragment))) {
+                luma.draw(rhi.get(), cb, rgba ? 2 : 0);
+                if (!rgba)
+                    chroma.draw(rhi.get(), cb, 1);
                 QRhiResourceUpdateBatch* readback = rhi->nextResourceUpdateBatch();
                 readback->readBackTexture({luma.texture.get()}, &lumaData);
-                readback->readBackTexture({chroma.texture.get()}, &chromaData);
+                if (!rgba)
+                    readback->readBackTexture({chroma.texture.get()}, &chromaData);
                 cb->resourceUpdate(readback);
             }
             const bool ended = rhi->endOffscreenFrame() == QRhi::FrameOpSuccess; // waits for the GPU
             for (CVMetalTextureRef texture : retained)
                 CFRelease(texture);
             compositor.flushTextureCache();
-            if (!ended || lumaData.data.isEmpty() || chromaData.data.isEmpty())
+            if (!ended || lumaData.data.isEmpty() || (!rgba && chromaData.data.isEmpty()))
                 return abandon(QStringLiteral("rendering frame %1 failed").arg(n));
 
-            const auto y = packedRows(lumaData, output.width(), output.height());
-            const auto uv = packedRows(chromaData, output.width(), output.height() / 2); // width/2 × 2 bytes
-            if (!writer->writeVideo(y.data(), output.width(), uv.data(), output.width()))
-                return abandon(QString::fromStdString(writer->lastError()));
+            if (rgba) {
+                const auto rows = packedRows(lumaData, output.width() * 4, output.height());
+                if (!writer->writeVideoRgba(rows.data(), output.width() * 4))
+                    return abandon(QString::fromStdString(writer->lastError()));
+            } else {
+                const auto y = packedRows(lumaData, output.width(), output.height());
+                const auto uv = packedRows(chromaData, output.width(), output.height() / 2); // width/2 × 2 bytes
+                if (!writer->writeVideo(y.data(), output.width(), uv.data(), output.width()))
+                    return abandon(QString::fromStdString(writer->lastError()));
+            }
 
             // Sound up to the end of this frame.
-            const std::int64_t wanted = tve::audio::samplesFromTicks((n + 1) * frameTicks);
-            while (samplesWritten < wanted) {
-                if (auto chunk = mixer.queue().tryPop()) {
-                    if (limiter) {
-                        for (float& sample : chunk->samples)
-                            sample *= loudnessGain;
-                        limiter->process(chunk->samples.data(), tve::AudioChunk::kFrames);
-                    }
-                    if (!writer->writeAudio(chunk->samples.data(), tve::AudioChunk::kFrames))
-                        return abandon(QString::fromStdString(writer->lastError()));
-                    samplesWritten += tve::AudioChunk::kFrames;
-                } else if (mixer.producerFinished() && mixer.queue().size() == 0) {
-                    const int frames = int(wanted - samplesWritten);
-                    silence.assign(std::size_t(frames) * tve::audio::kChannels, 0.0f);
-                    if (!writer->writeAudio(silence.data(), frames))
-                        return abandon(QString::fromStdString(writer->lastError()));
-                    samplesWritten = wanted;
-                } else {
-                    std::this_thread::sleep_for(1ms);
-                }
-            }
+            if (auto failed = writeSoundUntil(tve::audio::samplesFromTicks(std::min(duration, (n + 1) * frameTicks))))
+                return abandon(*failed);
 
             if (progress && !progress(double(n + 1) / double(totalFrames)))
                 return abandon(QString()); // cancelled

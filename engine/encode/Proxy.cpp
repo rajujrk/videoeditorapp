@@ -1,7 +1,7 @@
 #include "encode/Proxy.h"
 
 #include "decode/VideoDecoder.h"
-#include "encode/Mp4Writer.h"
+#include "encode/MediaWriter.h"
 
 extern "C" {
 #include <libswscale/swscale.h>
@@ -41,7 +41,7 @@ bool makeProxy(const std::string& source, const std::string& destination, const 
     const VideoStreamInfo& info = decoder->info();
     const auto [width, height] = proxySize(info.width, info.height, options.maxHeight);
 
-    Mp4Settings settings;
+    MediaSettings settings;
     settings.width = width;
     settings.height = height;
     settings.frameRate = info.frameRate;
@@ -50,7 +50,7 @@ bool makeProxy(const std::string& source, const std::string& destination, const 
     settings.keyframeInterval = options.keyframeInterval;
     const std::string temporary = destination + ".part";
     std::filesystem::create_directories(std::filesystem::path(destination).parent_path());
-    auto writer = Mp4Writer::open(temporary, settings, &openError);
+    auto writer = MediaWriter::open(temporary, settings, &openError);
     if (!writer)
         return fail(openError);
     const auto abandon = [&](const std::string& message) {

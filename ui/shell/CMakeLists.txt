@@ -15,6 +15,7 @@ qt_add_qml_module(tve_shell
         ClipEffectCard.qml
         ParamControl.qml
         ExportDialog.qml
+        RenderQueuePanel.qml
         VoiceOverPanel.qml
         KeyframeToggle.qml
         CurveEditor.qml

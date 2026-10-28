@@ -1,0 +1,16 @@
+{
+    "_comment": "Export presets: a format (see ProjectController::exportFormats) and a size, by its short side (keeping the canvas's shape) or exactly (filled and cropped). Missing values keep the dialog's defaults.",
+    "presets": [
+        { "id": "web-1080", "title": "1080p for the web", "description": "H.264 MP4, 1080 high: plays everywhere (YouTube, Vimeo, most sites)", "format": "mp4-h264", "shortSide": 1080, "quality": "high" },
+        { "id": "web-4k", "title": "4K for the web", "description": "HEVC MP4, 2160 high: smaller files at full detail", "format": "mp4-hevc", "shortSide": 2160, "quality": "high" },
+        { "id": "small", "title": "Small file", "description": "H.264 MP4, 720 high, low bitrate: quick to send", "format": "mp4-h264", "shortSide": 720, "quality": "small" },
+        { "id": "vertical", "title": "Vertical 9:16", "description": "1080 × 1920 H.264, filled: for short-video apps (TikTok, Reels, Shorts)", "format": "mp4-h264", "width": 1080, "height": 1920, "fill": true, "quality": "high" },
+        { "id": "square", "title": "Square 1:1", "description": "1080 × 1080 H.264, filled: for feeds", "format": "mp4-h264", "width": 1080, "height": 1080, "fill": true, "quality": "high" },
+        { "id": "master", "title": "Master (ProRes 422 HQ)", "description": "ProRes 422 HQ MOV with 24-bit sound at the project's size: for archiving and other editors", "format": "mov-prores-hq" },
+        { "id": "prores-proxy", "title": "Editing copy (ProRes Proxy)", "description": "ProRes Proxy MOV, 540 high: light to edit with", "format": "mov-prores-proxy", "shortSide": 540 },
+        { "id": "gif", "title": "Animated GIF", "description": "360 high at 15 fps, looping, no sound", "format": "gif", "shortSide": 360, "frameRate": 15 },
+        { "id": "audio-aac", "title": "Sound: AAC", "description": "M4A, 256 kbit/s: the mix only", "format": "m4a" },
+        { "id": "audio-wav", "title": "Sound: WAV", "description": "24-bit PCM WAV: the mix, uncompressed", "format": "wav-24" },
+        { "id": "audio-flac", "title": "Sound: FLAC", "description": "24-bit FLAC: the mix, lossless and smaller", "format": "flac" }
+    ]
+}

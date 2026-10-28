@@ -157,8 +157,13 @@ Item {
             const f = createEditor()
             const p = f.project
             p.importAndAppend(clipA)
-            mouseClick(findChild(f.editor, "playButton"))
-            verify(p.playing)
+            // The transport re-lays out once there is something to play: click where it settles.
+            const play = findChild(f.editor, "playButton")
+            tryVerify(() => play.enabled)
+            for (let a = play; a && a !== root; a = a.parent)
+                waitForPolish(a, 1000)
+            mouseClick(play)
+            tryVerify(() => p.playing, 1000)
             tryVerify(() => p.playhead > 0.3, 3000)
             tryVerify(() => !p.playing, 5000) // stops at the end
             compare(p.playhead, 2)

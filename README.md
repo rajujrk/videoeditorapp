@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b) and markers, groups and compound clips (11a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) and delivery — export formats, presets, ranges and a render queue (11b) — done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -66,6 +66,7 @@ What's in the repo:
 | ⌘Z / ⇧⌘Z | Undo / redo |
 | ⌘S | Save project |
 | ⌘I | Import media |
+| ⌘E | Export (or add to the render queue) |
 | M | Add a marker at the playhead |
 | ⌥← / ⌥→ | Previous / next marker |
 | ⇧-click / ⌘-click | Add a clip to the selection, or take it out |
@@ -303,16 +304,30 @@ temporary file and renamed, so a crash mid-save never leaves a half-written proj
 `TVE_AUTOSAVE_DIR` moves the folder (the tests use a scratch one); scripted runs
 (`--stats`, `--quit-after`, `--screenshot`, `--export`) do not autosave.
 
-**Export.** Click Export (⌘E) to save an MP4: choose the file, the size (the project's,
-or 4K/1440p/1080p/720p/480p smaller than it, same shape), H.264 (plays everywhere) or HEVC
-(smaller files), and quality (High, Standard, Small; the dialog estimates the file size).
-Export renders every frame at the project's frame rate with the same engine as the preview
-(transitions, titles, effects, compound clips, sound), writes chapter markers as chapters, on an offscreen GPU device, converts to NV12 on the
-GPU, and encodes with VideoToolbox; you can keep editing while it runs (it uses a snapshot)
-or cancel it, which removes the partial file. From the command line:
+**Export.** Click Export (⌘E). Pick a preset — 1080p or 4K for the web, a small file,
+vertical 9:16 or square 1:1 for social apps (filled and cropped), a ProRes 422 HQ master, a
+ProRes Proxy editing copy, an animated GIF, or the sound alone as AAC, WAV or FLAC — or
+choose each setting: the format (MP4 with H.264 or HEVC; MOV with H.264 or ProRes Proxy,
+LT, 422, 422 HQ or 4444; GIF; M4A, 16- or 24-bit WAV, or FLAC), the size (the project's,
+standard heights, vertical or square, or larger), the frame rate, the quality (H.264/HEVC),
+whether to include the sound, loudness normalization, and the range: the whole timeline, the
+selected clips, a marker's range, every marker range as a file of its own (named by the
+notes), or from–to seconds. The dialog estimates the file size. **Export** shows the
+progress; **Add to queue** goes back to editing. Exports run one after another in the
+background from a snapshot of the project, so you can keep editing; the render queue in the
+top bar lists them, with pause, resume, cancel (which removes the partial file), Show in
+Finder and clear. Every frame is rendered with the same engine as the preview (transitions,
+titles, effects, compound clips, sound) on an offscreen GPU device; H.264 and HEVC are
+encoded by VideoToolbox from NV12 made on the GPU, ProRes by VideoToolbox (or FFmpeg's
+encoder where the system has none), GIFs with a palette per frame and ordered dithering.
+MP4, MOV and M4A get the chapter markers in the range as chapters. MP3 is not offered: the
+LGPL FFmpeg build has no MP3 encoder. Imported ProRes 422 and 4444 now preview and show
+thumbnails too. From the command line:
 
 ```bash
 build/macos-release/app/TechieVideoEditor.app/Contents/MacOS/TechieVideoEditor project.tve --export out.mp4 --export-size 1920x1080 --export-codec h264
+build/macos-release/app/TechieVideoEditor.app/Contents/MacOS/TechieVideoEditor project.tve --export master.mov --export-format mov-prores-hq
+build/macos-release/app/TechieVideoEditor.app/Contents/MacOS/TechieVideoEditor project.tve --export clip.gif --export-preset gif
 ```
 
 On an M-series Mac, 20 s of 4K60 exports in about 17 s to 4K H.264, 8 s to 1080p and 25 s
