@@ -251,9 +251,15 @@ struct Clip {
     // An adjustment layer (no media either): its look, grade and effects apply to
     // everything below it on screen while it lasts.
     bool adjustment = false;
+    // A compound clip: plays a nested sequence (Project::sequences) instead of media; its
+    // sourceIn and duration select part of that sequence.
+    Id sequenceId = kNoId;
+    // Clips sharing a group move and are deleted together (kNoId: not grouped).
+    Id groupId = kNoId;
 
     // A clip with no media to play: a title or an adjustment layer.
     bool generated() const { return text.has_value() || adjustment; }
+    bool compound() const { return sequenceId != kNoId; }
 
     // Animated properties (see animatableProperties()), by property id. A property with
     // keyframes takes its value from them; its static value above is then unused.
@@ -317,6 +323,45 @@ struct ProjectSettings {
     friend bool operator==(const ProjectSettings&, const ProjectSettings&) = default;
 };
 
+// The colours a marker can have.
+enum class MarkerColor { Red, Orange, Yellow, Green, Blue, Purple };
+
+// A point (or, with a duration, a range) on the timeline with a note. Chapter markers
+// become chapters of the exported video, titled by their note.
+struct Marker {
+    Id id = kNoId;
+    Ticks time = 0;
+    Ticks duration = 0;
+    MarkerColor color = MarkerColor::Blue;
+    std::string note;
+    bool chapter = false;
+
+    friend bool operator==(const Marker&, const Marker&) = default;
+};
+
+inline constexpr std::size_t kMaxMarkerNote = 500;
+
+// A chapter of an exported file: from one chapter marker to the next (or the end).
+struct Chapter {
+    Ticks start = 0;
+    Ticks end = 0;
+    std::string title;
+
+    friend bool operator==(const Chapter&, const Chapter&) = default;
+};
+
+// Tracks of their own, played by compound clips (Clip::sequenceId).
+struct Sequence {
+    Id id = kNoId;
+    std::string name;
+    std::vector<Track> tracks;
+
+    // End of the last clip on any of its tracks.
+    Ticks duration() const;
+
+    friend bool operator==(const Sequence&, const Sequence&) = default;
+};
+
 struct ClipLocation {
     Track* track = nullptr;
     Clip* clip = nullptr;
@@ -327,6 +372,8 @@ public:
     ProjectSettings settings;
     std::vector<MediaItem> media;
     std::vector<Track> tracks;
+    std::vector<Marker> markers;     // sorted by time
+    std::vector<Sequence> sequences; // the insides of compound clips
 
     Id allocateId() { return m_nextId++; }
     Id nextId() const { return m_nextId; }
@@ -337,9 +384,18 @@ public:
     std::optional<std::size_t> trackIndex(Id trackId) const;
     const MediaItem* findMedia(Id mediaId) const;
     std::optional<ClipLocation> locateClip(Id clipId);
+    const Sequence* findSequence(Id sequenceId) const;
+    Marker* findMarker(Id markerId);
+    // How much source a clip can play: its media's length, its sequence's, or none (titles,
+    // adjustment layers, stills: any length).
+    std::optional<Ticks> sourceLimit(const Clip& clip) const;
 
     // End time of the last clip on any track.
     Ticks duration() const;
+    // The chapters an export gets from the chapter markers before the end, titled by their
+    // notes ("Chapter N" when empty). When the first starts after 0, an "Opening" chapter
+    // covers the time before it (players expect chapters to start at the beginning).
+    std::vector<Chapter> chapters() const;
 
     friend bool operator==(const Project&, const Project&) = default;
 

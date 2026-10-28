@@ -6,6 +6,7 @@
 #include "decode/AudioDecoder.h"
 #include "model/Project.h"
 
+#include <array>
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -77,7 +78,8 @@ struct MixLevels {
 // that are not muted (and, while any track is soloed, soloed); each gets its own decoder so
 // overlapping clips of one file work. Per clip: volume and fades, then its audio effects
 // (whose echoes ring on past its end); played faster or slower it keeps its pitch unless
-// set not to. Per track: volume and balance.
+// set not to. Per track: volume and balance. A compound clip plays its sequence's tracks,
+// mixed the same way, as its sound.
 class TimelineAudio {
 public:
     TimelineAudio() = default;
@@ -108,8 +110,15 @@ private:
     void run(std::shared_ptr<const Project> project, Ticks start, std::uint64_t generation);
     // How long the clip's effects ring on after its end (0 without effects).
     Ticks tailOf(const Clip& clip);
-    void mixClip(const Project& project, const Track& track, const Clip& clip, Ticks chunkStart, Ticks tail,
-                 float* mix, std::vector<float>& scratch);
+    // Mixes `frames` samples of a clip from `chunkStart` (its track's time) into `mix`;
+    // `keepUntil` is the timeline time its streams (and those inside it) stay open until.
+    void mixClip(const Project& project, const Track& track, const Clip& clip, Ticks chunkStart, int frames,
+                 Ticks tail, Ticks keepUntil, float* mix, std::vector<float>& scratch, int depth);
+    // Mixes a compound clip's sequence from `start` (its own time) into `mix`.
+    void mixTracks(const Project& project, const std::vector<Track>& tracks, Ticks start, int frames, Ticks keepUntil,
+                   float* mix, std::vector<float>& scratch, int depth);
+
+    static constexpr int kMaxNesting = 8;
 
     std::mutex m_control;
     std::shared_ptr<const Project> m_project;
@@ -121,7 +130,9 @@ private:
 
     // Only touched by the producer thread; restarts join it first.
     std::map<Id, ClipStream> m_streams;
-    std::vector<float> m_resampled;
+    std::array<std::vector<float>, kMaxNesting + 2> m_clipBuffers;  // a clip's sound, per nesting depth
+    std::array<std::vector<float>, kMaxNesting + 2> m_trackBuffers; // a nested track's mix, per depth
+    std::map<Id, Ticks> m_clipEnds; // when each stream used this chunk can close
     dsp::LoudnessMeter m_meter;
 
     mutable std::mutex m_levelsMutex;

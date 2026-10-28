@@ -3,6 +3,10 @@
 #include "decode/VideoDecoder.h"
 #include "encode/Mp4Writer.h"
 
+extern "C" {
+#include <libavformat/avformat.h>
+}
+
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
@@ -110,6 +114,49 @@ TEST_CASE("an H.264 MP4 reads back with its pictures and sound")
 TEST_CASE("an HEVC MP4 reads back with its pictures and sound")
 {
     roundTrip(VideoCodec::Hevc, "tve_writer_hevc.mp4");
+}
+
+TEST_CASE("chapters are written into the file")
+{
+    const std::string path = tempFile("tve_writer_chapters.mp4");
+    Mp4Settings settings;
+    settings.width = 160;
+    settings.height = 90;
+    settings.audio = false;
+    settings.chapters = {{0, kSec, "Opening"}, {kSec, 3 * kSec / 2, "The middle"}, {3 * kSec / 2, 2 * kSec, "Ending"}};
+    std::string error;
+    auto writer = Mp4Writer::open(path, settings, &error);
+    INFO(error);
+    REQUIRE(writer);
+    const Nv12 grey(160, 90, 126, 128, 128);
+    for (int frame = 0; frame < 60; ++frame)
+        REQUIRE(writer->writeVideo(grey.luma.data(), 160, grey.chroma.data(), 160));
+    REQUIRE(writer->finish());
+    writer.reset();
+
+    AVFormatContext* format = nullptr;
+    REQUIRE(avformat_open_input(&format, path.c_str(), nullptr, nullptr) == 0);
+    REQUIRE(avformat_find_stream_info(format, nullptr) >= 0);
+    REQUIRE(format->nb_chapters == 3);
+    const char* titles[] = {"Opening", "The middle", "Ending"};
+    const double starts[] = {0.0, 1.0, 1.5};
+    for (unsigned i = 0; i < 3; ++i) {
+        const AVChapter* chapter = format->chapters[i];
+        INFO("chapter " << i);
+        const AVDictionaryEntry* title = av_dict_get(chapter->metadata, "title", nullptr, 0);
+        REQUIRE(title);
+        CHECK(std::string(title->value) == titles[i]);
+        CHECK(double(chapter->start) * av_q2d(chapter->time_base) == Catch::Approx(starts[i]).margin(0.01));
+    }
+    // The chapter track holds text, not pictures: the video still reads back whole.
+    avformat_close_input(&format);
+    auto decoder = VideoDecoder::open(path, &error);
+    REQUIRE(decoder);
+    int frames = 0;
+    while (decoder->nextFrame())
+        ++frames;
+    CHECK(frames == 60);
+    std::filesystem::remove(path);
 }
 
 TEST_CASE("odd sizes and unwritable paths are refused")

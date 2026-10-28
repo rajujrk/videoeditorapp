@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <thread>
 
 namespace tve {
@@ -62,6 +63,11 @@ private:
     void restartAt(Ticks time);
     void stopProducer();
     void run(std::shared_ptr<const Project> project, Ticks start);
+    // The layers `tracks` show at `time`, bottom first, into `out`; a compound clip's from its
+    // sequence, nested. `live` collects every clip shown (their decoders stay open).
+    void buildLayers(const Project& project, const std::vector<Track>& tracks, Ticks time,
+                     std::vector<VideoLayer>& out, int depth, std::set<Id>& live);
+    static constexpr int kMaxNesting = 8; // compound clips inside compound clips
     // The decoded frame on screen at `sourceTime` for this clip, decoding or seeking as
     // needed; nullptr if the media cannot be decoded.
     const DecodedFrame* frameAt(LayerState& state, const MediaItem& media, Ticks sourceTime);

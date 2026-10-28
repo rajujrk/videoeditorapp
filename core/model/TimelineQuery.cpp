@@ -57,8 +57,8 @@ std::optional<TransitionWindow> transitionOutOf(const Track& track, const Clip& 
 Ticks clampedSourceTime(const Project& project, const Clip& clip, Ticks time)
 {
     Ticks source = clip.sourceTimeBeyond(time);
-    if (const MediaItem* media = project.findMedia(clip.mediaId); media && media->duration > 0)
-        source = std::min(source, media->duration - 1);
+    if (const auto limit = project.sourceLimit(clip); limit && *limit > 0)
+        source = std::min(source, *limit - 1);
     return std::max<Ticks>(source, 0);
 }
 
@@ -114,8 +114,13 @@ std::optional<VisibleClip> visibleVideoAt(const Project& project, Ticks time)
 
 std::vector<VisibleClip> visibleVideoLayersAt(const Project& project, Ticks time)
 {
+    return visibleVideoLayersAt(project, project.tracks, time);
+}
+
+std::vector<VisibleClip> visibleVideoLayersAt(const Project& project, const std::vector<Track>& tracks, Ticks time)
+{
     std::vector<VisibleClip> layers;
-    for (const Track& track : project.tracks) {
+    for (const Track& track : tracks) {
         if (!showsPictures(track))
             continue;
         if (auto layer = trackLayerAt(project, track, time))

@@ -43,6 +43,11 @@ QtObject {
         readonly property color trackEffect: "#D98A3D"
         readonly property color playhead: theme.dark ? "#FF5A5F" : "#E0343A"
         readonly property color selection: theme.dark ? "#FFFFFF" : "#161A21"
+        // Timeline markers, by the colour name the project stores
+        readonly property var markers: ({
+            red: "#E5484D", orange: "#E8833A", yellow: "#E2B33C",
+            green: "#3CB37A", blue: "#4D8AF0", purple: "#9B6BE0"
+        })
 
         readonly property color overlay: "#B3000000" // scrim behind text on video
     }

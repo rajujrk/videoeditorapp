@@ -1,6 +1,7 @@
 #include "audio/AudioOutput.h"
 #include "commands/CommandStack.h"
 #include "commands/EditCommands.h"
+#include "commands/StructureCommands.h"
 #include "decode/AudioDecoder.h"
 #include "playback/PlaybackClock.h"
 #include "playback/TimelineAudio.h"
@@ -550,4 +551,43 @@ TEST_CASE("loudness of a mix")
     // 6 dB quieter on the track measures 6 LU lower.
     p.push<SetTrackMixCommand>(p.audioTrack, TrackMix{-6.0f, 0.0f, false});
     CHECK(measureLoudness(p.project, 0, 3 * kSec) == Catch::Approx(loudness - 6.0).margin(0.05));
+}
+
+TEST_CASE("a compound clip plays the sound of the clips inside it")
+{
+    requireSamples();
+    AudioProject p;
+    const Id clicks = p.importAudio("test_clicks.wav", 3 * kSec);
+    // Clicks heard at 1.25 s and 2.25 s, as in "mixer places clips at their timeline position".
+    const Id inner = p.push<AddClipCommand>(p.audioTrack, clicks, kSec, 2 * kSec, kSec / 4).clipId();
+    auto& compound = p.push<CreateCompoundCommand>(std::vector<Id>{inner}, "Clicks");
+    const Id outer = compound.clipId();
+
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    auto mix = drainMix(mixer);
+    CHECK(firstLoud(mix) == 60000);
+    CHECK(peak(mix, 108000, 108480) == Catch::Approx(0.9f).margin(0.01));
+
+    // Moved half a second earlier, trimmed past the first click, and at half volume: the
+    // second click alone, at 1.75 s, half as loud.
+    p.push<MoveClipCommand>(outer, p.audioTrack, kSec / 2);
+    p.push<TrimClipCommand>(outer, TrimClipCommand::Edge::Start, kSec);
+    p.push<SetClipAudioCommand>(outer, ClipAudio{-6.0206f, 0, 0});
+    mixer.restart(p.project, 0);
+    mix = drainMix(mixer);
+    CHECK(firstLoud(mix, 0.05f) == 84000);
+    CHECK(peak(mix, 84000, 84480) == Catch::Approx(0.45f).margin(0.01));
+
+    // The sequence's track keeps its own volume, under the compound clip's.
+    p.project->sequences[0].tracks[0].gainDb = -6.0206f;
+    mixer.restart(p.project, 0);
+    mix = drainMix(mixer);
+    CHECK(peak(mix, 84000, 84480) == Catch::Approx(0.225f).margin(0.01));
+
+    // Muting the compound's track silences everything inside it.
+    p.push<SetTrackFlagCommand>(p.audioTrack, SetTrackFlagCommand::Flag::Muted, true);
+    mixer.restart(p.project, 0);
+    mix = drainMix(mixer);
+    CHECK(peak(mix, 0, mix.size() / 2) == 0.0f);
 }

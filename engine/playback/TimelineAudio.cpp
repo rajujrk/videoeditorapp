@@ -96,6 +96,8 @@ bool isAudible(const Project& project, const Track& track, const Clip& clip)
         return false;
     if (clip.freeze || clip.generated())
         return false;
+    if (clip.compound())
+        return project.findSequence(clip.sequenceId) != nullptr;
     const MediaItem* media = project.findMedia(clip.mediaId);
     return media && media->hasAudio;
 }
@@ -156,12 +158,48 @@ Ticks TimelineAudio::tailOf(const Clip& clip)
     return Ticks(stream.effects->tail() * double(kTicksPerSecond));
 }
 
+void TimelineAudio::mixTracks(const Project& project, const std::vector<Track>& tracks, Ticks start, int frames,
+                              Ticks keepUntil, float* mix, std::vector<float>& scratch, int depth)
+{
+    if (depth > kMaxNesting)
+        return;
+    const Ticks end = start + audio::ticksFromSamples(frames);
+    std::vector<float>& bus = m_trackBuffers[std::size_t(depth)];
+    for (const Track& track : tracks) {
+        if (!carriesSound(track))
+            continue;
+        bus.assign(std::size_t(frames) * audio::kChannels, 0.0f);
+        bool any = false;
+        for (const Clip& clip : track.clips) {
+            if (!isAudible(project, track, clip))
+                continue;
+            const AudibleSpan span = audibleSpan(track, clip);
+            const Ticks tail = tailOf(clip);
+            m_clipEnds[clip.id] = std::max(m_clipEnds[clip.id], keepUntil);
+            if (span.end + tail <= start || span.start >= end)
+                continue;
+            mixClip(project, track, clip, start, frames, tail, keepUntil, bus.data(), scratch, depth);
+            any = true;
+        }
+        if (!any)
+            continue;
+        const float gain = track.gainDb <= kMinGainDb ? 0.0f : dsp::dbToGain(track.gainDb);
+        const float left = gain * (track.pan > 0.0f ? 1.0f - track.pan : 1.0f);
+        const float right = gain * (track.pan < 0.0f ? 1.0f + track.pan : 1.0f);
+        for (int i = 0; i < frames; ++i) {
+            mix[std::size_t(i) * 2] += bus[std::size_t(i) * 2] * left;
+            mix[std::size_t(i) * 2 + 1] += bus[std::size_t(i) * 2 + 1] * right;
+        }
+    }
+}
+
 void TimelineAudio::mixClip(const Project& project, const Track& track, const Clip& clip, Ticks chunkStart,
-                            Ticks tail, float* mix, std::vector<float>& scratch)
+                            int chunkFrames, Ticks tail, Ticks keepUntil, float* mix, std::vector<float>& scratch,
+                            int depth)
 {
     // A clip is heard over its own span plus the handles its transitions reach into, and its
     // effects' tail after that (fed silence).
-    const Ticks chunkEnd = chunkStart + audio::ticksFromSamples(AudioChunk::kFrames);
+    const Ticks chunkEnd = chunkStart + audio::ticksFromSamples(chunkFrames);
     const AudibleSpan span = audibleSpan(track, clip);
     const Ticks from = std::max(chunkStart, span.start);
     const Ticks to = std::min(chunkEnd, span.end + tail);
@@ -170,19 +208,31 @@ void TimelineAudio::mixClip(const Project& project, const Track& track, const Cl
     const Ticks soundTo = std::min(to, span.end);
 
     ClipStream& stream = m_streams[clip.id];
-    const int offset = int(audio::samplesFromTicks(from - chunkStart));
-    const int frames = int(audio::samplesFromTicks(to - from));
-    std::vector<float>& out = m_resampled;
+    const int offset = std::min(int(audio::samplesFromTicks(from - chunkStart)), chunkFrames);
+    const int frames = std::min(int(audio::samplesFromTicks(to - from)), chunkFrames - offset);
+    if (frames <= 0)
+        return;
+    std::vector<float>& out = m_clipBuffers[std::size_t(depth)];
     out.assign(std::size_t(frames) * audio::kChannels, 0.0f);
     const int soundFrames = from < soundTo ? std::min(frames, int(audio::samplesFromTicks(soundTo - from))) : 0;
     int read = 0;
 
-    if (soundFrames > 0 && !stream.decoder) {
+    if (soundFrames > 0 && !stream.decoder && !clip.compound()) {
         const MediaItem* media = project.findMedia(clip.mediaId);
         stream.decoder = media ? AudioDecoder::open(media->path) : nullptr;
     }
     const bool plainSpeed = clip.speed == 1.0 && !clip.reversed && clip.speedRamp.empty();
-    if (soundFrames == 0 || !stream.decoder) {
+    if (soundFrames > 0 && clip.compound()) {
+        // Its sequence's tracks, mixed (compound clips play at their own speed).
+        const Sequence* sequence = project.findSequence(clip.sequenceId);
+        const Ticks sourceTime = clip.sourceTimeBeyond(from);
+        const int silent =
+            sourceTime < 0 ? int(std::min<std::int64_t>(audio::samplesFromTicks(-sourceTime), soundFrames)) : 0;
+        if (sequence && silent < soundFrames)
+            mixTracks(project, sequence->tracks, std::max<Ticks>(sourceTime, 0), soundFrames - silent, keepUntil,
+                      out.data() + std::size_t(silent) * audio::kChannels, scratch, depth + 1);
+        read = soundFrames;
+    } else if (soundFrames == 0 || !stream.decoder) {
         // In the effects' tail, or unreadable media: silence (the effects still ring out).
     } else if (plainSpeed) {
         // Before the media's start (a head handle that is not there) is silence.
@@ -314,7 +364,7 @@ void TimelineAudio::run(std::shared_ptr<const Project> project, Ticks start, std
         AudioChunk chunk{time, generation, std::vector<float>(AudioChunk::kFrames * audio::kChannels, 0.0f)};
         MixLevels levels;
         levels.pts = time;
-        std::map<Id, Ticks> clipEnds;
+        m_clipEnds.clear();
         for (const Track& track : project->tracks) {
             if (!carriesSound(track))
                 continue;
@@ -327,10 +377,11 @@ void TimelineAudio::run(std::shared_ptr<const Project> project, Ticks start, std
                         continue;
                     const AudibleSpan span = audibleSpan(track, clip);
                     const Ticks tail = tailOf(clip);
-                    clipEnds[clip.id] = span.end + tail;
+                    m_clipEnds[clip.id] = span.end + tail;
                     if (span.end + tail <= time || span.start >= chunk.end())
                         continue;
-                    mixClip(*project, track, clip, time, tail, bus.data(), scratch);
+                    mixClip(*project, track, clip, time, AudioChunk::kFrames, tail, span.end + tail, bus.data(), scratch,
+                            0);
                     any = true;
                 }
                 if (any) {
@@ -362,8 +413,8 @@ void TimelineAudio::run(std::shared_ptr<const Project> project, Ticks start, std
         }
         // Close decoders of clips that are behind us.
         std::erase_if(m_streams, [&](const auto& entry) {
-            const auto clipEnd = clipEnds.find(entry.first);
-            return clipEnd == clipEnds.end() || clipEnd->second < time;
+            const auto clipEnd = m_clipEnds.find(entry.first);
+            return clipEnd == m_clipEnds.end() || clipEnd->second < time;
         });
         if (!m_queue.push(std::move(chunk)))
             return;

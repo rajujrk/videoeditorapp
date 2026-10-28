@@ -19,6 +19,8 @@ add_library(tve_core STATIC
     commands/CommandStack.cpp
     commands/EditCommands.h
     commands/EditCommands.cpp
+    commands/StructureCommands.h
+    commands/StructureCommands.cpp
     io/ProjectSerializer.h
     io/ProjectSerializer.cpp
     io/LutFile.h

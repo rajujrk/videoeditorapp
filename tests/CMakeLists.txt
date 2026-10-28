@@ -16,6 +16,7 @@ add_executable(tve_core_tests
     core/test_looks.cpp
     core/test_stills.cpp
     core/test_masks.cpp
+    core/test_structure.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)

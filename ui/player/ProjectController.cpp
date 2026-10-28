@@ -4,6 +4,7 @@
 #include "audio/AudioOutput.h"
 #include "audio/AudioRecorder.h"
 #include "commands/EditCommands.h"
+#include "commands/StructureCommands.h"
 #include "decode/AudioDecoder.h"
 #include "decode/VideoDecoder.h"
 #include "io/LutFile.h"
@@ -39,6 +40,7 @@
 #include <QUuid>
 #include <QtGlobal>
 
+#include <array>
 #include <cerrno>
 #include <csignal>
 #include <set>
@@ -693,24 +695,36 @@ QVariantList ProjectController::tracks() const
         QVariantList clips;
         for (const Clip& clip : track->clips) {
             const MediaItem* media = m_project.findMedia(clip.mediaId);
+            const Sequence* sequence = clip.compound() ? m_project.findSequence(clip.sequenceId) : nullptr;
             const QString label = clip.text      ? QString::fromStdString(clip.text->text).section(QLatin1Char('\n'), 0, 0)
                                   : clip.adjustment ? QStringLiteral("Adjustment layer")
+                                  : sequence       ? QString::fromStdString(sequence->name)
                                   : media          ? mediaName(media->path)
                                                    : QStringLiteral("Missing media");
+            const bool sequenceSound = sequence && std::ranges::any_of(sequence->tracks, [&](const Track& t) {
+                return std::ranges::any_of(t.clips, [&](const Clip& c) {
+                    const MediaItem* m = m_project.findMedia(c.mediaId);
+                    return c.compound() || (m && m->hasAudio);
+                });
+            });
             clips << QVariantMap{
                 {QStringLiteral("id"), double(clip.id)},
                 {QStringLiteral("mediaId"), double(clip.mediaId)},
                 {QStringLiteral("label"), label},
                 {QStringLiteral("isTitle"), clip.text.has_value()},
                 {QStringLiteral("isAdjustment"), clip.adjustment},
+                {QStringLiteral("isCompound"), sequence != nullptr},
+                {QStringLiteral("groupId"), double(clip.groupId)},
                 {QStringLiteral("isStill"), media && media->still},
                 {QStringLiteral("lookTitle"), clip.look ? QString::fromStdString(clip.look->title) : QString()},
                 {QStringLiteral("start"), seconds(clip.start)},
                 {QStringLiteral("duration"), seconds(clip.duration)},
                 {QStringLiteral("sourceIn"), seconds(clip.sourceIn)},
-                {QStringLiteral("mediaDuration"), media ? seconds(media->duration) : 0.0},
+                {QStringLiteral("mediaDuration"), sequence ? seconds(sequence->duration())
+                                                  : media  ? seconds(media->duration)
+                                                           : 0.0},
                 {QStringLiteral("path"), media ? QString::fromStdString(media->path) : QString()},
-                {QStringLiteral("hasAudio"), media && media->hasAudio},
+                {QStringLiteral("hasAudio"), sequenceSound || (media && media->hasAudio)},
                 {QStringLiteral("audioEnabled"), clip.audioEnabled},
                 {QStringLiteral("gainDb"), double(clip.gainDb)},
                 {QStringLiteral("fadeIn"), seconds(clip.fadeIn)},
@@ -784,9 +798,19 @@ bool ProjectController::playing() const
 void ProjectController::setSelectedClip(double clipId)
 {
     const Id id = toId(clipId);
-    if (id == m_selectedClip && (id == kNoId || m_selectedTransition == kNoId))
+    // A grouped clip selects its whole group.
+    std::vector<Id> selection;
+    if (id != kNoId) {
+        const auto location = m_project.locateClip(id);
+        if (location && location->clip->groupId != kNoId)
+            selection = groupMembers(m_project, location->clip->groupId);
+        else
+            selection = {id};
+    }
+    if (id == m_selectedClip && (id == kNoId || m_selectedTransition == kNoId) && selection == m_selectedClips)
         return;
     m_selectedClip = id;
+    m_selectedClips = std::move(selection);
     if (id != kNoId)
         m_selectedTransition = kNoId;
     // Mask editing and key picking belong to the clip they started on.
@@ -821,8 +845,10 @@ void ProjectController::setSelectedTransition(double clipId)
     if (id == m_selectedTransition && (id == kNoId || m_selectedClip == kNoId))
         return;
     m_selectedTransition = id;
-    if (id != kNoId)
+    if (id != kNoId) {
         m_selectedClip = kNoId;
+        m_selectedClips.clear();
+    }
     emit selectionChanged();
     emit selectedClipInfoChanged();
 }
@@ -886,6 +912,7 @@ void ProjectController::resetProject(Project project, const QString& filePath)
     m_stack = std::make_unique<CommandStack>(m_project);
     m_filePath = filePath;
     m_selectedClip = kNoId;
+    m_selectedClips.clear();
     m_canvasChosen = !filePath.isEmpty();
     m_playback->seek(0);
     publish();
@@ -1032,7 +1059,34 @@ bool ProjectController::importAndAppend(const QUrl& file)
 
 bool ProjectController::moveClip(double clipId, double trackId, double start)
 {
-    return apply(std::make_unique<MoveClipCommand>(toId(clipId), toId(trackId), std::max<Ticks>(ticks(start), 0)));
+    const Id id = toId(clipId);
+    const Ticks to = std::max<Ticks>(ticks(start), 0);
+    const auto location = m_project.locateClip(id);
+    const std::vector<Id> members = location ? groupMembers(m_project, location->clip->groupId) : std::vector<Id>{};
+    if (members.size() < 2)
+        return apply(std::make_unique<MoveClipCommand>(id, toId(trackId), to));
+
+    // A group moves together, every clip by the same time (none before zero); the dragged
+    // one can change track, the others keep theirs. Clips go in the order that keeps them
+    // from running into each other on a shared track.
+    struct Move {
+        Id clip;
+        Id track;
+        Ticks start;
+    };
+    std::vector<Move> moves;
+    Ticks earliest = location->clip->start;
+    for (Id member : members) {
+        const auto found = m_project.locateClip(member);
+        moves.push_back({member, member == id ? toId(trackId) : found->track->id, found->clip->start});
+        earliest = std::min(earliest, found->clip->start);
+    }
+    const Ticks delta = std::max(to - location->clip->start, -earliest);
+    std::ranges::sort(moves, [&](const Move& a, const Move& b) { return delta > 0 ? a.start > b.start : a.start < b.start; });
+    std::vector<std::unique_ptr<Command>> commands;
+    for (const Move& move : moves)
+        commands.push_back(std::make_unique<MoveClipCommand>(move.clip, move.track, move.start + delta));
+    return apply(std::make_unique<CompositeCommand>(std::move(commands), "Move Group"));
 }
 
 bool ProjectController::trimClip(double clipId, bool startEdge, double time)
@@ -1074,6 +1128,23 @@ bool ProjectController::deleteClip(double clipId)
         return false;
     }
     const bool ripple = location->track->id == mainTrackId();
+    const std::vector<Id> members = groupMembers(project, location->clip->groupId);
+    if (members.size() > 1) {
+        // The whole group, latest first so closing gaps on the main track moves none still to go.
+        std::vector<std::pair<Ticks, Id>> order;
+        for (Id member : members)
+            order.emplace_back(project.locateClip(member)->clip->start, member);
+        std::ranges::sort(order, std::greater{});
+        std::vector<std::unique_ptr<Command>> commands;
+        for (const auto& [start, member] : order) {
+            const bool onMain = project.locateClip(member)->track->id == mainTrackId();
+            commands.push_back(std::make_unique<DeleteClipCommand>(member, onMain));
+        }
+        if (!apply(std::make_unique<CompositeCommand>(std::move(commands), "Delete Group")))
+            return false;
+        setSelectedClip(0);
+        return true;
+    }
     if (!apply(std::make_unique<DeleteClipCommand>(id, ripple)))
         return false;
     if (m_selectedClip == id)
@@ -1437,6 +1508,7 @@ QVariantMap ProjectController::selectedClipInfo() const
         if (!clip)
             continue;
         const MediaItem* media = m_project.findMedia(clip->mediaId);
+        const Sequence* sequence = clip->compound() ? m_project.findSequence(clip->sequenceId) : nullptr;
         const Ticks now = ticks(m_playhead);
         const Ticks local = keyTime(*clip);
         QVariantMap keyframes;
@@ -1467,15 +1539,18 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("id"), double(clip->id)},
             {QStringLiteral("label"), clip->text         ? QStringLiteral("Title")
                                       : clip->adjustment ? QStringLiteral("Adjustment layer")
+                                      : sequence         ? QString::fromStdString(sequence->name)
                                       : media            ? mediaName(media->path)
                                                          : QString()},
             {QStringLiteral("isTitle"), clip->text.has_value()},
+            {QStringLiteral("isCompound"), sequence != nullptr},
+            {QStringLiteral("groupId"), double(clip->groupId)},
             {QStringLiteral("text"), clip->text ? textMap(*clip->text) : QVariantMap()},
             {QStringLiteral("trackKind"), track.kind == TrackKind::Audio ? QStringLiteral("audio") : QStringLiteral("video")},
             {QStringLiteral("locked"), track.locked},
             {QStringLiteral("start"), seconds(clip->start)},
             {QStringLiteral("duration"), seconds(clip->duration)},
-            {QStringLiteral("hasAudio"), media && media->hasAudio},
+            {QStringLiteral("hasAudio"), sequence || (media && media->hasAudio)},
             {QStringLiteral("audioEnabled"), clip->audioEnabled},
             {QStringLiteral("gainDb"), double(clip->gainDbAt(now))},
             {QStringLiteral("fadeIn"), seconds(clip->fadeIn)},
@@ -1509,7 +1584,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("speedRamp"), rampList(clip->speedRamp)},
             {QStringLiteral("keepPitch"), clip->keepPitch},
             // Sound the clip plays itself (not detached, not a title or a silent file).
-            {QStringLiteral("hasSound"), !clip->generated() && media && media->hasAudio
+            {QStringLiteral("hasSound"), !clip->generated() && (sequence || (media && media->hasAudio))
                                              && (track.kind == TrackKind::Audio || clip->audioEnabled)},
             {QStringLiteral("audioEffects"), effectsList(clip->audioEffects)},
             {QStringLiteral("loudness"), [&]() -> QVariant {
@@ -3201,6 +3276,11 @@ double ProjectController::snap(double value, double tolerance, double ignoreClip
 {
     const Id ignore = toId(ignoreClipId);
     std::vector<Ticks> points{0, ticks(m_playhead)};
+    for (const tve::Marker& marker : m_project.markers) {
+        points.push_back(marker.time);
+        if (marker.duration > 0)
+            points.push_back(marker.time + marker.duration);
+    }
     for (const Track& track : m_project.tracks) {
         for (const Clip& clip : track.clips) {
             if (clip.id == ignore)
@@ -3455,7 +3535,8 @@ std::vector<Id> ProjectController::transitionCuts() const
         for (std::size_t i = 1; i < track.clips.size(); ++i) {
             const Clip& before = track.clips[i - 1];
             const Clip& clip = track.clips[i];
-            if (before.end() == clip.start && !before.generated() && !clip.generated())
+            if (before.end() == clip.start && !before.generated() && !clip.generated() && !before.compound()
+                && !clip.compound())
                 cuts.push_back(clip.id);
         }
     }
@@ -3568,5 +3649,201 @@ bool ProjectController::addSticker(const QString& stickerId)
     if (!apply(std::move(clip)))
         return false;
     setSelectedClip(double(raw->clipId()));
+    return true;
+}
+
+// --- Markers, groups and compound clips ---
+
+namespace {
+constexpr std::array kMarkerColors{"red", "orange", "yellow", "green", "blue", "purple"};
+} // namespace
+
+QStringList ProjectController::markerColors() const
+{
+    QStringList list;
+    for (const char* name : kMarkerColors)
+        list << QString::fromLatin1(name);
+    return list;
+}
+
+QVariantList ProjectController::markers() const
+{
+    QVariantList list;
+    for (const tve::Marker& marker : m_project.markers) {
+        list << QVariantMap{
+            {QStringLiteral("id"), double(marker.id)},
+            {QStringLiteral("time"), seconds(marker.time)},
+            {QStringLiteral("duration"), seconds(marker.duration)},
+            {QStringLiteral("color"), QString::fromLatin1(kMarkerColors[std::size_t(marker.color)])},
+            {QStringLiteral("note"), QString::fromStdString(marker.note)},
+            {QStringLiteral("chapter"), marker.chapter},
+        };
+    }
+    return list;
+}
+
+double ProjectController::addMarker(double at, const QString& note)
+{
+    tve::Marker marker;
+    marker.time = at < 0 ? ticks(m_playhead) : ticks(at);
+    marker.note = note.toStdString();
+    auto command = std::make_unique<AddMarkerCommand>(std::move(marker));
+    AddMarkerCommand* raw = command.get();
+    if (!apply(std::move(command)))
+        return 0;
+    return double(raw->markerId());
+}
+
+bool ProjectController::setMarker(double markerId, const QVariantMap& changes)
+{
+    const tve::Marker* found = m_project.findMarker(toId(markerId));
+    if (!found) {
+        reportError(QStringLiteral("marker not found"));
+        return false;
+    }
+    tve::Marker marker = *found;
+    if (changes.contains(QStringLiteral("time")))
+        marker.time = ticks(changes.value(QStringLiteral("time")).toDouble());
+    if (changes.contains(QStringLiteral("duration")))
+        marker.duration = ticks(changes.value(QStringLiteral("duration")).toDouble());
+    if (changes.contains(QStringLiteral("note")))
+        marker.note = changes.value(QStringLiteral("note")).toString().toStdString();
+    if (changes.contains(QStringLiteral("chapter")))
+        marker.chapter = changes.value(QStringLiteral("chapter")).toBool();
+    if (changes.contains(QStringLiteral("color"))) {
+        const QString name = changes.value(QStringLiteral("color")).toString();
+        const auto color = std::ranges::find(kMarkerColors, name.toStdString());
+        if (color == kMarkerColors.end()) {
+            reportError(QStringLiteral("unknown marker colour: ") + name);
+            return false;
+        }
+        marker.color = MarkerColor(color - kMarkerColors.begin());
+    }
+    if (marker == *found)
+        return true;
+    return apply(std::make_unique<SetMarkerCommand>(std::move(marker)));
+}
+
+bool ProjectController::removeMarker(double markerId)
+{
+    return apply(std::make_unique<RemoveMarkerCommand>(toId(markerId)));
+}
+
+bool ProjectController::seekMarker(int direction)
+{
+    const Ticks now = ticks(m_playhead);
+    const Ticks near = frameTicks() / 2;
+    std::optional<Ticks> target;
+    for (const tve::Marker& marker : m_project.markers) {
+        if (direction > 0 && marker.time > now + near && (!target || marker.time < *target))
+            target = marker.time;
+        if (direction <= 0 && marker.time < now - near && (!target || marker.time > *target))
+            target = marker.time;
+    }
+    if (!target)
+        return false;
+    seek(seconds(*target));
+    return true;
+}
+
+QVariantList ProjectController::selectedClips() const
+{
+    QVariantList list;
+    for (Id id : m_selectedClips) {
+        if (findClip(id))
+            list << double(id);
+    }
+    return list;
+}
+
+void ProjectController::toggleClipSelection(double clipId)
+{
+    const Id id = toId(clipId);
+    const auto location = m_project.locateClip(id);
+    if (!location)
+        return;
+    std::vector<Id> touched = groupMembers(m_project, location->clip->groupId);
+    if (touched.empty())
+        touched = {id};
+    const bool selected = std::ranges::find(m_selectedClips, id) != m_selectedClips.end();
+    if (selected) {
+        std::erase_if(m_selectedClips, [&](Id s) { return std::ranges::find(touched, s) != touched.end(); });
+        if (std::ranges::find(touched, m_selectedClip) != touched.end())
+            m_selectedClip = m_selectedClips.empty() ? kNoId : m_selectedClips.back();
+    } else {
+        for (Id t : touched) {
+            if (std::ranges::find(m_selectedClips, t) == m_selectedClips.end())
+                m_selectedClips.push_back(t);
+        }
+        m_selectedClip = id;
+        m_selectedTransition = kNoId;
+    }
+    if (m_activeMask != -1 || m_pickingKeyColor) {
+        m_activeMask = -1;
+        m_pickingKeyColor = false;
+        emit editingChanged();
+    }
+    emit selectionChanged();
+    emit selectedClipInfoChanged();
+}
+
+bool ProjectController::groupSelected()
+{
+    std::vector<Id> ids;
+    for (const QVariant& id : selectedClips())
+        ids.push_back(toId(id.toDouble()));
+    if (ids.size() < 2) {
+        reportError(QStringLiteral("Select two or more clips (⇧-click) to group them"));
+        return false;
+    }
+    return apply(std::make_unique<GroupClipsCommand>(std::move(ids)));
+}
+
+bool ProjectController::ungroupSelected()
+{
+    const Clip* clip = findClip(m_selectedClip);
+    if (!clip || clip->groupId == kNoId) {
+        reportError(QStringLiteral("Select a grouped clip to ungroup"));
+        return false;
+    }
+    if (!apply(std::make_unique<UngroupCommand>(clip->groupId)))
+        return false;
+    setSelectedClip(double(m_selectedClip));
+    return true;
+}
+
+double ProjectController::createCompound()
+{
+    std::vector<Id> ids;
+    for (const QVariant& id : selectedClips())
+        ids.push_back(toId(id.toDouble()));
+    if (ids.empty()) {
+        reportError(QStringLiteral("Select the clips to put in a compound clip"));
+        return 0;
+    }
+    std::size_t number = m_project.sequences.size() + 1;
+    const auto taken = [&](const std::string& name) {
+        return std::ranges::any_of(m_project.sequences, [&](const Sequence& s) { return s.name == name; });
+    };
+    while (taken("Compound " + std::to_string(number)))
+        ++number;
+    auto command = std::make_unique<CreateCompoundCommand>(std::move(ids), "Compound " + std::to_string(number));
+    CreateCompoundCommand* raw = command.get();
+    if (!apply(std::move(command)))
+        return 0;
+    setSelectedClip(double(raw->clipId()));
+    return double(raw->clipId());
+}
+
+bool ProjectController::breakCompound(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->compound()) {
+        reportError(QStringLiteral("Select a compound clip to break apart"));
+        return false;
+    }
+    if (!apply(std::make_unique<BreakCompoundCommand>(toId(clipId))))
+        return false;
+    setSelectedClip(0);
     return true;
 }

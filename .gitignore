@@ -4,3 +4,9 @@ compile_commands.json
 .DS_Store
 *.user
 samples/
+
+# SSH keys never belong in the repository
+eval "$(ssh-agent -s)"
+eval "$(ssh-agent -s)".pub
+id_*
+*.pem

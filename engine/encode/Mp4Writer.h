@@ -1,10 +1,12 @@
 #pragma once
 
+#include "model/Project.h"
 #include "model/Time.h"
 
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace tve {
 
@@ -19,6 +21,7 @@ struct Mp4Settings {
     std::int64_t audioBitrate = 192'000;
     bool audio = true;         // false: a video-only file
     int keyframeInterval = 0;  // frames between keyframes; 0: about two seconds
+    std::vector<Chapter> chapters; // in order; written as the file's chapter list
 };
 
 // Bitrate used when Mp4Settings::videoBitrate is 0: 0.15 bit per pixel per frame for H.264
@@ -26,7 +29,7 @@ struct Mp4Settings {
 std::int64_t defaultVideoBitrate(const Mp4Settings& settings);
 
 // Writes an MP4 file: H.264 or HEVC video encoded by VideoToolbox, and (unless turned off)
-// AAC stereo sound at 48 kHz, with the index at the front (fast start). Frames go in in order, one per frame
+// AAC stereo sound at 48 kHz, with the index at the front (fast start) and any chapters. Frames go in in order, one per frame
 // period; sound in any amount at a time. Not thread-safe.
 class Mp4Writer {
 public:
