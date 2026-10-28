@@ -413,10 +413,14 @@ QQuickRhiItemRenderer* VideoView::createRenderer()
 
 QVariantList VideoView::availableEffects() const
 {
-    QVariantList list;
-    for (const tve::LoadedEffect& effect : tve::EffectLibrary::builtIn().effects())
-        list << describeEffect(effect);
-    return list;
+    // Effects first, then overlays.
+    QVariantList effects;
+    QVariantList overlays;
+    for (const tve::LoadedEffect& effect : tve::EffectLibrary::builtIn().effects()) {
+        const bool overlay = std::ranges::find(effect.manifest.categories, "overlay") != effect.manifest.categories.end();
+        (overlay ? overlays : effects) << describeEffect(effect);
+    }
+    return effects + overlays;
 }
 
 int VideoView::enabledEffectCount() const
@@ -498,17 +502,25 @@ void PreviewOverrides::setGrade(tve::Id clipId, const tve::ColorGrade& grade)
     ++m_revision;
 }
 
+void PreviewOverrides::setLook(tve::Id clipId, const tve::ColorGrade& look)
+{
+    std::lock_guard lock(m_mutex);
+    m_looks[clipId] = look;
+    ++m_revision;
+}
+
 void PreviewOverrides::clear(tve::Id clipId)
 {
     std::lock_guard lock(m_mutex);
     m_visual.erase(clipId);
     m_effects.erase(clipId);
     m_grades.erase(clipId);
+    m_looks.erase(clipId);
     ++m_revision;
 }
 
 void PreviewOverrides::apply(tve::Id clipId, tve::ClipVisual& visual, std::vector<tve::ClipEffect>& effects,
-                             tve::ColorGrade& grade)
+                             tve::ColorGrade& grade, tve::ColorGrade& look)
 {
     std::lock_guard lock(m_mutex);
     if (auto it = m_visual.find(clipId); it != m_visual.end()) {
@@ -528,6 +540,12 @@ void PreviewOverrides::apply(tve::Id clipId, tve::ClipVisual& visual, std::vecto
             m_grades.erase(it);
         else
             grade = it->second;
+    }
+    if (auto it = m_looks.find(clipId); it != m_looks.end()) {
+        if (it->second == look)
+            m_looks.erase(it);
+        else
+            look = it->second;
     }
 }
 
@@ -577,6 +595,12 @@ void VideoView::setScopesEnabled(bool enabled)
 void VideoView::setPreviewGrade(tve::Id clipId, const tve::ColorGrade& grade)
 {
     m_previewOverrides->setGrade(clipId, grade);
+    update();
+}
+
+void VideoView::setPreviewLook(tve::Id clipId, const tve::ColorGrade& look)
+{
+    m_previewOverrides->setLook(clipId, look);
     update();
 }
 

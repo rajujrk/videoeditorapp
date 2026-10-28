@@ -13,6 +13,7 @@ add_executable(tve_core_tests
     core/test_keyframes.cpp
     core/test_speed_ramp.cpp
     core/test_color.cpp
+    core/test_looks.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
@@ -33,7 +34,7 @@ target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_S
 catch_discover_tests(tve_engine_tests)
 
 if(TARGET tve_gpu)
-    qt_add_executable(tve_gpu_tests gpu/test_effects.cpp gpu/test_compositor.cpp gpu/test_transitions.cpp gpu/test_color.cpp)
+    qt_add_executable(tve_gpu_tests gpu/test_effects.cpp gpu/test_compositor.cpp gpu/test_transitions.cpp gpu/test_color.cpp gpu/test_looks.cpp)
     # Deliberately broken effect and transition packages for the loader's error checks.
     file(GLOB TVE_TEST_EFFECT_SHADERS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
          gpu/fixtures/video/*/*.frag gpu/fixtures/transitions/*/*.frag)

@@ -22,6 +22,12 @@ class QRhiTextureRenderTarget;
 
 namespace tve {
 
+struct Lut3d;
+
+// Reads a LUT from a file, or from the app's resources for a path starting ":/" (the
+// built-in library). Throws LutError.
+Lut3d readLut(const std::string& path);
+
 // Applies colour grades on the GPU: one pass per graded picture, into an RGBA16F texture
 // of the picture's size. Each LUT file is read and uploaded once (as a 3D texture); one
 // that cannot be read is left out of the grade, and lutError() says why.

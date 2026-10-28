@@ -27,6 +27,8 @@ qt_add_qml_module(tve_player
         TransitionPreviewProvider.cpp
         TitleRenderer.h
         TitleRenderer.cpp
+        LookLibrary.h
+        LookLibrary.cpp
         ScopeView.h
         ScopeView.cpp
         MicrophoneAccess.h

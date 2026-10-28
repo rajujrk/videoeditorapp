@@ -76,6 +76,21 @@ std::unique_ptr<QRhiTexture> make3d(QRhi* rhi, QRhiCommandBuffer* cb, int n, con
 
 } // namespace
 
+Lut3d readLut(const std::string& path)
+{
+    if (!path.starts_with(":/"))
+        return loadLut(path);
+    QFile file(QString::fromStdString(path));
+    if (!file.open(QIODevice::ReadOnly))
+        throw LutError("no built-in LUT " + path);
+    const std::string text = file.readAll().toStdString();
+    if (path.ends_with(".cube"))
+        return parseCubeLut(text);
+    if (path.ends_with(".3dl"))
+        return parse3dlLut(text);
+    throw LutError("unsupported LUT format " + path);
+}
+
 ColorGrader::ColorGrader(QRhi* rhi) : m_rhi(rhi)
 {
     m_vertex = readShader(QStringLiteral(":/effects/common/fullscreen.vert.qsb"));
@@ -132,7 +147,7 @@ ColorGrader::LoadedLut& ColorGrader::lut(QRhiCommandBuffer* cb, const std::strin
         return found->second;
     LoadedLut& loaded = m_luts[path];
     try {
-        const Lut3d table = loadLut(path);
+        const Lut3d table = readLut(path);
         loaded.texture = make3d(m_rhi, cb, table.size, table.rgb.data());
         if (!loaded.texture) {
             loaded.error = "cannot create the LUT texture";

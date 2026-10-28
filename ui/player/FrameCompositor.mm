@@ -282,10 +282,13 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     // One clip's picture (decoded video, or a title's text), through its effects (with any
     // live preview).
     const auto clipPicture = [&](tve::Id clipId, const tve::DecodedFrame& decoded, tve::ClipVisual& visual,
-                                 std::vector<tve::ClipEffect> effects, tve::ColorGrade grade,
-                                 const std::optional<tve::ClipText>& text = std::nullopt) -> QRhiTexture* {
+                                 std::vector<tve::ClipEffect> effects, tve::ColorGrade grade, tve::ColorGrade look,
+                                 const std::optional<tve::ClipText>& text = std::nullopt,
+                                 QRhiTexture* canvasBelow = nullptr) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
-        if (text) {
+        if (canvasBelow) {
+            picture = canvasBelow; // an adjustment layer works on what is under it
+        } else if (text) {
             picture = titleTexture(cb, clipId, *text);
             liveTitles.insert(clipId);
         } else if (decoded.pixelBuffer()) {
@@ -294,9 +297,11 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         if (!picture)
             return nullptr;
         if (overrides)
-            overrides->apply(clipId, visual, effects, grade);
-        if (!text)
-            picture = m_grader->apply(cb, picture, grade); // colour first, then effects
+            overrides->apply(clipId, visual, effects, grade, look);
+        if (!text) { // colour first (the look, then the grade), then effects
+            picture = m_grader->apply(cb, picture, look);
+            picture = m_grader->apply(cb, picture, grade);
+        }
         if (!effects.empty()) {
             auto& chain = m_clipChains[clipId];
             if (!chain)
@@ -313,7 +318,21 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
 
     for (tve::VideoLayer& layer : frame.layers) {
         tve::ClipVisual visual = layer.visual;
-        QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.text);
+        if (layer.adjustment) {
+            // Grade and filter the canvas so far, then lay the result over it by the layer's
+            // opacity (the passes read the canvas before the draw replaces it).
+            QRhiTexture* below = m_compositor->result();
+            QRhiTexture* adjusted =
+                clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look, std::nullopt, below);
+            if (adjusted && adjusted != below) {
+                tve::ClipVisual cover;
+                cover.opacity = visual.opacity;
+                m_compositor->draw(cb, adjusted, cover);
+            }
+            continue;
+        }
+        QRhiTexture* picture =
+            clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look, layer.text);
         if (!layer.transition) {
             if (picture)
                 m_compositor->draw(cb, picture, visual);
@@ -323,7 +342,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         tve::LayerTransition& transition = *layer.transition;
         tve::ClipVisual incomingVisual = transition.visual;
         QRhiTexture* incoming =
-            clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade);
+            clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade,
+                        transition.look);
         if (!picture || !incoming) {
             if (picture || incoming)
                 m_compositor->draw(cb, picture ? picture : incoming, picture ? visual : incomingVisual);

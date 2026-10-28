@@ -69,9 +69,10 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(HslBand, hue, saturation, lumina
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorGrade, exposure, contrast, saturation, temperature, tint, lift,
                                                 gamma, gain, offset, master, red, green, blue, hsl, hueVsSat, hueVsHue,
                                                 lumaVsSat, lutPath, lutIntensity)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipLook, id, title, intensity, grade)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
-                                                transitionIn, text, keyframes, speedRamp, color)
+                                                transitionIn, text, keyframes, speedRamp, color, look, adjustment)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Track, id, kind, name, locked, hidden, muted, clips)
 
 nlohmann::json projectToJson(const Project& project)

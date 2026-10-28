@@ -156,10 +156,17 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
             return clip.reversed ? reversedFrameAt(state, *media, sourceTime) : frameAt(state, *media, sourceTime);
         };
         for (const VisibleClip& layer : visible) {
+            const auto lookOf = [](const Clip& clip) { return clip.look ? clip.look->effective() : ColorGrade{}; };
+            if (layer.clip->adjustment) {
+                composite.layers.push_back(VideoLayer{layer.clip->id, DecodedFrame{}, layer.clip->visualAt(time),
+                                                      layer.clip->effectsAt(time), std::nullopt, std::nullopt,
+                                                      layer.clip->color, lookOf(*layer.clip), true});
+                continue;
+            }
             if (layer.clip->text) {
                 composite.layers.push_back(VideoLayer{layer.clip->id, DecodedFrame{}, layer.clip->visualAt(time),
                                                       layer.clip->effectsAt(time), std::nullopt, layer.clip->text,
-                                                      ColorGrade{}}); // titles are not graded
+                                                      ColorGrade{}, ColorGrade{}}); // titles are not graded
                 continue;
             }
             const DecodedFrame* frame = pictureOf(*layer.clip, layer.sourceTime);
@@ -170,13 +177,15 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
                 composite.layers.push_back(VideoLayer{
                     layer.clip->id, frame->share(), layer.clip->visualAt(time), layer.clip->effectsAt(time),
                     LayerTransition{t.spec->transitionId, t.spec->values, float(t.progress), t.to->id,
-                                    incoming->share(), t.to->visualAt(time), t.to->effectsAt(time), t.to->color},
-                    std::nullopt, layer.clip->color});
+                                    incoming->share(), t.to->visualAt(time), t.to->effectsAt(time), t.to->color,
+                                    lookOf(*t.to)},
+                    std::nullopt, layer.clip->color, lookOf(*layer.clip)});
             } else if (frame || incoming) {
                 // One side unreadable: show the other alone.
                 const Clip& clip = frame ? *layer.clip : *layer.transition->to;
                 composite.layers.push_back(VideoLayer{clip.id, (frame ? frame : incoming)->share(), clip.visualAt(time),
-                                                      clip.effectsAt(time), std::nullopt, std::nullopt, clip.color});
+                                                      clip.effectsAt(time), std::nullopt, std::nullopt, clip.color,
+                                                      lookOf(clip)});
             }
         }
         if (!m_queue.push(std::move(composite)))

@@ -1,0 +1,52 @@
+{
+  "id": "tve.overlay.light_leak",
+  "version": 1,
+  "kind": "video-effect",
+  "category": [
+    "overlay"
+  ],
+  "title": {
+    "en": "Light Leak"
+  },
+  "params": [
+    {
+      "id": "amount",
+      "type": "float",
+      "title": {
+        "en": "Amount"
+      },
+      "min": 0,
+      "max": 1,
+      "default": 0.6,
+      "keyframable": true
+    },
+    {
+      "id": "hue",
+      "type": "float",
+      "title": {
+        "en": "Hue"
+      },
+      "min": 0,
+      "max": 1,
+      "default": 0.06,
+      "keyframable": true
+    },
+    {
+      "id": "speed",
+      "type": "float",
+      "title": {
+        "en": "Speed"
+      },
+      "min": 0,
+      "max": 2,
+      "default": 0.5,
+      "keyframable": true
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "light_leak.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

@@ -69,6 +69,10 @@ class ProjectController : public QObject {
     Q_PROPERTY(bool hasCopiedGrade READ hasCopiedGrade NOTIFY colorClipboardChanged)
     Q_PROPERTY(QStringList colorPresets READ colorPresets NOTIFY colorPresetsChanged)
     Q_PROPERTY(QString colorPresetDirectory READ colorPresetDirectory CONSTANT)
+    // Looks (filters) from the built-in library: [{id, title, category}]; its LUTs alone:
+    // [{name, path}] (paths start ":/", for chooseLut).
+    Q_PROPERTY(QVariantList looks READ looks CONSTANT)
+    Q_PROPERTY(QVariantList lutLibrary READ lutLibrary CONSTANT)
     // Ready-made speed ramps: [{id, title, points: [{at, speed}]}].
     Q_PROPERTY(QVariantList speedRampPresets READ speedRampPresets CONSTANT)
     // Font families offered for titles.
@@ -153,6 +157,8 @@ public:
     QVariantList availableTransitions() const;
     QStringList titleFonts() const;
     QVariantList speedRampPresets() const;
+    QVariantList looks() const;
+    QVariantList lutLibrary() const;
     bool hasCopiedGrade() const { return m_copiedGrade.has_value(); }
     QStringList colorPresets() const;
     QString colorPresetDirectory() const;
@@ -261,7 +267,8 @@ public:
     Q_INVOKABLE bool setClipColor(double clipId, const QVariantMap& changes);
     Q_INVOKABLE void previewClipColor(double clipId, const QVariantMap& changes);
     Q_INVOKABLE bool resetClipColor(double clipId);
-    // Reads the .cube or .3dl file first: refuses one it cannot use.
+    // Reads the .cube or .3dl file first: refuses one it cannot use. qrc:/… picks a built-in
+    // one (see lutLibrary).
     Q_INVOKABLE bool chooseLut(double clipId, const QUrl& file);
     Q_INVOKABLE bool removeLut(double clipId);
     Q_INVOKABLE bool copyGrade(double clipId);
@@ -269,6 +276,16 @@ public:
     Q_INVOKABLE bool saveColorPreset(double clipId, const QString& name);
     Q_INVOKABLE bool applyColorPreset(double clipId, const QString& name);
     Q_INVOKABLE bool deleteColorPreset(const QString& name);
+    // Looks: a clip has at most one, applied before its grade at an intensity (0–1).
+    // selectedClipInfo.look is {id, title, intensity} or absent.
+    Q_INVOKABLE bool applyLook(double clipId, const QString& lookId);
+    Q_INVOKABLE bool setLookIntensity(double clipId, double intensity);
+    Q_INVOKABLE void previewLookIntensity(double clipId, double intensity);
+    Q_INVOKABLE bool removeLook(double clipId);
+    // Adds a 5-second adjustment layer at `start` (default: the playhead) on `trackId`, or the
+    // lowest free video track above the main one (else a new one on top), and selects it.
+    Q_INVOKABLE bool addAdjustmentLayer(double trackId = -1, double start = -1);
+
     // `count` outputs of a tone curve ([{x, y}]) at evenly spaced inputs, for drawing it.
     Q_INVOKABLE QVariantList sampleColorCurve(const QVariantList& points, int count) const;
 

@@ -1,0 +1,52 @@
+{
+  "id": "tve.overlay.bokeh",
+  "version": 1,
+  "kind": "video-effect",
+  "category": [
+    "overlay"
+  ],
+  "title": {
+    "en": "Bokeh"
+  },
+  "params": [
+    {
+      "id": "amount",
+      "type": "float",
+      "title": {
+        "en": "Amount"
+      },
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "keyframable": true
+    },
+    {
+      "id": "size",
+      "type": "float",
+      "title": {
+        "en": "Size"
+      },
+      "min": 0.02,
+      "max": 0.2,
+      "default": 0.08,
+      "keyframable": true
+    },
+    {
+      "id": "speed",
+      "type": "float",
+      "title": {
+        "en": "Speed"
+      },
+      "min": 0,
+      "max": 2,
+      "default": 0.3,
+      "keyframable": true
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "bokeh.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

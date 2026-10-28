@@ -380,6 +380,23 @@ private:
     std::vector<ColorGrade> m_previous;
 };
 
+// Puts a look on a video clip, changes its intensity, or (nullopt) takes it off.
+class SetClipLookCommand final : public Command {
+public:
+    SetClipLookCommand(Id clipId, std::optional<ClipLook> look, std::string label)
+        : m_clipId(clipId), m_look(std::move(look)), m_label(std::move(label)) {}
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    std::optional<ClipLook> m_look;
+    std::string m_label;
+    std::optional<ClipLook> m_previous;
+};
+
 // Checks effect ids and their keyframes' order; returns why they are invalid.
 std::optional<std::string> validateEffects(const std::vector<ClipEffect>& effects);
 
@@ -409,6 +426,28 @@ private:
     Ticks m_duration;
     ClipText m_text;
     ClipVisual m_visual;
+    Id m_clipId = kNoId;
+    Id m_newTrackId = kNoId;
+};
+
+// Adds an adjustment layer to a video track. With trackId kNoId it first adds a new video
+// track on top (undone together).
+class AddAdjustmentCommand final : public Command {
+public:
+    AddAdjustmentCommand(Id trackId, Ticks start, Ticks duration)
+        : m_trackId(trackId), m_start(start), m_duration(duration) {}
+
+    std::string label() const override { return "Add Adjustment Layer"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+    Id clipId() const { return m_clipId; }
+    Id trackId() const { return m_trackId != kNoId ? m_trackId : m_newTrackId; }
+
+private:
+    Id m_trackId;
+    Ticks m_start;
+    Ticks m_duration;
     Id m_clipId = kNoId;
     Id m_newTrackId = kNoId;
 };

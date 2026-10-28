@@ -1,0 +1,43 @@
+{
+  "id": "tve.overlay.viewfinder",
+  "version": 1,
+  "kind": "video-effect",
+  "category": [
+    "overlay"
+  ],
+  "title": {
+    "en": "Viewfinder"
+  },
+  "params": [
+    {
+      "id": "opacity",
+      "type": "float",
+      "title": {
+        "en": "Opacity"
+      },
+      "min": 0,
+      "max": 1,
+      "default": 0.85,
+      "keyframable": true
+    },
+    {
+      "id": "color",
+      "type": "color",
+      "title": {
+        "en": "Color"
+      },
+      "default": [
+        1,
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "viewfinder.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

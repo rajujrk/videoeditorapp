@@ -170,7 +170,7 @@ std::optional<std::string> TrimClipCommand::redo(Project& project)
         return error;
     const Clip& clip = *location->clip;
     const MediaItem* media = project.findMedia(clip.mediaId);
-    if (!media && !clip.text)
+    if (!media && !clip.generated())
         return "media not found";
 
     Clip trimmed = clip;
@@ -192,7 +192,7 @@ std::optional<std::string> TrimClipCommand::redo(Project& project)
         return "trim would leave the clip empty";
     clampFades(trimmed);
     // A title can be any length.
-    const bool pastMedia = clip.text ? false
+    const bool pastMedia = clip.generated() ? false
                          : trimmed.freeze ? trimmed.sourceIn >= media->duration
                                           : trimmed.sourceIn + trimmed.sourceSpan() > media->duration;
     if (trimmed.start < 0 || trimmed.sourceIn < 0 || pastMedia)
@@ -356,7 +356,9 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.visual = clip.visual;
     right.effects = clip.effects;
     right.color = clip.color;
+    right.look = clip.look;
     right.text = clip.text;
+    right.adjustment = clip.adjustment;
     right.keyframes = clip.keyframes; // both halves animate as the whole did
     shiftKeyframes(right, leftDuration);
     right.fadeOut = clip.fadeOut;
@@ -594,6 +596,35 @@ void SetClipColorCommand::undo(Project& project)
         project.locateClip(m_clipIds[i])->clip->color = m_previous[i];
 }
 
+// --- SetClipLookCommand ---
+
+std::optional<std::string> SetClipLookCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    if (location->track->kind != TrackKind::Video || location->clip->text)
+        return "looks apply to video clips";
+    if (m_look) {
+        if (m_look->id.empty())
+            return "the look has no id";
+        if (!std::isfinite(m_look->intensity) || m_look->intensity < 0.0 || m_look->intensity > 1.0)
+            return "look intensity must be between 0 and 100%";
+        if (auto error = validateGrade(m_look->grade))
+            return error;
+    }
+    m_previous = location->clip->look;
+    location->clip->look = m_look;
+    return std::nullopt;
+}
+
+void SetClipLookCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->look = m_previous;
+}
+
 // --- SetClipKeyframesCommand ---
 
 std::optional<std::string> validateEffects(const std::vector<ClipEffect>& effects)
@@ -723,8 +754,8 @@ std::optional<std::string> SetClipSpeedCommand::redo(Project& project)
     Clip& clip = *location->clip;
     if (clip.freeze)
         return "a freeze frame has no speed";
-    if (location->clip->text)
-        return "titles have no speed";
+    if (location->clip->generated())
+        return location->clip->text ? "titles have no speed" : "adjustment layers have no speed";
     if (m_speed < kMinSpeed || m_speed > kMaxSpeed)
         return "speed must be between 0.1× and 10×";
 
@@ -765,8 +796,8 @@ std::optional<std::string> SetClipSpeedRampCommand::redo(Project& project)
     Clip& clip = *location->clip;
     if (clip.freeze)
         return "a freeze frame has no speed";
-    if (clip.text)
-        return "titles have no speed";
+    if (clip.generated())
+        return clip.text ? "titles have no speed" : "adjustment layers have no speed";
     if (!m_ramp.empty()) {
         if (auto error = validateSpeedRamp(m_ramp))
             return error;
@@ -813,7 +844,7 @@ std::optional<std::string> FreezeFrameCommand::redo(Project& project)
         return error;
     if (track.kind != TrackKind::Video)
         return "freeze frames are made from video clips";
-    if (location->clip->text)
+    if (location->clip->generated())
         return "freeze frames are made from video clips";
     const Clip clip = *location->clip;
     if (m_at < clip.start || m_at >= clip.end())
@@ -890,7 +921,7 @@ std::optional<std::string> SetClipTransitionCommand::redo(Project& project)
             return "no transition chosen";
         const auto& clips = location->track->clips;
         const auto previous = std::ranges::find(clips, clip.start, &Clip::end);
-        if (clip.text || (previous != clips.end() && previous->text))
+        if (clip.generated() || (previous != clips.end() && previous->generated()))
             return "transitions go between video clips";
         if (m_transition->duration < kMinTransitionDuration || m_transition->duration > kMaxTransitionDuration)
             return "transition length is out of range";
@@ -975,6 +1006,48 @@ void AddTitleCommand::undo(Project& project)
     Track* track = project.findTrack(m_trackId);
     assert(track);
     track->removeClip(m_clipId);
+}
+
+// --- AddAdjustmentCommand ---
+
+std::optional<std::string> AddAdjustmentCommand::redo(Project& project)
+{
+    if (m_start < 0 || m_duration <= 0)
+        return "clip times are out of range";
+    Track* track = nullptr;
+    if (m_trackId != kNoId) {
+        track = project.findTrack(m_trackId);
+        if (auto error = checkEditable(track))
+            return error;
+        if (track->kind == TrackKind::Audio)
+            return "adjustment layers go on video tracks";
+        if (track->overlaps(m_start, m_duration))
+            return "clip overlaps an existing clip";
+    } else {
+        // A new video track on top (tracks are stored bottom to top).
+        if (m_newTrackId == kNoId)
+            m_newTrackId = project.allocateId();
+        const auto videoTracks = std::ranges::count(project.tracks, TrackKind::Video, &Track::kind);
+        project.tracks.push_back(
+            Track{.id = m_newTrackId, .kind = TrackKind::Video, .name = "Video " + std::to_string(videoTracks + 1)});
+        track = &project.tracks.back();
+    }
+    if (m_clipId == kNoId)
+        m_clipId = project.allocateId();
+    Clip clip{.id = m_clipId, .start = m_start, .duration = m_duration};
+    clip.audioEnabled = false;
+    clip.adjustment = true;
+    track->insertClip(std::move(clip));
+    return std::nullopt;
+}
+
+void AddAdjustmentCommand::undo(Project& project)
+{
+    if (m_trackId == kNoId) {
+        std::erase_if(project.tracks, [&](const Track& t) { return t.id == m_newTrackId; });
+        return;
+    }
+    project.findTrack(m_trackId)->removeClip(m_clipId);
 }
 
 std::optional<std::string> SetClipTextCommand::redo(Project& project)

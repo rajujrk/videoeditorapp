@@ -1,0 +1,103 @@
+{
+  "looks": [
+    {
+      "id": "warm_film",
+      "title": "Warm Film",
+      "category": "Film",
+      "grade": {
+        "lutPath": ":/effects/looks/luts/warm_film.cube"
+      }
+    },
+    {
+      "id": "teal_orange",
+      "title": "Teal & Orange",
+      "category": "Cinematic",
+      "grade": {
+        "lutPath": ":/effects/looks/luts/teal_orange.cube"
+      }
+    },
+    {
+      "id": "bleach_bypass",
+      "title": "Bleach Bypass",
+      "category": "Cinematic",
+      "grade": {
+        "lutPath": ":/effects/looks/luts/bleach_bypass.cube"
+      }
+    },
+    {
+      "id": "golden_hour",
+      "title": "Golden Hour",
+      "category": "Mood",
+      "grade": {
+        "lutPath": ":/effects/looks/luts/golden_hour.cube"
+      }
+    },
+    {
+      "id": "cool_night",
+      "title": "Cool Night",
+      "category": "Mood",
+      "grade": {
+        "lutPath": ":/effects/looks/luts/cool_night.cube"
+      }
+    },
+    {
+      "id": "vintage_fade",
+      "title": "Vintage Fade",
+      "category": "Vintage",
+      "grade": {
+        "lutPath": ":/effects/looks/luts/vintage_fade.cube"
+      }
+    },
+    {
+      "id": "matte_pastel",
+      "title": "Matte Pastel",
+      "category": "Vintage",
+      "grade": {
+        "lutPath": ":/effects/looks/luts/matte_pastel.cube"
+      }
+    },
+    {
+      "id": "cross_process",
+      "title": "Cross Process",
+      "category": "Film",
+      "grade": {
+        "lutPath": ":/effects/looks/luts/cross_process.cube"
+      }
+    },
+    {
+      "id": "sepia",
+      "title": "Sepia",
+      "category": "Mono",
+      "grade": {
+        "lutPath": ":/effects/looks/luts/sepia.cube"
+      }
+    },
+    {
+      "id": "noir",
+      "title": "Noir",
+      "category": "Mono",
+      "grade": {
+        "lutPath": ":/effects/looks/luts/noir.cube"
+      }
+    },
+    {
+      "id": "vivid",
+      "title": "Vivid",
+      "category": "Basic",
+      "grade": {
+        "saturation": 0.35,
+        "contrast": 0.15
+      }
+    },
+    {
+      "id": "black_white",
+      "title": "Black & White",
+      "category": "Mono",
+      "grade": {
+        "saturation": -1.0,
+        "contrast": 0.1
+      }
+    }
+  ],
+  "license": "TVE-Original"
+}

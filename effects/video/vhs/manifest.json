@@ -1,0 +1,41 @@
+{
+  "id": "tve.overlay.vhs",
+  "version": 1,
+  "kind": "video-effect",
+  "category": [
+    "overlay"
+  ],
+  "title": {
+    "en": "VHS"
+  },
+  "params": [
+    {
+      "id": "amount",
+      "type": "float",
+      "title": {
+        "en": "Amount"
+      },
+      "min": 0,
+      "max": 1,
+      "default": 0.7,
+      "keyframable": true
+    },
+    {
+      "id": "jitter",
+      "type": "float",
+      "title": {
+        "en": "Jitter"
+      },
+      "min": 0,
+      "max": 1,
+      "default": 0.3,
+      "keyframable": true
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "vhs.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

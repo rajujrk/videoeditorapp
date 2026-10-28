@@ -114,7 +114,7 @@ Sizes are `Theme.size.*` tokens.
 | Region | File | Status |
 |---|---|---|
 | Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker and "Autosaved hh:mm", undo/redo with labels, save, theme toggle, Export (shows progress while exporting) opening `ExportDialog.qml` |
-| Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
+| Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions, Effects (overlays marked with a badge) and Filters (an adjustment-layer tile, then looks with previews) tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, proxy toggle, stats overlay |
 | Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed (with a speed-ramp section: presets and the `SpeedRampEditor.qml` graph), Audio, Color and Effects tabs are live** for the selected clip (a Keyframes section — add/remove at the playhead, step between, easing, clear — and a ◆ toggle beside every animatable value, a curve editor for the keyframe at the playhead, ◆ on keyframable effect parameters; placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); the Color tab grades the clip (scopes via the `ScopeView` item, basic sliders, `ColorWheelControl.qml` wheels, `ToneCurveEditor.qml` tone and hue curves, HSL band chips, LUT, copy/paste, presets) |
 | Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; keyframe button for the selected clip and keyframe diamonds along clips (click to go, drag to move); voice-over button opening `VoiceOverPanel.qml` (a red range marks the take being recorded); move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges, title clips (purple, labelled with their text), transition markers over cuts (select, delete, drop target) |
@@ -225,6 +225,16 @@ dark and light:
 ![HSL and hue curves, dark](images/hsl-dark.png)
 ![HSL and hue curves, light](images/hsl-light.png)
 
+Filters tab with the Teal & Orange look on the background clip (selected tile ringed) and
+the Color tab's Look section; and an adjustment layer (orange on the timeline, labelled with
+its look) carrying the Golden Hour look, the Viewfinder overlay and Film Grain over
+everything below it, dark and light:
+
+![Filters, dark](images/filters-dark.png)
+![Filters, light](images/filters-light.png)
+![Adjustment layer, dark](images/adjustment-dark.png)
+![Adjustment layer, light](images/adjustment-light.png)
+
 Speed ramp: the Hero moment preset on the background clip — the graph (speed on a log
 scale, dashed 1× line, red playhead), presets above it — and the clip labelled `Ramp ·`,
 shorter because its average speed is above 1×, dark and light:
@@ -255,7 +265,7 @@ Titles tab and a selected title over gradient footage, dark and light:
 
 ### Icons
 
-41 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+42 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.
