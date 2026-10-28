@@ -2,6 +2,7 @@
 
 #include "decode/Thumbnail.h"
 #include "decode/VideoDecoder.h"
+#include "StillImage.h"
 
 #include <QCache>
 #include <QImage>
@@ -102,6 +103,28 @@ public:
         const double seconds = m_id.mid(timeAt + 1, heightAt - timeAt - 1).toDouble();
         const int height = m_id.mid(heightAt + 1).toInt();
 
+        if (still::isStillImage(path)) {
+            // A still looks the same at every time: one thumbnail per height serves them all.
+            const QString key = QStringLiteral("still:%1@%2").arg(path).arg(height);
+            {
+                QMutexLocker lock(&cacheMutex());
+                if (const QImage* cached = cache().object(key)) {
+                    m_image = *cached;
+                    emit finished();
+                    return;
+                }
+            }
+            const QImage full = still::read(path, 0);
+            if (full.isNull()) {
+                m_error = QStringLiteral("cannot read %1").arg(path);
+            } else {
+                m_image = full.scaledToHeight(std::max(1, height), Qt::SmoothTransformation);
+                QMutexLocker lock(&cacheMutex());
+                cache().insert(key, new QImage(m_image), int(m_image.sizeInBytes() / 1024) + 1);
+            }
+            emit finished();
+            return;
+        }
         auto decoder = takeDecoder(path);
         std::optional<tve::RgbaImage> thumb;
         if (decoder) {

@@ -519,9 +519,11 @@ Rectangle {
 
                 Text {
                     visible: inspector.clipInfo.isTitle === true || inspector.clipInfo.isAdjustment === true
+                             || inspector.clipInfo.isStill === true
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
-                    text: (inspector.clipInfo.isTitle === true ? "Titles" : "Adjustment layers")
+                    text: (inspector.clipInfo.isTitle === true ? "Titles" : inspector.clipInfo.isStill === true ? "Images"
+                                                                                                     : "Adjustment layers")
                           + " have no speed; trim them to change how long they last."
                     font: Theme.type.body
                     color: Theme.color.textSecondary
@@ -531,7 +533,7 @@ Rectangle {
                 Section {
                     id: speedSection
                     visible: inspector.clipInfo.id !== undefined && inspector.clipInfo.isTitle !== true
-                             && inspector.clipInfo.isAdjustment !== true
+                             && inspector.clipInfo.isAdjustment !== true && inspector.clipInfo.isStill !== true
                     Layout.topMargin: Theme.space.s
                     title: "Speed"
                     readonly property bool still: inspector.clipInfo.freeze === true

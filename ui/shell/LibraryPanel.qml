@@ -551,7 +551,10 @@ Rectangle {
                                         Text {
                                             id: durationText
                                             anchors.centerIn: parent
-                                            text: library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
+                                            objectName: "mediaDuration:" + mediaTile.modelData.name
+                                            // A still has no length of its own.
+                                            text: mediaTile.modelData.still ? "Image"
+                                                  : library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
                                             font: Theme.type.caption
                                             color: "#FFFFFF"
                                         }
@@ -573,6 +576,8 @@ Rectangle {
                                     elide: Text.ElideRight
                                     text: !mediaTile.modelData.hasVideo
                                           ? "Audio only"
+                                          : mediaTile.modelData.still
+                                          ? mediaTile.modelData.width + "×" + mediaTile.modelData.height + " · image"
                                           : mediaTile.modelData.width + "×" + mediaTile.modelData.height
                                             + " · " + mediaTile.modelData.frameRate.toFixed(mediaTile.modelData.frameRate % 1 ? 2 : 0) + " fps"
                                             + (mediaTile.modelData.hasAudio ? " · sound" : "")
@@ -627,7 +632,7 @@ Rectangle {
                         }
                         AbstractButton {
                             objectName: "proxyAction:" + mediaTile.modelData.name
-                            visible: mediaTile.modelData.hasVideo && (tileMouse.containsMouse || hovered)
+                            visible: mediaTile.modelData.hasVideo && !mediaTile.modelData.still && (tileMouse.containsMouse || hovered)
                                      && (mediaTile.proxy.state === "none" || mediaTile.proxy.state === "ready"
                                          || mediaTile.proxy.state === "failed")
                             anchors { right: parent.right; top: parent.top; rightMargin: Theme.space.m + Theme.space.s; topMargin: Theme.space.s }

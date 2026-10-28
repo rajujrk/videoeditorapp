@@ -169,23 +169,40 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
                                                       ColorGrade{}, ColorGrade{}}); // titles are not graded
                 continue;
             }
-            const DecodedFrame* frame = pictureOf(*layer.clip, layer.sourceTime);
-            const DecodedFrame* incoming =
-                layer.transition ? pictureOf(*layer.transition->to, layer.transition->toSourceTime) : nullptr;
-            if (frame && incoming) {
+            // Each side is a decoded frame, or a still image's path (nothing to decode).
+            struct Side {
+                const Clip* clip = nullptr;
+                const DecodedFrame* frame = nullptr;
+                std::string stillPath;
+                bool shown() const { return frame || !stillPath.empty(); }
+                DecodedFrame picture() const { return frame ? frame->share() : DecodedFrame{}; }
+            };
+            const auto sideOf = [&](const Clip& clip, Ticks sourceTime) {
+                Side side{&clip};
+                const MediaItem* media = project->findMedia(clip.mediaId);
+                if (media && media->still)
+                    side.stillPath = media->path;
+                else
+                    side.frame = pictureOf(clip, sourceTime);
+                return side;
+            };
+            const Side out = sideOf(*layer.clip, layer.sourceTime);
+            const Side in = layer.transition ? sideOf(*layer.transition->to, layer.transition->toSourceTime) : Side{};
+            if (out.shown() && in.shown()) {
                 const TransitionLayer& t = *layer.transition;
                 composite.layers.push_back(VideoLayer{
-                    layer.clip->id, frame->share(), layer.clip->visualAt(time), layer.clip->effectsAt(time),
-                    LayerTransition{t.spec->transitionId, t.spec->values, float(t.progress), t.to->id,
-                                    incoming->share(), t.to->visualAt(time), t.to->effectsAt(time), t.to->color,
-                                    lookOf(*t.to)},
-                    std::nullopt, layer.clip->color, lookOf(*layer.clip)});
-            } else if (frame || incoming) {
+                    layer.clip->id, out.picture(), layer.clip->visualAt(time), layer.clip->effectsAt(time),
+                    LayerTransition{t.spec->transitionId, t.spec->values, float(t.progress), t.to->id, in.picture(),
+                                    t.to->visualAt(time), t.to->effectsAt(time), t.to->color, lookOf(*t.to),
+                                    in.stillPath},
+                    std::nullopt, layer.clip->color, lookOf(*layer.clip), false, out.stillPath});
+            } else if (out.shown() || in.shown()) {
                 // One side unreadable: show the other alone.
-                const Clip& clip = frame ? *layer.clip : *layer.transition->to;
-                composite.layers.push_back(VideoLayer{clip.id, (frame ? frame : incoming)->share(), clip.visualAt(time),
-                                                      clip.effectsAt(time), std::nullopt, std::nullopt, clip.color,
-                                                      lookOf(clip)});
+                const Side& side = out.shown() ? out : in;
+                const Clip& clip = *side.clip;
+                composite.layers.push_back(VideoLayer{clip.id, side.picture(), clip.visualAt(time), clip.effectsAt(time),
+                                                      std::nullopt, std::nullopt, clip.color, lookOf(clip), false,
+                                                      side.stillPath});
             }
         }
         if (!m_queue.push(std::move(composite)))

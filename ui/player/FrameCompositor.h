@@ -84,6 +84,8 @@ private:
     QRhiTexture* convertLayer(QRhiCommandBuffer* cb, LayerSlot& slot, CVPixelBufferRef buffer,
                               std::vector<CVMetalTextureRef>& retained);
     QRhiTexture* titleTexture(QRhiCommandBuffer* cb, tve::Id clipId, const tve::ClipText& text);
+    // A still image's picture, read once and kept while it is in use (and a few after).
+    QRhiTexture* stillTexture(QRhiCommandBuffer* cb, const std::string& path);
 
     QRhi* m_rhi;
     CVMetalTextureCacheRef m_textureCache = nullptr;
@@ -102,5 +104,11 @@ private:
     std::unique_ptr<tve::TransitionRenderer> m_transitions;
     std::unique_ptr<tve::ColorGrader> m_grader;
     std::map<tve::Id, TitleTexture> m_titles;
+    struct StillTexture {
+        std::unique_ptr<QRhiTexture> texture;
+        std::uint64_t lastUsed = 0; // render count
+    };
+    std::map<std::string, StillTexture> m_stills;
+    std::uint64_t m_renders = 0;
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_clipChains;
 };

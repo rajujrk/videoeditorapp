@@ -266,6 +266,55 @@ TEST_CASE("adjustment layers play as layers without pictures, with their look an
     CHECK(adjustment.look.temperature == Catch::Approx(0.4)); // the look at half strength
 }
 
+TEST_CASE("still images play as paths, also in transitions")
+{
+    requireSamples();
+    auto project = std::make_shared<Project>();
+    CommandStack stack(*project);
+    auto track = std::make_unique<AddTrackCommand>(TrackKind::Video, "V1");
+    auto* trackCmd = track.get();
+    REQUIRE_FALSE(stack.push(std::move(track)));
+    auto video = std::make_unique<ImportMediaCommand>(sample("test_1080p30_h264.mp4"), 2 * kSec);
+    auto* videoCmd = video.get();
+    REQUIRE_FALSE(stack.push(std::move(video)));
+    auto photo = std::make_unique<ImportMediaCommand>(
+        MediaItem{.path = "/photos/beach.jpg", .duration = kStillDuration, .width = 800, .height = 600, .still = true});
+    auto* photoCmd = photo.get();
+    REQUIRE_FALSE(stack.push(std::move(photo)));
+    REQUIRE_FALSE(stack.push(std::make_unique<AddClipCommand>(trackCmd->trackId(), videoCmd->mediaId(), 0, kSec, 0)));
+    auto still = std::make_unique<AddClipCommand>(trackCmd->trackId(), photoCmd->mediaId(), kSec, kSec, 0);
+    auto* stillCmd = still.get();
+    REQUIRE_FALSE(stack.push(std::move(still)));
+    REQUIRE_FALSE(stack.push(std::make_unique<SetClipTransitionCommand>(
+        stillCmd->clipId(), ClipTransition{.transitionId = "tve.transition.dissolve", .duration = kSec / 2})));
+
+    TimelinePlayback playback;
+    playback.setProject(project);
+    std::map<Ticks, CompositeFrame> frames;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (std::chrono::steady_clock::now() < deadline && !(playback.producerFinished() && !playback.queue().frontPts())) {
+        if (auto front = playback.queue().frontPts()) {
+            int skipped = 0;
+            auto frame = playback.queue().takeLatestDue(*front, skipped);
+            frames[frame->pts()] = std::move(*frame);
+            continue;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    // In the middle of the dissolve (1 s): the video, with the still coming in.
+    const VideoLayer& during = frames.at(30 * kFrame30).layers.at(0);
+    REQUIRE(during.transition);
+    CHECK(during.frame.pixelBuffer());
+    CHECK(during.stillPath.empty());
+    CHECK(during.transition->stillPath == "/photos/beach.jpg");
+    CHECK_FALSE(during.transition->frame.pixelBuffer());
+    // After it: the still alone, nothing decoded.
+    const VideoLayer& after = frames.at(50 * kFrame30).layers.at(0);
+    CHECK_FALSE(after.transition);
+    CHECK(after.stillPath == "/photos/beach.jpg");
+    CHECK_FALSE(after.frame.pixelBuffer());
+}
+
 TEST_CASE("a 60 fps project shows each frame of a 30 fps clip twice")
 {
     requireSamples();

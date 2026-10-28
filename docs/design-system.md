@@ -225,6 +225,12 @@ dark and light:
 ![HSL and hue curves, dark](images/hsl-dark.png)
 ![HSL and hue curves, light](images/hsl-light.png)
 
+Images in the media bin (marked "Image") and on the timeline: a PNG with a keyframed push
+in, then a HEIC photo, dark and light:
+
+![Images, dark](images/stills-dark.png)
+![Images, light](images/stills-light.png)
+
 Filters tab with the Teal & Orange look on the background clip (selected tile ringed) and
 the Color tab's Look section; and an adjustment layer (orange on the timeline, labelled with
 its look) carrying the Golden Hour look, the Viewfinder overlay and Film Grain over

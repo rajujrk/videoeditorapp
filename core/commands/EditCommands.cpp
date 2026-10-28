@@ -180,7 +180,7 @@ std::optional<std::string> TrimClipCommand::redo(Project& project)
         trimmed.duration = clip.duration - delta;
         // Forward clips lose (or regain) source at their start; reversed ones at the top
         // of their span, which needs no in-point change.
-        if (!clip.freeze && !clip.reversed)
+        if (!clip.freeze && !clip.reversed && !(media && media->still)) // a still shows the same picture throughout
             trimmed.sourceIn = clip.sourceIn + Ticks(std::llround(double(delta) * clip.speed));
         shiftKeyframes(trimmed, delta);
     } else {
@@ -191,8 +191,8 @@ std::optional<std::string> TrimClipCommand::redo(Project& project)
     if (trimmed.duration <= 0)
         return "trim would leave the clip empty";
     clampFades(trimmed);
-    // A title can be any length.
-    const bool pastMedia = clip.generated() ? false
+    // Titles, adjustment layers and stills can be any length.
+    const bool pastMedia = clip.generated() || media->still ? false
                          : trimmed.freeze ? trimmed.sourceIn >= media->duration
                                           : trimmed.sourceIn + trimmed.sourceSpan() > media->duration;
     if (trimmed.start < 0 || trimmed.sourceIn < 0 || pastMedia)
@@ -227,7 +227,7 @@ std::optional<std::string> AddClipCommand::redo(Project& project)
         return "media not found";
     if (m_start < 0 || m_duration <= 0 || m_sourceIn < 0)
         return "clip times are out of range";
-    if (m_sourceIn + m_duration > media->duration)
+    if (m_sourceIn + m_duration > media->duration && !media->still)
         return "clip extends past the end of its media";
     if (auto error = checkMediaFitsTrack(*media, *track))
         return error;
@@ -756,6 +756,8 @@ std::optional<std::string> SetClipSpeedCommand::redo(Project& project)
         return "a freeze frame has no speed";
     if (location->clip->generated())
         return location->clip->text ? "titles have no speed" : "adjustment layers have no speed";
+    if (const MediaItem* media = project.findMedia(location->clip->mediaId); media && media->still)
+        return "a still image has no speed";
     if (m_speed < kMinSpeed || m_speed > kMaxSpeed)
         return "speed must be between 0.1× and 10×";
 
@@ -798,6 +800,8 @@ std::optional<std::string> SetClipSpeedRampCommand::redo(Project& project)
         return "a freeze frame has no speed";
     if (clip.generated())
         return clip.text ? "titles have no speed" : "adjustment layers have no speed";
+    if (const MediaItem* media = project.findMedia(clip.mediaId); media && media->still)
+        return "a still image has no speed";
     if (!m_ramp.empty()) {
         if (auto error = validateSpeedRamp(m_ramp))
             return error;
@@ -846,6 +850,8 @@ std::optional<std::string> FreezeFrameCommand::redo(Project& project)
         return "freeze frames are made from video clips";
     if (location->clip->generated())
         return "freeze frames are made from video clips";
+    if (const MediaItem* media = project.findMedia(location->clip->mediaId); media && media->still)
+        return "a still image is already still";
     const Clip clip = *location->clip;
     if (m_at < clip.start || m_at >= clip.end())
         return "put the playhead inside the clip to freeze a frame";

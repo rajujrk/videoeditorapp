@@ -32,6 +32,9 @@ struct MediaItem {
     FrameRate frameRate{30, 1};
     std::int32_t audioSampleRate = 0;
     std::int32_t audioChannels = 0;
+    // A still image (photo, graphic): one picture for as long as its clips last. `duration`
+    // is then the length a new clip of it gets (kStillDuration).
+    bool still = false;
 
     // A lighter copy of the pictures for the preview to decode instead (same frames and
     // times). Set only in the snapshots handed to playback; never saved.
@@ -39,6 +42,8 @@ struct MediaItem {
 
     friend bool operator==(const MediaItem&, const MediaItem&) = default;
 };
+
+inline constexpr Ticks kStillDuration = 5 * kTicksPerSecond;
 
 inline constexpr float kMinGainDb = -60.0f; // treated as silence
 inline constexpr float kMaxGainDb = 12.0f;

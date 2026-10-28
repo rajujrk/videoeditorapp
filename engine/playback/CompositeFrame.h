@@ -22,6 +22,7 @@ struct LayerTransition {
     std::vector<ClipEffect> effects;
     ColorGrade grade;
     ColorGrade look; // the clip's look at its intensity, before `grade`
+    std::string stillPath; // a still image: read from here, with no frame
 };
 
 // One clip's picture at a moment of the timeline, with how to show it. During a
@@ -39,6 +40,7 @@ struct VideoLayer {
     // An adjustment layer: no picture of its own; its look, grade and effects apply to the
     // canvas below it, blended by its opacity.
     bool adjustment = false;
+    std::string stillPath; // a still image: read from here, with no frame
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.
