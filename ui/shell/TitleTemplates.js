@@ -1,0 +1,148 @@
+.pragma library
+
+// The Titles library: original title templates, each a title's text fields (see
+// ProjectController.addTitle) plus where it sits (x, y: fractions of the canvas from the
+// centre) and, for credits and tickers, how long it lasts.
+
+var categories = [
+    { id: "", label: "All" }, { id: "titles", label: "Titles" }, { id: "lower", label: "Lower thirds" },
+    { id: "callouts", label: "Callouts" }, { id: "credits", label: "Credits" }, { id: "animated", label: "Animated" }
+]
+
+function anim(preset, unit, duration, stagger) {
+    return { preset: preset, unit: unit || "character", duration: duration || 0.8, stagger: stagger === undefined ? 0.6 : stagger }
+}
+function shape(kind, color, padding, tail) {
+    return { kind: kind, color: color, padding: padding === undefined ? 0.4 : padding, tail: tail === undefined ? 0.25 : tail }
+}
+var white = [1, 1, 1, 1]
+var black = [0, 0, 0, 1]
+var ink = [0.08, 0.08, 0.1, 1]
+
+var templates = [
+    // Titles
+    { name: "Title", category: "titles", style: { text: "Your Title", size: 0.1, bold: true, shadow: true } },
+    { name: "Big Bold", category: "titles", style: { text: "BIG NEWS", size: 0.16, bold: true, color: [1, 0.84, 0.2, 1],
+                                                      outlineWidth: 0.06, outlineColor: [0.1, 0.05, 0, 1] } },
+    { name: "Minimal", category: "titles", style: { text: "minimal", size: 0.06, letterSpacing: 0.4, fontFamily: "Avenir Next" } },
+    { name: "Serif", category: "titles", style: { text: "Chapter One", size: 0.09, italic: true, fontFamily: "Georgia",
+                                                  color: [1, 0.95, 0.85, 1], shadow: true } },
+    { name: "Typewriter", category: "titles", style: { text: "Once upon a time…", size: 0.06, fontFamily: "American Typewriter" } },
+    { name: "Cinematic", category: "titles", style: { text: "THE LONG ROAD", size: 0.08, fontFamily: "Didot", letterSpacing: 0.35,
+                                                      animationIn: anim("tracking", "character", 1.6, 0.0),
+                                                      animationOut: anim("fade", "whole", 0.8, 0) } },
+    { name: "Neon", category: "titles", style: { text: "OPEN LATE", size: 0.12, bold: true, color: [0.55, 1, 1, 1],
+                                                 outlineWidth: 0.04, outlineColor: [1, 0.2, 0.75, 1],
+                                                 animationIn: anim("fade", "whole", 0.6, 0),
+                                                 animationLoop: anim("flicker", "character", 2.0, 0) } },
+    { name: "Bold Pop", category: "titles", style: { text: "LET'S GO", size: 0.14, fontFamily: "Impact", color: [1, 0.85, 0.1, 1],
+                                                     shadow: true, animationIn: anim("pop", "word", 0.7, 0.5),
+                                                     animationOut: anim("zoom", "whole", 0.4, 0) } },
+    { name: "Elegant", category: "titles", style: { text: "Forever", size: 0.14, fontFamily: "Snell Roundhand",
+                                                    color: [1, 0.93, 0.8, 1], shadow: true,
+                                                    animationIn: anim("blur", "whole", 1.4, 0),
+                                                    animationOut: anim("fade", "whole", 1.0, 0) } },
+    { name: "Retro Wave", category: "titles", style: { text: "NIGHT DRIVE", size: 0.11, fontFamily: "Futura", bold: true,
+                                                       color: [1, 0.4, 0.75, 1], outlineWidth: 0.05,
+                                                       outlineColor: [0.25, 0.05, 0.45, 1],
+                                                       animationLoop: anim("wave", "character", 1.6, 0) } },
+    { name: "Glitchy", category: "titles", style: { text: "SYSTEM ONLINE", size: 0.07, fontFamily: "Menlo", color: [0.4, 1, 0.5, 1],
+                                                    animationIn: anim("typewriter", "character", 1.2),
+                                                    animationLoop: anim("shake", "character", 2.0, 0) } },
+    // Lower thirds
+    { name: "Subtitle", category: "lower", style: { text: "Subtitle text goes here", size: 0.05, outlineWidth: 0.08,
+                                                    outlineColor: [0, 0, 0, 1], y: 0.36 } },
+    { name: "Lower Third", category: "lower", style: { text: "Name Surname\nRole or place", size: 0.045, bold: true,
+                                                       alignment: "left", shadow: true, y: 0.3 } },
+    { name: "Bar", category: "lower", style: { text: "Alex Rivera\nFounder, Studio North", size: 0.042, alignment: "left",
+                                               shape: shape("box", [0.06, 0.07, 0.1, 0.85], 0.5), y: 0.3,
+                                               animationIn: anim("slide_right", "line", 0.7, 0.4),
+                                               animationOut: anim("fade", "whole", 0.5, 0) } },
+    { name: "Pill", category: "lower", style: { text: "Alex Rivera · Host", size: 0.042, bold: true, alignment: "left",
+                                                shape: shape("pill", [0.21, 0.42, 0.9, 0.95], 0.5), y: 0.33,
+                                                animationIn: anim("rise", "word", 0.8, 0.5),
+                                                animationOut: anim("rise", "whole", 0.5, 0) } },
+    { name: "Underline", category: "lower", style: { text: "Alex Rivera", size: 0.055, bold: true, alignment: "left",
+                                                     shape: shape("underline", [1, 0.78, 0.2, 1], 0.25), y: 0.3,
+                                                     animationIn: anim("wipe", "whole", 0.9, 0),
+                                                     animationOut: anim("wipe", "whole", 0.6, 0) } },
+    { name: "Name Tag", category: "lower", style: { text: "ALEX RIVERA", size: 0.045, bold: true, color: ink, alignment: "left",
+                                                    shape: shape("tag", [1, 1, 1, 0.95], 0.45), y: 0.32,
+                                                    animationIn: anim("slide_right", "whole", 0.6, 0),
+                                                    animationOut: anim("fade", "whole", 0.5, 0) } },
+    { name: "Speaker", category: "lower", style: { text: "Alex Rivera\nDirector of Photography", size: 0.04, alignment: "left",
+                                                   color: ink, shape: shape("rounded", [1, 1, 1, 0.92], 0.5), y: 0.3,
+                                                   animationIn: anim("rise", "line", 0.8, 0.5),
+                                                   animationOut: anim("drop", "line", 0.6, 0.3) } },
+    { name: "News Strap", category: "lower", style: { text: "BREAKING NEWS", size: 0.05, bold: true,
+                                                      shape: shape("banner", [0.85, 0.12, 0.15, 0.95], 0.45), y: 0.34,
+                                                      animationIn: anim("wipe", "whole", 0.6, 0),
+                                                      animationOut: anim("fade", "whole", 0.4, 0) } },
+    // Callouts
+    { name: "Callout", category: "callouts", style: { text: "Look here!", size: 0.08, fontFamily: "Marker Felt",
+                                                      color: [1, 0.55, 0.1, 1], outlineWidth: 0.08, outlineColor: white } },
+    { name: "Speech Bubble", category: "callouts", style: { text: "Hello there!", size: 0.06, bold: true, color: ink,
+                                                            shape: shape("speech", white, 0.55, 0.25), y: -0.15,
+                                                            animationIn: anim("pop", "whole", 0.5, 0),
+                                                            animationOut: anim("zoom", "whole", 0.3, 0) } },
+    { name: "Reply Bubble", category: "callouts", style: { text: "Sounds good!", size: 0.06, bold: true, color: ink,
+                                                           shape: shape("speech", [1, 0.86, 0.3, 1], 0.55, 0.8), y: -0.15,
+                                                           animationIn: anim("pop", "whole", 0.5, 0),
+                                                           animationOut: anim("fade", "whole", 0.3, 0) } },
+    { name: "Thought Bubble", category: "callouts", style: { text: "Hmm…", size: 0.07, italic: true, color: ink,
+                                                             shape: shape("thought", white, 0.6, 0.3), y: -0.18,
+                                                             animationIn: anim("fade", "whole", 0.6, 0),
+                                                             animationLoop: anim("swing", "whole", 3.0, 0) } },
+    { name: "Arrow", category: "callouts", style: { text: "Click here", size: 0.055, bold: true,
+                                                    shape: shape("arrow", [1, 0.5, 0.1, 0.95], 0.45),
+                                                    animationIn: anim("slide_right", "whole", 0.6, 0),
+                                                    animationLoop: anim("pulse", "whole", 1.2, 0) } },
+    { name: "Badge", category: "callouts", style: { text: "NEW!", size: 0.07, bold: true,
+                                                    shape: shape("circle", [0.9, 0.15, 0.2, 1], 0.5),
+                                                    animationIn: anim("pop", "whole", 0.5, 0),
+                                                    animationLoop: anim("pulse", "whole", 1.0, 0) } },
+    { name: "Sale Tag", category: "callouts", style: { text: "SALE −50%", size: 0.06, bold: true,
+                                                       shape: shape("tag", [0.15, 0.65, 0.35, 1], 0.45),
+                                                       animationIn: anim("spin", "whole", 0.7, 0) } },
+    { name: "Highlight", category: "callouts", style: { text: "Key point", size: 0.06, bold: true, color: ink,
+                                                        shape: shape("box", [1, 0.9, 0.2, 0.95], 0.3),
+                                                        animationIn: anim("wipe", "whole", 0.7, 0) } },
+    // Credits and tickers
+    { name: "Rolling Credits", category: "credits",
+      style: { text: "Directed by\nAlex Rivera\n\nEdited by\nAlex Rivera\n\nMusic\nThe Night Owls\n\nMade with\nTechieVideoEditor",
+               size: 0.045, lineSpacing: 1.3, scroll: "rollUp", duration: 12 } },
+    { name: "Scrolling Quote", category: "credits",
+      style: { text: "“The best way to get started\nis to stop talking\nand begin doing.”", size: 0.06, italic: true,
+               fontFamily: "Georgia", lineSpacing: 1.3, scroll: "rollUp", duration: 10, shadow: true } },
+    { name: "News Ticker", category: "credits",
+      style: { text: "Markets open higher · Storm moves north · Local team wins the cup · Weather: sunny, 24°",
+               size: 0.045, scroll: "crawlLeft", duration: 12, shape: shape("box", [0.06, 0.07, 0.1, 0.9], 0.35), y: 0.4 } },
+    { name: "End Card", category: "credits", style: { text: "Thanks for watching", size: 0.08, fontFamily: "Avenir Next",
+                                                      animationIn: anim("rise", "word", 1.0, 0.4),
+                                                      animationOut: anim("fade", "whole", 1.0, 0) } },
+    { name: "Chapter Card", category: "credits", style: { text: "Chapter Two\nThe Journey", size: 0.08, fontFamily: "Baskerville",
+                                                          lineSpacing: 1.2, animationIn: anim("fade", "line", 1.4, 0.6),
+                                                          animationOut: anim("fade", "whole", 0.8, 0) } },
+    // Animated
+    { name: "Typed Out", category: "animated", style: { text: "Typing as we speak", size: 0.07, fontFamily: "Menlo",
+                                                        animationIn: anim("typewriter", "character", 1.6) } },
+    { name: "Bounce In", category: "animated", style: { text: "Bounce!", size: 0.12, bold: true, color: [0.4, 0.85, 1, 1],
+                                                        shadow: true, animationIn: anim("bounce", "character", 1.2, 0.5),
+                                                        animationOut: anim("drop", "character", 0.6, 0.5) } },
+    { name: "Spin In", category: "animated", style: { text: "Round and round", size: 0.09, bold: true, shadow: true,
+                                                      animationIn: anim("spin", "word", 1.0, 0.5) } },
+    { name: "Flip In", category: "animated", style: { text: "FLIP", size: 0.14, bold: true, color: [1, 0.6, 0.2, 1],
+                                                      animationIn: anim("flip", "character", 1.0, 0.6),
+                                                      animationOut: anim("flip", "character", 0.6, 0.6) } },
+    { name: "Drop In", category: "animated", style: { text: "Words fall into place", size: 0.08, bold: true, shadow: true,
+                                                      animationIn: anim("drop", "word", 1.0, 0.6) } },
+    { name: "Wavy", category: "animated", style: { text: "Making waves", size: 0.1, fontFamily: "Chalkboard SE",
+                                                   color: [0.5, 0.9, 1, 1], shadow: true,
+                                                   animationLoop: anim("wave", "character", 1.4, 0) } },
+    { name: "Zoom", category: "animated", style: { text: "ZOOM", size: 0.16, bold: true, outlineWidth: 0.04, outlineColor: black,
+                                                   animationIn: anim("zoom", "character", 0.8, 0.4),
+                                                   animationOut: anim("zoom", "character", 0.6, 0.4) } },
+    { name: "Slide Words", category: "animated", style: { text: "One word at a time", size: 0.08, bold: true, shadow: true,
+                                                          animationIn: anim("slide_left", "word", 1.0, 0.7),
+                                                          animationOut: anim("slide_right", "word", 0.6, 0.5) } }
+]

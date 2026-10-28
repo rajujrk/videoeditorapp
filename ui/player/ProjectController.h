@@ -84,6 +84,8 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantList speedRampPresets READ speedRampPresets CONSTANT)
     // Font families offered for titles.
     Q_PROPERTY(QStringList titleFonts READ titleFonts CONSTANT)
+    // Title text animations: [{id, title, loop}] (loops keep moving; the others arrive or leave).
+    Q_PROPERTY(QVariantList textAnimations READ textAnimations CONSTANT)
 
     // Autosave: unsaved work is written to `autosaveDirectory` a moment after edits settle
     // (default: Application Support/…/Autosave; TVE_AUTOSAVE_DIR overrides). Work left
@@ -171,6 +173,7 @@ public:
     QVariantMap selectedTransitionInfo() const;
     QVariantList availableTransitions() const;
     QStringList titleFonts() const;
+    QVariantList textAnimations() const;
     QVariantList speedRampPresets() const;
     QVariantList looks() const;
     QVariantList layouts() const;

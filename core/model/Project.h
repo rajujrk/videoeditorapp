@@ -4,6 +4,7 @@
 #include "model/Keyframes.h"
 #include "model/Masks.h"
 #include "model/SpeedRamp.h"
+#include "model/TextAnimation.h"
 #include "model/Time.h"
 
 #include <cstdint>
@@ -108,6 +109,23 @@ struct ColorRgba {
 
 enum class TextAlignment { Left, Center, Right };
 
+// A shape behind a title's text, sized to it: boxes, a pill, speech and thought bubbles, a
+// banner, an underline, a circle, an arrow and a tag.
+enum class TitleShapeKind { None, Box, Rounded, Pill, Speech, Thought, Banner, Underline, Circle, Arrow, Tag };
+
+struct TitleShape {
+    TitleShapeKind kind = TitleShapeKind::None;
+    ColorRgba color{0.0, 0.0, 0.0, 0.6};
+    double padding = 0.4; // around the text, in ems
+    double tail = 0.25;   // where a bubble's tail is, along its bottom edge (0..1)
+
+    friend bool operator==(const TitleShape&, const TitleShape&) = default;
+};
+
+// A title that moves through the frame over the whole clip: credits rolling up, or a news
+// crawl from right to left.
+enum class TextScroll { None, RollUp, CrawlLeft };
+
 // The text of a title clip. Sizes are fractions so a title looks the same on any canvas:
 // the font size of the canvas height, spacing and outline of the font size. The text is
 // laid out across the canvas (wrapping at 90 % of its width), centred vertically, then
@@ -125,6 +143,18 @@ struct ClipText {
     ColorRgba outlineColor{0.0, 0.0, 0.0, 1.0};
     double outlineWidth = 0.0;
     bool shadow = false;
+    TitleShape shape;
+    // How the text arrives, leaves and keeps moving (see TextAnimation), and its scrolling.
+    TextAnimation animationIn;
+    TextAnimation animationOut;
+    TextAnimation animationLoop{.preset = {}, .duration = 1.5, .unit = TextUnit::Character, .stagger = 0.0};
+    TextScroll scroll = TextScroll::None;
+
+    // Whether it looks different from one moment to the next.
+    bool animated() const
+    {
+        return animationIn.active() || animationOut.active() || animationLoop.active() || scroll != TextScroll::None;
+    }
 
     friend bool operator==(const ClipText&, const ClipText&) = default;
 };

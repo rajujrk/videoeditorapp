@@ -459,6 +459,150 @@ Rectangle {
                         }
                     }
 
+                    // A shape behind the text: boxes, a pill, bubbles, a banner and more.
+                    Section {
+                        id: shapeSection
+                        objectName: "titleShapeSection"
+                        visible: inspector.clipInfo.isTitle === true
+                        Layout.fillWidth: true
+                        expanded: (textSection.text.shape || {}).kind !== undefined && textSection.text.shape.kind !== "none"
+                        title: "Shape"
+                        readonly property var shape: textSection.text.shape || ({ kind: "none", color: [0, 0, 0, 0.6], padding: 0.4, tail: 0.25 })
+                        function change(fields) { textSection.change({ shape: Object.assign({}, shape, fields) }) }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: "Behind the text"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            ComboBox {
+                                objectName: "titleShapeKind"
+                                readonly property var kinds: ["none", "box", "rounded", "pill", "speech", "thought", "banner",
+                                                              "underline", "circle", "arrow", "tag"]
+                                model: ["None", "Box", "Rounded box", "Pill", "Speech bubble", "Thought bubble", "Banner",
+                                        "Underline", "Circle", "Arrow", "Tag"]
+                                currentIndex: Math.max(0, kinds.indexOf(shapeSection.shape.kind))
+                                onActivated: (index) => shapeSection.change({ kind: kinds[index] })
+                            }
+                        }
+                        Swatches {
+                            objectName: "titleShapeColor"
+                            visible: shapeSection.shape.kind !== "none"
+                            current: shapeSection.shape.color
+                            // The swatch's colour at the shape's own opacity.
+                            onPicked: (c) => shapeSection.change({ color: [c[0], c[1], c[2], shapeSection.shape.color[3]] })
+                        }
+                        AudioSlider {
+                            objectName: "titleShapeOpacity"
+                            visible: shapeSection.shape.kind !== "none"
+                            label: "Opacity"
+                            from: 0
+                            to: 1
+                            value: shapeSection.shape.color[3]
+                            format: (v) => Math.round(v * 100) + "%"
+                            onCommitted: (v) => shapeSection.change({ color: [shapeSection.shape.color[0], shapeSection.shape.color[1],
+                                                                              shapeSection.shape.color[2], v] })
+                        }
+                        AudioSlider {
+                            objectName: "titleShapePadding"
+                            visible: shapeSection.shape.kind !== "none"
+                            label: "Padding"
+                            from: 0
+                            to: 2
+                            value: shapeSection.shape.padding
+                            onCommitted: (v) => shapeSection.change({ padding: v })
+                        }
+                        AudioSlider {
+                            objectName: "titleShapeTail"
+                            visible: shapeSection.shape.kind === "speech" || shapeSection.shape.kind === "thought"
+                            label: "Tail"
+                            from: 0
+                            to: 1
+                            value: shapeSection.shape.tail
+                            format: (v) => v < 0.5 ? "Left" : "Right"
+                            onCommitted: (v) => shapeSection.change({ tail: v })
+                        }
+                    }
+
+                    // How the text arrives, leaves and keeps moving, and its scrolling.
+                    Section {
+                        id: motionSection
+                        objectName: "titleAnimationSection"
+                        visible: inspector.clipInfo.isTitle === true
+                        Layout.fillWidth: true
+                        title: "Animation"
+                        readonly property var units: ["whole", "line", "word", "character"]
+                        readonly property var unitNames: ["Whole", "Lines", "Words", "Letters"]
+                        Repeater {
+                            model: [{ key: "animationIn", label: "In", loop: false }, { key: "animationOut", label: "Out", loop: false },
+                                    { key: "animationLoop", label: "Loop", loop: true }]
+                            delegate: ColumnLayout {
+                                id: motionRow
+                                required property var modelData
+                                readonly property var animation: textSection.text[modelData.key] || ({ preset: "" })
+                                readonly property var presets: [{ id: "", title: "None" }].concat(
+                                    inspector.project.textAnimations.filter((p) => p.loop === modelData.loop))
+                                function change(fields) {
+                                    const m = {}
+                                    m[modelData.key] = Object.assign({}, animation, fields)
+                                    textSection.change(m)
+                                }
+                                Layout.fillWidth: true
+                                spacing: Theme.space.xxs
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Text { text: motionRow.modelData.label; font: Theme.type.label; color: Theme.color.textSecondary; Layout.preferredWidth: 36 }
+                                    ComboBox {
+                                        objectName: "titleAnimation:" + motionRow.modelData.key
+                                        Layout.fillWidth: true
+                                        model: motionRow.presets
+                                        textRole: "title"
+                                        valueRole: "id"
+                                        currentIndex: Math.max(0, motionRow.presets.findIndex((p) => p.id === motionRow.animation.preset))
+                                        onActivated: (index) => motionRow.change({ preset: motionRow.presets[index].id })
+                                    }
+                                    ComboBox {
+                                        objectName: "titleAnimationUnit:" + motionRow.modelData.key
+                                        visible: motionRow.animation.preset !== ""
+                                        Layout.preferredWidth: 100
+                                        model: motionSection.unitNames
+                                        currentIndex: Math.max(0, motionSection.units.indexOf(motionRow.animation.unit))
+                                        onActivated: (index) => motionRow.change({ unit: motionSection.units[index] })
+                                    }
+                                }
+                                AudioSlider {
+                                    objectName: "titleAnimationDuration:" + motionRow.modelData.key
+                                    visible: motionRow.animation.preset !== ""
+                                    label: motionRow.modelData.loop ? "Cycle" : "Duration"
+                                    from: 0.1
+                                    to: motionRow.modelData.loop ? 5 : 3
+                                    value: motionRow.animation.duration || 0.8
+                                    format: (v) => v.toFixed(1) + " s"
+                                    onCommitted: (v) => motionRow.change({ duration: v })
+                                }
+                                AudioSlider {
+                                    objectName: "titleAnimationStagger:" + motionRow.modelData.key
+                                    visible: motionRow.animation.preset !== "" && !motionRow.modelData.loop
+                                             && motionRow.animation.unit !== "whole" && motionRow.animation.preset !== "typewriter"
+                                    label: "Stagger"
+                                    from: 0
+                                    to: 1
+                                    value: motionRow.animation.stagger === undefined ? 0.6 : motionRow.animation.stagger
+                                    format: (v) => Math.round(v * 100) + "%"
+                                    onCommitted: (v) => motionRow.change({ stagger: v })
+                                }
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: "Scroll"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            ComboBox {
+                                objectName: "titleScroll"
+                                readonly property var modes: ["none", "rollUp", "crawlLeft"]
+                                model: ["None", "Roll up (credits)", "Crawl left (ticker)"]
+                                currentIndex: Math.max(0, modes.indexOf(textSection.text.scroll || "none"))
+                                onActivated: (index) => textSection.change({ scroll: modes[index] })
+                            }
+                        }
+                    }
+
                     Text {
                         objectName: "adjustmentNote"
                         visible: inspector.clipInfo.isAdjustment === true

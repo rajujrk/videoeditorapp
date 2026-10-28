@@ -3,6 +3,7 @@
 #include "io/ProjectSerializer.h"
 #include "model/TimelineQuery.h"
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 
@@ -169,4 +170,112 @@ TEST_CASE("titles survive save and load")
     CHECK(saved["alignment"] == "right");
     CHECK(saved["fontFamily"] == "Avenir Next");
     CHECK(json["tracks"][1]["clips"][0]["text"].is_null());
+}
+
+TEST_CASE("text animation presets and their checks", "[titles]")
+{
+    const auto& presets = textAnimationPresets();
+    CHECK(presets.size() == 19);
+    CHECK(std::ranges::count_if(presets, &TextAnimationPreset::loop) == 5);
+    // 14 that arrive (and leave, backwards) and 5 loops: 33 animations.
+    CHECK(validateTextAnimation({}, TextAnimationRole::In) == std::nullopt); // none
+    CHECK_FALSE(validateTextAnimation({"pop", 0.5, TextUnit::Word, 0.5}, TextAnimationRole::In));
+    CHECK_FALSE(validateTextAnimation({"wave", 1.5, TextUnit::Character, 0.0}, TextAnimationRole::Loop));
+    CHECK(validateTextAnimation({"twirl", 1.0, TextUnit::Word, 0.5}, TextAnimationRole::In).value()
+          == "unknown text animation \"twirl\"");
+    CHECK(validateTextAnimation({"wave", 1.0, TextUnit::Word, 0.5}, TextAnimationRole::Out).value()
+          == "\"wave\" is a loop, not an in or out animation");
+    CHECK(validateTextAnimation({"fade", 1.0, TextUnit::Word, 0.5}, TextAnimationRole::Loop).value() == "\"fade\" is not a loop");
+    CHECK(validateTextAnimation({"fade", 0.0, TextUnit::Word, 0.5}, TextAnimationRole::In).value()
+          == "text animation duration is out of range");
+    CHECK(validateTextAnimation({"fade", 1.0, TextUnit::Word, 1.5}, TextAnimationRole::In).value()
+          == "text animation stagger must be between 0 and 1");
+}
+
+TEST_CASE("units arrive one after another and leave as the clip ends", "[titles]")
+{
+    const TextAnimation in{"fade", 1.0, TextUnit::Character, 1.0}; // fully sequential
+    // Four units of a quarter second each.
+    CHECK(animateTextUnit(in, TextAnimationRole::In, 0, 4, 0.0, 5.0).opacity == 0.0);
+    CHECK(animateTextUnit(in, TextAnimationRole::In, 0, 4, 0.25, 5.0).identity());
+    CHECK(animateTextUnit(in, TextAnimationRole::In, 1, 4, 0.25, 5.0).opacity == 0.0);
+    CHECK(animateTextUnit(in, TextAnimationRole::In, 3, 4, 0.8, 5.0).opacity > 0.0);
+    CHECK(animateTextUnit(in, TextAnimationRole::In, 3, 4, 0.8, 5.0).opacity < 1.0);
+    CHECK(animateTextUnit(in, TextAnimationRole::In, 3, 4, 1.0, 5.0).identity());
+    // No stagger: all together.
+    const TextAnimation together{"rise", 1.0, TextUnit::Character, 0.0};
+    CHECK(animateTextUnit(together, TextAnimationRole::In, 0, 4, 0.5, 5.0)
+          == animateTextUnit(together, TextAnimationRole::In, 3, 4, 0.5, 5.0));
+    CHECK(animateTextUnit(together, TextAnimationRole::In, 0, 4, 0.0, 5.0).dy == Catch::Approx(0.6));
+
+    // Out: untouched until its window, gone at the end; the first unit leaves first.
+    const TextAnimation out{"fade", 1.0, TextUnit::Word, 1.0};
+    CHECK(animateTextUnit(out, TextAnimationRole::Out, 0, 2, 3.9, 5.0).identity());
+    CHECK(animateTextUnit(out, TextAnimationRole::Out, 0, 2, 5.0, 5.0).opacity == 0.0);
+    CHECK(animateTextUnit(out, TextAnimationRole::Out, 1, 2, 5.0, 5.0).opacity == 0.0);
+    CHECK(animateTextUnit(out, TextAnimationRole::Out, 0, 2, 4.5, 5.0).opacity == 0.0);
+    CHECK(animateTextUnit(out, TextAnimationRole::Out, 1, 2, 4.5, 5.0).opacity == 1.0);
+
+    // Typewriter: each character appears at once, in turn.
+    const TextAnimation typed{"typewriter", 1.0, TextUnit::Character, 0.6};
+    CHECK(animateTextUnit(typed, TextAnimationRole::In, 0, 10, 0.0, 5.0).identity());
+    CHECK(animateTextUnit(typed, TextAnimationRole::In, 5, 10, 0.45, 5.0).opacity == 0.0);
+    CHECK(animateTextUnit(typed, TextAnimationRole::In, 5, 10, 0.55, 5.0).identity());
+
+    // Shapes of motion: a pop overshoots, a wipe reveals, tracking spreads from the middle.
+    const TextAnimation pop{"pop", 1.0, TextUnit::Whole, 0.0};
+    double biggest = 0.0;
+    for (double t = 0.0; t < 1.0; t += 0.05)
+        biggest = std::max(biggest, animateTextUnit(pop, TextAnimationRole::In, 0, 1, t, 5.0).scale);
+    CHECK(biggest > 1.05);
+    CHECK(animateTextUnit({"wipe", 1.0, TextUnit::Whole, 0.0}, TextAnimationRole::In, 0, 1, 0.0, 5.0).reveal == 0.0);
+    CHECK(animateTextUnit({"tracking", 1.0, TextUnit::Character, 0.0}, TextAnimationRole::In, 0, 5, 0.0, 5.0).dx < 0.0);
+    CHECK(animateTextUnit({"tracking", 1.0, TextUnit::Character, 0.0}, TextAnimationRole::In, 4, 5, 0.0, 5.0).dx > 0.0);
+    CHECK(animateTextUnit({"tracking", 1.0, TextUnit::Character, 0.0}, TextAnimationRole::In, 2, 5, 0.0, 5.0).dx == 0.0);
+
+    // Loops repeat every cycle and differ between units.
+    const TextAnimation wave{"wave", 2.0, TextUnit::Character, 0.0};
+    CHECK(animateTextUnit(wave, TextAnimationRole::Loop, 1, 5, 0.3, 5.0).dy
+          == Catch::Approx(animateTextUnit(wave, TextAnimationRole::Loop, 1, 5, 2.3, 5.0).dy).margin(1e-9));
+    CHECK(animateTextUnit(wave, TextAnimationRole::Loop, 1, 5, 0.3, 5.0).dy
+          != Catch::Approx(animateTextUnit(wave, TextAnimationRole::Loop, 2, 5, 0.3, 5.0).dy));
+}
+
+TEST_CASE("title shapes, animations and scrolling are checked and saved", "[titles]")
+{
+    ClipText text;
+    CHECK_FALSE(text.animated());
+    text.shape = {TitleShapeKind::Speech, {1, 1, 1, 0.9}, 0.6, 0.8};
+    text.animationIn = {"bounce", 1.2, TextUnit::Word, 0.4};
+    text.animationOut = {"fade", 0.5, TextUnit::Whole, 0.0};
+    text.animationLoop = {"swing", 2.0, TextUnit::Whole, 0.0};
+    text.scroll = TextScroll::CrawlLeft;
+    CHECK(text.animated());
+    CHECK_FALSE(validateText(text));
+
+    TitleProject p;
+    const Id title = p.push<AddTitleCommand>(kNoId, 0, 5 * kSec, text).clipId();
+    nlohmann::json json = projectToJson(p.project);
+    nlohmann::json& saved = json["tracks"].back()["clips"][0]["text"];
+    CHECK(saved["shape"]["kind"] == "speech");
+    CHECK(saved["animationIn"]["unit"] == "word");
+    CHECK(saved["scroll"] == "crawlLeft");
+    CHECK(*projectFromJson(json).locateClip(title)->clip->text == text);
+    // Older titles have none of it.
+    for (const char* field : {"shape", "animationIn", "animationOut", "animationLoop", "scroll"})
+        saved.erase(field);
+    Project old = projectFromJson(json);
+    const ClipText plain = *old.locateClip(title)->clip->text;
+    CHECK(plain.shape.kind == TitleShapeKind::None);
+    CHECK_FALSE(plain.animated());
+
+    ClipText bad = text;
+    bad.shape.padding = 3.0;
+    CHECK(validateText(bad).value() == "shape padding is out of range");
+    bad = text;
+    bad.shape.color.a = 1.5;
+    CHECK(validateText(bad).value() == "colours must be between 0 and 1");
+    bad = text;
+    bad.animationLoop.preset = "pop";
+    CHECK(validateText(bad).value() == "\"pop\" is not a loop");
 }

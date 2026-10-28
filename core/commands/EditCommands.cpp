@@ -1105,7 +1105,17 @@ std::optional<std::string> validateText(const ClipText& text)
         return "letter spacing is out of range";
     if (text.outlineWidth < 0.0 || text.outlineWidth > 0.3)
         return "outline width is out of range";
-    for (const ColorRgba& c : {text.color, text.outlineColor}) {
+    if (!std::isfinite(text.shape.padding) || text.shape.padding < 0.0 || text.shape.padding > 2.0)
+        return "shape padding is out of range";
+    if (!std::isfinite(text.shape.tail) || text.shape.tail < 0.0 || text.shape.tail > 1.0)
+        return "a bubble's tail must be along its edge";
+    for (const auto& [animation, role] : {std::pair{&text.animationIn, TextAnimationRole::In},
+                                          std::pair{&text.animationOut, TextAnimationRole::Out},
+                                          std::pair{&text.animationLoop, TextAnimationRole::Loop}}) {
+        if (auto error = validateTextAnimation(*animation, role))
+            return error;
+    }
+    for (const ColorRgba& c : {text.color, text.outlineColor, text.shape.color}) {
         for (double v : {c.r, c.g, c.b, c.a}) {
             if (v < 0.0 || v > 1.0)
                 return "colours must be between 0 and 1";

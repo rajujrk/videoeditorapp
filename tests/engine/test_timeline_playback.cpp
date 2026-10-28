@@ -610,6 +610,11 @@ TEST_CASE("titles play as text layers above the video, with no media")
 
     REQUIRE(frames[40].layers.size() == 1); // 1.33 s: the title alone
     CHECK(frames[40].layers[0].text);
+    // Each title frame knows how far into its clip it is (for text animations).
+    CHECK(both.layers[1].titleSeconds == Catch::Approx(20.0 / 30.0 - 0.5).margin(1e-6));
+    CHECK(frames[40].layers[0].titleSeconds == Catch::Approx(40.0 / 30.0 - 0.5).margin(1e-6));
+    CHECK(frames[40].layers[0].titleDuration == Catch::Approx(1.0));
+    CHECK(both.layers[0].titleDuration == 0.0); // not a title
 }
 
 // Not run by default: `tve_engine_tests "[perf]"`. Unpaced producer throughput, in project

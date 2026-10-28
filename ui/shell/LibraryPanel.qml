@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
+import "TitleTemplates.js" as TitleTemplates
 
 // Left panel: a vertical tab rail of content types and the selected type's browser.
 Rectangle {
@@ -27,23 +28,10 @@ Rectangle {
 
     color: Theme.color.surface
 
-    // Title styles (original designs). Each is a title's text fields plus its position (y,
-    // a fraction of the canvas height from the centre).
-    readonly property var titleStyles: [
-        { name: "Title", style: { text: "Your Title", size: 0.1, bold: true, shadow: true } },
-        { name: "Subtitle", style: { text: "Subtitle text goes here", size: 0.05, outlineWidth: 0.08,
-                                     outlineColor: [0, 0, 0, 1], y: 0.36 } },
-        { name: "Lower Third", style: { text: "Name Surname\nRole or place", size: 0.045, bold: true,
-                                        alignment: "left", shadow: true, y: 0.3 } },
-        { name: "Big Bold", style: { text: "BIG NEWS", size: 0.16, bold: true, color: [1, 0.84, 0.2, 1],
-                                     outlineWidth: 0.06, outlineColor: [0.1, 0.05, 0, 1] } },
-        { name: "Minimal", style: { text: "minimal", size: 0.06, letterSpacing: 0.4, fontFamily: "Avenir Next" } },
-        { name: "Serif", style: { text: "Chapter One", size: 0.09, italic: true, fontFamily: "Georgia",
-                                  color: [1, 0.95, 0.85, 1], shadow: true } },
-        { name: "Typewriter", style: { text: "Once upon a time…", size: 0.06, fontFamily: "American Typewriter" } },
-        { name: "Callout", style: { text: "Look here!", size: 0.08, fontFamily: "Marker Felt", color: [1, 0.55, 0.1, 1],
-                                    outlineWidth: 0.08, outlineColor: [1, 1, 1, 1] } }
-    ]
+    // Title templates (original designs, TitleTemplates.js): {name, category, style}; the
+    // Titles tab's category ("" for all).
+    readonly property var titleStyles: TitleTemplates.templates
+    property string titleCategory: ""
 
     readonly property var tabs: [
         { icon: "media", label: "Media", phase: "" },
@@ -136,6 +124,42 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.margins: Theme.space.m
                 placeholderText: "Search " + library.tabs[library.currentTab].label.toLowerCase()
+            }
+
+            // Titles tab: category chips over the templates.
+            Flow {
+                visible: titlesGrid.visible
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.space.m
+                Layout.rightMargin: Theme.space.m
+                Layout.bottomMargin: Theme.space.s
+                spacing: Theme.space.xs
+                Repeater {
+                    model: TitleTemplates.categories
+                    delegate: AbstractButton {
+                        id: titleChip
+                        required property var modelData
+                        objectName: "titleCategory:" + (modelData.id || "all")
+                        checked: library.titleCategory === modelData.id
+                        hoverEnabled: true
+                        implicitWidth: titleChipLabel.implicitWidth + Theme.space.m * 2
+                        implicitHeight: 24
+                        onClicked: library.titleCategory = modelData.id
+                        background: Rectangle {
+                            radius: height / 2
+                            color: titleChip.checked ? Theme.color.accentSubtle : titleChip.hovered ? Theme.color.surfaceHover : "transparent"
+                            border.color: titleChip.checked ? Theme.color.accent : Theme.color.borderSubtle
+                        }
+                        contentItem: Text {
+                            id: titleChipLabel
+                            text: titleChip.modelData.label
+                            font: Theme.type.caption
+                            color: titleChip.checked ? Theme.color.accentText : Theme.color.textSecondary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
             }
 
             // Effects tab: category chips over the effects.
@@ -366,6 +390,7 @@ Rectangle {
             // Titles tab: click to add one at the playhead, or drag it onto a track.
             GridView {
                 id: titlesGrid
+                objectName: "titlesGrid"
                 visible: library.tabs[library.currentTab].label === "Titles"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -373,12 +398,15 @@ Rectangle {
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: library.titleStyles
+                model: library.titleStyles.filter((t) => (library.titleCategory === "" || t.category === library.titleCategory)
+                                                         && library.matchesSearch(t.name))
 
                 delegate: Item {
                     id: titleTile
                     required property var modelData
                     readonly property var titleStyle: modelData.style // read by the timeline's drop area
+                    readonly property bool animated: !!(modelData.style.animationIn || modelData.style.animationOut
+                                                        || modelData.style.animationLoop || modelData.style.scroll)
                     width: titlesGrid.cellWidth
                     height: titlesGrid.cellHeight
 
@@ -412,12 +440,25 @@ Rectangle {
                                     GradientStop { position: 0; color: "#3B4E7A" }
                                     GradientStop { position: 1; color: "#B0675A" }
                                 }
+                                // Drawn by the app's text renderer; an animated one plays on hover.
                                 Image {
+                                    id: titlePreview
                                     objectName: "titlePreview:" + titleTile.modelData.name
                                     anchors.fill: parent
                                     fillMode: Image.PreserveAspectCrop
                                     asynchronous: true
-                                    source: "image://tvetitle/" + encodeURIComponent(JSON.stringify(titleTile.modelData.style))
+                                    readonly property real length: titleTile.modelData.style.duration || 5
+                                    property real seconds: length / 2
+                                    source: "image://tvetitle/" + encodeURIComponent(JSON.stringify(
+                                                Object.assign({ t: Math.round(seconds * 10) / 10 }, titleTile.modelData.style)))
+                                    Timer {
+                                        running: titleMouse.containsMouse && titleTile.animated
+                                        repeat: true
+                                        interval: 100
+                                        onTriggered: titlePreview.seconds = titlePreview.seconds >= titlePreview.length
+                                                     ? 0 : titlePreview.seconds + Math.max(0.1, titlePreview.length / 40)
+                                        onRunningChanged: if (!running) titlePreview.seconds = titlePreview.length / 2
+                                    }
                                 }
                             }
                             Text {
