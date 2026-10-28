@@ -2564,7 +2564,9 @@ QStringList ProjectController::titleFonts() const
 
 bool ProjectController::addTitle(const QVariantMap& style, double trackId, double start)
 {
-    constexpr Ticks kTitleLength = 5 * kTicksPerSecond;
+    // Five seconds unless the style asks for longer (credits roll for a while).
+    const double length = style.value(QStringLiteral("duration"), 5.0).toDouble();
+    const Ticks kTitleLength = ticks(std::clamp(length, 0.5, 600.0));
     const Ticks at = start < 0 ? ticks(m_playhead) : ticks(start);
     Id track = toId(trackId);
     if (trackId < 0) {
@@ -3402,4 +3404,15 @@ bool ProjectController::normalizeLoudness(double clipId, double targetLufs)
         }, Qt::QueuedConnection);
     }).detach();
     return true;
+}
+
+QVariantList ProjectController::textAnimations() const
+{
+    QVariantList list;
+    for (const TextAnimationPreset& preset : textAnimationPresets()) {
+        list << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(preset.id.data(), qsizetype(preset.id.size()))},
+                            {QStringLiteral("title"), QString::fromLatin1(preset.title.data(), qsizetype(preset.title.size()))},
+                            {QStringLiteral("loop"), preset.loop}};
+    }
+    return list;
 }

@@ -48,6 +48,10 @@ struct VideoLayer {
     std::vector<ClipMask> masks;
     // Uses the layer just above as its matte (that layer is then not drawn).
     MatteMode matte = MatteMode::None;
+    // A title: how far into its clip this frame is, and the clip's length, in seconds (its
+    // text animations and scrolling depend on them).
+    double titleSeconds = 0.0;
+    double titleDuration = 0.0;
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.

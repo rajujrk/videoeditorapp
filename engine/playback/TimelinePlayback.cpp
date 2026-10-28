@@ -161,14 +161,15 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
                 composite.layers.push_back(VideoLayer{layer.clip->id, DecodedFrame{}, layer.clip->visualAt(time),
                                                       layer.clip->effectsAt(time), std::nullopt, std::nullopt,
                                                       layer.clip->color, lookOf(*layer.clip), true, {}, ChromaKey{},
-                                                      {}, MatteMode::None});
+                                                      {}, MatteMode::None, 0.0, 0.0});
                 continue;
             }
             if (layer.clip->text) {
                 composite.layers.push_back(VideoLayer{layer.clip->id, DecodedFrame{}, layer.clip->visualAt(time),
                                                       layer.clip->effectsAt(time), std::nullopt, layer.clip->text,
                                                       ColorGrade{}, ColorGrade{}, false, {}, ChromaKey{},
-                                                      layer.clip->masks, layer.clip->matte}); // titles are not graded
+                                                      layer.clip->masks, layer.clip->matte, // titles are not graded
+                                                      toSeconds(time - layer.clip->start), toSeconds(layer.clip->duration)});
                 continue;
             }
             // Each side is a decoded frame, or a still image's path (nothing to decode).
@@ -198,14 +199,14 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
                                     t.to->visualAt(time), t.to->effectsAt(time), t.to->color, lookOf(*t.to),
                                     in.stillPath, t.to->chromaKey, t.to->masks},
                     std::nullopt, layer.clip->color, lookOf(*layer.clip), false, out.stillPath,
-                    layer.clip->chromaKey, layer.clip->masks}); // no matte during a transition
+                    layer.clip->chromaKey, layer.clip->masks, MatteMode::None, 0.0, 0.0}); // no matte during a transition
             } else if (out.shown() || in.shown()) {
                 // One side unreadable: show the other alone.
                 const Side& side = out.shown() ? out : in;
                 const Clip& clip = *side.clip;
                 composite.layers.push_back(VideoLayer{clip.id, side.picture(), clip.visualAt(time), clip.effectsAt(time),
                                                       std::nullopt, std::nullopt, clip.color, lookOf(clip), false,
-                                                      side.stillPath, clip.chromaKey, clip.masks, clip.matte});
+                                                      side.stillPath, clip.chromaKey, clip.masks, clip.matte, 0.0, 0.0});
             }
         }
         if (!m_queue.push(std::move(composite)))

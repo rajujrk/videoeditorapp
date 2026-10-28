@@ -49,8 +49,35 @@ NLOHMANN_JSON_SERIALIZE_ENUM(TextAlignment, {
     {TextAlignment::Center, "center"},
     {TextAlignment::Right, "right"},
 })
+NLOHMANN_JSON_SERIALIZE_ENUM(TitleShapeKind, {
+    {TitleShapeKind::None, "none"},
+    {TitleShapeKind::Box, "box"},
+    {TitleShapeKind::Rounded, "rounded"},
+    {TitleShapeKind::Pill, "pill"},
+    {TitleShapeKind::Speech, "speech"},
+    {TitleShapeKind::Thought, "thought"},
+    {TitleShapeKind::Banner, "banner"},
+    {TitleShapeKind::Underline, "underline"},
+    {TitleShapeKind::Circle, "circle"},
+    {TitleShapeKind::Arrow, "arrow"},
+    {TitleShapeKind::Tag, "tag"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TitleShape, kind, color, padding, tail)
+NLOHMANN_JSON_SERIALIZE_ENUM(TextUnit, {
+    {TextUnit::Whole, "whole"},
+    {TextUnit::Line, "line"},
+    {TextUnit::Word, "word"},
+    {TextUnit::Character, "character"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TextAnimation, preset, duration, unit, stagger)
+NLOHMANN_JSON_SERIALIZE_ENUM(TextScroll, {
+    {TextScroll::None, "none"},
+    {TextScroll::RollUp, "rollUp"},
+    {TextScroll::CrawlLeft, "crawlLeft"},
+})
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipText, text, fontFamily, size, bold, italic, color, alignment,
-                                                lineSpacing, letterSpacing, outlineColor, outlineWidth, shadow)
+                                                lineSpacing, letterSpacing, outlineColor, outlineWidth, shadow, shape,
+                                                animationIn, animationOut, animationLoop, scroll)
 NLOHMANN_JSON_SERIALIZE_ENUM(Easing, {
     {Easing::Linear, "linear"},
     {Easing::EaseIn, "easeIn"},

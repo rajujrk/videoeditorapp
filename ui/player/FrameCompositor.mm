@@ -250,12 +250,15 @@ QRhiTexture* FrameCompositor::convertLayer(QRhiCommandBuffer* cb, LayerSlot& slo
     return slot.rgb.get();
 }
 
-QRhiTexture* FrameCompositor::titleTexture(QRhiCommandBuffer* cb, tve::Id clipId, const tve::ClipText& text)
+QRhiTexture* FrameCompositor::titleTexture(QRhiCommandBuffer* cb, tve::Id clipId, const tve::ClipText& text,
+                                           double seconds, double duration)
 {
     TitleTexture& title = m_titles[clipId];
-    if (title.texture && title.text == text && title.canvas == m_canvasSize)
+    if (!text.animated())
+        seconds = -1.0; // at rest: the same at every moment
+    if (title.texture && title.text == text && title.canvas == m_canvasSize && title.seconds == seconds)
         return title.texture.get();
-    const QImage image = renderTitle(text, m_canvasSize);
+    const QImage image = renderTitle(text, m_canvasSize, seconds, duration);
     if (!title.texture || title.texture->pixelSize() != image.size()) {
         title.texture.reset(m_rhi->newTexture(QRhiTexture::RGBA8, image.size()));
         if (!title.texture->create()) {
@@ -268,6 +271,7 @@ QRhiTexture* FrameCompositor::titleTexture(QRhiCommandBuffer* cb, tve::Id clipId
     cb->resourceUpdate(upload);
     title.text = text;
     title.canvas = m_canvasSize;
+    title.seconds = seconds;
     return title.texture.get();
 }
 
@@ -319,12 +323,13 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                                  std::vector<tve::ClipEffect> effects, tve::ColorGrade grade, tve::ColorGrade look,
                                  const std::optional<tve::ClipText>& text = std::nullopt,
                                  QRhiTexture* canvasBelow = nullptr, const std::string& stillPath = {},
-                                 tve::ChromaKey key = {}, std::vector<tve::ClipMask> masks = {}) -> QRhiTexture* {
+                                 tve::ChromaKey key = {}, std::vector<tve::ClipMask> masks = {},
+                                 double titleSeconds = 0.0, double titleDuration = 0.0) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
         if (canvasBelow) {
             picture = canvasBelow; // an adjustment layer works on what is under it
         } else if (text) {
-            picture = titleTexture(cb, clipId, *text);
+            picture = titleTexture(cb, clipId, *text, titleSeconds, titleDuration);
             liveTitles.insert(clipId);
         } else if (!stillPath.empty()) {
             picture = stillTexture(cb, stillPath);
@@ -420,7 +425,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             continue;
         }
         QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look,
-                                           layer.text, nullptr, layer.stillPath, layer.chromaKey, layer.masks);
+                                           layer.text, nullptr, layer.stillPath, layer.chromaKey, layer.masks,
+                                           layer.titleSeconds, layer.titleDuration);
         // Track matte: the layer just above is the matte, placed by itself, and not drawn.
         tve::VideoLayer* matteLayer = index + 1 < frame.layers.size() ? &frame.layers[index + 1] : nullptr;
         if (layer.matte != tve::MatteMode::None && !layer.transition && matteLayer && !matteLayer->transition
@@ -430,7 +436,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             QRhiTexture* matte =
                 clipPicture(matteLayer->clipId, matteLayer->frame, matteVisual, matteLayer->effects, matteLayer->grade,
                             matteLayer->look, matteLayer->text, nullptr, matteLayer->stillPath, matteLayer->chromaKey,
-                            matteLayer->masks);
+                            matteLayer->masks, matteLayer->titleSeconds, matteLayer->titleDuration);
             if (!picture)
                 continue;
             if (m_matteCanvases.size() <= matteIndex)

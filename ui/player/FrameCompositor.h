@@ -75,10 +75,12 @@ private:
         std::unique_ptr<QRhiTexture> rgb;
         std::unique_ptr<QRhiTextureRenderTarget> target;
     };
-    // Titles on screen: their text drawn at canvas size, redrawn only when it changes.
+    // Titles on screen: their text drawn at canvas size, redrawn only when it changes (an
+    // animated title: when its moment changes).
     struct TitleTexture {
         tve::ClipText text;
         QSize canvas;
+        double seconds = -1.0;
         std::unique_ptr<QRhiTexture> texture;
     };
 
@@ -86,7 +88,8 @@ private:
     // YUV → RGB of one layer into its slot's texture; nullptr if the buffer is unusable.
     QRhiTexture* convertLayer(QRhiCommandBuffer* cb, LayerSlot& slot, CVPixelBufferRef buffer,
                               std::vector<CVMetalTextureRef>& retained);
-    QRhiTexture* titleTexture(QRhiCommandBuffer* cb, tve::Id clipId, const tve::ClipText& text);
+    QRhiTexture* titleTexture(QRhiCommandBuffer* cb, tve::Id clipId, const tve::ClipText& text, double seconds,
+                              double duration);
     // A still image's picture, read once and kept while it is in use (and a few after).
     QRhiTexture* stillTexture(QRhiCommandBuffer* cb, const std::string& path);
 

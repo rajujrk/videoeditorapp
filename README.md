@@ -4,14 +4,15 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b) and audio effects, mixing and loudness (9a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a) and the titles system (9b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
 scopes, put looks (filters) and overlays on clips or on adjustment layers above them, cut clips out with shape and pen masks, a chroma key or a track matte, arrange clips side by side or picture in picture, give each clip its own effects from a library of 61 (with shadows, outlines and fills that reach outside the picture),
 put any of 21 transitions on the cuts between clips (with a constant-power sound
 crossfade), add titles (font, size, colour, bold/italic, alignment, letter and line
-spacing, outline, shadow), change a clip's speed (0.1–10×) or ramp it, play it in reverse or insert
+spacing, outline, shadow, a shape or bubble behind them, in/out/loop text animations by
+letter, word or line, rolling credits and tickers; 40 templates), change a clip's speed (0.1–10×) or ramp it, play it in reverse or insert
 freeze frames, hear and see their sound (waveforms, volume, fades, detach audio, track
 mute/hide/lock, meter), see thumbnails in the media bin and on the timeline, play and
 scrub, save/open `.tve` projects (unsaved work is autosaved and recoverable after a crash),
@@ -112,6 +113,20 @@ has no speed, but everything else applies — placement and crop, keyframes (a s
 pan), colour, looks, effects, transitions, export — and transparency in PNGs shows what is
 below. An animated GIF plays as a video. Images do not set the project's canvas; the first
 video does.
+
+**Titles system.** The library's Titles tab holds 40 original templates in five categories
+— titles, lower thirds, callouts (speech and thought bubbles, an arrow, a badge, a tag),
+credits (rolling credits, a scrolling quote, a news ticker, end and chapter cards) and
+animated — with previews drawn by the app's own text renderer that play on hover. A title can
+have a shape behind its text (box, rounded box, pill, speech or thought bubble with a movable
+tail, banner, underline, circle, arrow or tag, any colour and opacity, with padding), and
+three animations: **In** from the clip's start and **Out** ending at its end — fade, rise,
+drop, slide left or right, zoom, pop, spin, flip, bounce, typewriter, focus, wipe or tracking
+— and a **Loop** while it shows — wave, pulse, flicker, shake or swing. Each moves the whole
+text, its lines, words or letters, one after another by a stagger, for a duration; the shape
+arrives and leaves with the text. **Scroll** rolls the text up the frame over the whole clip
+(credits) or crawls it from right to left (a ticker). Everything is drawn per letter, so it
+looks the same in the player and the export.
 
 **Audio effects, mixer and loudness.** The Audio tab's Audio effects section stacks 40 effects
 of our own on a clip's sound: EQ (Graphic EQ, Bass Boost, Treble Boost, Voice Clarity, Warmth,
