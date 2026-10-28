@@ -1,0 +1,21 @@
+{
+  "id": "tve.frame.drop_shadow",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["frame"],
+  "space": "canvas",
+  "title": {"en": "Drop Shadow"},
+  "params": [
+    {"id": "offset", "type": "float", "title": {"en": "Distance"}, "min": 0, "max": 10, "default": 1.5, "keyframable": true},
+    {"id": "angle", "type": "float", "title": {"en": "Angle"}, "min": -180, "max": 180, "default": 45},
+    {"id": "blur", "type": "float", "title": {"en": "Blur"}, "min": 0, "max": 10, "default": 1.5},
+    {"id": "opacity", "type": "float", "title": {"en": "Opacity"}, "min": 0, "max": 1, "default": 0.6, "keyframable": true},
+    {"id": "color", "type": "color", "title": {"en": "Colour"}, "default": [0.0, 0.0, 0.0]}
+  ],
+  "passes": [
+    {"fragment": "shadow_h.frag"},
+    {"fragment": "shadow_v.frag"},
+    {"fragment": "shadow_under.frag"}
+  ],
+  "license": "TVE-Original"
+}

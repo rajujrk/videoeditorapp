@@ -1,0 +1,19 @@
+{
+  "id": "tve.light.glow",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["light"],
+  "title": {"en": "Glow"},
+  "params": [
+    {"id": "threshold", "type": "float", "title": {"en": "Threshold"}, "min": 0, "max": 1, "default": 0.6},
+    {"id": "radius", "type": "float", "title": {"en": "Radius"}, "min": 0, "max": 10, "default": 2, "keyframable": true},
+    {"id": "intensity", "type": "float", "title": {"en": "Intensity"}, "min": 0, "max": 3, "default": 1, "keyframable": true},
+    {"id": "tint", "type": "color", "title": {"en": "Tint"}, "default": [1.0, 1.0, 1.0]}
+  ],
+  "passes": [
+    {"fragment": "bright_h.frag"},
+    {"fragment": "glow_v.frag"},
+    {"fragment": "glow_add.frag"}
+  ],
+  "license": "TVE-Original"
+}

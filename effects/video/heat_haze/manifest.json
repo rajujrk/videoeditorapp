@@ -1,0 +1,16 @@
+{
+  "id": "tve.distort.heat_haze",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["distort"],
+  "title": {"en": "Heat Haze"},
+  "params": [
+    {"id": "amount", "type": "float", "title": {"en": "Amount"}, "min": 0, "max": 3, "default": 0.5, "keyframable": true},
+    {"id": "scale", "type": "float", "title": {"en": "Scale"}, "min": 1, "max": 50, "default": 12},
+    {"id": "speed", "type": "float", "title": {"en": "Speed"}, "min": 0, "max": 5, "default": 1}
+  ],
+  "passes": [
+    {"fragment": "heat_haze.frag"}
+  ],
+  "license": "TVE-Original"
+}

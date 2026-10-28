@@ -1,0 +1,15 @@
+{
+  "id": "tve.color.tint",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["color"],
+  "title": {"en": "Tint"},
+  "params": [
+    {"id": "color", "type": "color", "title": {"en": "Colour"}, "default": [1.0, 0.6, 0.3]},
+    {"id": "amount", "type": "float", "title": {"en": "Amount"}, "min": 0, "max": 1, "default": 0.5, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "tint.frag"}
+  ],
+  "license": "TVE-Original"
+}

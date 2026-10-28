@@ -1,0 +1,17 @@
+{
+  "id": "tve.stylize.neon_edges",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize"],
+  "title": {"en": "Neon Edges"},
+  "params": [
+    {"id": "strength", "type": "float", "title": {"en": "Strength"}, "min": 0, "max": 5, "default": 2, "keyframable": true},
+    {"id": "mode", "type": "enum", "title": {"en": "Colour"}, "values": ["Picture's colours", "One colour"], "default": "Picture's colours"},
+    {"id": "color", "type": "color", "title": {"en": "Neon colour"}, "default": [0.2, 0.9, 1.0]},
+    {"id": "background", "type": "float", "title": {"en": "Picture behind"}, "min": 0, "max": 1, "default": 0}
+  ],
+  "passes": [
+    {"fragment": "neon_edges.frag"}
+  ],
+  "license": "TVE-Original"
+}

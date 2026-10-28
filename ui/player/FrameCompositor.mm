@@ -8,6 +8,7 @@
 #include "gpu/Compositor.h"
 #include "gpu/MaskRenderer.h"
 #include "gpu/EffectChain.h"
+#include "gpu/LayerPlacement.h"
 #include "gpu/TransitionRenderer.h"
 
 #include <QFile>
@@ -137,6 +138,7 @@ FrameCompositor::~FrameCompositor()
 void FrameCompositor::reset()
 {
     m_clipChains.clear();
+    m_canvasChains.clear();
     m_titles.clear();
     m_stills.clear();
 }
@@ -306,8 +308,13 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::size_t transitionIndex = 0;
 
     std::set<tve::Id> liveTitles;
+    std::set<tve::Id> liveCanvasClips;
+    std::size_t effectCanvasIndex = 0;
+    // Each clip's canvas effects, by clip, as clipPicture() leaves them for placement.
+    std::map<tve::Id, std::vector<tve::EffectInstance>> canvasEffects;
     // One clip's picture (decoded video, a still, or a title's text), through its colour, key
-    // and masks, and effects (with any live preview).
+    // and masks, and picture effects (with any live preview). Its canvas effects are kept in
+    // `canvasEffects` for place().
     const auto clipPicture = [&](tve::Id clipId, const tve::DecodedFrame& decoded, tve::ClipVisual& visual,
                                  std::vector<tve::ClipEffect> effects, tve::ColorGrade grade, tve::ColorGrade look,
                                  const std::optional<tve::ClipText>& text = std::nullopt,
@@ -336,18 +343,63 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         }
         if (!canvasBelow)
             picture = m_masks->apply(cb, picture, key, masks);
-        if (!effects.empty()) {
+        std::vector<tve::EffectInstance> instances;
+        canvasEffects.erase(clipId);
+        for (const tve::ClipEffect& effect : effects) {
+            const tve::LoadedEffect* loaded = tve::EffectLibrary::builtIn().find(effect.effectId);
+            // On an adjustment layer the picture is the canvas already.
+            if (loaded && loaded->manifest.space == tve::EffectSpace::Canvas && !canvasBelow)
+                canvasEffects[clipId].push_back(toInstance(effect));
+            else
+                instances.push_back(toInstance(effect));
+        }
+        if (!instances.empty()) {
             auto& chain = m_clipChains[clipId];
             if (!chain)
                 chain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
-            std::vector<tve::EffectInstance> instances;
-            for (const tve::ClipEffect& effect : effects)
-                instances.push_back(toInstance(effect));
             chain->setInstances(std::move(instances));
             picture = chain->process(cb, picture, seconds);
             liveClips.insert(clipId);
         }
         return picture;
+    };
+    // Draws a clip's picture onto `target` by `visual`: directly, or, with canvas effects,
+    // placed on a transparent canvas of its own that the effects then work on.
+    const auto place = [&](tve::Compositor& target, tve::Id clipId, QRhiTexture* picture, tve::ClipVisual visual) {
+        const auto found = canvasEffects.find(clipId);
+        if (found == canvasEffects.end() || found->second.empty()) {
+            target.draw(cb, picture, visual);
+            return;
+        }
+        if (m_effectCanvases.size() <= effectCanvasIndex)
+            m_effectCanvases.push_back(std::make_unique<tve::Compositor>(m_rhi));
+        tve::Compositor& own = *m_effectCanvases[effectCanvasIndex++];
+        tve::ClipVisual whole;
+        whole.blend = visual.blend;
+        visual.blend = tve::BlendMode::Normal;
+        own.begin(cb, m_canvasSize, true);
+        own.draw(cb, picture, visual);
+        // Where the placed picture lies on the canvas, for effects that fill around it.
+        const tve::LayerPlacement placement = tve::placeLayer(visual, m_canvasSize.width(), m_canvasSize.height(),
+                                                              picture->pixelSize().width(), picture->pixelSize().height());
+        const auto& m = placement.canvasToLayer;
+        const double det = m[0] * m[4] - m[1] * m[3];
+        tve::EffectBounds bounds{1.0f, 1.0f, 0.0f, 0.0f};
+        for (const double u : {placement.cropRect[0], placement.cropRect[2]}) {
+            for (const double v : {placement.cropRect[1], placement.cropRect[3]}) {
+                const double a = u - m[2];
+                const double b = v - m[5];
+                const auto x = float(std::clamp((m[4] * a - m[1] * b) / det, 0.0, 1.0));
+                const auto y = float(std::clamp((-m[3] * a + m[0] * b) / det, 0.0, 1.0));
+                bounds = {std::min(bounds[0], x), std::min(bounds[1], y), std::max(bounds[2], x), std::max(bounds[3], y)};
+            }
+        }
+        auto& chain = m_canvasChains[clipId];
+        if (!chain)
+            chain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
+        chain->setInstances(found->second);
+        liveCanvasClips.insert(clipId);
+        target.draw(cb, chain->process(cb, own.result(), seconds, bounds), whole);
     };
 
     std::size_t matteIndex = 0;
@@ -388,10 +440,10 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             visual.blend = tve::BlendMode::Normal;
             matteVisual.blend = tve::BlendMode::Normal;
             canvases[0]->begin(cb, m_canvasSize, true);
-            canvases[0]->draw(cb, picture, visual);
+            place(*canvases[0], layer.clipId, picture, visual);
             canvases[1]->begin(cb, m_canvasSize, true);
             if (matte)
-                canvases[1]->draw(cb, matte, matteVisual);
+                place(*canvases[1], matteLayer->clipId, matte, matteVisual);
             tve::ClipVisual whole;
             whole.blend = blend;
             m_compositor->draw(cb, m_masks->combineMatte(cb, canvases[0]->result(), canvases[1]->result(), layer.matte),
@@ -400,7 +452,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         }
         if (!layer.transition) {
             if (picture)
-                m_compositor->draw(cb, picture, visual);
+                place(*m_compositor, layer.clipId, picture, visual);
             continue;
         }
 
@@ -412,7 +464,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                         transition.masks);
         if (!picture || !incoming) {
             if (picture || incoming)
-                m_compositor->draw(cb, picture ? picture : incoming, picture ? visual : incomingVisual);
+                place(*m_compositor, picture ? layer.clipId : transition.clipId, picture ? picture : incoming,
+                      picture ? visual : incomingVisual);
             continue;
         }
         if (m_transitionCanvases.size() <= transitionIndex)
@@ -423,9 +476,9 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         visual.blend = tve::BlendMode::Normal;
         incomingVisual.blend = tve::BlendMode::Normal;
         canvases[0]->begin(cb, m_canvasSize, true);
-        canvases[0]->draw(cb, picture, visual);
+        place(*canvases[0], layer.clipId, picture, visual);
         canvases[1]->begin(cb, m_canvasSize, true);
-        canvases[1]->draw(cb, incoming, incomingVisual);
+        place(*canvases[1], transition.clipId, incoming, incomingVisual);
         QRhiTexture* blended = m_transitions->render(cb, transition.transitionId, transition.values, transition.progress,
                                                      canvases[0]->result(), canvases[1]->result(), seconds);
         if (blended) {
@@ -440,6 +493,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     }
     // Drop effect chains and title textures of clips no longer on screen.
     std::erase_if(m_clipChains, [&](const auto& entry) { return !liveClips.contains(entry.first); });
+    std::erase_if(m_canvasChains, [&](const auto& entry) { return !liveCanvasClips.contains(entry.first); });
     std::erase_if(m_titles, [&](const auto& entry) { return !liveTitles.contains(entry.first); });
     // Stills stay a while after they leave the screen (scrubbing back and forth), then go.
     std::erase_if(m_stills, [&](const auto& entry) { return m_renders - entry.second.lastUsed > 120; });

@@ -1,0 +1,19 @@
+{
+  "id": "tve.blur.tilt_shift",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["blur"],
+  "title": {"en": "Tilt Shift"},
+  "params": [
+    {"id": "position", "type": "float", "title": {"en": "Focus position"}, "min": 0, "max": 1, "default": 0.5, "keyframable": true},
+    {"id": "width", "type": "float", "title": {"en": "Focus width"}, "min": 0, "max": 1, "default": 0.25},
+    {"id": "softness", "type": "float", "title": {"en": "Transition"}, "min": 0, "max": 1, "default": 0.25},
+    {"id": "blur", "type": "float", "title": {"en": "Blur"}, "min": 0, "max": 5, "default": 1.5},
+    {"id": "saturation", "type": "float", "title": {"en": "Saturation"}, "min": 0, "max": 2, "default": 1.15}
+  ],
+  "passes": [
+    {"fragment": "tilt_h.frag"},
+    {"fragment": "tilt_v.frag"}
+  ],
+  "license": "TVE-Original"
+}

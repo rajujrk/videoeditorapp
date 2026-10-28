@@ -166,3 +166,19 @@ TEST_CASE("unsupported kind and malformed JSON are rejected")
     CHECK_THROWS_WITH(parseEffectManifest(std::string_view("{ not json")),
                       Catch::Matchers::ContainsSubstring("not valid JSON"));
 }
+
+TEST_CASE("video effects run on the picture or on the placed canvas")
+{
+    json m = validManifest();
+    CHECK(parseEffectManifest(m).space == EffectSpace::Picture);
+    m["space"] = "canvas";
+    CHECK(parseEffectManifest(m).space == EffectSpace::Canvas);
+    m["space"] = "picture";
+    CHECK(parseEffectManifest(m).space == EffectSpace::Picture);
+    m["space"] = "screen";
+    CHECK(mentions(problemsFor(m), "space must be \"picture\" or \"canvas\""));
+    m["space"] = "canvas";
+    m["kind"] = "transition";
+    m["passes"] = json::array({{{"fragment", "a.frag"}}});
+    CHECK(mentions(problemsFor(m), "\"space\" is for video effects"));
+}

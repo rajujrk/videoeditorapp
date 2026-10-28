@@ -1,0 +1,16 @@
+{
+  "id": "tve.stylize.cartoon",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize"],
+  "title": {"en": "Cartoon"},
+  "params": [
+    {"id": "levels", "type": "int", "title": {"en": "Tones"}, "min": 2, "max": 12, "default": 5},
+    {"id": "threshold", "type": "float", "title": {"en": "Line threshold"}, "min": 0, "max": 1, "default": 0.35},
+    {"id": "edgeWidth", "type": "float", "title": {"en": "Line width"}, "min": 0.5, "max": 4, "default": 1.2}
+  ],
+  "passes": [
+    {"fragment": "cartoon.frag"}
+  ],
+  "license": "TVE-Original"
+}

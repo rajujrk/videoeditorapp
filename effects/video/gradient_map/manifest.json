@@ -1,0 +1,17 @@
+{
+  "id": "tve.color.gradient_map",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["color"],
+  "title": {"en": "Gradient Map"},
+  "params": [
+    {"id": "shadows", "type": "color", "title": {"en": "Shadows"}, "default": [0.05, 0.02, 0.2]},
+    {"id": "midtones", "type": "color", "title": {"en": "Midtones"}, "default": [0.8, 0.2, 0.4]},
+    {"id": "highlights", "type": "color", "title": {"en": "Highlights"}, "default": [1.0, 0.9, 0.6]},
+    {"id": "intensity", "type": "float", "title": {"en": "Intensity"}, "min": 0, "max": 1, "default": 1, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "gradient_map.frag"}
+  ],
+  "license": "TVE-Original"
+}

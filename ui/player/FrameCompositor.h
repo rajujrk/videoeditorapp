@@ -36,6 +36,8 @@ class MaskRenderer;
 //   1. each layer: YUV → RGB at the layer's own resolution (zero-copy from its
 //      CVPixelBuffer), or a title's text; then that clip's effects
 //   2. the compositor draws the layers onto the canvas (placement, crop, opacity, blend).
+//      A clip with canvas effects (shadows, borders, fills) is placed on a transparent
+//      canvas of its own first, those effects run there, and the result is drawn.
 //      A layer in a transition places each of its two clips on a transparent canvas of
 //      its own, blends them with the transition, and draws the result.
 class FrameCompositor {
@@ -115,4 +117,7 @@ private:
     std::map<std::string, StillTexture> m_stills;
     std::uint64_t m_renders = 0;
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_clipChains;
+    std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_canvasChains; // canvas effects
+    // Per clip with canvas effects within a frame: its own canvas.
+    std::vector<std::unique_ptr<tve::Compositor>> m_effectCanvases;
 };

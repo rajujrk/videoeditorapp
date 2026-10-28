@@ -75,6 +75,17 @@ private:
                 }
         }
 
+        if (const json* space = m_root.contains("space") ? &m_root["space"] : nullptr) {
+            if (space->is_string() && *space == "picture")
+                m_manifest.space = EffectSpace::Picture;
+            else if (space->is_string() && *space == "canvas")
+                m_manifest.space = EffectSpace::Canvas;
+            else
+                fail("space must be \"picture\" or \"canvas\"");
+            if (m_manifest.kind == kTransitionKind && m_manifest.space == EffectSpace::Canvas)
+                fail("transitions always work on canvases; \"space\" is for video effects");
+        }
+
         parseParams();
         parsePasses();
     }

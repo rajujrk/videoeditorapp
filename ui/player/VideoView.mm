@@ -413,14 +413,25 @@ QQuickRhiItemRenderer* VideoView::createRenderer()
 
 QVariantList VideoView::availableEffects() const
 {
-    // Effects first, then overlays.
+    // By category in the library's order (overlays last), then by title.
+    static const std::vector<std::string> order{"blur", "color", "stylize", "distort", "glitch", "light", "frame"};
+    const auto rank = [](const tve::LoadedEffect& effect) {
+        const auto& categories = effect.manifest.categories;
+        if (std::ranges::find(categories, "overlay") != categories.end())
+            return int(order.size()) + 1;
+        const auto found = categories.empty() ? order.end() : std::ranges::find(order, categories.front());
+        return int(found - order.begin());
+    };
+    std::vector<const tve::LoadedEffect*> sorted;
+    for (const tve::LoadedEffect& effect : tve::EffectLibrary::builtIn().effects())
+        sorted.push_back(&effect);
+    std::ranges::stable_sort(sorted, [&](const tve::LoadedEffect* a, const tve::LoadedEffect* b) {
+        return std::pair(rank(*a), a->manifest.displayTitle()) < std::pair(rank(*b), b->manifest.displayTitle());
+    });
     QVariantList effects;
-    QVariantList overlays;
-    for (const tve::LoadedEffect& effect : tve::EffectLibrary::builtIn().effects()) {
-        const bool overlay = std::ranges::find(effect.manifest.categories, "overlay") != effect.manifest.categories.end();
-        (overlay ? overlays : effects) << describeEffect(effect);
-    }
-    return effects + overlays;
+    for (const tve::LoadedEffect* effect : sorted)
+        effects << describeEffect(*effect);
+    return effects;
 }
 
 int VideoView::enabledEffectCount() const

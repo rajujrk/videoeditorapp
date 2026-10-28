@@ -1,0 +1,16 @@
+{
+  "id": "tve.distort.lens",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["distort"],
+  "title": {"en": "Lens Distortion"},
+  "params": [
+    {"id": "amount", "type": "float", "title": {"en": "Amount"}, "min": -1, "max": 1, "default": 0.3, "keyframable": true},
+    {"id": "zoom", "type": "float", "title": {"en": "Zoom"}, "min": 0.5, "max": 2, "default": 1},
+    {"id": "fringe", "type": "float", "title": {"en": "Colour fringe"}, "min": 0, "max": 1, "default": 0.2}
+  ],
+  "passes": [
+    {"fragment": "lens_distortion.frag"}
+  ],
+  "license": "TVE-Original"
+}

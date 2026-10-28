@@ -1,0 +1,20 @@
+{
+  "id": "tve.frame.background_fill",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["frame"],
+  "space": "canvas",
+  "title": {"en": "Background Fill"},
+  "params": [
+    {"id": "mode", "type": "enum", "title": {"en": "Fill with"}, "values": ["Blurred picture", "Colour"], "default": "Blurred picture"},
+    {"id": "blur", "type": "float", "title": {"en": "Blur"}, "min": 0, "max": 10, "default": 4},
+    {"id": "dim", "type": "float", "title": {"en": "Darken"}, "min": 0, "max": 1, "default": 0.25},
+    {"id": "color", "type": "color", "title": {"en": "Colour"}, "default": [0.08, 0.08, 0.1]}
+  ],
+  "passes": [
+    {"fragment": "fill_h.frag"},
+    {"fragment": "fill_v.frag"},
+    {"fragment": "fill_under.frag"}
+  ],
+  "license": "TVE-Original"
+}

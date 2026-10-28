@@ -7,6 +7,7 @@
 #include <QStringList>
 #include <rhi/qshader.h>
 
+#include <array>
 #include <map>
 #include <string>
 #include <string_view>
@@ -24,6 +25,8 @@ struct UniformSlot {
 struct LoadedEffectPass {
     QShader fragment;
     int uniformBlockSize = 0;
+    bool readsInput = false; // samples tve_input (binding 2): the effect's input
+    int boundsOffset = -1;   // offset of tve_bounds in the block, if declared
     std::map<std::string, UniformSlot> uniformSlots; // param id → slot, for the params this pass declares
 };
 
@@ -32,12 +35,18 @@ struct LoadedEffect {
     std::vector<LoadedEffectPass> passes;
 };
 
+// The part of a canvas holding the clip (left, top, right, bottom, 0..1); the whole of a picture.
+using EffectBounds = std::array<float, 4>;
+inline constexpr EffectBounds kWholeImage{0.0f, 0.0f, 1.0f, 1.0f};
+
 // Writes a pass's EffectParams block: the header (texel size, time, flipY, then for
-// transitions progress) and every param the pass declares, from `values` or the manifest
-// default, clamped to its range. `data` must be the block's size.
+// transitions progress, for effects that declare it tve_bounds) and every param the pass
+// declares, from `values` or the manifest default, clamped to its range. `data` must be the
+// block's size.
 void writeEffectUniforms(const LoadedEffect& effect, std::size_t passIndex,
                          const std::map<std::string, std::vector<float>>& values, QSize size, float timeSeconds,
-                         bool yUpInNdc, float progress, std::vector<char>& data);
+                         bool yUpInNdc, float progress, std::vector<char>& data,
+                         const EffectBounds& bounds = kWholeImage);
 
 // Effect and transition manifests plus their compiled shaders, cross-checked through
 // shader reflection: every manifest param must be a uniform in at least one pass, every

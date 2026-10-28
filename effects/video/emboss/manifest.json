@@ -1,0 +1,16 @@
+{
+  "id": "tve.stylize.emboss",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize"],
+  "title": {"en": "Emboss"},
+  "params": [
+    {"id": "strength", "type": "float", "title": {"en": "Strength"}, "min": 0, "max": 5, "default": 2, "keyframable": true},
+    {"id": "angle", "type": "float", "title": {"en": "Light angle"}, "min": -180, "max": 180, "default": 135},
+    {"id": "colour", "type": "bool", "title": {"en": "Keep colour"}, "default": false}
+  ],
+  "passes": [
+    {"fragment": "emboss.frag"}
+  ],
+  "license": "TVE-Original"
+}

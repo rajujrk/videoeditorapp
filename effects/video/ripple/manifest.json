@@ -1,0 +1,19 @@
+{
+  "id": "tve.distort.ripple",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["distort"],
+  "title": {"en": "Water Ripple"},
+  "params": [
+    {"id": "amplitude", "type": "float", "title": {"en": "Amplitude"}, "min": 0, "max": 5, "default": 1, "keyframable": true},
+    {"id": "frequency", "type": "float", "title": {"en": "Rings"}, "min": 1, "max": 60, "default": 12},
+    {"id": "speed", "type": "float", "title": {"en": "Speed"}, "min": -10, "max": 10, "default": 1},
+    {"id": "damping", "type": "float", "title": {"en": "Fade out"}, "min": 0, "max": 10, "default": 2},
+    {"id": "centerX", "type": "float", "title": {"en": "Centre X"}, "min": 0, "max": 1, "default": 0.5, "keyframable": true},
+    {"id": "centerY", "type": "float", "title": {"en": "Centre Y"}, "min": 0, "max": 1, "default": 0.5, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "ripple.frag"}
+  ],
+  "license": "TVE-Original"
+}

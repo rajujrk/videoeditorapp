@@ -1,6 +1,7 @@
 #include "ProjectController.h"
 #include "ThumbnailProvider.h"
 #include "TransitionPreviewProvider.h"
+#include "EffectPreviewProvider.h"
 #include "LookLibrary.h"
 #include "TitleRenderer.h"
 #include "VideoView.h"
@@ -128,6 +129,7 @@ int main(int argc, char* argv[])
     QQmlApplicationEngine engine;
     engine.addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
     engine.addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
+    engine.addImageProvider(QString::fromLatin1(EffectPreviewProvider::kId), new EffectPreviewProvider);
     engine.addImageProvider(QString::fromLatin1(TitlePreviewProvider::kId), new TitlePreviewProvider);
     engine.addImageProvider(QString::fromLatin1(LookPreviewProvider::kId), new LookPreviewProvider);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,

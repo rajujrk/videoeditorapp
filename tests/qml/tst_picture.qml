@@ -136,6 +136,7 @@ Item {
             const p = f.project
             selectFirstClipAndOpen(f, "Effects")
             click(f.editor, "libraryTab:Effects")
+            click(f.editor, "effectCategory:stylize")
             click(f.editor, "libraryEffect:tve.stylize.vignette")
             compare(p.selectedClipInfo.effects.length, 1)
             compare(p.selectedClipInfo.effects[0].effectId, "tve.stylize.vignette")

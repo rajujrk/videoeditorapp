@@ -1,0 +1,15 @@
+{
+  "id": "tve.color.hue_rotate",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["color"],
+  "title": {"en": "Hue Rotate"},
+  "params": [
+    {"id": "angle", "type": "float", "title": {"en": "Angle"}, "min": -180, "max": 180, "default": 90, "keyframable": true},
+    {"id": "speed", "type": "float", "title": {"en": "Cycle (°/s)"}, "min": -360, "max": 360, "default": 0}
+  ],
+  "passes": [
+    {"fragment": "hue_rotate.frag"}
+  ],
+  "license": "TVE-Original"
+}

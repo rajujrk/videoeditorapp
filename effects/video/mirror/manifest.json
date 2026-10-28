@@ -1,0 +1,14 @@
+{
+  "id": "tve.distort.mirror",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["distort"],
+  "title": {"en": "Mirror"},
+  "params": [
+    {"id": "mode", "type": "enum", "title": {"en": "Mirror"}, "values": ["Left onto right", "Right onto left", "Top onto bottom", "Bottom onto top", "Four ways"], "default": "Left onto right"}
+  ],
+  "passes": [
+    {"fragment": "mirror.frag"}
+  ],
+  "license": "TVE-Original"
+}

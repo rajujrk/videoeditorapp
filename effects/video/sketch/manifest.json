@@ -1,0 +1,16 @@
+{
+  "id": "tve.stylize.sketch",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize"],
+  "title": {"en": "Pencil Sketch"},
+  "params": [
+    {"id": "strength", "type": "float", "title": {"en": "Lines"}, "min": 0, "max": 3, "default": 1, "keyframable": true},
+    {"id": "shading", "type": "float", "title": {"en": "Shading"}, "min": 0, "max": 1, "default": 0.4},
+    {"id": "paper", "type": "color", "title": {"en": "Paper"}, "default": [0.97, 0.96, 0.92]}
+  ],
+  "passes": [
+    {"fragment": "sketch.frag"}
+  ],
+  "license": "TVE-Original"
+}

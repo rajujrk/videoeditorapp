@@ -1,0 +1,18 @@
+{
+  "id": "tve.distort.kaleidoscope",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["distort"],
+  "title": {"en": "Kaleidoscope"},
+  "params": [
+    {"id": "segments", "type": "int", "title": {"en": "Segments"}, "min": 2, "max": 24, "default": 6},
+    {"id": "angle", "type": "float", "title": {"en": "Angle"}, "min": -180, "max": 180, "default": 0, "keyframable": true},
+    {"id": "zoom", "type": "float", "title": {"en": "Zoom"}, "min": 0.2, "max": 4, "default": 1},
+    {"id": "centerX", "type": "float", "title": {"en": "Centre X"}, "min": 0, "max": 1, "default": 0.5, "keyframable": true},
+    {"id": "centerY", "type": "float", "title": {"en": "Centre Y"}, "min": 0, "max": 1, "default": 0.5, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "kaleidoscope.frag"}
+  ],
+  "license": "TVE-Original"
+}
