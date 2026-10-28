@@ -25,6 +25,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("samplesDir"), QStringLiteral(TVE_SAMPLES_DIR));
         engine->rootContext()->setContextProperty(QStringLiteral("tempDir"), QDir::tempPath());
         engine->rootContext()->setContextProperty(QStringLiteral("recordingsDir"), qEnvironmentVariable("TVE_RECORDING_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("fixturesDir"), QStringLiteral(TVE_QML_TESTS_DIR "/fixtures"));
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
         engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(TitlePreviewProvider::kId), new TitlePreviewProvider);
@@ -47,6 +48,8 @@ int main(int argc, char** argv)
     qputenv("TVE_AUDIO_INPUT", "null");
     QTemporaryDir recordings;
     qputenv("TVE_RECORDING_DIR", recordings.path().toLocal8Bit());
+    QTemporaryDir colorPresets; // colour presets saved by tests
+    qputenv("TVE_COLOR_PRESET_DIR", colorPresets.path().toLocal8Bit());
     Setup setup;
     return quick_test_main_with_setup(argc, argv, "tve_qml_tests", TVE_QML_TESTS_DIR, &setup);
 }

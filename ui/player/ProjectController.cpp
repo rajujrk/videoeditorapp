@@ -6,6 +6,7 @@
 #include "commands/EditCommands.h"
 #include "decode/AudioDecoder.h"
 #include "decode/VideoDecoder.h"
+#include "io/LutFile.h"
 #include "io/ProjectSerializer.h"
 #include "model/TimelineQuery.h"
 #include "gpu/EffectLibrary.h"
@@ -14,6 +15,8 @@
 #include "MicrophoneAccess.h"
 #include "TitleRenderer.h"
 #include "playback/TimelinePlayback.h"
+
+#include <nlohmann/json.hpp>
 
 #include <QDateTime>
 #include <QDesktopServices>
@@ -408,6 +411,43 @@ QVariantList rampList(const SpeedRamp& ramp)
     for (const SpeedPoint& p : ramp)
         list << QVariantMap{{QStringLiteral("at"), p.at}, {QStringLiteral("speed"), p.speed}};
     return list;
+}
+
+QVariantMap wheelMap(const ColorWheel& w)
+{
+    return {{QStringLiteral("x"), w.x}, {QStringLiteral("y"), w.y}, {QStringLiteral("master"), w.master}};
+}
+
+QVariantList curveList(const ColorCurve& curve)
+{
+    QVariantList list;
+    for (const CurvePoint& p : curve)
+        list << QVariantMap{{QStringLiteral("x"), p.x}, {QStringLiteral("y"), p.y}};
+    return list;
+}
+
+QVariantMap gradeMap(const ColorGrade& g)
+{
+    return {
+        {QStringLiteral("exposure"), g.exposure},
+        {QStringLiteral("contrast"), g.contrast},
+        {QStringLiteral("saturation"), g.saturation},
+        {QStringLiteral("temperature"), g.temperature},
+        {QStringLiteral("tint"), g.tint},
+        {QStringLiteral("lift"), wheelMap(g.lift)},
+        {QStringLiteral("gamma"), wheelMap(g.gamma)},
+        {QStringLiteral("gain"), wheelMap(g.gain)},
+        {QStringLiteral("offset"), wheelMap(g.offset)},
+        {QStringLiteral("master"), curveList(g.master)},
+        {QStringLiteral("red"), curveList(g.red)},
+        {QStringLiteral("green"), curveList(g.green)},
+        {QStringLiteral("blue"), curveList(g.blue)},
+        {QStringLiteral("lutPath"), QString::fromStdString(g.lutPath)},
+        {QStringLiteral("lutName"), g.lutPath.empty() ? QString() : fileName(g.lutPath)},
+        {QStringLiteral("lutMissing"), !g.lutPath.empty() && !QFileInfo::exists(QString::fromStdString(g.lutPath))},
+        {QStringLiteral("lutIntensity"), g.lutIntensity},
+        {QStringLiteral("neutral"), g.isNeutral()},
+    };
 }
 
 // Times of a clip's keyframes inside it (any channel), seconds from its start, unique.
@@ -1268,6 +1308,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("keyframeCurve"), curveAtPlayhead},
             {QStringLiteral("localTime"), seconds(local)},
             {QStringLiteral("effects"), effectsList(clip->effectsAt(now))}, // values at the playhead
+            {QStringLiteral("color"), gradeMap(clip->color)},
             {QStringLiteral("speed"), clip->speed},
             {QStringLiteral("reversed"), clip->reversed},
             {QStringLiteral("freeze"), clip->freeze},
@@ -1379,6 +1420,220 @@ bool ProjectController::resetClipVisual(double clipId)
     if (after.keyframes == clip->keyframes)
         return apply(std::make_unique<SetClipVisualCommand>(clip->id, ClipVisual{}));
     return commitAnimation(*clip, after, "Change Picture");
+}
+
+// --- Colour ---
+
+std::optional<ColorGrade> ProjectController::gradeWith(Id clipId, const QVariantMap& changes) const
+{
+    const Clip* clip = findClip(clipId);
+    if (!clip)
+        return std::nullopt;
+    ColorGrade g = clip->color;
+    const auto number = [&](const char* key, double& target) {
+        if (const auto it = changes.constFind(QLatin1String(key)); it != changes.constEnd())
+            target = it->toDouble();
+    };
+    const auto wheel = [&](const char* key, ColorWheel& target) {
+        if (const auto it = changes.constFind(QLatin1String(key)); it != changes.constEnd()) {
+            const QVariantMap m = it->toMap();
+            target.x = m.value(QStringLiteral("x"), target.x).toDouble();
+            target.y = m.value(QStringLiteral("y"), target.y).toDouble();
+            target.master = m.value(QStringLiteral("master"), target.master).toDouble();
+        }
+    };
+    const auto curve = [&](const char* key, ColorCurve& target) {
+        if (const auto it = changes.constFind(QLatin1String(key)); it != changes.constEnd()) {
+            target.clear();
+            for (const QVariant& point : it->toList()) {
+                const QVariantMap m = point.toMap();
+                target.push_back({m.value(QStringLiteral("x")).toDouble(), m.value(QStringLiteral("y")).toDouble()});
+            }
+        }
+    };
+    number("exposure", g.exposure);
+    number("contrast", g.contrast);
+    number("saturation", g.saturation);
+    number("temperature", g.temperature);
+    number("tint", g.tint);
+    number("lutIntensity", g.lutIntensity);
+    wheel("lift", g.lift);
+    wheel("gamma", g.gamma);
+    wheel("gain", g.gain);
+    wheel("offset", g.offset);
+    curve("master", g.master);
+    curve("red", g.red);
+    curve("green", g.green);
+    curve("blue", g.blue);
+    return g;
+}
+
+bool ProjectController::setClipColor(double clipId, const QVariantMap& changes)
+{
+    const auto grade = gradeWith(toId(clipId), changes);
+    if (!grade) {
+        reportError(QStringLiteral("Select a video clip"));
+        return false;
+    }
+    const bool ok = apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, *grade));
+    if (!ok && m_view)
+        m_view->clearPreview(toId(clipId));
+    return ok;
+}
+
+void ProjectController::previewClipColor(double clipId, const QVariantMap& changes)
+{
+    if (const auto grade = gradeWith(toId(clipId), changes); grade && m_view && !validateGrade(*grade))
+        m_view->setPreviewGrade(toId(clipId), *grade);
+}
+
+bool ProjectController::resetClipColor(double clipId)
+{
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, ColorGrade{}, "Reset Color"));
+}
+
+bool ProjectController::chooseLut(double clipId, const QUrl& file)
+{
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    try {
+        loadLut(path.toStdString());
+    } catch (const std::exception& e) {
+        reportError(QStringLiteral("Could not use %1: %2").arg(QFileInfo(path).fileName(), QString::fromUtf8(e.what())));
+        return false;
+    }
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return false;
+    ColorGrade g = clip->color;
+    g.lutPath = path.toStdString();
+    g.lutIntensity = 1.0;
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{clip->id}, g, "Apply LUT"));
+}
+
+bool ProjectController::removeLut(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || clip->color.lutPath.empty())
+        return false;
+    ColorGrade g = clip->color;
+    g.lutPath.clear();
+    g.lutIntensity = 1.0;
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{clip->id}, g, "Remove LUT"));
+}
+
+bool ProjectController::copyGrade(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return false;
+    m_copiedGrade = clip->color;
+    emit colorClipboardChanged();
+    return true;
+}
+
+bool ProjectController::pasteGrade(double clipId)
+{
+    if (!m_copiedGrade) {
+        reportError(QStringLiteral("Copy a clip's grade first"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, *m_copiedGrade, "Paste Grade"));
+}
+
+QString ProjectController::colorPresetDirectory() const
+{
+    const QByteArray override = qgetenv("TVE_COLOR_PRESET_DIR");
+    return !override.isEmpty() ? QString::fromLocal8Bit(override)
+                               : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                                     + QStringLiteral("/Color Presets");
+}
+
+QString ProjectController::colorPresetPath(const QString& name) const
+{
+    QString safe = name.trimmed();
+    for (QChar& c : safe) {
+        if (QStringLiteral("/\\:*?\"<>|").contains(c))
+            c = QLatin1Char('-');
+    }
+    return QDir(colorPresetDirectory()).filePath(safe + QStringLiteral(".json"));
+}
+
+QStringList ProjectController::colorPresets() const
+{
+    QStringList names;
+    const QDir dir(colorPresetDirectory());
+    for (const QFileInfo& info : dir.entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name | QDir::IgnoreCase)) {
+        QFile file(info.absoluteFilePath());
+        if (!file.open(QIODevice::ReadOnly))
+            continue;
+        const QJsonObject object = QJsonDocument::fromJson(file.readAll()).object();
+        const QString name = object.value(QStringLiteral("name")).toString();
+        if (!name.isEmpty() && object.contains(QStringLiteral("grade")))
+            names << name;
+    }
+    return names;
+}
+
+bool ProjectController::saveColorPreset(double clipId, const QString& name)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return false;
+    if (name.trimmed().isEmpty()) {
+        reportError(QStringLiteral("Name the preset"));
+        return false;
+    }
+    if (!QDir().mkpath(colorPresetDirectory())) {
+        reportError(QStringLiteral("Could not create %1").arg(colorPresetDirectory()));
+        return false;
+    }
+    const nlohmann::json json{{"name", name.trimmed().toStdString()}, {"grade", gradeToJson(clip->color)}};
+    QSaveFile file(colorPresetPath(name));
+    if (!file.open(QIODevice::WriteOnly) || file.write(QByteArray::fromStdString(json.dump(2))) < 0 || !file.commit()) {
+        reportError(QStringLiteral("Could not save the preset %1").arg(name));
+        return false;
+    }
+    emit colorPresetsChanged();
+    return true;
+}
+
+bool ProjectController::applyColorPreset(double clipId, const QString& name)
+{
+    QFile file(colorPresetPath(name));
+    if (!file.open(QIODevice::ReadOnly)) {
+        reportError(QStringLiteral("No colour preset named %1").arg(name));
+        return false;
+    }
+    ColorGrade grade;
+    try {
+        grade = gradeFromJson(nlohmann::json::parse(file.readAll().toStdString()).at("grade"));
+    } catch (const std::exception&) {
+        reportError(QStringLiteral("The preset %1 is damaged").arg(name));
+        return false;
+    }
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, grade, "Apply Color Preset"));
+}
+
+QVariantList ProjectController::sampleColorCurve(const QVariantList& points, int count) const
+{
+    ColorCurve curve;
+    for (const QVariant& point : points) {
+        const QVariantMap m = point.toMap();
+        curve.push_back({m.value(QStringLiteral("x")).toDouble(), m.value(QStringLiteral("y")).toDouble()});
+    }
+    QVariantList samples;
+    count = std::clamp(count, 2, 1024);
+    for (int i = 0; i < count; ++i)
+        samples << evaluateColorCurve(curve, double(i) / double(count - 1));
+    return samples;
+}
+
+bool ProjectController::deleteColorPreset(const QString& name)
+{
+    if (!QFile::remove(colorPresetPath(name)))
+        return false;
+    emit colorPresetsChanged();
+    return true;
 }
 
 // --- Keyframes ---

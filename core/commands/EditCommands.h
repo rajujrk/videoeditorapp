@@ -362,6 +362,24 @@ private:
     Clip m_previous;
 };
 
+// Sets the colour grade of one or more video clips as one step ("Change Color", or
+// "Paste Grade" for several).
+class SetClipColorCommand final : public Command {
+public:
+    SetClipColorCommand(std::vector<Id> clipIds, ColorGrade grade, std::string label = "Change Color")
+        : m_clipIds(std::move(clipIds)), m_grade(std::move(grade)), m_label(std::move(label)) {}
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    std::vector<Id> m_clipIds;
+    ColorGrade m_grade;
+    std::string m_label;
+    std::vector<ColorGrade> m_previous;
+};
+
 // Checks effect ids and their keyframes' order; returns why they are invalid.
 std::optional<std::string> validateEffects(const std::vector<ClipEffect>& effects);
 

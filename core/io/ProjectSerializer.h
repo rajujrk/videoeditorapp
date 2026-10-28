@@ -18,6 +18,10 @@ nlohmann::json projectToJson(const Project& project);
 // Throws std::runtime_error if the JSON is not a supported TVE project.
 Project projectFromJson(const nlohmann::json& json);
 
+// A colour grade on its own (colour presets).
+nlohmann::json gradeToJson(const ColorGrade& grade);
+ColorGrade gradeFromJson(const nlohmann::json& json);
+
 void saveProject(const Project& project, const std::filesystem::path& path);
 Project loadProject(const std::filesystem::path& path);
 

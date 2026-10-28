@@ -3,6 +3,7 @@
 #include "TitleRenderer.h"
 #include "VideoView.h"
 
+#include "gpu/ColorGrader.h"
 #include "gpu/Compositor.h"
 #include "gpu/EffectChain.h"
 #include "gpu/TransitionRenderer.h"
@@ -121,6 +122,7 @@ FrameCompositor::FrameCompositor(QRhi* rhi) : m_rhi(rhi)
     // The layer slots' YUV pipeline is built on first use, against their render pass.
     m_compositor = std::make_unique<tve::Compositor>(m_rhi);
     m_transitions = std::make_unique<tve::TransitionRenderer>(m_rhi, tve::EffectLibrary::builtIn());
+    m_grader = std::make_unique<tve::ColorGrader>(m_rhi);
 }
 
 FrameCompositor::~FrameCompositor()
@@ -271,6 +273,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     m_canvasSize = canvas;
     m_compositor->begin(cb, m_canvasSize);
     m_transitions->begin();
+    m_grader->begin();
     std::set<tve::Id> liveClips;
     std::size_t slotIndex = 0;
     std::size_t transitionIndex = 0;
@@ -279,7 +282,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     // One clip's picture (decoded video, or a title's text), through its effects (with any
     // live preview).
     const auto clipPicture = [&](tve::Id clipId, const tve::DecodedFrame& decoded, tve::ClipVisual& visual,
-                                 std::vector<tve::ClipEffect> effects,
+                                 std::vector<tve::ClipEffect> effects, tve::ColorGrade grade,
                                  const std::optional<tve::ClipText>& text = std::nullopt) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
         if (text) {
@@ -291,7 +294,9 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         if (!picture)
             return nullptr;
         if (overrides)
-            overrides->apply(clipId, visual, effects);
+            overrides->apply(clipId, visual, effects, grade);
+        if (!text)
+            picture = m_grader->apply(cb, picture, grade); // colour first, then effects
         if (!effects.empty()) {
             auto& chain = m_clipChains[clipId];
             if (!chain)
@@ -308,7 +313,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
 
     for (tve::VideoLayer& layer : frame.layers) {
         tve::ClipVisual visual = layer.visual;
-        QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.text);
+        QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.text);
         if (!layer.transition) {
             if (picture)
                 m_compositor->draw(cb, picture, visual);
@@ -317,7 +322,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
 
         tve::LayerTransition& transition = *layer.transition;
         tve::ClipVisual incomingVisual = transition.visual;
-        QRhiTexture* incoming = clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects);
+        QRhiTexture* incoming =
+            clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade);
         if (!picture || !incoming) {
             if (picture || incoming)
                 m_compositor->draw(cb, picture ? picture : incoming, picture ? visual : incomingVisual);

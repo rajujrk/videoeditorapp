@@ -27,6 +27,7 @@ namespace tve {
 class Compositor;
 class EffectChain;
 class TransitionRenderer;
+class ColorGrader;
 }
 
 // Draws composite frames onto the project canvas on the GPU (Metal), for the preview and
@@ -99,6 +100,7 @@ private:
     // Per transition within a frame: the outgoing and incoming clips' own canvases.
     std::vector<std::array<std::unique_ptr<tve::Compositor>, 2>> m_transitionCanvases;
     std::unique_ptr<tve::TransitionRenderer> m_transitions;
+    std::unique_ptr<tve::ColorGrader> m_grader;
     std::map<tve::Id, TitleTexture> m_titles;
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_clipChains;
 };

@@ -158,7 +158,8 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
         for (const VisibleClip& layer : visible) {
             if (layer.clip->text) {
                 composite.layers.push_back(VideoLayer{layer.clip->id, DecodedFrame{}, layer.clip->visualAt(time),
-                                                      layer.clip->effectsAt(time), std::nullopt, layer.clip->text});
+                                                      layer.clip->effectsAt(time), std::nullopt, layer.clip->text,
+                                                      ColorGrade{}}); // titles are not graded
                 continue;
             }
             const DecodedFrame* frame = pictureOf(*layer.clip, layer.sourceTime);
@@ -169,13 +170,13 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
                 composite.layers.push_back(VideoLayer{
                     layer.clip->id, frame->share(), layer.clip->visualAt(time), layer.clip->effectsAt(time),
                     LayerTransition{t.spec->transitionId, t.spec->values, float(t.progress), t.to->id,
-                                    incoming->share(), t.to->visualAt(time), t.to->effectsAt(time)},
-                    std::nullopt});
+                                    incoming->share(), t.to->visualAt(time), t.to->effectsAt(time), t.to->color},
+                    std::nullopt, layer.clip->color});
             } else if (frame || incoming) {
                 // One side unreadable: show the other alone.
                 const Clip& clip = frame ? *layer.clip : *layer.transition->to;
                 composite.layers.push_back(VideoLayer{clip.id, (frame ? frame : incoming)->share(), clip.visualAt(time),
-                                                      clip.effectsAt(time), std::nullopt, std::nullopt});
+                                                      clip.effectsAt(time), std::nullopt, std::nullopt, clip.color});
             }
         }
         if (!m_queue.push(std::move(composite)))

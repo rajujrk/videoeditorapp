@@ -64,6 +64,11 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantMap selectedTransitionInfo READ selectedTransitionInfo NOTIFY selectedClipInfoChanged)
     // The transition library: [{id, title, categories, params}].
     Q_PROPERTY(QVariantList availableTransitions READ availableTransitions CONSTANT)
+    // Colour: a copied grade waiting to be pasted, and saved colour presets (by name, in
+    // colorPresetDirectory: Application Support/…/Color Presets; TVE_COLOR_PRESET_DIR overrides).
+    Q_PROPERTY(bool hasCopiedGrade READ hasCopiedGrade NOTIFY colorClipboardChanged)
+    Q_PROPERTY(QStringList colorPresets READ colorPresets NOTIFY colorPresetsChanged)
+    Q_PROPERTY(QString colorPresetDirectory READ colorPresetDirectory CONSTANT)
     // Ready-made speed ramps: [{id, title, points: [{at, speed}]}].
     Q_PROPERTY(QVariantList speedRampPresets READ speedRampPresets CONSTANT)
     // Font families offered for titles.
@@ -148,6 +153,9 @@ public:
     QVariantList availableTransitions() const;
     QStringList titleFonts() const;
     QVariantList speedRampPresets() const;
+    bool hasCopiedGrade() const { return m_copiedGrade.has_value(); }
+    QStringList colorPresets() const;
+    QString colorPresetDirectory() const;
     bool autosaveEnabled() const { return m_autosaveEnabled; }
     void setAutosaveEnabled(bool enabled);
     QString autosaveDirectory() const { return m_autosaveDir; }
@@ -243,6 +251,24 @@ public:
     // Inserts a still of the frame at the playhead into the clip under it (or the selected
     // clip) for `holdSeconds`.
     Q_INVOKABLE bool freezeFrame(double holdSeconds = 2.0);
+    // Colour grades. `changes` holds any of: exposure, contrast, saturation, temperature,
+    // tint (numbers); lift, gamma, gain, offset ({x, y, master}); master, red, green, blue
+    // (curves: [{x, y}], empty for none); lutIntensity. selectedClipInfo.color has them all,
+    // plus lutPath, lutName, lutMissing and neutral.
+    Q_INVOKABLE bool setClipColor(double clipId, const QVariantMap& changes);
+    Q_INVOKABLE void previewClipColor(double clipId, const QVariantMap& changes);
+    Q_INVOKABLE bool resetClipColor(double clipId);
+    // Reads the .cube or .3dl file first: refuses one it cannot use.
+    Q_INVOKABLE bool chooseLut(double clipId, const QUrl& file);
+    Q_INVOKABLE bool removeLut(double clipId);
+    Q_INVOKABLE bool copyGrade(double clipId);
+    Q_INVOKABLE bool pasteGrade(double clipId);
+    Q_INVOKABLE bool saveColorPreset(double clipId, const QString& name);
+    Q_INVOKABLE bool applyColorPreset(double clipId, const QString& name);
+    Q_INVOKABLE bool deleteColorPreset(const QString& name);
+    // `count` outputs of a tone curve ([{x, y}]) at evenly spaced inputs, for drawing it.
+    Q_INVOKABLE QVariantList sampleColorCurve(const QVariantList& points, int count) const;
+
     // Speed ramps: `points` [{at (0–1 of the clip), speed}], first at 0, last at 1. The clip
     // keeps its source span, so its length follows the average speed. Clip maps carry
     // speedRamp (the same list; empty when constant).
@@ -338,6 +364,8 @@ signals:
     void recoveryChanged();
     void proxiesChanged();
     void voiceOverChanged();
+    void colorClipboardChanged();
+    void colorPresetsChanged();
     void inputLevelChanged();
     // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
     void exportFinished(bool ok, const QString& message);
@@ -406,6 +434,11 @@ private:
     qint64 m_unsavedSince = 0; // ms since epoch of the first edit not yet autosaved; 0 = none
     qint64 m_lastAutosave = 0;
     QTimer m_autosaveTimer;
+
+    // Colour
+    std::optional<tve::ColorGrade> gradeWith(tve::Id clipId, const QVariantMap& changes) const;
+    QString colorPresetPath(const QString& name) const;
+    std::optional<tve::ColorGrade> m_copiedGrade;
 
     // Voice-over
     QString takePath() const;

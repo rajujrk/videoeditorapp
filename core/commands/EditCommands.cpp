@@ -355,6 +355,7 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.gainDb = clip.gainDb;
     right.visual = clip.visual;
     right.effects = clip.effects;
+    right.color = clip.color;
     right.text = clip.text;
     right.keyframes = clip.keyframes; // both halves animate as the whole did
     shiftKeyframes(right, leftDuration);
@@ -559,6 +560,38 @@ std::optional<std::string> SetClipVisualCommand::redo(Project& project)
 void SetClipVisualCommand::undo(Project& project)
 {
     project.locateClip(m_clipId)->clip->visual = m_previous;
+}
+
+// --- SetClipColorCommand ---
+
+std::optional<std::string> SetClipColorCommand::redo(Project& project)
+{
+    if (m_clipIds.empty())
+        return "no clip to colour";
+    if (auto error = validateGrade(m_grade))
+        return error;
+    for (Id id : m_clipIds) {
+        auto location = project.locateClip(id);
+        if (!location)
+            return "clip not found";
+        if (auto error = checkEditable(location->track))
+            return error;
+        if (location->track->kind != TrackKind::Video || location->clip->text)
+            return "colour applies to video clips";
+    }
+    m_previous.clear();
+    for (Id id : m_clipIds) {
+        Clip& clip = *project.locateClip(id)->clip;
+        m_previous.push_back(clip.color);
+        clip.color = m_grade;
+    }
+    return std::nullopt;
+}
+
+void SetClipColorCommand::undo(Project& project)
+{
+    for (std::size_t i = 0; i < m_clipIds.size(); ++i)
+        project.locateClip(m_clipIds[i])->clip->color = m_previous[i];
 }
 
 // --- SetClipKeyframesCommand ---

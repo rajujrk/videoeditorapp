@@ -19,6 +19,8 @@ qt_add_qml_module(tve_shell
         KeyframeToggle.qml
         CurveEditor.qml
         SpeedRampEditor.qml
+        ColorWheelControl.qml
+        ToneCurveEditor.qml
     IMPORTS
         TechieVideoEditor.Theme
         TechieVideoEditor.Player

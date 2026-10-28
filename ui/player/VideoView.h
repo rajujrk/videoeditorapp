@@ -26,16 +26,18 @@ class PreviewOverrides {
 public:
     void setVisual(tve::Id clipId, const tve::ClipVisual& visual);
     void setEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects);
+    void setGrade(tve::Id clipId, const tve::ColorGrade& grade);
     void clear(tve::Id clipId);
     quint64 revision() const { return m_revision.load(); }
 
-    // Replaces `visual`/`effects` with any overrides for `clipId` (render thread).
-    void apply(tve::Id clipId, tve::ClipVisual& visual, std::vector<tve::ClipEffect>& effects);
+    // Replaces `visual`/`effects`/`grade` with any overrides for `clipId` (render thread).
+    void apply(tve::Id clipId, tve::ClipVisual& visual, std::vector<tve::ClipEffect>& effects, tve::ColorGrade& grade);
 
 private:
     std::mutex m_mutex;
     std::map<tve::Id, tve::ClipVisual> m_visual;
     std::map<tve::Id, std::vector<tve::ClipEffect>> m_effects;
+    std::map<tve::Id, tve::ColorGrade> m_grades;
     std::atomic<quint64> m_revision{1};
 };
 
@@ -86,6 +88,7 @@ public:
     // Live preview of uncommitted clip changes; see PreviewOverrides.
     void setPreviewVisual(tve::Id clipId, const tve::ClipVisual& visual);
     void setPreviewEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects);
+    void setPreviewGrade(tve::Id clipId, const tve::ColorGrade& grade);
     void clearPreview(tve::Id clipId);
 
     // Read by the renderer on the render thread during synchronize().
