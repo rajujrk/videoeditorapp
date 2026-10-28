@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.luma_hex",
+  "version": 1,
+  "kind": "transition",
+  "category": ["luma"],
+  "title": {"en": "Hexagons"},
+  "params": [
+    {"id": "softness", "type": "float", "title": {"en": "Softness"}, "min": 0, "max": 0.5, "default": 0.1}
+  ],
+  "passes": [
+    {"fragment": "luma_hex.frag"}
+  ],
+  "license": "TVE-Original"
+}

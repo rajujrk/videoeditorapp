@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.card_flip",
+  "version": 1,
+  "kind": "transition",
+  "category": ["3d"],
+  "title": {"en": "Card Flip"},
+  "params": [
+    {"id": "axis", "type": "enum", "title": {"en": "Axis"}, "values": ["vertical", "horizontal"], "default": "vertical"}
+  ],
+  "passes": [
+    {"fragment": "card_flip.frag"}
+  ],
+  "license": "TVE-Original"
+}

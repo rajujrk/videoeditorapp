@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.pinch",
+  "version": 1,
+  "kind": "transition",
+  "category": ["distort"],
+  "title": {"en": "Pinch"},
+  "params": [],
+  "passes": [
+    {"fragment": "pinch.frag"}
+  ],
+  "license": "TVE-Original"
+}

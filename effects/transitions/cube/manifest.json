@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.cube",
+  "version": 1,
+  "kind": "transition",
+  "category": ["3d"],
+  "title": {"en": "Cube"},
+  "params": [
+    {"id": "direction", "type": "enum", "title": {"en": "Direction"}, "values": ["left", "right", "up", "down"], "default": "left"}
+  ],
+  "passes": [
+    {"fragment": "cube.frag"}
+  ],
+  "license": "TVE-Original"
+}

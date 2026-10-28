@@ -178,7 +178,7 @@ Item {
         function test_library_leads_with_the_basics() {
             const f = createEditor()
             const list = f.project.availableTransitions
-            compare(list.length, 21)
+            compare(list.length, 60)
             compare(list[0].categories[0], "basic")
             verify(list.findIndex((t) => t.id === "tve.transition.dissolve") < 4)
         }

@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.water_drop",
+  "version": 1,
+  "kind": "transition",
+  "category": ["distort"],
+  "title": {"en": "Water Drop"},
+  "params": [
+    {"id": "amplitude", "type": "float", "title": {"en": "Ripples"}, "min": 0, "max": 1, "default": 0.5}
+  ],
+  "passes": [
+    {"fragment": "water_drop.frag"}
+  ],
+  "license": "TVE-Original"
+}

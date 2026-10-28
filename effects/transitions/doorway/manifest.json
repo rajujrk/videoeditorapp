@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.doorway",
+  "version": 1,
+  "kind": "transition",
+  "category": ["3d"],
+  "title": {"en": "Doorway"},
+  "params": [],
+  "passes": [
+    {"fragment": "doorway.frag"}
+  ],
+  "license": "TVE-Original"
+}

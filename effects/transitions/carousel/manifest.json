@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.carousel",
+  "version": 1,
+  "kind": "transition",
+  "category": ["3d", "slide"],
+  "title": {"en": "Carousel"},
+  "params": [
+    {"id": "direction", "type": "enum", "title": {"en": "Direction"}, "values": ["left", "right", "up", "down"], "default": "left"}
+  ],
+  "passes": [
+    {"fragment": "carousel.frag"}
+  ],
+  "license": "TVE-Original"
+}

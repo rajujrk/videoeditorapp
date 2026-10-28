@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.film_burn",
+  "version": 1,
+  "kind": "transition",
+  "category": ["light"],
+  "title": {"en": "Film Burn"},
+  "params": [],
+  "passes": [
+    {"fragment": "film_burn.frag"}
+  ],
+  "license": "TVE-Original"
+}

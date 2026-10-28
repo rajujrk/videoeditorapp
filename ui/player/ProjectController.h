@@ -379,6 +379,11 @@ public:
     // `changes` keys: duration (seconds), alignment ("center", "endsAtCut", "startsAtCut"),
     // values ({paramId: value}, merged). One undo step.
     Q_INVOKABLE bool setTransition(double clipId, const QVariantMap& changes);
+    // Every cut between two pictures on the unlocked video tracks gets `transitionId` (or, with
+    // applyRandomTransitions, a random one each, no two neighbours alike), `duration` seconds
+    // long (< 0: the default). One undo step; returns how many cuts.
+    Q_INVOKABLE int applyTransitionToAll(const QString& transitionId, double duration = -1);
+    Q_INVOKABLE int applyRandomTransitions(double duration = -1);
     Q_INVOKABLE bool removeTransition(double clipId);
 
     // Titles. `style` holds text fields (see TitleRenderer.h textMap) plus optional x and y
@@ -485,6 +490,9 @@ private:
     // ends), within `tolerance`.
     tve::Mp4Settings exportSettings(const QVariantMap& options) const;
     std::optional<tve::Id> cutNear(const tve::Track& track, tve::Ticks time, tve::Ticks tolerance) const;
+    // The clips that start a cut a transition can go on (see applyTransitionToAll).
+    std::vector<tve::Id> transitionCuts() const;
+    int applyTransitions(const std::function<std::string(std::size_t)>& choose, double duration, const char* label);
 
     tve::Project m_project;
     std::unique_ptr<tve::CommandStack> m_stack;

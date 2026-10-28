@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.whip",
+  "version": 1,
+  "kind": "transition",
+  "category": ["slide", "blur"],
+  "title": {"en": "Whip Pan"},
+  "params": [
+    {"id": "direction", "type": "enum", "title": {"en": "Direction"}, "values": ["left", "right", "up", "down"], "default": "left"}
+  ],
+  "passes": [
+    {"fragment": "whip.frag"}
+  ],
+  "license": "TVE-Original"
+}

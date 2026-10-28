@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.fold",
+  "version": 1,
+  "kind": "transition",
+  "category": ["3d"],
+  "title": {"en": "Fold"},
+  "params": [],
+  "passes": [
+    {"fragment": "fold.frag"}
+  ],
+  "license": "TVE-Original"
+}

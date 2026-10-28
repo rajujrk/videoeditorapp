@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.kaleidoscope",
+  "version": 1,
+  "kind": "transition",
+  "category": ["distort"],
+  "title": {"en": "Kaleidoscope"},
+  "params": [
+    {"id": "segments", "type": "float", "title": {"en": "Segments"}, "min": 3, "max": 16, "default": 6}
+  ],
+  "passes": [
+    {"fragment": "kaleidoscope.frag"}
+  ],
+  "license": "TVE-Original"
+}

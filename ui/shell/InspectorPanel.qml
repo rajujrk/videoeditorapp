@@ -113,6 +113,17 @@ Rectangle {
                 }
             }
 
+            TextButton {
+                objectName: "applyTransitionToAll"
+                Layout.fillWidth: true
+                text: "Apply to all cuts"
+                variant: "secondary"
+                tip: "Put this transition, this long, on every cut between clips"
+                onClicked: inspector.project.applyTransitionToAll(inspector.transitionInfo.transitionId,
+                                                                  inspector.transitionInfo.requestedDuration
+                                                                  || inspector.transitionInfo.duration)
+            }
+
             ComboBox {
                 id: transitionPicker
                 objectName: "transitionPicker"

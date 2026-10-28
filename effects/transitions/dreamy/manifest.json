@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.dreamy",
+  "version": 1,
+  "kind": "transition",
+  "category": ["distort"],
+  "title": {"en": "Dreamy"},
+  "params": [],
+  "passes": [
+    {"fragment": "dreamy.frag"}
+  ],
+  "license": "TVE-Original"
+}

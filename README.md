@@ -4,12 +4,12 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a) and the titles system (9b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b) and 60 transitions (10a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
 scopes, put looks (filters) and overlays on clips or on adjustment layers above them, cut clips out with shape and pen masks, a chroma key or a track matte, arrange clips side by side or picture in picture, give each clip its own effects from a library of 61 (with shadows, outlines and fills that reach outside the picture),
-put any of 21 transitions on the cuts between clips (with a constant-power sound
+put any of 60 transitions on the cuts between clips (one on every cut at once, or a random one each) (with a constant-power sound
 crossfade), add titles (font, size, colour, bold/italic, alignment, letter and line
 spacing, outline, shadow, a shape or bubble behind them, in/out/loop text animations by
 letter, word or line, rolling credits and tickers; 40 templates), change a clip's speed (0.1–10×) or ramp it, play it in reverse or insert
@@ -34,10 +34,9 @@ What's in the repo:
   audible clips with volume, fades, speed and mute; miniaudio output slaved to the shared
   play/pause/seek clock; `AudioRecorder`: miniaudio microphone capture to WAV through a
   lock-free ring and a writer thread; waveform peak cache; thumbnail extraction.
-- `effects/` — built-in effect packages (manifest + GLSL shaders): color adjust, gaussian
-  blur, vignette, RGB split, pixelate; and 21 original transition packages (dissolve, dips,
-  flash, push, slide, reveal, squeeze, wipes, iris, zooms, spin, pixelate, blur, ripple,
-  door, …). See [effects/README.md](effects/README.md) for the
+- `effects/` — built-in packages, all original (manifest + GLSL shaders): 61 video effects,
+  60 transitions (basic, slides, wipes, shapes, zooms, 3D, distortions, luma wipes, light) and
+  40 audio effects (manifest chains, no shaders). See [effects/README.md](effects/README.md) for the
   manifest format and shader contract.
 - `engine/gpu/` — effect library (manifests cross-checked against shader reflection), the
   GPU effect chain, and the compositor that places layers on the project canvas
@@ -113,6 +112,17 @@ has no speed, but everything else applies — placement and crop, keyframes (a s
 pan), colour, looks, effects, transitions, export — and transparency in PNGs shows what is
 below. An animated GIF plays as a video. Images do not set the project's canvas; the first
 video does.
+
+**60 transitions.** The Transitions tab now holds 60, filtered by category chips (basic, slide,
+wipe, shape, zoom, 3D, distort, luma, stylize, blur, light) and the search: besides the first
+21, ten in 3D (Cube, Card Flip, Page Turn, Fold, Swing In, Fall, Tumble, Doorway, Fly Through,
+Carousel), ten distortions and effects (Swirl, Water Drop, Morph, Dreamy, Pinch, Stretch,
+Kaleidoscope, Glitch, Chromatic, Whip Pan), ten luma wipes revealing the incoming picture by a
+pattern (Clouds, Spiral, Burst, Random Bars, Blobs, Rings, Steps, Fan, Hexagons, Sand), shapes
+growing from the centre or a corner (Heart, Star, Diamond, Inset, Corner, Zigzag, Polka Dots,
+Tiles) and Film Burn. A selected transition's **Apply to all cuts** puts it, at its length, on
+every cut between clips on the unlocked video tracks; **Random on every cut** in the tab gives
+each cut a different random one. Either is one undo step.
 
 **Titles system.** The library's Titles tab holds 40 original templates in five categories
 — titles, lower thirds, callouts (speech and thought bubbles, an arrow, a badge, a tag),

@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.swing_in",
+  "version": 1,
+  "kind": "transition",
+  "category": ["3d"],
+  "title": {"en": "Swing In"},
+  "params": [
+    {"id": "direction", "type": "enum", "title": {"en": "Direction"}, "values": ["left", "right", "up", "down"], "default": "left"}
+  ],
+  "passes": [
+    {"fragment": "swing_in.frag"}
+  ],
+  "license": "TVE-Original"
+}
