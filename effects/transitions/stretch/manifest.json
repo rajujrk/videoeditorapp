@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.stretch",
+  "version": 1,
+  "kind": "transition",
+  "category": ["distort"],
+  "title": {"en": "Stretch"},
+  "params": [],
+  "passes": [
+    {"fragment": "stretch.frag"}
+  ],
+  "license": "TVE-Original"
+}

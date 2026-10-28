@@ -29,9 +29,9 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonDocument>
+#include <QGuiApplication>
 #include <QJsonObject>
 #include <QPointer>
-#include <QGuiApplication>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QUuid>
@@ -44,6 +44,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
+#include <random>
 
 using namespace tve;
 
@@ -816,7 +818,8 @@ void ProjectController::setSelectedTransition(double clipId)
 QVariantList ProjectController::availableTransitions() const
 {
     // Everyday ones first: by the first category in this order, then as loaded.
-    static const std::vector<std::string> kOrder = {"basic", "slide", "wipe", "shape", "zoom", "blur", "stylize", "3d"};
+    static const std::vector<std::string> kOrder = {"basic", "slide", "wipe", "shape", "zoom",    "blur",
+                                                    "stylize", "3d",  "distort", "luma", "light"};
     const auto rank = [](const LoadedEffect& t) {
         const auto& categories = t.manifest.categories;
         const auto it = categories.empty() ? kOrder.end() : std::ranges::find(kOrder, categories.front());
@@ -3415,4 +3418,76 @@ QVariantList ProjectController::textAnimations() const
                             {QStringLiteral("loop"), preset.loop}};
     }
     return list;
+}
+
+// --- Transitions on every cut ---
+
+std::vector<Id> ProjectController::transitionCuts() const
+{
+    std::vector<Id> cuts;
+    for (const Track& track : m_project.tracks) {
+        if (track.kind != TrackKind::Video || track.locked)
+            continue;
+        for (std::size_t i = 1; i < track.clips.size(); ++i) {
+            const Clip& before = track.clips[i - 1];
+            const Clip& clip = track.clips[i];
+            if (before.end() == clip.start && !before.generated() && !clip.generated())
+                cuts.push_back(clip.id);
+        }
+    }
+    return cuts;
+}
+
+int ProjectController::applyTransitions(const std::function<std::string(std::size_t)>& choose, double duration,
+                                        const char* label)
+{
+    const std::vector<Id> cuts = transitionCuts();
+    if (cuts.empty()) {
+        reportError(QStringLiteral("There are no cuts between clips to put transitions on"));
+        return 0;
+    }
+    std::vector<std::unique_ptr<Command>> steps;
+    for (std::size_t i = 0; i < cuts.size(); ++i) {
+        const Clip& clip = *findClip(cuts[i]);
+        ClipTransition transition{choose(i)};
+        if (clip.transitionIn)
+            transition.alignment = clip.transitionIn->alignment; // keep where it sat
+        if (duration > 0)
+            transition.duration = ticks(duration);
+        else if (clip.transitionIn)
+            transition.duration = clip.transitionIn->duration;
+        steps.push_back(std::make_unique<SetClipTransitionCommand>(clip.id, std::move(transition)));
+    }
+    if (!apply(std::make_unique<CompositeCommand>(std::move(steps), label)))
+        return 0;
+    return int(cuts.size());
+}
+
+int ProjectController::applyTransitionToAll(const QString& transitionId, double duration)
+{
+    const std::string id = transitionId.toStdString();
+    if (!EffectLibrary::builtIn().findTransition(id)) {
+        reportError(QStringLiteral("Unknown transition %1").arg(transitionId));
+        return 0;
+    }
+    return applyTransitions([&](std::size_t) { return id; }, duration, "Apply Transition to All");
+}
+
+int ProjectController::applyRandomTransitions(double duration)
+{
+    const auto& all = EffectLibrary::builtIn().transitions();
+    if (all.empty())
+        return 0;
+    std::mt19937 random{std::random_device{}()};
+    std::uniform_int_distribution<std::size_t> pick(0, all.size() - 1);
+    std::size_t previous = all.size();
+    return applyTransitions(
+        [&](std::size_t) {
+            std::size_t chosen = pick(random);
+            while (all.size() > 1 && chosen == previous)
+                chosen = pick(random);
+            previous = chosen;
+            return all[chosen].manifest.id;
+        },
+        duration, "Random Transitions");
 }

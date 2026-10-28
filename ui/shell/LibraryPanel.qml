@@ -32,6 +32,14 @@ Rectangle {
     // Titles tab's category ("" for all).
     readonly property var titleStyles: TitleTemplates.templates
     property string titleCategory: ""
+    // The Transitions tab's category ("" for all).
+    property string transitionCategory: ""
+    readonly property var transitionCategories: [
+        { id: "", label: "All" }, { id: "basic", label: "Basic" }, { id: "slide", label: "Slide" },
+        { id: "wipe", label: "Wipe" }, { id: "shape", label: "Shape" }, { id: "zoom", label: "Zoom" },
+        { id: "3d", label: "3D" }, { id: "distort", label: "Distort" }, { id: "luma", label: "Luma" },
+        { id: "stylize", label: "Stylize" }, { id: "blur", label: "Blur" }, { id: "light", label: "Light" }
+    ]
 
     readonly property var tabs: [
         { icon: "media", label: "Media", phase: "" },
@@ -124,6 +132,50 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.margins: Theme.space.m
                 placeholderText: "Search " + library.tabs[library.currentTab].label.toLowerCase()
+            }
+
+            // Transitions tab: category chips, and random transitions on every cut.
+            Flow {
+                visible: transitionsGrid.visible
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.space.m
+                Layout.rightMargin: Theme.space.m
+                Layout.bottomMargin: Theme.space.s
+                spacing: Theme.space.xs
+                Repeater {
+                    model: library.transitionCategories
+                    delegate: AbstractButton {
+                        id: transitionChip
+                        required property var modelData
+                        objectName: "transitionCategory:" + (modelData.id || "all")
+                        checked: library.transitionCategory === modelData.id
+                        hoverEnabled: true
+                        implicitWidth: transitionChipLabel.implicitWidth + Theme.space.m * 2
+                        implicitHeight: 24
+                        onClicked: library.transitionCategory = modelData.id
+                        background: Rectangle {
+                            radius: height / 2
+                            color: transitionChip.checked ? Theme.color.accentSubtle
+                                 : transitionChip.hovered ? Theme.color.surfaceHover : "transparent"
+                            border.color: transitionChip.checked ? Theme.color.accent : Theme.color.borderSubtle
+                        }
+                        contentItem: Text {
+                            id: transitionChipLabel
+                            text: transitionChip.modelData.label
+                            font: Theme.type.caption
+                            color: transitionChip.checked ? Theme.color.accentText : Theme.color.textSecondary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
+                TextButton {
+                    objectName: "randomTransitions"
+                    text: "Random on every cut"
+                    variant: "ghost"
+                    tip: "Put a different random transition on each cut between clips"
+                    onClicked: library.project.applyRandomTransitions()
+                }
             }
 
             // Titles tab: category chips over the templates.
@@ -497,6 +549,7 @@ Rectangle {
             // onto a cut.
             GridView {
                 id: transitionsGrid
+                objectName: "transitionsGrid"
                 visible: library.tabs[library.currentTab].label === "Transitions"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -504,7 +557,9 @@ Rectangle {
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: library.project.availableTransitions.filter((t) => library.matchesSearch(t.title))
+                model: library.project.availableTransitions.filter(
+                           (t) => (library.transitionCategory === "" || t.categories.indexOf(library.transitionCategory) >= 0)
+                                  && library.matchesSearch(t.title))
 
                 delegate: Item {
                     id: transitionTile

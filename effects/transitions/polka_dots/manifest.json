@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.polka_dots",
+  "version": 1,
+  "kind": "transition",
+  "category": ["shape"],
+  "title": {"en": "Polka Dots"},
+  "params": [
+    {"id": "dots", "type": "float", "title": {"en": "Dots across"}, "min": 4, "max": 30, "default": 12}
+  ],
+  "passes": [
+    {"fragment": "polka_dots.frag"}
+  ],
+  "license": "TVE-Original"
+}

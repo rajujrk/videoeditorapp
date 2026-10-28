@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.fall",
+  "version": 1,
+  "kind": "transition",
+  "category": ["3d"],
+  "title": {"en": "Fall"},
+  "params": [],
+  "passes": [
+    {"fragment": "fall.frag"}
+  ],
+  "license": "TVE-Original"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.diamond",
+  "version": 1,
+  "kind": "transition",
+  "category": ["shape"],
+  "title": {"en": "Diamond"},
+  "params": [
+    {"id": "softness", "type": "float", "title": {"en": "Softness"}, "min": 0, "max": 0.5, "default": 0.1}
+  ],
+  "passes": [
+    {"fragment": "diamond.frag"}
+  ],
+  "license": "TVE-Original"
+}

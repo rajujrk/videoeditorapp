@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.zigzag",
+  "version": 1,
+  "kind": "transition",
+  "category": ["wipe"],
+  "title": {"en": "Zigzag"},
+  "params": [
+    {"id": "softness", "type": "float", "title": {"en": "Softness"}, "min": 0, "max": 0.5, "default": 0.1}
+  ],
+  "passes": [
+    {"fragment": "zigzag.frag"}
+  ],
+  "license": "TVE-Original"
+}

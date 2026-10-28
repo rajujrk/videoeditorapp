@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.glitch",
+  "version": 1,
+  "kind": "transition",
+  "category": ["stylize"],
+  "title": {"en": "Glitch"},
+  "params": [
+    {"id": "strength", "type": "float", "title": {"en": "Strength"}, "min": 0, "max": 1, "default": 0.6}
+  ],
+  "passes": [
+    {"fragment": "glitch.frag"}
+  ],
+  "license": "TVE-Original"
+}

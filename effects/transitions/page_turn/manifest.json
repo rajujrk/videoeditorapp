@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.page_turn",
+  "version": 1,
+  "kind": "transition",
+  "category": ["3d"],
+  "title": {"en": "Page Turn"},
+  "params": [
+    {"id": "direction", "type": "enum", "title": {"en": "Direction"}, "values": ["left", "right", "up", "down"], "default": "left"}
+  ],
+  "passes": [
+    {"fragment": "page_turn.frag"}
+  ],
+  "license": "TVE-Original"
+}

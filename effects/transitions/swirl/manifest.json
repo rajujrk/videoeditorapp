@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.swirl",
+  "version": 1,
+  "kind": "transition",
+  "category": ["distort"],
+  "title": {"en": "Swirl"},
+  "params": [
+    {"id": "turns", "type": "float", "title": {"en": "Turns"}, "min": 0.2, "max": 3, "default": 1.2}
+  ],
+  "passes": [
+    {"fragment": "swirl.frag"}
+  ],
+  "license": "TVE-Original"
+}

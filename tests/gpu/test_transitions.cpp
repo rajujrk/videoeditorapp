@@ -113,12 +113,12 @@ const std::vector<float> kUp{2.0f};
 
 } // namespace
 
-TEST_CASE("built-in library loads all 21 transitions")
+TEST_CASE("built-in library loads all 60 transitions")
 {
     const EffectLibrary& library = EffectLibrary::builtIn();
     INFO(library.errors().join(QLatin1Char('\n')).toStdString());
     CHECK(library.errors().isEmpty());
-    CHECK(library.transitions().size() == 21);
+    CHECK(library.transitions().size() == 60);
     CHECK(library.findTransition("tve.transition.dissolve"));
     CHECK_FALSE(library.find("tve.transition.dissolve")); // transitions are not clip effects
     for (const LoadedEffect& transition : library.transitions()) {
@@ -193,4 +193,58 @@ TEST_CASE("push moves the outgoing picture out and the incoming one in")
 TEST_CASE("an unknown transition renders nothing")
 {
     CHECK_FALSE(render("tve.transition.nope", 0.5f, solid(Qt::red), solid(Qt::blue)));
+}
+
+TEST_CASE("half way, every transition shows something of both pictures")
+{
+    // A dissolve shows a mix; a wipe, a cube or a luma wipe shows some of each; zooms and
+    // flips show a picture changed in shape. Either way the frame is neither picture alone.
+    const QImage red = solid(Qt::red);
+    const QImage blue = solid(Qt::blue);
+    for (const LoadedEffect& transition : EffectLibrary::builtIn().transitions()) {
+        const std::string& id = transition.manifest.id;
+        INFO(id);
+        CHECK(transition.manifest.license == "TVE-Original");
+        float mostRed = 0.0f, mostBlue = 0.0f;
+        bool finite = true;
+        for (const float progress : {0.35f, 0.5f, 0.65f}) {
+            const auto frame = render(id.c_str(), progress, red, blue);
+            REQUIRE(frame);
+            for (int y = 0; y < kH; y += 2) {
+                for (int x = 0; x < kW; x += 2) {
+                    const Rgba c = frame->at(x, y);
+                    finite = finite && std::isfinite(c.r) && std::isfinite(c.b) && std::isfinite(c.a);
+                    mostRed = std::max(mostRed, c.r * c.a);
+                    mostBlue = std::max(mostBlue, c.b * c.a);
+                }
+            }
+        }
+        CHECK(finite);
+        CHECK(mostRed > 0.15f);
+        CHECK(mostBlue > 0.15f);
+    }
+}
+
+TEST_CASE("luma wipes and growing shapes open where they say")
+{
+    const QImage red = solid(Qt::red);
+    const QImage blue = solid(Qt::blue);
+    // Shapes grow from the centre: the incoming picture is there first.
+    for (const char* id : {"tve.transition.heart", "tve.transition.star", "tve.transition.diamond", "tve.transition.inset"}) {
+        INFO(id);
+        const auto early = render(id, 0.3f, red, blue);
+        REQUIRE(early);
+        CHECK(early->at(kW / 2, kH / 2).b > 0.9f);
+        CHECK(early->at(1, 1).r > 0.9f);
+    }
+    // The corner wipe opens from the top left; Random Bars covers about half by half way.
+    const auto corner = render("tve.transition.corner", 0.4f, red, blue);
+    CHECK(corner->at(2, 2).b > 0.9f);
+    CHECK(corner->at(kW - 2, kH - 2).r > 0.9f);
+    const auto bars = render("tve.transition.luma_bars", 0.5f, red, blue, {{"softness", {0.0f}}});
+    int incoming = 0;
+    for (int x = 0; x < kW; ++x)
+        incoming += bars->at(x, kH / 2).b > 0.5f;
+    CHECK(incoming > kW / 5);
+    CHECK(incoming < kW * 4 / 5);
 }

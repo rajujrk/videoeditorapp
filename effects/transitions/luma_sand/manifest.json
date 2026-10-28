@@ -1,0 +1,14 @@
+{
+  "id": "tve.transition.luma_sand",
+  "version": 1,
+  "kind": "transition",
+  "category": ["luma"],
+  "title": {"en": "Sand"},
+  "params": [
+    {"id": "softness", "type": "float", "title": {"en": "Softness"}, "min": 0, "max": 0.5, "default": 0.1}
+  ],
+  "passes": [
+    {"fragment": "luma_sand.frag"}
+  ],
+  "license": "TVE-Original"
+}

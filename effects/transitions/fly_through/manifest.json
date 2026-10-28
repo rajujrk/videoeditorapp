@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.fly_through",
+  "version": 1,
+  "kind": "transition",
+  "category": ["3d", "zoom"],
+  "title": {"en": "Fly Through"},
+  "params": [],
+  "passes": [
+    {"fragment": "fly_through.frag"}
+  ],
+  "license": "TVE-Original"
+}

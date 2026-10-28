@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.tumble",
+  "version": 1,
+  "kind": "transition",
+  "category": ["3d"],
+  "title": {"en": "Tumble"},
+  "params": [],
+  "passes": [
+    {"fragment": "tumble.frag"}
+  ],
+  "license": "TVE-Original"
+}

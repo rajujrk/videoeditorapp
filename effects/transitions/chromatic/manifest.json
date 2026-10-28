@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.chromatic",
+  "version": 1,
+  "kind": "transition",
+  "category": ["stylize"],
+  "title": {"en": "Chromatic"},
+  "params": [],
+  "passes": [
+    {"fragment": "chromatic.frag"}
+  ],
+  "license": "TVE-Original"
+}

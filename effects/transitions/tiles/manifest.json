@@ -1,0 +1,12 @@
+{
+  "id": "tve.transition.tiles",
+  "version": 1,
+  "kind": "transition",
+  "category": ["shape", "3d"],
+  "title": {"en": "Tiles"},
+  "params": [],
+  "passes": [
+    {"fragment": "tiles.frag"}
+  ],
+  "license": "TVE-Original"
+}

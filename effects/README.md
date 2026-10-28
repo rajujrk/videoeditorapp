@@ -200,25 +200,70 @@ transparent. `v_uv` has (0, 0) at the top-left of the picture and y pointing dow
 incoming one at progress 1; `tve_gpu_tests` checks this for every package. Packages are
 original work (`"license": "TVE-Original"`).
 
-| Folder | Id | Params |
-|---|---|---|
-| `dissolve` | `tve.transition.dissolve` | — |
-| `dip_to_black`, `dip_to_white` | `tve.transition.dip_to_black`, `…dip_to_white` | color |
-| `flash` | `tve.transition.flash` | intensity |
-| `push`, `slide`, `reveal` | `tve.transition.push`, `…slide`, `…reveal` | direction |
-| `squeeze` | `tve.transition.squeeze` | orientation |
-| `wipe` | `tve.transition.wipe` | direction, softness |
-| `split` | `tve.transition.split` | orientation, softness |
-| `radial_wipe` | `tve.transition.radial_wipe` (Clock Wipe) | softness |
-| `blinds` | `tve.transition.blinds` | count, orientation, softness |
-| `checkerboard` | `tve.transition.checkerboard` | squares |
-| `iris` | `tve.transition.iris` | softness |
-| `zoom_in`, `cross_zoom` | `tve.transition.zoom_in`, `…cross_zoom` | strength |
-| `spin` | `tve.transition.spin` | turns |
-| `pixelate` | `tve.transition.pixelate` | blockSize |
-| `blur` | `tve.transition.blur` | radius |
-| `ripple` | `tve.transition.ripple` | amplitude, waves |
-| `door` | `tve.transition.door` | — |
+60 transitions, ids `tve.transition.<folder>`:
+
+| Title | Folder | Categories | Params |
+|---|---|---|---|
+| Blinds | `blinds` | wipe | count, orientation, softness |
+| Blur | `blur` | blur | radius |
+| Card Flip | `card_flip` | 3d | axis |
+| Carousel | `carousel` | 3d, slide | direction |
+| Checkerboard | `checkerboard` | wipe, shape | squares |
+| Chromatic | `chromatic` | stylize | — |
+| Corner | `corner` | wipe, shape | softness |
+| Cross Zoom | `cross_zoom` | zoom, blur | strength |
+| Cube | `cube` | 3d | direction |
+| Diamond | `diamond` | shape | softness |
+| Dip to Black | `dip_to_black` | basic | color |
+| Dip to White | `dip_to_white` | basic | color |
+| Cross Dissolve | `dissolve` | basic | — |
+| Door | `door` | 3d | — |
+| Doorway | `doorway` | 3d | — |
+| Dreamy | `dreamy` | distort | — |
+| Fall | `fall` | 3d | — |
+| Film Burn | `film_burn` | light | — |
+| Flash | `flash` | basic, light | intensity |
+| Fly Through | `fly_through` | 3d, zoom | — |
+| Fold | `fold` | 3d | — |
+| Glitch | `glitch` | stylize | strength |
+| Heart | `heart` | shape | softness |
+| Inset | `inset` | shape | softness |
+| Iris | `iris` | shape | softness |
+| Kaleidoscope | `kaleidoscope` | distort | segments |
+| Random Bars | `luma_bars` | luma | softness |
+| Blobs | `luma_blobs` | luma | softness |
+| Burst | `luma_burst` | luma | softness |
+| Clouds | `luma_clouds` | luma | softness |
+| Hexagons | `luma_hex` | luma | softness |
+| Fan | `luma_rays` | luma | softness |
+| Rings | `luma_ripple` | luma | softness |
+| Sand | `luma_sand` | luma | softness |
+| Spiral | `luma_spiral` | luma | softness |
+| Steps | `luma_steps` | luma | softness |
+| Morph | `morph` | distort | strength |
+| Page Turn | `page_turn` | 3d | direction |
+| Pinch | `pinch` | distort | — |
+| Pixelate | `pixelate` | stylize | blockSize |
+| Polka Dots | `polka_dots` | shape | dots |
+| Push | `push` | slide | direction |
+| Clock Wipe | `radial_wipe` | wipe | softness |
+| Reveal | `reveal` | slide | direction |
+| Ripple | `ripple` | stylize, distort | amplitude, waves |
+| Slide | `slide` | slide | direction |
+| Spin | `spin` | zoom, 3d | turns |
+| Split | `split` | wipe | orientation, softness |
+| Squeeze | `squeeze` | slide | orientation |
+| Star | `star` | shape | softness |
+| Stretch | `stretch` | distort | — |
+| Swing In | `swing_in` | 3d | direction |
+| Swirl | `swirl` | distort | turns |
+| Tiles | `tiles` | shape, 3d | — |
+| Tumble | `tumble` | 3d | — |
+| Water Drop | `water_drop` | distort | amplitude |
+| Whip Pan | `whip` | slide, blur | direction |
+| Wipe | `wipe` | wipe | direction, softness |
+| Zigzag | `zigzag` | wipe | softness |
+| Zoom In | `zoom_in` | zoom | strength |
 
 ## Overlays and looks
 
