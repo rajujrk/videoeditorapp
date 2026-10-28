@@ -1,19 +1,24 @@
 import QtQuick
 import TechieVideoEditor.Theme
 
-// A tone curve: input left to right, output bottom to top, both 0–1 (the diagonal leaves it
-// unchanged). Drag a point; double-click empty space to add one, or an inner point to remove
-// it. The ends stay at the left and right edges. Each change commits.
+// A curve: input left to right, output bottom to top, both 0–1. A tone curve ("tone") leaves
+// colours alone on the diagonal; a hue curve ("hue": hue across, its two ends the same red)
+// or a luma curve ("luma": dark to light across) on the middle line. Drag a point;
+// double-click empty space to add one, or an inner point to remove it. The ends stay at the
+// left and right edges (on a hue curve they move together). Each change commits.
 Item {
     id: editor
     property var project             // for sampling the curve exactly as the grade does
     property var points: []          // [{x, y}]; empty: the diagonal
     property color lineColor: Theme.color.accentText
+    property string kind: "tone"
     signal committed(var points)
 
-    implicitHeight: width
-    property var live: points.length ? points : [{ x: 0, y: 0 }, { x: 1, y: 1 }]
-    onPointsChanged: live = points.length ? points : [{ x: 0, y: 0 }, { x: 1, y: 1 }]
+    implicitHeight: kind === "tone" ? width : width * 0.6
+    readonly property var neutral: kind === "tone" ? [{ x: 0, y: 0 }, { x: 1, y: 1 }] : [{ x: 0, y: 0.5 }, { x: 1, y: 0.5 }]
+    property var live: points.length ? points : neutral
+    onPointsChanged: live = points.length ? points : neutral
+    onKindChanged: { live = points.length ? points : neutral; canvas.requestPaint() }
     onLiveChanged: canvas.requestPaint()
     onLineColorChanged: canvas.requestPaint()
 
@@ -49,8 +54,27 @@ Item {
                 ctx.beginPath(); ctx.moveTo(editor.px(0), editor.py(i / 4)); ctx.lineTo(editor.px(1), editor.py(i / 4)); ctx.stroke()
             }
             ctx.setLineDash([4, 4])
-            ctx.beginPath(); ctx.moveTo(editor.px(0), editor.py(0)); ctx.lineTo(editor.px(1), editor.py(1)); ctx.stroke()
+            ctx.beginPath()
+            if (editor.kind === "tone") {
+                ctx.moveTo(editor.px(0), editor.py(0)); ctx.lineTo(editor.px(1), editor.py(1))
+            } else {
+                ctx.moveTo(editor.px(0), editor.py(0.5)); ctx.lineTo(editor.px(1), editor.py(0.5))
+            }
+            ctx.stroke()
             ctx.setLineDash([])
+            if (editor.kind !== "tone") {
+                // What runs across: the hues, or dark to light.
+                const strip = ctx.createLinearGradient(editor.px(0), 0, editor.px(1), 0)
+                if (editor.kind === "hue") {
+                    for (let i = 0; i <= 6; ++i)
+                        strip.addColorStop(i / 6, Qt.hsva(i / 6 % 1, 0.8, 0.9, 1))
+                } else {
+                    strip.addColorStop(0, "black")
+                    strip.addColorStop(1, "white")
+                }
+                ctx.fillStyle = strip
+                ctx.fillRect(editor.px(0), editor.height - editor.pad + 2, editor.px(1) - editor.px(0), editor.pad - 4)
+            }
             if (!editor.project)
                 return
             const samples = editor.project.sampleColorCurve(editor.live, 96)
@@ -111,6 +135,8 @@ Item {
                     const next = editor.copy()
                     const i = handle.index
                     next[i].y = p.y
+                    if (handle.edge && editor.kind === "hue")
+                        next[i === 0 ? next.length - 1 : 0].y = p.y // 0° and 360° are the same hue
                     if (!handle.edge)
                         next[i].x = Math.max(next[i - 1].x + 0.01, Math.min(next[i + 1].x - 0.01, p.x))
                     editor.live = next

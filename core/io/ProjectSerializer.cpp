@@ -65,8 +65,10 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipEffect, effectId, enabled, v
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SpeedPoint, at, speed)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CurvePoint, x, y)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorWheel, x, y, master)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(HslBand, hue, saturation, luminance)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorGrade, exposure, contrast, saturation, temperature, tint, lift,
-                                                gamma, gain, offset, master, red, green, blue, lutPath, lutIntensity)
+                                                gamma, gain, offset, master, red, green, blue, hsl, hueVsSat, hueVsHue,
+                                                lumaVsSat, lutPath, lutIntensity)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color)

@@ -4,10 +4,11 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5d (export, autosave and
-crash recovery, proxies, voice-over). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c) and colour grading (7a) done.** You can import video and audio files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a) and HSL, hue curves and scopes (7b) done.** You can import video and audio files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
-volume), grade each clip's colour (basic corrections, wheels, curves, LUTs), give each clip its own effects,
+volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
+scopes, give each clip its own effects,
 put any of 21 transitions on the cuts between clips (with a constant-power sound
 crossfade), add titles (font, size, colour, bold/italic, alignment, letter and line
 spacing, outline, shadow), change a clip's speed (0.1–10×) or ramp it, play it in reverse or insert
@@ -90,7 +91,14 @@ contrast, saturation, temperature and tint. Wheels: lift (shadows), gamma (midto
 centres it) and use the slider under it for all channels. Curves: master, red, green and
 blue tone curves (drag points, double-click to add or remove one). LUT: choose a `.cube` or
 `.3dl` 3D LUT and set its intensity (an unreadable file is refused; a LUT that has gone
-missing is marked and left out). Copy and Paste move a grade between clips, Reset clears
+missing is marked and left out). HSL: pick one of eight hue bands (red, orange, yellow, green, aqua, blue,
+purple, magenta) and turn its hue (±30°), saturation and luminance; colours between two
+bands take a blend of both, greys are left alone. Hue curves: saturation by hue, hue by hue
+(±60°) and saturation by brightness, each flat at the middle line (on hue curves the two
+ends are the same red and move together). Scopes, at the top of the tab, measure the
+preview as it is on screen: waveform, RGB parade, vectorscope (with 75 % colour targets and
+the skin-tone line) and histogram; the preview sends a small copy of its frames only while
+a scope is showing. Copy and Paste move a grade between clips, Reset clears
 it, and Presets save a grade by name (in
 `~/Library/Application Support/TechieVideoEditor/Color Presets`; `TVE_COLOR_PRESET_DIR`
 moves them) to apply to other clips. Sliders preview

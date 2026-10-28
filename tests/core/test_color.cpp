@@ -21,7 +21,7 @@ constexpr Ticks kSec = kTicksPerSecond;
 
 std::array<float, 3> graded(const ColorGrade& grade, std::array<float, 3> rgb)
 {
-    return applyGrade(gradeCoefficients(grade), bakeCurves(grade), rgb);
+    return applyGrade(gradeCoefficients(grade), bakeCurves(grade), rgb, bakeHueCurves(grade));
 }
 
 // A .cube text of size n whose output is f(r, g, b).
@@ -139,6 +139,71 @@ TEST_CASE("tone curves", "[color]")
     CHECK(out[2] == Approx(0.25f).margin(1e-4));
 }
 
+TEST_CASE("HSV round trip", "[color]")
+{
+    for (auto rgb : {std::array<float, 3>{1, 0, 0}, {0.2f, 0.8f, 0.4f}, {0.1f, 0.3f, 0.9f}, {0.5f, 0.5f, 0.5f}, {0, 0, 0}}) {
+        const auto back = hsvToRgb(rgbToHsv(rgb));
+        for (int c = 0; c < 3; ++c)
+            CHECK(back[c] == Approx(rgb[c]).margin(1e-5));
+    }
+    CHECK(rgbToHsv({1, 0, 0})[0] == Approx(0.0f));
+    CHECK(rgbToHsv({0, 1, 0})[0] == Approx(1.0f / 3.0f));
+    CHECK(rgbToHsv({0, 0, 1})[0] == Approx(2.0f / 3.0f));
+}
+
+TEST_CASE("HSL bands change only their colours", "[color]")
+{
+    ColorGrade g;
+    g.hsl[5].saturation = -1.0; // blues to grey
+    const std::array<float, 3> blue = hsvToRgb({240.0f / 360.0f, 0.9f, 0.9f}); // on the blue band
+    const std::array<float, 3> red{0.9f, 0.15f, 0.1f};
+    auto out = graded(g, blue);
+    CHECK(rgbToHsv(out)[1] < 0.05f);
+    out = graded(g, red);
+    for (int c = 0; c < 3; ++c)
+        CHECK(out[c] == Approx(red[c]).margin(1e-4)); // reds untouched
+    out = graded(g, {0.5f, 0.5f, 0.5f});
+    CHECK(out[0] == Approx(0.5f).margin(1e-5)); // greys untouched
+
+    g = {};
+    g.hsl[0].hue = 1.0; // reds turn 30° towards yellow
+    out = graded(g, {1.0f, 0.0f, 0.0f});
+    CHECK(rgbToHsv(out)[0] == Approx(30.0f / 360.0f).margin(1e-3));
+    g = {};
+    g.hsl[0].luminance = -1.0;
+    CHECK(graded(g, {1.0f, 0.0f, 0.0f})[0] == Approx(0.5f).margin(1e-4));
+    // Between two bands (15°: halfway from red to orange) both count half.
+    g = {};
+    g.hsl[1].saturation = -1.0;
+    out = graded(g, hsvToRgb({15.0f / 360.0f, 1.0f, 1.0f}));
+    CHECK(rgbToHsv(out)[1] == Approx(0.5f).margin(1e-3));
+}
+
+TEST_CASE("hue curves", "[color]")
+{
+    ColorGrade g;
+    g.hueVsSat = {{0, 0.5}, {0.33, 0.0}, {0.5, 0.5}, {1, 0.5}}; // greens to grey
+    const auto green = hsvToRgb({0.33f, 0.9f, 0.8f}); // on the curve point
+    auto out = graded(g, green);
+    CHECK(rgbToHsv(out)[1] < 0.05f);
+    const auto red = hsvToRgb({0.0f, 0.9f, 0.8f});
+    out = graded(g, red);
+    CHECK(rgbToHsv(out)[1] == Approx(0.9f).margin(1e-3));
+
+    g = {};
+    g.hueVsHue = {{0, 1.0}, {1, 1.0}}; // every hue +60°
+    out = graded(g, red);
+    CHECK(rgbToHsv(out)[0] == Approx(1.0f / 6.0f).margin(1e-3));
+
+    g = {};
+    g.lumaVsSat = {{0, 0.0}, {0.5, 0.0}, {1, 0.5}}; // dark colours lose their colour
+    out = graded(g, hsvToRgb({0.6f, 1.0f, 0.25f}));
+    CHECK(rgbToHsv(out)[1] < 0.05f);
+
+    const auto tables = bakeHueCurves(ColorGrade{}, 4);
+    CHECK(tables[1][2] == 0.5f);
+}
+
 TEST_CASE("grades are checked", "[color]")
 {
     ColorGrade g;
@@ -162,6 +227,12 @@ TEST_CASE("grades are checked", "[color]")
     CHECK(validateGrade(g).value() == "curve points must be in order");
     g = {};
     g.lutIntensity = 2;
+    CHECK(validateGrade(g).has_value());
+    g = {};
+    g.hsl[3].saturation = 1.5;
+    CHECK(validateGrade(g).value() == "HSL adjustments must be between -100% and +100%");
+    g = {};
+    g.hueVsHue = {{0, 0.5}};
     CHECK(validateGrade(g).has_value());
 }
 
@@ -194,6 +265,8 @@ TEST_CASE("grades on clips: set, paste, split, save", "[color]")
     warm.temperature = 0.4;
     warm.red = {{0, 0}, {0.5, 0.6}, {1, 1}};
     warm.lutPath = "/luts/film.cube";
+    warm.hsl[4].hue = 0.3;
+    warm.hueVsSat = {{0, 0.5}, {0.5, 0.8}, {1, 0.5}};
     warm.lutIntensity = 0.5;
     push(std::make_unique<SetClipColorCommand>(std::vector<Id>{clipA}, warm));
     CHECK(stack.undoLabel() == "Change Color");

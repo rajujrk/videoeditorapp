@@ -116,7 +116,7 @@ Sizes are `Theme.size.*` tokens.
 | Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker and "Autosaved hh:mm", undo/redo with labels, save, theme toggle, Export (shows progress while exporting) opening `ExportDialog.qml` |
 | Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions and Effects tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, proxy toggle, stats overlay |
-| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed (with a speed-ramp section: presets and the `SpeedRampEditor.qml` graph), Audio, Color and Effects tabs are live** for the selected clip (a Keyframes section — add/remove at the playhead, step between, easing, clear — and a ◆ toggle beside every animatable value, a curve editor for the keyframe at the playhead, ◆ on keyframable effect parameters; placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); the Color tab grades the clip (basic sliders, `ColorWheelControl.qml` wheels, `ToneCurveEditor.qml` curves, LUT, copy/paste, presets) |
+| Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed (with a speed-ramp section: presets and the `SpeedRampEditor.qml` graph), Audio, Color and Effects tabs are live** for the selected clip (a Keyframes section — add/remove at the playhead, step between, easing, clear — and a ◆ toggle beside every animatable value, a curve editor for the keyframe at the playhead, ◆ on keyframable effect parameters; placement/crop/opacity/blend, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); the Color tab grades the clip (scopes via the `ScopeView` item, basic sliders, `ColorWheelControl.qml` wheels, `ToneCurveEditor.qml` tone and hue curves, HSL band chips, LUT, copy/paste, presets) |
 | Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; keyframe button for the selected clip and keyframe diamonds along clips (click to go, drag to move); voice-over button opening `VoiceOverPanel.qml` (a red range marks the take being recorded); move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges, title clips (purple, labelled with their text), transition markers over cuts (select, delete, drop target) |
 
 ### Home
@@ -212,6 +212,18 @@ and light:
 ![Color wheels, light](images/color-light.png)
 ![Color curves and LUT, dark](images/color-curves-dark.png)
 ![Color curves and LUT, light](images/color-curves-light.png)
+
+Scopes (always on a dark well, like the player) at the top of the Color tab — the
+vectorscope with its 75 % targets and skin-tone line, and the RGB parade — and the HSL
+section (blue band selected; dots mark bands that change something) with the hue curves,
+dark and light:
+
+![Vectorscope, dark](images/scopes-dark.png)
+![Vectorscope, light](images/scopes-light.png)
+![RGB parade, dark](images/scopes-parade-dark.png)
+![RGB parade, light](images/scopes-parade-light.png)
+![HSL and hue curves, dark](images/hsl-dark.png)
+![HSL and hue curves, light](images/hsl-light.png)
 
 Speed ramp: the Hero moment preset on the background clip — the graph (speed on a log
 scale, dashed 1× line, red playhead), presets above it — and the clip labelled `Ramp ·`,

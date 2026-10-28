@@ -1,5 +1,7 @@
 #pragma once
 
+#include "analysis/Scopes.h"
+
 #include "gpu/EffectChain.h"
 #include "model/Project.h"
 
@@ -41,6 +43,24 @@ private:
     std::atomic<quint64> m_revision{1};
 };
 
+// The latest preview frame, small (256 pixels across), for the scopes: written by the
+// renderer, read on the GUI thread when `changed` arrives.
+class ScopeFrame : public QObject {
+    Q_OBJECT
+public:
+    void set(tve::ScopeImage image); // any thread
+    tve::ScopeImage image() const;
+    quint64 serial() const;
+
+signals:
+    void changed();
+
+private:
+    mutable std::mutex m_mutex;
+    tve::ScopeImage m_image;
+    quint64 m_serial = 0;
+};
+
 // Shows composite frames from a FrameSource (the timeline, or a single file via `source`):
 // zero-copy CVPixelBuffer → Metal textures, YUV→RGB per layer, per-clip effects, the
 // compositor onto the project canvas, output effects, then aspect-fit into the item.
@@ -56,6 +76,9 @@ class VideoView : public QQuickRhiItem {
     Q_PROPERTY(bool hardwareAccelerated READ hardwareAccelerated NOTIFY statsChanged)
     Q_PROPERTY(QVariantList availableEffects READ availableEffects CONSTANT)
     Q_PROPERTY(int enabledEffectCount READ enabledEffectCount NOTIFY effectsChanged)
+    // While true, a small copy of each new preview frame (at most ~15 a second) goes to
+    // scopeFrame() for the scopes; off, it costs nothing.
+    Q_PROPERTY(bool scopesEnabled READ scopesEnabled WRITE setScopesEnabled NOTIFY scopesEnabledChanged)
 
 public:
     explicit VideoView(QQuickItem* parent = nullptr);
@@ -91,6 +114,10 @@ public:
     void setPreviewGrade(tve::Id clipId, const tve::ColorGrade& grade);
     void clearPreview(tve::Id clipId);
 
+    bool scopesEnabled() const { return m_scopesEnabled; }
+    void setScopesEnabled(bool enabled);
+    std::shared_ptr<ScopeFrame> scopeFrame() const { return m_scopeFrame; }
+
     // Read by the renderer on the render thread during synchronize().
     std::shared_ptr<tve::FrameSource> frameSource() const { return m_frameSource; }
     std::shared_ptr<PreviewOverrides> previewOverrides() const { return m_previewOverrides; }
@@ -101,6 +128,7 @@ signals:
     void sourceChanged();
     void statsChanged();
     void effectsChanged();
+    void scopesEnabledChanged();
 
 protected:
     QQuickRhiItemRenderer* createRenderer() override;
@@ -115,6 +143,8 @@ private:
     QString m_description;
     std::shared_ptr<tve::FrameSource> m_frameSource;
     std::shared_ptr<PreviewOverrides> m_previewOverrides = std::make_shared<PreviewOverrides>();
+    std::shared_ptr<ScopeFrame> m_scopeFrame = std::make_shared<ScopeFrame>();
+    bool m_scopesEnabled = false;
     std::function<void()> m_stopFileSession; // set while playing a file via `source`
 
     std::vector<tve::EffectInstance> m_effects;

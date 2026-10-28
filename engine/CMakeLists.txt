@@ -26,6 +26,8 @@ add_library(tve_engine STATIC
     audio/AudioRecorder.h
     audio/AudioRecorder.cpp
     audio/MiniaudioImpl.c
+    analysis/Scopes.h
+    analysis/Scopes.cpp
     audio/WaveformCache.h
     audio/WaveformCache.cpp
 )

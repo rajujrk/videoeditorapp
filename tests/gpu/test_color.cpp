@@ -87,8 +87,10 @@ void matchesReference(const ColorGrade& g)
     REQUIRE_FALSE(result.passedThrough);
     const auto c = gradeCoefficients(g);
     const auto curves = bakeCurves(g);
+    const auto hueCurves = bakeHueCurves(g);
     for (std::size_t i = 0; i < kColors.size(); ++i) {
-        const auto expected = applyGrade(c, curves, {kColors[i][0] / 255.0f, kColors[i][1] / 255.0f, kColors[i][2] / 255.0f});
+        const auto expected =
+            applyGrade(c, curves, {kColors[i][0] / 255.0f, kColors[i][1] / 255.0f, kColors[i][2] / 255.0f}, hueCurves);
         INFO("colour " << i);
         for (int ch = 0; ch < 3; ++ch)
             CHECK(result.pixels[i][std::size_t(ch)] == Catch::Approx(expected[std::size_t(ch)]).margin(3.0 / 255.0));
@@ -127,6 +129,20 @@ TEST_CASE("the GPU grade matches the reference", "[color]")
         g.gamma = {-0.5, 0.1, -0.2};
         g.gain = {0.0, 0.6, 0.25};
         g.offset = {0.3, 0.3, -0.1};
+        matchesReference(g);
+    }
+    SECTION("HSL bands")
+    {
+        g.hsl[0] = {0.5, 0.4, -0.3};  // reds
+        g.hsl[2] = {-0.3, -0.6, 0.2}; // yellows
+        g.hsl[5] = {0.2, 0.8, 0.5};   // blues
+        matchesReference(g);
+    }
+    SECTION("hue curves")
+    {
+        g.hueVsSat = {{0, 0.5}, {0.33, 0.9}, {0.66, 0.2}, {1, 0.5}};
+        g.hueVsHue = {{0, 0.5}, {0.5, 0.7}, {1, 0.5}};
+        g.lumaVsSat = {{0, 0.2}, {1, 0.6}};
         matchesReference(g);
     }
     SECTION("curves")

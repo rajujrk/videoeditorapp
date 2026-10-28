@@ -3,6 +3,7 @@
 #include "EffectInfo.h"
 #include "FrameCompositor.h"
 
+#include "gpu/Compositor.h"
 #include "gpu/EffectChain.h"
 #include "playback/PlaybackSession.h"
 
@@ -44,6 +45,9 @@ public:
     {
         for (FrameResources& resources : m_frames)
             release(resources);
+        // A readback still in flight completes into its capture later: leave it alive.
+        if (m_scopeCapture && !m_scopeCapture->pending)
+            delete m_scopeCapture;
     }
 
 protected:
@@ -62,6 +66,7 @@ private:
     static void release(FrameResources& resources);
     bool bindPresentInput(QRhiTexture* image);
     void renderFrame(QRhiCommandBuffer* cb, float seconds);
+    void captureScope(QRhiCommandBuffer* cb);
 
     QRhi* m_rhi = nullptr;
     std::unique_ptr<QRhiSampler> m_sampler;
@@ -87,6 +92,19 @@ private:
 
     std::shared_ptr<tve::FrameSource> m_source;
     std::unique_ptr<QRhiTexture> m_placeholder;
+
+    // Scopes: the processed frame drawn small and read back. A readback finishes in a later
+    // frame; its result lives on its own so a renderer gone by then cannot be reached.
+    struct ScopeCapture {
+        QRhiReadbackResult result;
+        std::atomic<bool> pending{false};
+    };
+    std::shared_ptr<ScopeFrame> m_scopeFrame;
+    bool m_scopesEnabled = false;
+    bool m_scopeWanted = false; // a frame not yet captured
+    qint64 m_lastScopeMs = 0;
+    std::unique_ptr<tve::Compositor> m_scopeCompositor;
+    ScopeCapture* m_scopeCapture = nullptr;
 };
 
 void VideoRenderer::release(FrameResources& resources)
@@ -166,6 +184,10 @@ void VideoRenderer::synchronize(QQuickRhiItem* item)
         m_effectsRevision = view->effectsRevision();
         m_needsProcessing = true;
     }
+    m_scopeFrame = view->scopeFrame();
+    if (view->scopesEnabled() && !m_scopesEnabled)
+        m_scopeWanted = true; // show the frame already on screen
+    m_scopesEnabled = view->scopesEnabled();
     m_overrides = view->previewOverrides();
     if (m_overrides && m_overrides->revision() != m_overridesRevision) {
         m_overridesRevision = m_overrides->revision();
@@ -179,6 +201,47 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
     QRhiTexture* canvas =
         m_frameCompositor->render(cb, *resources.frame, m_canvasSize, seconds, m_overrides.get(), resources.textures);
     m_processed = canvas ? m_outputChain->process(cb, canvas, seconds) : nullptr;
+}
+
+void VideoRenderer::captureScope(QRhiCommandBuffer* cb)
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - m_lastScopeMs < 66 || (m_scopeCapture && m_scopeCapture->pending))
+        return; // at most ~15 a second, one at a time
+    if (!m_scopeCompositor)
+        m_scopeCompositor = std::make_unique<tve::Compositor>(m_rhi);
+    const int width = 256;
+    const int height = std::max(16, int(std::lround(256.0 * m_canvasSize.height() / std::max(1, m_canvasSize.width()))));
+    m_scopeCompositor->begin(cb, QSize(width, height));
+    m_scopeCompositor->draw(cb, m_processed, tve::ClipVisual{});
+    QRhiTexture* small = m_scopeCompositor->result();
+    if (!small)
+        return;
+    if (!m_scopeCapture)
+        m_scopeCapture = new ScopeCapture;
+    ScopeCapture* capture = m_scopeCapture;
+    capture->pending = true;
+    capture->result = {};
+    capture->result.completed = [capture, frame = m_scopeFrame, width, height] {
+        const QByteArray& data = capture->result.data;
+        tve::ScopeImage image{width, height, {}};
+        const std::size_t pixels = std::size_t(width) * std::size_t(height);
+        if (capture->result.format == QRhiTexture::RGBA16F && std::size_t(data.size()) >= pixels * 8) {
+            std::vector<float> rgba(pixels * 4);
+            qFloatFromFloat16(rgba.data(), reinterpret_cast<const qfloat16*>(data.constData()), qsizetype(rgba.size()));
+            image.rgb.resize(pixels * 3);
+            for (std::size_t i = 0; i < pixels; ++i)
+                for (int c = 0; c < 3; ++c)
+                    image.rgb[i * 3 + std::size_t(c)] = rgba[i * 4 + std::size_t(c)];
+            frame->set(std::move(image));
+        }
+        capture->pending = false;
+    };
+    QRhiResourceUpdateBatch* batch = m_rhi->nextResourceUpdateBatch();
+    batch->readBackTexture({small}, &capture->result);
+    cb->resourceUpdate(batch);
+    m_lastScopeMs = now;
+    m_scopeWanted = false;
 }
 
 void VideoRenderer::render(QRhiCommandBuffer* cb)
@@ -216,7 +279,10 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
     if (m_hasFrame && m_needsProcessing) {
         renderFrame(cb, seconds);
         m_needsProcessing = false;
+        m_scopeWanted = true;
     }
+    if (m_scopesEnabled && m_scopeWanted && m_processed)
+        captureScope(cb);
 
     // Aspect-fit the canvas into the item.
     const QSize outputSize = renderTarget()->pixelSize();
@@ -474,6 +540,37 @@ void VideoView::setPreviewVisual(tve::Id clipId, const tve::ClipVisual& visual)
 void VideoView::setPreviewEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects)
 {
     m_previewOverrides->setEffects(clipId, std::move(effects));
+    update();
+}
+
+void ScopeFrame::set(tve::ScopeImage image)
+{
+    {
+        std::lock_guard lock(m_mutex);
+        m_image = std::move(image);
+        ++m_serial;
+    }
+    emit changed(); // queued to the GUI thread's receivers
+}
+
+tve::ScopeImage ScopeFrame::image() const
+{
+    std::lock_guard lock(m_mutex);
+    return m_image;
+}
+
+quint64 ScopeFrame::serial() const
+{
+    std::lock_guard lock(m_mutex);
+    return m_serial;
+}
+
+void VideoView::setScopesEnabled(bool enabled)
+{
+    if (enabled == m_scopesEnabled)
+        return;
+    m_scopesEnabled = enabled;
+    emit scopesEnabledChanged();
     update();
 }
 

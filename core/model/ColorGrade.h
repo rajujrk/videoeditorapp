@@ -29,9 +29,23 @@ struct ColorWheel {
     friend bool operator==(const ColorWheel&, const ColorWheel&) = default;
 };
 
+// One of the HSL qualifier's eight hue bands: how colours of that hue change. Hue turns up
+// to 30° either way; saturation and luminance scale by up to ±100 % / ±50 %. Colours between
+// two bands blend their settings; greys are left alone.
+struct HslBand {
+    double hue = 0.0;        // -1..1
+    double saturation = 0.0; // -1..1
+    double luminance = 0.0;  // -1..1
+
+    friend bool operator==(const HslBand&, const HslBand&) = default;
+};
+inline constexpr int kHslBands = 8;
+// Band centres, in degrees: red, orange, yellow, green, aqua, blue, purple, magenta.
+inline constexpr std::array<double, kHslBands> kHslBandHues{0, 30, 60, 120, 180, 240, 270, 300};
+
 // A clip's colour correction, applied to its picture before its effects:
-// exposure and white balance, contrast, lift/gamma/gain/offset wheels, saturation, then
-// the tone curves, then a 3D LUT.
+// exposure and white balance, contrast, lift/gamma/gain/offset wheels, saturation, the HSL
+// bands and hue curves, the tone curves, then a 3D LUT.
 struct ColorGrade {
     double exposure = 0.0;    // stops, -4..4
     double contrast = 0.0;    // -1..1
@@ -46,6 +60,12 @@ struct ColorGrade {
     ColorCurve red;
     ColorCurve green;
     ColorCurve blue;
+    std::array<HslBand, kHslBands> hsl{};
+    // Curves of an amount over hue (x 0..1 is 0°..360°) or luma, where y 0.5 changes
+    // nothing: saturation ×0..×2 by hue, hue ±60° by hue, saturation ×0..×2 by luma.
+    ColorCurve hueVsSat;
+    ColorCurve hueVsHue;
+    ColorCurve lumaVsSat;
     std::string lutPath;      // .cube or .3dl; empty: none
     double lutIntensity = 1.0;
 
@@ -71,18 +91,30 @@ struct GradeCoefficients {
     std::array<float, 3> offset{0, 0, 0};
     float saturation = 1.0f;
     bool curves = false;
+    // Per band: hue shift (turns), saturation factor, value factor.
+    std::array<std::array<float, 3>, kHslBands> hsl{};
+    bool hslActive = false;
+    bool hueCurves = false;
 };
 GradeCoefficients gradeCoefficients(const ColorGrade& grade);
 
 // Each channel's curve with the master curve after it, sampled at `size` evenly spaced
 // inputs from 0 to 1: the lookup the shader reads.
 std::array<std::vector<float>, 3> bakeCurves(const ColorGrade& grade, int size = 256);
+// The hue curves the same way: hue vs saturation, hue vs hue, luma vs saturation (0.5 where
+// a curve is empty).
+std::array<std::vector<float>, 3> bakeHueCurves(const ColorGrade& grade, int size = 256);
+
+// Hue (0..1 turns), saturation and value of an RGB colour, and back.
+std::array<float, 3> rgbToHsv(std::array<float, 3> rgb);
+std::array<float, 3> hsvToRgb(std::array<float, 3> hsv);
 
 inline constexpr float kMidGrey = 0.435f; // 18 % grey, gamma-encoded
 
 // The grade (without its LUT) applied to one gamma-encoded RGB colour, as the shader does
 // it; for tests and previews.
 std::array<float, 3> applyGrade(const GradeCoefficients& c, const std::array<std::vector<float>, 3>& curves,
-                                std::array<float, 3> rgb);
+                                std::array<float, 3> rgb,
+                                const std::array<std::vector<float>, 3>& hueCurves = {});
 
 } // namespace tve

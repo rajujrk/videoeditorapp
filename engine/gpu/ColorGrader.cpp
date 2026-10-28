@@ -27,8 +27,10 @@ struct Uniforms {
     float offset[4];
     float lutMin[4];
     float lutScale[4];
+    float hslBands[8][4];
+    float flags[4];
 };
-static_assert(sizeof(Uniforms) == 128);
+static_assert(sizeof(Uniforms) == 272);
 
 QShader readShader(const QString& path)
 {
@@ -100,7 +102,7 @@ ColorGrader::Slot* ColorGrader::nextSlot(QSize size)
     if (m_used == m_slots.size()) {
         Slot slot;
         slot.uniforms.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(Uniforms)));
-        slot.curves.reset(m_rhi->newTexture(QRhiTexture::RGBA16F, QSize(kCurveSize, 1)));
+        slot.curves.reset(m_rhi->newTexture(QRhiTexture::RGBA16F, QSize(kCurveSize, 2)));
         if (!slot.uniforms->create() || !slot.curves->create())
             return nullptr;
         slot.bindings.reset(m_rhi->newShaderResourceBindings());
@@ -219,6 +221,13 @@ QRhiTexture* ColorGrader::apply(QRhiCommandBuffer* cb, QRhiTexture* source, cons
     u.gammaExp[3] = c.saturation;
     u.gain[3] = c.curves ? 1.0f : 0.0f;
     u.offset[3] = table ? float(grade.lutIntensity) : 0.0f;
+    for (int b = 0; b < kHslBands; ++b) {
+        for (int k = 0; k < 3; ++k)
+            u.hslBands[b][k] = c.hsl[std::size_t(b)][std::size_t(k)];
+        u.hslBands[b][3] = float(kHslBandHues[std::size_t(b)]);
+    }
+    u.flags[0] = c.hslActive ? 1.0f : 0.0f;
+    u.flags[1] = c.hueCurves ? 1.0f : 0.0f;
     if (table) {
         for (int i = 0; i < 3; ++i) {
             u.lutMin[i] = table->domainMin[i];
@@ -229,12 +238,17 @@ QRhiTexture* ColorGrader::apply(QRhiCommandBuffer* cb, QRhiTexture* source, cons
 
     QRhiResourceUpdateBatch* updates = m_rhi->nextResourceUpdateBatch();
     updates->updateDynamicBuffer(slot->uniforms.get(), 0, sizeof(Uniforms), &u);
-    if (c.curves) {
-        const auto tables = bakeCurves(grade, kCurveSize);
-        std::vector<float> rgba(kCurveSize * 4, 1.0f);
-        for (int i = 0; i < kCurveSize; ++i)
-            for (int ch = 0; ch < 3; ++ch)
-                rgba[std::size_t(i) * 4 + std::size_t(ch)] = tables[std::size_t(ch)][std::size_t(i)];
+    if (c.curves || c.hueCurves) {
+        // Row 0: the tone curves; row 1: the hue curves.
+        const auto tone = bakeCurves(grade, kCurveSize);
+        const auto hue = bakeHueCurves(grade, kCurveSize);
+        std::vector<float> rgba(kCurveSize * 2 * 4, 1.0f);
+        for (int i = 0; i < kCurveSize; ++i) {
+            for (int ch = 0; ch < 3; ++ch) {
+                rgba[std::size_t(i) * 4 + std::size_t(ch)] = tone[std::size_t(ch)][std::size_t(i)];
+                rgba[std::size_t(kCurveSize + i) * 4 + std::size_t(ch)] = hue[std::size_t(ch)][std::size_t(i)];
+            }
+        }
         if (rgba != slot->curveData) {
             updates->uploadTexture(slot->curves.get(), QRhiTextureUploadDescription(QRhiTextureUploadEntry(
                                                            0, 0, QRhiTextureSubresourceUploadDescription(halves(rgba.data(), rgba.size())))));
