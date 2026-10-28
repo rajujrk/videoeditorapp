@@ -1,0 +1,18 @@
+{
+  "id": "tve.audio.compressor",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["dynamics"],
+  "title": {"en": "Compressor"},
+  "params": [
+    {"id": "threshold", "type": "float", "title": {"en": "Threshold"}, "min": -60, "max": 0, "default": -18},
+    {"id": "ratio", "type": "float", "title": {"en": "Ratio"}, "min": 1, "max": 20, "default": 4},
+    {"id": "attack", "type": "float", "title": {"en": "Attack (ms)"}, "min": 0.1, "max": 200, "default": 10},
+    {"id": "release", "type": "float", "title": {"en": "Release (ms)"}, "min": 10, "max": 2000, "default": 150},
+    {"id": "makeup", "type": "float", "title": {"en": "Make-up gain"}, "min": 0, "max": 24, "default": 3}
+  ],
+  "chain": [
+    {"processor": "compressor"}
+  ],
+  "license": "TVE-Original"
+}

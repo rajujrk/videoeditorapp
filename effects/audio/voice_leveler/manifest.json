@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.voice_leveler",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["dynamics"],
+  "title": {"en": "Voice Leveler"},
+  "params": [
+    {"id": "makeup", "type": "float", "title": {"en": "Loudness"}, "min": 0, "max": 18, "default": 6}
+  ],
+  "chain": [
+    {"processor": "compressor", "settings": {"threshold": -24, "ratio": 3, "attack": 15, "release": 250, "knee": 10}},
+    {"processor": "limiter", "settings": {"ceiling": -1}}
+  ],
+  "license": "TVE-Original"
+}

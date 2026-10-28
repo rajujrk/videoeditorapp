@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.voice_clarity",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["eq"],
+  "title": {"en": "Voice Clarity"},
+  "params": [
+    {"id": "b4k", "type": "float", "title": {"en": "Presence"}, "min": 0, "max": 8, "default": 3}
+  ],
+  "chain": [
+    {"processor": "eq", "settings": {"lowCut": 90, "b250": -2, "b2k": 2, "b8k": 1.5}}
+  ],
+  "license": "TVE-Original"
+}

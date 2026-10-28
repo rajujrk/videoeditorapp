@@ -91,8 +91,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipLook, id, title, intensity, 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
-                                                chromaKey, masks, matte)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Track, id, kind, name, locked, hidden, muted, clips)
+                                                chromaKey, masks, matte, audioEffects, keepPitch)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, clips)
 
 nlohmann::json projectToJson(const Project& project)
 {

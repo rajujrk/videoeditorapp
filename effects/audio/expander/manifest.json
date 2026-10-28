@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.expander",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["dynamics"],
+  "title": {"en": "Expander"},
+  "params": [
+    {"id": "threshold", "type": "float", "title": {"en": "Threshold"}, "min": -90, "max": 0, "default": -40},
+    {"id": "ratio", "type": "float", "title": {"en": "Ratio"}, "min": 1, "max": 8, "default": 2}
+  ],
+  "chain": [
+    {"processor": "gate", "settings": {"range": -30, "attack": 5, "release": 200}}
+  ],
+  "license": "TVE-Original"
+}

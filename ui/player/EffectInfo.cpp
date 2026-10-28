@@ -4,7 +4,11 @@
 
 QVariantMap describeEffect(const tve::LoadedEffect& effect)
 {
-    const tve::EffectManifest& m = effect.manifest;
+    return describeEffect(effect.manifest);
+}
+
+QVariantMap describeEffect(const tve::EffectManifest& m)
+{
     QVariantList params;
     for (const tve::EffectParamSpec& p : m.params) {
         QVariantList defaults;

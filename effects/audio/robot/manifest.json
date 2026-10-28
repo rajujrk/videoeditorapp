@@ -1,0 +1,16 @@
+{
+  "id": "tve.audio.robot",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["voice"],
+  "title": {"en": "Robot"},
+  "params": [
+    {"id": "frequency", "type": "float", "title": {"en": "Tone (Hz)"}, "min": 10, "max": 200, "default": 55}
+  ],
+  "chain": [
+    {"processor": "ringmod"},
+    {"processor": "chorus", "settings": {"delay": 8, "depth": 0.3, "rate": 0.1, "feedback": 0.5}},
+    {"processor": "eq", "settings": {"b2k": 3, "gain": 4}}
+  ],
+  "license": "TVE-Original"
+}

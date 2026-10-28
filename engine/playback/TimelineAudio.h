@@ -1,5 +1,8 @@
 #pragma once
 
+#include "audio/AudioEffects.h"
+#include "audio/dsp/Loudness.h"
+#include "audio/dsp/TimeStretch.h"
 #include "decode/AudioDecoder.h"
 #include "model/Project.h"
 
@@ -49,9 +52,32 @@ private:
     bool m_stopped = false;
 };
 
+// Peak and RMS (0..1) of the left and right channels over one chunk.
+struct ChannelLevels {
+    float peak[2] = {0.0f, 0.0f};
+    float rms[2] = {0.0f, 0.0f};
+
+    void measure(const float* stereo, int frames);
+};
+
+// What the meters show for one chunk of the mix: each track that carries sound (after its
+// volume and balance) and the master, with the master's loudness so far in LUFS (-infinity
+// while unknown; integrated since playback started there).
+struct MixLevels {
+    Ticks pts = 0;
+    std::vector<std::pair<Id, ChannelLevels>> tracks;
+    ChannelLevels master;
+    double momentary = 0.0;
+    double shortTerm = 0.0;
+    double integrated = 0.0;
+};
+
 // Mixes a project's timeline into AudioChunks on a background thread. Audible clips are
 // those on audio tracks plus video clips whose sound has not been detached, on tracks
-// that are not muted; each gets its own decoder so overlapping clips of one file work.
+// that are not muted (and, while any track is soloed, soloed); each gets its own decoder so
+// overlapping clips of one file work. Per clip: volume and fades, then its audio effects
+// (whose echoes ring on past its end); played faster or slower it keeps its pitch unless
+// set not to. Per track: volume and balance.
 class TimelineAudio {
 public:
     TimelineAudio() = default;
@@ -66,17 +92,24 @@ public:
     AudioChunkQueue& queue() { return m_queue; }
     std::uint64_t generation() const { return m_generation.load(); }
     bool producerFinished() const { return m_finished.load(); }
+    // The levels of the chunk holding `time`, if it was mixed recently (any thread).
+    std::optional<MixLevels> levelsAt(Ticks time) const;
 
 private:
     struct ClipStream {
         std::unique_ptr<AudioDecoder> decoder;
         Ticks nextSourceTime = -1;
+        std::unique_ptr<AudioEffectChain> effects;
+        std::unique_ptr<dsp::TimeStretcher> stretcher;
+        double stretchNext = -1.0; // source sample the stretcher continues from
     };
 
     void stopProducer();
     void run(std::shared_ptr<const Project> project, Ticks start, std::uint64_t generation);
-    void mixClip(const Project& project, const Track& track, const Clip& clip, Ticks chunkStart, float* mix,
-                 std::vector<float>& scratch);
+    // How long the clip's effects ring on after its end (0 without effects).
+    Ticks tailOf(const Clip& clip);
+    void mixClip(const Project& project, const Track& track, const Clip& clip, Ticks chunkStart, Ticks tail,
+                 float* mix, std::vector<float>& scratch);
 
     std::mutex m_control;
     std::shared_ptr<const Project> m_project;
@@ -89,6 +122,14 @@ private:
     // Only touched by the producer thread; restarts join it first.
     std::map<Id, ClipStream> m_streams;
     std::vector<float> m_resampled;
+    dsp::LoudnessMeter m_meter;
+
+    mutable std::mutex m_levelsMutex;
+    std::deque<MixLevels> m_levels; // the last few seconds mixed
 };
+
+// Integrated loudness (LUFS) of a project's mix from `from` to `to`, mixed as fast as it
+// decodes; -infinity when silent.
+double measureLoudness(std::shared_ptr<const Project> project, Ticks from, Ticks to);
 
 } // namespace tve

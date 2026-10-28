@@ -107,6 +107,23 @@ Rectangle {
                 }
             }
 
+            IconButton {
+                id: mixerButton
+                objectName: "mixerButton"
+                iconName: "mixer"
+                tip: "Mixer: track volume, balance, solo and loudness meters"
+                checkable: true
+                checked: mixerPanel.visible
+                onClicked: mixerPanel.visible ? mixerPanel.close() : mixerPanel.open()
+
+                MixerPanel {
+                    id: mixerPanel
+                    objectName: "mixerPanel"
+                    project: timeline.project
+                    y: -height - Theme.space.s
+                }
+            }
+
             Item { Layout.fillWidth: true }
 
             Text {

@@ -128,7 +128,8 @@ TEST_CASE("masks, keys and mattes on clips", "[masks]")
     nlohmann::json old = json;
     for (const char* field : {"masks", "chromaKey", "matte"})
         old["tracks"][1]["clips"][0].erase(field);
-    const Clip& plain = projectFromJson(old).tracks[1].clips[0];
+    const Project oldProject = projectFromJson(old);
+    const Clip& plain = oldProject.tracks[1].clips[0];
     CHECK(plain.masks.empty());
     CHECK_FALSE(plain.chromaKey.enabled);
     CHECK(plain.matte == MatteMode::None);

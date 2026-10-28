@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.cave",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["space"],
+  "title": {"en": "Cave"},
+  "params": [
+    {"id": "mix", "type": "float", "title": {"en": "Wet"}, "min": 0, "max": 1, "default": 0.45}
+  ],
+  "chain": [
+    {"processor": "reverb", "settings": {"size": 0.9, "damping": 0.1, "preDelay": 60}}
+  ],
+  "license": "TVE-Original"
+}

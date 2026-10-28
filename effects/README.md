@@ -1,4 +1,4 @@
-# Built-in effects and transitions
+# Built-in effects, transitions and audio effects
 
 Each effect is a folder under `video/` holding a `manifest.json` and one GLSL fragment
 shader per pass; each transition is a folder under `transitions/` with a manifest of kind
@@ -230,3 +230,81 @@ grain, dust and scratches, VHS, a viewfinder, bokeh), animated with `tve_time`.
 `ColorGrade` JSON of a project file) and usually a 3D LUT in `looks/luts/`, both generated
 by `tools/make_looks.py`. Built-in LUT paths start `:/effects/looks/luts/`.
 
+## Audio effects
+
+An audio effect package is a folder under `audio/` with a manifest of kind `audio-effect`:
+no shaders, but a `chain` of built-in processors (`engine/audio/dsp/Processors.cpp`), each
+with fixed `settings`. The package's params set the settings of the same name in every stage
+that has them; a `mix` param blends the result with the dry sound. Params are numbers (float,
+int, bool, enum). The engine has no Qt resources, so `engine/CMakeLists.txt` compiles the
+manifests in as text; the library checks each against the processors (known processor, known
+settings, every param used) and leaves out — with a reason — any that fail.
+
+```json
+{
+  "id": "tve.audio.radio", "version": 1, "kind": "audio-effect", "category": ["voice"],
+  "title": { "en": "Radio" },
+  "params": [ { "id": "drive", "type": "float", "title": { "en": "Distortion" }, "min": 0, "max": 30, "default": 8 } ],
+  "chain": [ { "processor": "eq", "settings": { "lowCut": 500, "highCut": 4000 } }, { "processor": "distortion" } ],
+  "license": "TVE-Original"
+}
+```
+
+| Processor | Settings |
+|---|---|
+| `eq` | b31 … b16k (dB, ten octave bands), lowCut, highCut (Hz, 24 dB/oct), gain |
+| `compressor` | threshold, ratio, attack, release, knee, makeup |
+| `limiter` | ceiling, release (2 ms look-ahead) |
+| `gate` | threshold, ratio, range, attack, release (gate or expander) |
+| `reverb` | size, damping, width, preDelay (output is the reverb alone: blend with `mix`) |
+| `delay` | time, feedback, pingPong, tone, level |
+| `chorus` | rate, depth, delay, feedback (also a flanger) |
+| `widener` | width, haas |
+| `autopan` | rate, depth |
+| `pitch` | semitones, window |
+| `distortion` | drive, tone, output |
+| `ringmod` | frequency |
+| `noise` | level, tone |
+
+| Title | Folder | Category | Chain | Params |
+|---|---|---|---|---|
+| Bass Boost | `bass_boost` | eq | eq | b62 |
+| Graphic EQ | `graphic_eq` | eq | eq | b31, b62, b125, b250, b500, b1k, b2k, b4k, b8k, b16k, gain |
+| High Cut | `high_cut` | eq | eq | highCut |
+| Low Cut | `low_cut` | eq | eq | lowCut |
+| Treble Boost | `treble_boost` | eq | eq | b8k |
+| Voice Clarity | `voice_clarity` | eq | eq | b4k |
+| Warmth | `warmth` | eq | eq | b250 |
+| Compressor | `compressor` | dynamics | compressor | threshold, ratio, attack, release, makeup |
+| Expander | `expander` | dynamics | gate | threshold, ratio |
+| Limiter | `limiter` | dynamics | limiter | ceiling, release |
+| Noise Gate | `noise_gate` | dynamics | gate | threshold, range |
+| Voice Leveler | `voice_leveler` | dynamics | compressor → limiter | makeup |
+| Bathroom | `bathroom` | space | reverb | mix |
+| Cave | `cave` | space | reverb | mix |
+| Church | `church` | space | reverb | mix |
+| Concert Hall | `hall` | space | reverb | mix |
+| Corridor | `corridor` | space | reverb | mix |
+| Large Room | `large_room` | space | reverb | mix |
+| Reverb | `reverb` | space | reverb | size, damping, width, preDelay, mix |
+| Small Room | `small_room` | space | reverb | mix |
+| Stadium | `stadium` | space | reverb | mix |
+| Echo | `echo` | echo | delay | time, feedback, level |
+| Ping-Pong Echo | `ping_pong` | echo | delay | time, feedback, level |
+| Slapback | `slapback` | echo | delay | time |
+| Chorus | `chorus` | modulation | chorus | rate, depth |
+| Flanger | `flanger` | modulation | chorus | rate, feedback |
+| Rotating | `rotating` | modulation | autopan | rate, depth |
+| Stereo Widener | `stereo_widener` | modulation | widener | width, haas |
+| Pitch Shift | `pitch_shift` | pitch | pitch | semitones |
+| Child | `child_voice` | voice | pitch → eq | semitones |
+| Chipmunk | `chipmunk` | voice | pitch → eq | semitones |
+| Deeper Voice | `deeper_voice` | voice | pitch → eq | semitones |
+| Higher Voice | `higher_voice` | voice | pitch → eq | semitones |
+| Megaphone | `megaphone` | voice | eq → distortion | drive |
+| Monster | `monster` | voice | pitch → eq → distortion | semitones |
+| Radio | `radio` | voice | eq → distortion → noise | drive, mix |
+| Robot | `robot` | voice | ringmod → chorus → eq | frequency |
+| Telephone | `telephone` | voice | eq → distortion | mix |
+| Underwater | `underwater` | voice | eq → chorus → reverb | mix |
+| Walkie-Talkie | `walkie_talkie` | voice | eq → distortion → noise | drive |

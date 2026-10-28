@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.low_cut",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["eq"],
+  "title": {"en": "Low Cut"},
+  "params": [
+    {"id": "lowCut", "type": "float", "title": {"en": "Frequency"}, "min": 20, "max": 1000, "default": 120}
+  ],
+  "chain": [
+    {"processor": "eq"}
+  ],
+  "license": "TVE-Original"
+}

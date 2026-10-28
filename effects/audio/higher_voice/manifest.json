@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.higher_voice",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["voice"],
+  "title": {"en": "Higher Voice"},
+  "params": [
+    {"id": "semitones", "type": "float", "title": {"en": "Pitch"}, "min": 0, "max": 12, "default": 4}
+  ],
+  "chain": [
+    {"processor": "pitch"},
+    {"processor": "eq", "settings": {"b250": -2, "b4k": 2}}
+  ],
+  "license": "TVE-Original"
+}

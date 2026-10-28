@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 
 // Renders a project to an MP4 file, frame by frame at the project's frame rate: the same
 // timeline playback and FrameCompositor as the preview, unpaced, on an offscreen GPU
@@ -20,7 +21,8 @@ public:
     };
 
     // `progress` gets 0–1 after each frame; returning false cancels. A failed or cancelled
-    // export removes the partial file.
+    // export removes the partial file. With `loudnessTarget` (LUFS) the mix is measured
+    // first and its volume set to reach it, with a limiter at -1 dBFS for the peaks.
     static Result run(std::shared_ptr<const tve::Project> project, const QString& path, const tve::Mp4Settings& settings,
-                      const std::function<bool(double)>& progress);
+                      const std::function<bool(double)>& progress, std::optional<double> loudnessTarget = std::nullopt);
 };

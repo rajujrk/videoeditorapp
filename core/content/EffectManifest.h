@@ -36,8 +36,16 @@ struct EffectPassSpec {
 // holding just that clip, so they can draw outside the picture (shadows, borders, fills).
 enum class EffectSpace { Picture, Canvas };
 
+// One stage of an audio effect: a built-in processor (engine/audio/dsp) with fixed settings.
+// The effect's params override the settings of the same name in every stage that has them.
+struct AudioStageSpec {
+    std::string processor;
+    std::map<std::string, float> settings;
+};
+
 inline constexpr const char* kVideoEffectKind = "video-effect";
 inline constexpr const char* kTransitionKind = "transition"; // one pass, two inputs
+inline constexpr const char* kAudioEffectKind = "audio-effect"; // a chain of processors, no shaders
 
 struct EffectManifest {
     std::string id; // reverse-DNS style, e.g. "tve.blur.gaussian"
@@ -47,7 +55,8 @@ struct EffectManifest {
     EffectSpace space = EffectSpace::Picture;
     std::map<std::string, std::string> title;
     std::vector<EffectParamSpec> params;
-    std::vector<EffectPassSpec> passes;
+    std::vector<EffectPassSpec> passes;  // video effects and transitions
+    std::vector<AudioStageSpec> chain;   // audio effects
     std::string license;
 
     const EffectParamSpec* findParam(std::string_view paramId) const;

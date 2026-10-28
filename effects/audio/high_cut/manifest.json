@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.high_cut",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["eq"],
+  "title": {"en": "High Cut"},
+  "params": [
+    {"id": "highCut", "type": "float", "title": {"en": "Frequency"}, "min": 500, "max": 20000, "default": 8000}
+  ],
+  "chain": [
+    {"processor": "eq"}
+  ],
+  "license": "TVE-Original"
+}

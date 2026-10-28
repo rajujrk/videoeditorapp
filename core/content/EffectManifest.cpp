@@ -57,8 +57,10 @@ private:
         }
 
         m_manifest.kind = requiredString(m_root, "kind", "kind");
-        if (!m_manifest.kind.empty() && m_manifest.kind != kVideoEffectKind && m_manifest.kind != kTransitionKind)
-            fail("kind \"" + m_manifest.kind + "\" is not supported (expected \"video-effect\" or \"transition\")");
+        if (!m_manifest.kind.empty() && m_manifest.kind != kVideoEffectKind && m_manifest.kind != kTransitionKind
+            && m_manifest.kind != kAudioEffectKind)
+            fail("kind \"" + m_manifest.kind
+                 + "\" is not supported (expected \"video-effect\", \"transition\" or \"audio-effect\")");
 
         m_manifest.title = localized(m_root, "title", "title");
         m_manifest.license = requiredString(m_root, "license", "license");
@@ -84,10 +86,58 @@ private:
                 fail("space must be \"picture\" or \"canvas\"");
             if (m_manifest.kind == kTransitionKind && m_manifest.space == EffectSpace::Canvas)
                 fail("transitions always work on canvases; \"space\" is for video effects");
+            if (m_manifest.kind == kAudioEffectKind)
+                fail("\"space\" is for video effects");
         }
 
         parseParams();
-        parsePasses();
+        if (m_manifest.kind == kAudioEffectKind) {
+            if (m_root.contains("passes"))
+                fail("an audio effect has a chain of processors, not shader passes");
+            parseChain();
+            for (const EffectParamSpec& param : m_manifest.params) {
+                if (param.type == ParamType::Color)
+                    fail("param \"" + param.id + "\": audio effects have no colour params");
+            }
+        } else {
+            parsePasses();
+        }
+    }
+
+    void parseChain()
+    {
+        const json* chain = field(m_root, "chain", "chain");
+        if (!chain)
+            return;
+        if (!chain->is_array() || chain->empty()) {
+            fail("chain must be a non-empty array");
+            return;
+        }
+        for (std::size_t i = 0; i < chain->size(); ++i) {
+            const std::string where = "chain[" + std::to_string(i) + "]";
+            const json& stage = (*chain)[i];
+            if (!stage.is_object()) {
+                fail(where + " must be an object");
+                continue;
+            }
+            AudioStageSpec spec{requiredString(stage, "processor", where + ".processor"), {}};
+            if (stage.contains("settings")) {
+                const json& settings = stage["settings"];
+                if (!settings.is_object()) {
+                    fail(where + ".settings must be an object of numbers");
+                } else {
+                    for (const auto& [key, value] : settings.items()) {
+                        if (value.is_number())
+                            spec.settings[key] = value.get<float>();
+                        else if (value.is_boolean())
+                            spec.settings[key] = value.get<bool>() ? 1.0f : 0.0f;
+                        else
+                            fail(where + ".settings." + key + " must be a number");
+                    }
+                }
+            }
+            m_manifest.chain.push_back(std::move(spec));
+        }
     }
 
     void parseParams()

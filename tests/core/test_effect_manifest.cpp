@@ -161,7 +161,7 @@ TEST_CASE("transitions are a kind with exactly one pass")
 TEST_CASE("unsupported kind and malformed JSON are rejected")
 {
     json m = validManifest();
-    m["kind"] = "audio-effect";
+    m["kind"] = "midi-effect";
     CHECK(mentions(problemsFor(m), "not supported"));
     CHECK_THROWS_WITH(parseEffectManifest(std::string_view("{ not json")),
                       Catch::Matchers::ContainsSubstring("not valid JSON"));
@@ -181,4 +181,36 @@ TEST_CASE("video effects run on the picture or on the placed canvas")
     m["kind"] = "transition";
     m["passes"] = json::array({{{"fragment", "a.frag"}}});
     CHECK(mentions(problemsFor(m), "\"space\" is for video effects"));
+}
+
+TEST_CASE("audio effects are a chain of processors with settings")
+{
+    const json audio = json::parse(R"({
+        "id": "tve.audio.test", "version": 1, "kind": "audio-effect", "category": ["voice"],
+        "title": { "en": "Test" },
+        "params": [ { "id": "mix", "type": "float", "title": { "en": "Mix" }, "min": 0, "max": 1, "default": 1 } ],
+        "chain": [ { "processor": "pitch", "settings": { "semitones": -4, "keep": true } }, { "processor": "eq" } ],
+        "license": "TVE-Original"
+    })");
+    const EffectManifest m = parseEffectManifest(audio);
+    CHECK(m.kind == kAudioEffectKind);
+    REQUIRE(m.chain.size() == 2);
+    CHECK(m.chain[0].processor == "pitch");
+    CHECK(m.chain[0].settings.at("semitones") == -4.0f);
+    CHECK(m.chain[0].settings.at("keep") == 1.0f);
+    CHECK(m.chain[1].settings.empty());
+    CHECK(m.passes.empty());
+
+    json bad = audio;
+    bad["passes"] = json::array({{{"fragment", "a.frag"}}});
+    CHECK(mentions(problemsFor(bad), "not shader passes"));
+    bad = audio;
+    bad.erase("chain");
+    CHECK(mentions(problemsFor(bad), "chain is required"));
+    bad = audio;
+    bad["chain"][0]["settings"]["semitones"] = "low";
+    CHECK(mentions(problemsFor(bad), "must be a number"));
+    bad = audio;
+    bad["params"].push_back({{"id", "tint"}, {"type", "color"}, {"title", {{"en", "Tint"}}}, {"default", {1, 1, 1}}});
+    CHECK(mentions(problemsFor(bad), "no colour params"));
 }

@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.pitch_shift",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["pitch"],
+  "title": {"en": "Pitch Shift"},
+  "params": [
+    {"id": "semitones", "type": "float", "title": {"en": "Semitones"}, "min": -12, "max": 12, "default": 3}
+  ],
+  "chain": [
+    {"processor": "pitch"}
+  ],
+  "license": "TVE-Original"
+}

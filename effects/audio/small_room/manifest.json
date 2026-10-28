@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.small_room",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["space"],
+  "title": {"en": "Small Room"},
+  "params": [
+    {"id": "mix", "type": "float", "title": {"en": "Wet"}, "min": 0, "max": 1, "default": 0.25}
+  ],
+  "chain": [
+    {"processor": "reverb", "settings": {"size": 0.25, "damping": 0.6, "preDelay": 5}}
+  ],
+  "license": "TVE-Original"
+}

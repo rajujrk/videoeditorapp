@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.treble_boost",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["eq"],
+  "title": {"en": "Treble Boost"},
+  "params": [
+    {"id": "b8k", "type": "float", "title": {"en": "Boost"}, "min": 0, "max": 12, "default": 5}
+  ],
+  "chain": [
+    {"processor": "eq", "settings": {"b4k": 2, "b16k": 4}}
+  ],
+  "license": "TVE-Original"
+}

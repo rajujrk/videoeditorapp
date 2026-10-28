@@ -22,6 +22,7 @@ qt_add_qml_module(tve_shell
         ColorWheelControl.qml
         ToneCurveEditor.qml
         MaskOverlay.qml
+        MixerPanel.qml
     IMPORTS
         TechieVideoEditor.Theme
         TechieVideoEditor.Player

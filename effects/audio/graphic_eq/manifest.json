@@ -1,0 +1,24 @@
+{
+  "id": "tve.audio.graphic_eq",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["eq"],
+  "title": {"en": "Graphic EQ"},
+  "params": [
+    {"id": "b31", "type": "float", "title": {"en": "31 Hz"}, "min": -12, "max": 12, "default": 0},
+    {"id": "b62", "type": "float", "title": {"en": "62 Hz"}, "min": -12, "max": 12, "default": 0},
+    {"id": "b125", "type": "float", "title": {"en": "125 Hz"}, "min": -12, "max": 12, "default": 0},
+    {"id": "b250", "type": "float", "title": {"en": "250 Hz"}, "min": -12, "max": 12, "default": 0},
+    {"id": "b500", "type": "float", "title": {"en": "500 Hz"}, "min": -12, "max": 12, "default": 0},
+    {"id": "b1k", "type": "float", "title": {"en": "1 kHz"}, "min": -12, "max": 12, "default": 0},
+    {"id": "b2k", "type": "float", "title": {"en": "2 kHz"}, "min": -12, "max": 12, "default": 0},
+    {"id": "b4k", "type": "float", "title": {"en": "4 kHz"}, "min": -12, "max": 12, "default": 0},
+    {"id": "b8k", "type": "float", "title": {"en": "8 kHz"}, "min": -12, "max": 12, "default": 0},
+    {"id": "b16k", "type": "float", "title": {"en": "16 kHz"}, "min": -12, "max": 12, "default": 0},
+    {"id": "gain", "type": "float", "title": {"en": "Output"}, "min": -12, "max": 12, "default": 0}
+  ],
+  "chain": [
+    {"processor": "eq"}
+  ],
+  "license": "TVE-Original"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "tve.audio.walkie_talkie",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["voice"],
+  "title": {"en": "Walkie-Talkie"},
+  "params": [
+    {"id": "drive", "type": "float", "title": {"en": "Distortion"}, "min": 0, "max": 30, "default": 18}
+  ],
+  "chain": [
+    {"processor": "eq", "settings": {"lowCut": 600, "highCut": 2800, "b1k": 6, "gain": 3}},
+    {"processor": "distortion", "settings": {"tone": 2800, "output": -10}},
+    {"processor": "noise", "settings": {"level": -44, "tone": 4000}}
+  ],
+  "license": "TVE-Original"
+}

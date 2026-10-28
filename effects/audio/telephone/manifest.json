@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.telephone",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["voice"],
+  "title": {"en": "Telephone"},
+  "params": [
+    {"id": "mix", "type": "float", "title": {"en": "Amount"}, "min": 0, "max": 1, "default": 1.0}
+  ],
+  "chain": [
+    {"processor": "eq", "settings": {"lowCut": 400, "highCut": 3200, "b2k": 3}},
+    {"processor": "distortion", "settings": {"drive": 4, "tone": 3400, "output": -3}}
+  ],
+  "license": "TVE-Original"
+}

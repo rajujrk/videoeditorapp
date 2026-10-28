@@ -1,0 +1,18 @@
+{
+  "id": "tve.audio.reverb",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["space"],
+  "title": {"en": "Reverb"},
+  "params": [
+    {"id": "size", "type": "float", "title": {"en": "Room size"}, "min": 0, "max": 1, "default": 0.5},
+    {"id": "damping", "type": "float", "title": {"en": "Damping"}, "min": 0, "max": 1, "default": 0.5},
+    {"id": "width", "type": "float", "title": {"en": "Width"}, "min": 0, "max": 1, "default": 1},
+    {"id": "preDelay", "type": "float", "title": {"en": "Pre-delay (ms)"}, "min": 0, "max": 200, "default": 10},
+    {"id": "mix", "type": "float", "title": {"en": "Wet"}, "min": 0, "max": 1, "default": 0.3}
+  ],
+  "chain": [
+    {"processor": "reverb"}
+  ],
+  "license": "TVE-Original"
+}

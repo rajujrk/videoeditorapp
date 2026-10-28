@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.rotating",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["modulation"],
+  "title": {"en": "Rotating"},
+  "params": [
+    {"id": "rate", "type": "float", "title": {"en": "Speed (Hz)"}, "min": 0.02, "max": 2, "default": 0.15},
+    {"id": "depth", "type": "float", "title": {"en": "Depth"}, "min": 0, "max": 1, "default": 1}
+  ],
+  "chain": [
+    {"processor": "autopan"}
+  ],
+  "license": "TVE-Original"
+}

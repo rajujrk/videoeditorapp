@@ -1,0 +1,17 @@
+{
+  "id": "tve.audio.radio",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["voice"],
+  "title": {"en": "Radio"},
+  "params": [
+    {"id": "drive", "type": "float", "title": {"en": "Distortion"}, "min": 0, "max": 30, "default": 8},
+    {"id": "mix", "type": "float", "title": {"en": "Amount"}, "min": 0, "max": 1, "default": 1.0}
+  ],
+  "chain": [
+    {"processor": "eq", "settings": {"lowCut": 500, "highCut": 4000, "b1k": 4, "gain": 2}},
+    {"processor": "distortion", "settings": {"tone": 5000, "output": -6}},
+    {"processor": "noise", "settings": {"level": -52, "tone": 6000}}
+  ],
+  "license": "TVE-Original"
+}

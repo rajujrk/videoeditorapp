@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.chorus",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["modulation"],
+  "title": {"en": "Chorus"},
+  "params": [
+    {"id": "rate", "type": "float", "title": {"en": "Rate (Hz)"}, "min": 0.05, "max": 5, "default": 0.8},
+    {"id": "depth", "type": "float", "title": {"en": "Depth (ms)"}, "min": 0, "max": 10, "default": 3}
+  ],
+  "chain": [
+    {"processor": "chorus", "settings": {"delay": 12}}
+  ],
+  "license": "TVE-Original"
+}

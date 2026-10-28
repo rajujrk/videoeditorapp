@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.large_room",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["space"],
+  "title": {"en": "Large Room"},
+  "params": [
+    {"id": "mix", "type": "float", "title": {"en": "Wet"}, "min": 0, "max": 1, "default": 0.3}
+  ],
+  "chain": [
+    {"processor": "reverb", "settings": {"size": 0.55, "damping": 0.45, "preDelay": 12}}
+  ],
+  "license": "TVE-Original"
+}
