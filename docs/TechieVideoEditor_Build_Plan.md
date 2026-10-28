@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a), curves & effect keyframes (6b) and speed ramping (6c) done, colour (7a) next — see §9.2
+**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a), curves & effect keyframes (6b) and speed ramping (6c) and colour grading (7a) done, qualifiers & scopes (7b) next — see §9.2
 **Date:** 2026-10-27
 
 ---
@@ -528,8 +528,9 @@ pulled forward into Phase 1 (5c).
 | 6a. Keyframes | Keyframes on clip placement (position, scale, rotation), opacity, crop and volume; linear, ease in/out and hold; inspector keyframe toggles, add/remove, step between, easing, clear; auto-key while animated; timeline keyframe marks (click to go, drag to move); keyframes follow trims, splits, speed changes and freeze frames; preview, export and mix evaluate them | **Done** (effect parameters followed in 6b) |
 | 6b. Curves & effect keyframes | Custom cubic-Bezier timing curve per keyframe with an inspector curve editor (drag the handles; overshoot, anticipate and snap presets; values clamped to their range), keyframes on effects' keyframable parameters (stored with the effect, so they follow reordering and removal), one keyframe model for clip properties and effect parameters | **Done** |
 | 6c. Speed ramping | Speed ramps: points along the clip with linear speed between them, same footage so the length follows the average; 8 original presets (ramp up/down, flash in/out, bullet time, hero moment, montage, jumper); ramp graph editor (drag, add, remove points); exact splits; reverse keeps the ramp; video, sound (pitch follows speed), thumbnails and waveforms follow the ramp | **Done** (pitch-preserving time-stretch moved to 9a with the other pitch/time DSP) |
-| 7a. Color | RGB/luma and hue curves, colour wheels, HSL qualifier, `.cube`/`.3dl` LUT import, colour presets and copy grade | Next |
-| 7b. Looks & scopes | Filters with intensity, overlays, our own LUT library, adjustment layers; waveform, vectorscope, histogram, parade | Planned |
+| 7a. Color | Per-clip grade on the GPU before the effects: exposure, contrast, saturation, temperature, tint; lift/gamma/gain/offset wheels; master and R/G/B tone curves (monotone cubic); `.cube`/`.3dl` 3D LUT import with intensity; copy/paste grade; saved colour presets | **Done** (HSL qualifier and hue curves moved to 7b with the scopes) |
+| 7b. Qualifiers & scopes | HSL qualifier (8 hue ranges), hue-vs-sat / hue-vs-hue / luma-vs-sat curves; waveform, vectorscope, histogram, RGB parade | Next |
+| 7c. Looks | Filters with intensity, overlays, our own LUT library, adjustment layers | Planned |
 | 8a. Masks & keying | Shape and pen masks (feather, invert), track matte, chroma key, PiP and split-screen layouts | Planned |
 | 8b. Effects library | Effect framework to 60 effects: drop shadow, border, background fill, sharpen, grain, warps and more | Planned |
 | 9a. Audio DSP | EQ, dynamics, reverbs and delays, pitch and voice changers as audio effect packages; pitch-preserving time-stretch for speed changes and ramps; loudness normalization; mixer with peak/RMS/LUFS meters | Planned |

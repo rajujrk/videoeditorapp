@@ -4,6 +4,8 @@ add_library(tve_core STATIC
     model/Keyframes.cpp
     model/SpeedRamp.h
     model/SpeedRamp.cpp
+    model/ColorGrade.h
+    model/ColorGrade.cpp
     model/Project.h
     model/Project.cpp
     model/TimelineQuery.h
@@ -15,6 +17,8 @@ add_library(tve_core STATIC
     commands/EditCommands.cpp
     io/ProjectSerializer.h
     io/ProjectSerializer.cpp
+    io/LutFile.h
+    io/LutFile.cpp
     content/EffectManifest.h
     content/EffectManifest.cpp
 )

@@ -20,6 +20,7 @@ struct LayerTransition {
     DecodedFrame frame;
     ClipVisual visual;
     std::vector<ClipEffect> effects;
+    ColorGrade grade;
 };
 
 // One clip's picture at a moment of the timeline, with how to show it. During a
@@ -32,6 +33,7 @@ struct VideoLayer {
     std::vector<ClipEffect> effects;
     std::optional<LayerTransition> transition;
     std::optional<ClipText> text; // a title: drawn from this, with no frame
+    ColorGrade grade;             // before the effects
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.

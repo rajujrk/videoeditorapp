@@ -425,15 +425,24 @@ void PreviewOverrides::setEffects(tve::Id clipId, std::vector<tve::ClipEffect> e
     ++m_revision;
 }
 
+void PreviewOverrides::setGrade(tve::Id clipId, const tve::ColorGrade& grade)
+{
+    std::lock_guard lock(m_mutex);
+    m_grades[clipId] = grade;
+    ++m_revision;
+}
+
 void PreviewOverrides::clear(tve::Id clipId)
 {
     std::lock_guard lock(m_mutex);
     m_visual.erase(clipId);
     m_effects.erase(clipId);
+    m_grades.erase(clipId);
     ++m_revision;
 }
 
-void PreviewOverrides::apply(tve::Id clipId, tve::ClipVisual& visual, std::vector<tve::ClipEffect>& effects)
+void PreviewOverrides::apply(tve::Id clipId, tve::ClipVisual& visual, std::vector<tve::ClipEffect>& effects,
+                             tve::ColorGrade& grade)
 {
     std::lock_guard lock(m_mutex);
     if (auto it = m_visual.find(clipId); it != m_visual.end()) {
@@ -448,6 +457,12 @@ void PreviewOverrides::apply(tve::Id clipId, tve::ClipVisual& visual, std::vecto
         else
             effects = it->second;
     }
+    if (auto it = m_grades.find(clipId); it != m_grades.end()) {
+        if (it->second == grade)
+            m_grades.erase(it);
+        else
+            grade = it->second;
+    }
 }
 
 void VideoView::setPreviewVisual(tve::Id clipId, const tve::ClipVisual& visual)
@@ -459,6 +474,12 @@ void VideoView::setPreviewVisual(tve::Id clipId, const tve::ClipVisual& visual)
 void VideoView::setPreviewEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects)
 {
     m_previewOverrides->setEffects(clipId, std::move(effects));
+    update();
+}
+
+void VideoView::setPreviewGrade(tve::Id clipId, const tve::ColorGrade& grade)
+{
+    m_previewOverrides->setGrade(clipId, grade);
     update();
 }
 

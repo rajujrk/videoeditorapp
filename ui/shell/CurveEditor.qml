@@ -35,6 +35,8 @@ Item {
     }
 
     Canvas {
+        // Theme colours are read while painting: repaint when they change.
+        Connections { target: Theme; function onDarkChanged() { canvas.requestPaint() } }
         id: canvas
         anchors.fill: parent
         onWidthChanged: requestPaint()

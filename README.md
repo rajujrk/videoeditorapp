@@ -4,10 +4,10 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5d (export, autosave and
-crash recovery, proxies, voice-over). Phase 2: keyframes (6a), curves with effect keyframes (6b) and speed ramps (6c) done.** You can import video and audio files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c) and colour grading (7a) done.** You can import video and audio files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
-volume), give each clip its own effects,
+volume), grade each clip's colour (basic corrections, wheels, curves, LUTs), give each clip its own effects,
 put any of 21 transitions on the cuts between clips (with a constant-power sound
 crossfade), add titles (font, size, colour, bold/italic, alignment, letter and line
 spacing, outline, shadow), change a clip's speed (0.1–10×) or ramp it, play it in reverse or insert
@@ -82,6 +82,19 @@ presets) and direction; the clip gets shorter or longer and later clips on its t
 with it. Reversed clips play their sound backwards too. "Freeze frame at playhead" splits
 the clip there and inserts a 2-second still (silent; trim it to change its length). Clip
 labels show `2× ·`, `Reverse ·` or `Still ·` badges.
+
+**Colour.** The inspector's Color tab grades the selected video clip; the grade runs on the
+GPU before the clip's effects, in the preview and in exports. Basic: exposure (±4 stops),
+contrast, saturation, temperature and tint. Wheels: lift (shadows), gamma (midtones), gain
+(highlights) and offset — drag a wheel's puck towards a hue to push that way (double-click
+centres it) and use the slider under it for all channels. Curves: master, red, green and
+blue tone curves (drag points, double-click to add or remove one). LUT: choose a `.cube` or
+`.3dl` 3D LUT and set its intensity (an unreadable file is refused; a LUT that has gone
+missing is marked and left out). Copy and Paste move a grade between clips, Reset clears
+it, and Presets save a grade by name (in
+`~/Library/Application Support/TechieVideoEditor/Color Presets`; `TVE_COLOR_PRESET_DIR`
+moves them) to apply to other clips. Sliders preview
+live and each change is one undo step.
 
 **Speed ramps.** In the Speed tab, pick a ramp (Ramp up, Ramp down, Flash in, Flash out,
 Bullet time, Hero moment, Montage, Jumper) to change the speed through the clip. A ramp is

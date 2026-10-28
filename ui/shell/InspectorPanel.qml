@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 
@@ -732,17 +733,250 @@ Rectangle {
                 Section { title: "Audio effects"; expanded: false; PlannedRow { label: "EQ, dynamics, voice"; detail: "Phase 2" } }
             }
 
-            // Color
+            // Color: the selected clip's grade
             InspectorPage {
-                Section {
-                    title: "Basic"
-                    PlannedSlider { label: "Exposure"; value: 0.5 }
-                    PlannedSlider { label: "Contrast"; value: 0.5 }
-                    PlannedSlider { label: "Saturation"; value: 0.5 }
-                    PlannedSlider { label: "Temperature"; value: 0.5 }
+                id: colorPage
+                readonly property var grade: inspector.clipInfo.color || ({})
+                readonly property bool gradable: inspector.clipIsVideo && inspector.clipInfo.isTitle !== true
+                property string channel: "master"
+
+                function preview(changes) { inspector.project.previewClipColor(inspector.clipInfo.id, changes) }
+                function commit(changes) { inspector.project.setClipColor(inspector.clipInfo.id, changes) }
+
+                Text {
+                    visible: !colorPage.gradable
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.space.l
+                    text: inspector.clipInfo.isTitle === true ? "Titles take their colour from their text style."
+                                                             : "Select a video clip to grade it."
+                    font: Theme.type.body
+                    color: Theme.color.textSecondary
+                    wrapMode: Text.WordWrap
                 }
-                Section { title: "Curves"; expanded: false; PlannedRow { label: "RGB / Hue curves"; detail: "Phase 2" } }
-                Section { title: "LUT"; expanded: false; PlannedRow { label: "3D LUT"; detail: "Phase 2" } }
+
+                RowLayout {
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.space.s
+                    spacing: Theme.space.xs
+                    TextButton {
+                        objectName: "copyGradeButton"
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        text: "Copy"
+                        variant: "secondary"
+                        tip: "Copy this clip's grade"
+                        onClicked: inspector.project.copyGrade(inspector.clipInfo.id)
+                    }
+                    TextButton {
+                        objectName: "pasteGradeButton"
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        text: "Paste"
+                        variant: "secondary"
+                        enabled: inspector.project.hasCopiedGrade
+                        tip: "Give this clip the copied grade"
+                        onClicked: inspector.project.pasteGrade(inspector.clipInfo.id)
+                    }
+                    TextButton {
+                        objectName: "resetColorButton"
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        text: "Reset"
+                        variant: "ghost"
+                        enabled: colorPage.grade.neutral === false
+                        onClicked: inspector.project.resetClipColor(inspector.clipInfo.id)
+                    }
+                }
+
+                Section {
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    title: "Basic"
+                    GradeSlider { key: "exposure"; label: "Exposure"; from: -4; to: 4
+                                  format: (v) => (v > 0 ? "+" : "") + v.toFixed(2) + " EV" }
+                    GradeSlider { key: "contrast"; label: "Contrast" }
+                    GradeSlider { key: "saturation"; label: "Saturation" }
+                    GradeSlider { key: "temperature"; label: "Temperature" }
+                    GradeSlider { key: "tint"; label: "Tint" }
+                }
+
+                Section {
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    title: "Wheels"
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        columnSpacing: Theme.space.m
+                        rowSpacing: Theme.space.s
+                        Repeater {
+                            model: [{ key: "lift", title: "Lift (shadows)" }, { key: "gamma", title: "Gamma (midtones)" },
+                                    { key: "gain", title: "Gain (highlights)" }, { key: "offset", title: "Offset" }]
+                            delegate: ColorWheelControl {
+                                required property var modelData
+                                objectName: "wheel:" + modelData.key
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                                title: modelData.title
+                                wheel: colorPage.grade[modelData.key] || ({ x: 0, y: 0, master: 0 })
+                                onMoved: (w) => { const m = {}; m[modelData.key] = w; colorPage.preview(m) }
+                                onCommitted: (w) => { const m = {}; m[modelData.key] = w; colorPage.commit(m) }
+                            }
+                        }
+                    }
+                }
+
+                Section {
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    title: "Curves"
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xs
+                        Repeater {
+                            model: [{ key: "master", label: "Master" }, { key: "red", label: "Red" },
+                                    { key: "green", label: "Green" }, { key: "blue", label: "Blue" }]
+                            delegate: TextButton {
+                                required property var modelData
+                                objectName: "curveChannel:" + modelData.key
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                                text: modelData.label
+                                variant: colorPage.channel === modelData.key ? "primary" : "secondary"
+                                onClicked: colorPage.channel = modelData.key
+                            }
+                        }
+                    }
+                    ToneCurveEditor {
+                        objectName: "toneCurve"
+                        Layout.fillWidth: true
+                        project: inspector.project
+                        points: colorPage.grade[colorPage.channel] || []
+                        lineColor: colorPage.channel === "red" ? "#E5484D" : colorPage.channel === "green" ? "#30A46C"
+                                 : colorPage.channel === "blue" ? "#3E7BFA" : Theme.color.accentText
+                        onCommitted: (points) => { const m = {}; m[colorPage.channel] = points; colorPage.commit(m) }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            wrapMode: Text.WordWrap
+                            text: "Drag points; double-click to add one, or an inner point to remove it."
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                        TextButton {
+                            objectName: "resetCurveButton"
+                            text: "Reset curve"
+                            variant: "ghost"
+                            enabled: (colorPage.grade[colorPage.channel] || []).length > 0
+                            onClicked: { const m = {}; m[colorPage.channel] = []; colorPage.commit(m) }
+                        }
+                    }
+                }
+
+                Section {
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    title: "LUT"
+                    Text {
+                        objectName: "lutName"
+                        Layout.fillWidth: true
+                        elide: Text.ElideMiddle
+                        text: colorPage.grade.lutName ? colorPage.grade.lutName + (colorPage.grade.lutMissing ? " (missing)" : "")
+                                                      : "No LUT. Choose a .cube or .3dl file."
+                        font: Theme.type.body
+                        color: colorPage.grade.lutMissing ? Theme.color.danger
+                             : colorPage.grade.lutName ? Theme.color.textPrimary : Theme.color.textSecondary
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xs
+                        TextButton {
+                            objectName: "chooseLutButton"
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            text: colorPage.grade.lutName ? "Change LUT…" : "Choose LUT…"
+                            variant: "secondary"
+                            onClicked: lutDialog.open()
+                        }
+                        TextButton {
+                            objectName: "removeLutButton"
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            text: "Remove"
+                            variant: "secondary"
+                            enabled: !!colorPage.grade.lutName
+                            onClicked: inspector.project.removeLut(inspector.clipInfo.id)
+                        }
+                    }
+                    GradeSlider { key: "lutIntensity"; label: "Intensity"; from: 0; to: 1
+                                  visible: !!colorPage.grade.lutName; format: (v) => Math.round(v * 100) + "%" }
+                    FileDialog {
+                        id: lutDialog
+                        title: "Choose a LUT"
+                        nameFilters: ["LUTs (*.cube *.3dl)", "All files (*)"]
+                        onAccepted: inspector.project.chooseLut(inspector.clipInfo.id, selectedFile)
+                    }
+                }
+
+                Section {
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    title: "Presets"
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xs
+                        ComboBox {
+                            id: presetPicker
+                            objectName: "colorPresetPicker"
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            model: inspector.project.colorPresets
+                            enabled: count > 0
+                            displayText: count > 0 ? currentText : "No presets yet"
+                        }
+                        TextButton {
+                            objectName: "applyColorPreset"
+                            text: "Apply"
+                            variant: "secondary"
+                            enabled: presetPicker.count > 0
+                            onClicked: inspector.project.applyColorPreset(inspector.clipInfo.id, presetPicker.currentText)
+                        }
+                        IconButton {
+                            objectName: "deleteColorPreset"
+                            iconName: "delete"
+                            tip: "Delete this preset"
+                            enabled: presetPicker.count > 0
+                            onClicked: inspector.project.deleteColorPreset(presetPicker.currentText)
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xs
+                        TextField {
+                            id: presetName
+                            objectName: "colorPresetName"
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            placeholderText: "Preset name"
+                        }
+                        TextButton {
+                            objectName: "saveColorPreset"
+                            text: "Save"
+                            variant: "secondary"
+                            enabled: presetName.text.trim() !== ""
+                            onClicked: {
+                                if (inspector.project.saveColorPreset(inspector.clipInfo.id, presetName.text)) {
+                                    presetPicker.currentIndex = inspector.project.colorPresets.indexOf(presetName.text.trim())
+                                    presetName.text = ""
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // Effects: the selected clip's effect stack
@@ -808,6 +1042,18 @@ Rectangle {
 
     function commitAudio(gainDb, fadeIn, fadeOut) {
         project.setClipAudio(clipInfo.id, gainDb, fadeIn, fadeOut)
+    }
+
+    // A colour grade number: previews live while dragging, commits one undo step on release.
+    component GradeSlider: AudioSlider {
+        required property string key
+        objectName: "grade:" + key
+        from: -1
+        to: 1
+        value: inspector.clipInfo.color ? inspector.clipInfo.color[key] : 0
+        format: (v) => (v > 0 ? "+" : "") + Math.round(v * 100) + "%"
+        onLiveValue: (v) => { const m = {}; m[key] = v; inspector.project.previewClipColor(inspector.clipInfo.id, m) }
+        onCommitted: (v) => { const m = {}; m[key] = v; inspector.project.setClipColor(inspector.clipInfo.id, m) }
     }
 
     // A picture property: previews live while dragging, commits one undo step on release.

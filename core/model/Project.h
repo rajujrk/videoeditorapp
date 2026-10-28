@@ -1,5 +1,6 @@
 #pragma once
 
+#include "model/ColorGrade.h"
 #include "model/Keyframes.h"
 #include "model/SpeedRamp.h"
 #include "model/Time.h"
@@ -164,6 +165,7 @@ struct Clip {
 
     // Picture
     ClipVisual visual;
+    ColorGrade color; // applied before the effects
     std::vector<ClipEffect> effects; // applied in order, before placement on the canvas
 
     // Time. At speed 2 one second of timeline plays two seconds of source; reversed plays
