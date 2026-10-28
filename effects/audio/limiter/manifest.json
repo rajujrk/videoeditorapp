@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.limiter",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["dynamics"],
+  "title": {"en": "Limiter"},
+  "params": [
+    {"id": "ceiling", "type": "float", "title": {"en": "Ceiling"}, "min": -24, "max": 0, "default": -1},
+    {"id": "release", "type": "float", "title": {"en": "Release (ms)"}, "min": 5, "max": 1000, "default": 80}
+  ],
+  "chain": [
+    {"processor": "limiter"}
+  ],
+  "license": "TVE-Original"
+}

@@ -4,7 +4,8 @@ import QtQuick.Layouts
 import TechieVideoEditor.Theme
 
 // One effect in the selected clip's stack: on/off, remove, and its manifest-driven
-// controls. Dragging previews live; releasing commits one undo step.
+// controls. Dragging previews live; releasing commits one undo step. With `audio`, an
+// effect in the clip's audio stack (heard on the next play; not keyframed).
 Rectangle {
     id: card
     required property var project
@@ -13,6 +14,8 @@ Rectangle {
     required property var entry // {effectId, enabled, values}
     required property var spec  // the effect's manifest summary from availableEffects
     property var keyStates: ({}) // channel → "key" / "animated" (selectedClipInfo.keyframeStates)
+    property bool audio: false
+    readonly property string prefix: audio ? "audioEffect" : "clipEffect"
 
     implicitHeight: column.implicitHeight + Theme.space.m
     radius: Theme.radius.m
@@ -26,7 +29,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Icon { name: "effects"; size: Theme.size.iconSmall; color: card.entry.enabled ? Theme.color.accentText : Theme.color.textSecondary }
+            Icon { name: card.audio ? "audio" : "effects"; size: Theme.size.iconSmall; color: card.entry.enabled ? Theme.color.accentText : Theme.color.textSecondary }
             Text {
                 text: card.spec.title
                 font: Theme.type.heading
@@ -35,16 +38,18 @@ Rectangle {
                 elide: Text.ElideRight
             }
             ToggleSwitch {
-                objectName: "clipEffect:" + card.stackIndex
+                objectName: card.prefix + ":" + card.stackIndex
                 checked: card.entry.enabled
-                onToggled: card.project.setClipEffectEnabled(card.clipId, card.stackIndex, checked)
+                onToggled: card.audio ? card.project.setAudioEffectEnabled(card.clipId, card.stackIndex, checked)
+                                      : card.project.setClipEffectEnabled(card.clipId, card.stackIndex, checked)
             }
             IconButton {
-                objectName: "removeEffect:" + card.stackIndex
+                objectName: (card.audio ? "removeAudioEffect:" : "removeEffect:") + card.stackIndex
                 iconName: "delete"
                 tip: "Remove effect"
                 buttonSize: 24
-                onClicked: card.project.removeClipEffect(card.clipId, card.stackIndex)
+                onClicked: card.audio ? card.project.removeAudioEffect(card.clipId, card.stackIndex)
+                                      : card.project.removeClipEffect(card.clipId, card.stackIndex)
             }
         }
 
@@ -54,15 +59,19 @@ Rectangle {
                 required property var modelData
                 readonly property string channel: "effect:" + card.stackIndex + ":" + modelData.id
                 Layout.fillWidth: true
-                objectName: "effectParam:" + card.stackIndex + ":" + modelData.id
-                keyState: modelData.keyframable ? (card.keyStates[channel] || "none") : ""
+                objectName: (card.audio ? "audioEffectParam:" : "effectParam:") + card.stackIndex + ":" + modelData.id
+                keyState: modelData.keyframable && !card.audio ? (card.keyStates[channel] || "none") : ""
                 onKeyframeToggled: keyState === "key" ? card.project.removeKeyframes(card.clipId, [channel])
                                                       : card.project.addKeyframes(card.clipId, [channel])
                 // Show the clip's value when set, else the manifest default.
                 param: Object.assign({}, modelData, card.entry.values[modelData.id] !== undefined
                                                     ? { default: card.entry.values[modelData.id] } : {})
-                onValueEdited: (value) => card.project.previewClipEffectParam(card.clipId, card.stackIndex, modelData.id, value)
-                onValueCommitted: (value) => card.project.setClipEffectParam(card.clipId, card.stackIndex, modelData.id, value)
+                onValueEdited: (value) => {
+                    if (!card.audio)
+                        card.project.previewClipEffectParam(card.clipId, card.stackIndex, modelData.id, value)
+                }
+                onValueCommitted: (value) => card.audio ? card.project.setAudioEffectParam(card.clipId, card.stackIndex, modelData.id, value)
+                                                        : card.project.setClipEffectParam(card.clipId, card.stackIndex, modelData.id, value)
             }
         }
     }

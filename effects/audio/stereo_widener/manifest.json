@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.stereo_widener",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["modulation"],
+  "title": {"en": "Stereo Widener"},
+  "params": [
+    {"id": "width", "type": "float", "title": {"en": "Width"}, "min": 0, "max": 2, "default": 1.6},
+    {"id": "haas", "type": "float", "title": {"en": "Delay (ms)"}, "min": 0, "max": 30, "default": 0}
+  ],
+  "chain": [
+    {"processor": "widener"}
+  ],
+  "license": "TVE-Original"
+}

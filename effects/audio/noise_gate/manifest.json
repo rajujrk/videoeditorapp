@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.noise_gate",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["dynamics"],
+  "title": {"en": "Noise Gate"},
+  "params": [
+    {"id": "threshold", "type": "float", "title": {"en": "Threshold"}, "min": -90, "max": 0, "default": -50},
+    {"id": "range", "type": "float", "title": {"en": "Reduction"}, "min": -90, "max": 0, "default": -70}
+  ],
+  "chain": [
+    {"processor": "gate", "settings": {"ratio": 20, "attack": 1, "release": 150}}
+  ],
+  "license": "TVE-Original"
+}

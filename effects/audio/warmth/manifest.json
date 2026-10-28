@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.warmth",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["eq"],
+  "title": {"en": "Warmth"},
+  "params": [
+    {"id": "b250", "type": "float", "title": {"en": "Warmth"}, "min": 0, "max": 6, "default": 1.5}
+  ],
+  "chain": [
+    {"processor": "eq", "settings": {"b125": 2.5, "b8k": -2, "b16k": -3}}
+  ],
+  "license": "TVE-Original"
+}

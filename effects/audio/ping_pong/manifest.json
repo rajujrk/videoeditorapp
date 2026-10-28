@@ -1,0 +1,16 @@
+{
+  "id": "tve.audio.ping_pong",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["echo"],
+  "title": {"en": "Ping-Pong Echo"},
+  "params": [
+    {"id": "time", "type": "float", "title": {"en": "Time (ms)"}, "min": 20, "max": 2000, "default": 250},
+    {"id": "feedback", "type": "float", "title": {"en": "Repeats"}, "min": 0, "max": 0.9, "default": 0.45},
+    {"id": "level", "type": "float", "title": {"en": "Level"}, "min": 0, "max": 1, "default": 0.5}
+  ],
+  "chain": [
+    {"processor": "delay", "settings": {"pingPong": 1, "tone": 0.7}}
+  ],
+  "license": "TVE-Original"
+}

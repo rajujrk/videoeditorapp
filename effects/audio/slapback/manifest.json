@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.slapback",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["echo"],
+  "title": {"en": "Slapback"},
+  "params": [
+    {"id": "time", "type": "float", "title": {"en": "Time (ms)"}, "min": 40, "max": 200, "default": 90}
+  ],
+  "chain": [
+    {"processor": "delay", "settings": {"feedback": 0.1, "level": 0.6, "tone": 0.8}}
+  ],
+  "license": "TVE-Original"
+}

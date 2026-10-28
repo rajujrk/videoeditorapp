@@ -54,7 +54,9 @@ Popup {
         width: sizes[Math.max(0, sizePicker.currentIndex)].width,
         height: sizes[Math.max(0, sizePicker.currentIndex)].height,
         codec: codecPicker.currentIndex === 1 ? "hevc" : "h264",
-        quality: quality
+        quality: quality,
+        normalizeLoudness: loudnessSwitch.checked,
+        loudnessTarget: loudnessPicker.currentValue
     })
     readonly property real estimatedMegabytes: project.exportBitrate(options) * project.duration / 8 / 1e6
 
@@ -153,6 +155,27 @@ Popup {
                         variant: dialog.quality === modelData.id ? "primary" : "secondary"
                         onClicked: dialog.quality = modelData.id
                     }
+                }
+            }
+
+            Text { text: "Loudness"; font: Theme.type.label; color: Theme.color.textSecondary }
+            RowLayout {
+                Layout.fillWidth: true
+                ToggleSwitch {
+                    id: loudnessSwitch
+                    objectName: "exportNormalize"
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Measure the whole mix and set its volume to the target (peaks limited to −1 dBFS)"
+                }
+                ComboBox {
+                    id: loudnessPicker
+                    objectName: "exportLoudnessTarget"
+                    Layout.fillWidth: true
+                    enabled: loudnessSwitch.checked
+                    textRole: "label"
+                    valueRole: "lufs"
+                    model: [{ label: "−14 LUFS (online)", lufs: -14 }, { label: "−16 LUFS (podcast)", lufs: -16 },
+                            { label: "−23 LUFS (EBU R128)", lufs: -23 }]
                 }
             }
 

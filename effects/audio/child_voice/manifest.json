@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.child_voice",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["voice"],
+  "title": {"en": "Child"},
+  "params": [
+    {"id": "semitones", "type": "float", "title": {"en": "Pitch"}, "min": 0, "max": 12, "default": 7}
+  ],
+  "chain": [
+    {"processor": "pitch"},
+    {"processor": "eq", "settings": {"lowCut": 200, "b250": -4, "b4k": 3}}
+  ],
+  "license": "TVE-Original"
+}

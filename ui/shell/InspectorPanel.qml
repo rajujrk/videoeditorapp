@@ -863,6 +863,17 @@ Rectangle {
                         checked: inspector.clipInfo.reversed === true
                         onToggled: inspector.project.setClipSpeed(inspector.clipInfo.id, inspector.clipInfo.speed || 1, checked)
                     }
+                    ToggleSwitch {
+                        objectName: "keepPitchSwitch"
+                        visible: !speedSection.still && inspector.clipInfo.hasSound === true
+                        enabled: inspector.clipInfo.reversed !== true
+                        text: "Keep pitch"
+                        checked: inspector.clipInfo.keepPitch === true
+                        ToolTip.visible: hovered
+                        ToolTip.text: enabled ? "Faster or slower, the sound keeps its pitch (off: it rises and falls like tape)"
+                                              : "Reversed sound always follows the speed"
+                        onToggled: inspector.project.setKeepPitch(inspector.clipInfo.id, checked)
+                    }
                     TextButton {
                         objectName: "freezeFrameButton"
                         visible: inspector.clipIsVideo
@@ -1027,7 +1038,98 @@ Rectangle {
                         onClicked: inspector.project.detachAudio(inspector.clipInfo.id)
                     }
                 }
-                Section { title: "Audio effects"; expanded: false; PlannedRow { label: "EQ, dynamics, voice"; detail: "Phase 2" } }
+                // Audio effects: EQ, dynamics, rooms, echoes, pitch and voices, in a stack.
+                Section {
+                    id: audioEffectsSection
+                    objectName: "audioEffectsSection"
+                    visible: inspector.clipInfo.hasSound === true
+                    Layout.fillWidth: true
+                    title: "Audio effects"
+                    readonly property var categoryNames: ({ eq: "EQ", dynamics: "Dynamics", space: "Room", echo: "Echo",
+                                                            modulation: "Modulation", pitch: "Pitch", voice: "Voice" })
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ComboBox {
+                            id: audioEffectPicker
+                            objectName: "audioEffectPicker"
+                            Layout.fillWidth: true
+                            textRole: "label"
+                            valueRole: "id"
+                            model: inspector.project.audioEffects.map((e) => Object.assign(
+                                { label: (audioEffectsSection.categoryNames[e.categories[0]] || e.categories[0]) + " · " + e.title }, e))
+                        }
+                        TextButton {
+                            objectName: "addAudioEffectButton"
+                            text: "Add"
+                            iconName: "plus"
+                            onClicked: inspector.project.addAudioEffect(inspector.clipInfo.id, audioEffectPicker.currentValue)
+                        }
+                    }
+                    Text {
+                        visible: (inspector.clipInfo.audioEffects || []).length === 0
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: "Effects run in order, after the volume and fades. Echoes and reverb ring on past the clip's end."
+                        font: Theme.type.caption
+                        color: Theme.color.textSecondary
+                    }
+                    Repeater {
+                        model: (inspector.clipInfo.audioEffects || []).length
+                        delegate: ClipEffectCard {
+                            required property int index
+                            readonly property var current: (inspector.clipInfo.audioEffects || [])[index]
+                                                           || ({ effectId: "", enabled: false, values: {} })
+                            Layout.fillWidth: true
+                            audio: true
+                            project: inspector.project
+                            clipId: inspector.clipInfo.id
+                            stackIndex: index
+                            entry: current
+                            spec: inspector.project.audioEffects.find((e) => e.id === current.effectId)
+                                  || ({ title: current.effectId, params: [] })
+                        }
+                    }
+                }
+
+                // Loudness: measures the clip and sets its volume to a target.
+                Section {
+                    id: loudnessSection
+                    objectName: "loudnessSection"
+                    visible: inspector.clipInfo.hasSound === true
+                    Layout.fillWidth: true
+                    title: "Loudness"
+                    readonly property var loudness: inspector.clipInfo.loudness || null
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ComboBox {
+                            id: loudnessTarget
+                            objectName: "loudnessTarget"
+                            Layout.fillWidth: true
+                            textRole: "label"
+                            valueRole: "lufs"
+                            model: [{ label: "−14 LUFS · online", lufs: -14 }, { label: "−16 LUFS · podcast", lufs: -16 },
+                                    { label: "−23 LUFS · broadcast", lufs: -23 }]
+                        }
+                        TextButton {
+                            objectName: "normalizeLoudnessButton"
+                            text: inspector.project.measuringLoudness ? "Measuring…" : "Normalize"
+                            enabled: !inspector.project.measuringLoudness
+                            tip: "Measure this clip and set its volume to reach the target"
+                            onClicked: inspector.project.normalizeLoudness(inspector.clipInfo.id, loudnessTarget.currentValue)
+                        }
+                    }
+                    Text {
+                        objectName: "loudnessResult"
+                        visible: loudnessSection.loudness !== null
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: loudnessSection.loudness === null ? ""
+                              : "Measured " + loudnessSection.loudness.measured.toFixed(1) + " LUFS; the volume now brings it to "
+                                + loudnessSection.loudness.target.toFixed(0) + " LUFS."
+                        font: Theme.type.caption
+                        color: Theme.color.textSecondary
+                    }
+                }
             }
 
             // Color: the selected clip's grade

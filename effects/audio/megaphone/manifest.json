@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.megaphone",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["voice"],
+  "title": {"en": "Megaphone"},
+  "params": [
+    {"id": "drive", "type": "float", "title": {"en": "Distortion"}, "min": 0, "max": 30, "default": 14}
+  ],
+  "chain": [
+    {"processor": "eq", "settings": {"lowCut": 700, "highCut": 4500, "b2k": 8}},
+    {"processor": "distortion", "settings": {"tone": 4500, "output": -8}}
+  ],
+  "license": "TVE-Original"
+}

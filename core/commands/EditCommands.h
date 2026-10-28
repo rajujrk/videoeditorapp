@@ -231,6 +231,61 @@ private:
     std::vector<ClipEffect> m_previous;
 };
 
+// Sets a clip's audio effect stack (ids checked against the audio effect library by the app).
+class SetClipAudioEffectsCommand final : public Command {
+public:
+    SetClipAudioEffectsCommand(Id clipId, std::vector<ClipEffect> effects, std::string label)
+        : m_clipId(clipId), m_effects(std::move(effects)), m_label(std::move(label)) {}
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    std::vector<ClipEffect> m_effects;
+    std::string m_label;
+    std::vector<ClipEffect> m_previous;
+};
+
+// Whether a clip's sound keeps its pitch when the clip plays faster or slower.
+class SetClipKeepPitchCommand final : public Command {
+public:
+    SetClipKeepPitchCommand(Id clipId, bool keep) : m_clipId(clipId), m_keep(keep) {}
+
+    std::string label() const override { return m_keep ? "Keep Pitch" : "Pitch Follows Speed"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    bool m_keep;
+    bool m_previous = true;
+};
+
+struct TrackMix {
+    float gainDb = 0.0f;
+    float pan = 0.0f;
+    bool solo = false;
+
+    friend bool operator==(const TrackMix&, const TrackMix&) = default;
+};
+
+// Sets a track's mixer volume, balance and solo. Allowed on locked tracks, like mute.
+class SetTrackMixCommand final : public Command {
+public:
+    SetTrackMixCommand(Id trackId, TrackMix mix) : m_trackId(trackId), m_mix(mix) {}
+
+    std::string label() const override { return "Change Track Mix"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_trackId;
+    TrackMix m_mix;
+    TrackMix m_previous;
+};
+
 // Changes the canvas size and frame rate.
 class SetProjectSettingsCommand final : public Command {
 public:

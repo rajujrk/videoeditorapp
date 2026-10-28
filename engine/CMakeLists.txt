@@ -30,7 +30,30 @@ add_library(tve_engine STATIC
     analysis/Scopes.cpp
     audio/WaveformCache.h
     audio/WaveformCache.cpp
+    audio/AudioEffects.h
+    audio/AudioEffects.cpp
+    audio/dsp/Biquad.h
+    audio/dsp/Processors.h
+    audio/dsp/Processors.cpp
+    audio/dsp/TimeStretch.h
+    audio/dsp/TimeStretch.cpp
+    audio/dsp/Loudness.h
+    audio/dsp/Loudness.cpp
 )
+
+# The audio effect packages (effects/audio/<folder>/manifest.json) are compiled in as text:
+# the engine has no Qt resources. Editing a manifest re-runs this at the next build.
+file(GLOB TVE_AUDIO_EFFECT_MANIFESTS CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/effects/audio/*/manifest.json)
+set(TVE_AUDIO_EFFECT_ENTRIES "")
+foreach(manifest ${TVE_AUDIO_EFFECT_MANIFESTS})
+    get_filename_component(folder ${manifest} DIRECTORY)
+    get_filename_component(folder ${folder} NAME)
+    file(READ ${manifest} json)
+    string(APPEND TVE_AUDIO_EFFECT_ENTRIES "        {\"${folder}\", R\"tvejson(${json})tvejson\"},\n")
+endforeach()
+configure_file(audio/BuiltinAudioEffects.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuiltinAudioEffects.cpp @ONLY)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${TVE_AUDIO_EFFECT_MANIFESTS})
+target_sources(tve_engine PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/BuiltinAudioEffects.cpp)
 set_source_files_properties(audio/MiniaudioImpl.c PROPERTIES COMPILE_OPTIONS "-w")
 
 # miniaudio is a single header from vcpkg.

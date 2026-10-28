@@ -336,13 +336,23 @@ int zeroCrossings(const std::vector<float>& stereo, std::size_t from, std::size_
 
 } // namespace
 
-TEST_CASE("double speed raises a tone by an octave")
+TEST_CASE("double speed keeps a tone's pitch, or raises it an octave like tape")
 {
     requireSamples();
     AudioProject p;
     const Id toneMedia = p.importAudio("test_tone_440.wav", 3 * kSec);
     const Id clip = p.push<AddClipCommand>(p.audioTrack, toneMedia, 0, 3 * kSec).clipId();
     p.push<SetClipSpeedCommand>(clip, 2.0, false); // now 1.5 s long
+    {
+        // By default the pitch stays: 440 Hz, 880 crossings a second, at full level.
+        TimelineAudio mixer;
+        mixer.restart(p.project, 0);
+        const auto mix = drainMix(mixer);
+        CHECK(zeroCrossings(mix, 4800, 52800) == Catch::Approx(880).margin(6));
+        CHECK(peak(mix, 4800, 52800) == Catch::Approx(0.5f).margin(0.03));
+        CHECK(peak(mix, 74000, 96000) == 0.0f); // still ends at 1.5 s
+    }
+    p.push<SetClipKeepPitchCommand>(clip, false);
 
     TimelineAudio mixer;
     mixer.restart(p.project, 0);
@@ -362,6 +372,16 @@ TEST_CASE("a speed ramp sweeps a tone's pitch")
     // 0.5× up to 2×, average 1.25×: 2.4 s long; speed 0.65× at 0.24 s and 1.85× at 2.16 s.
     p.push<SetClipSpeedRampCommand>(clip, SpeedRamp{{0.0, 0.5}, {1.0, 2.0}});
     REQUIRE(p.project->locateClip(clip)->clip->duration == kSec * 24 / 10);
+    {
+        // Kept pitch: 440 Hz all along the ramp.
+        TimelineAudio mixer;
+        mixer.restart(p.project, 0);
+        const auto mix = drainMix(mixer);
+        CHECK(zeroCrossings(mix, 6720, 16320) == Catch::Approx(2 * 440 * 0.2).margin(4));
+        CHECK(zeroCrossings(mix, 98880, 108480) == Catch::Approx(2 * 440 * 0.2).margin(4));
+        CHECK(peak(mix, 116000, 130000) == 0.0f);
+    }
+    p.push<SetClipKeepPitchCommand>(clip, false);
 
     TimelineAudio mixer;
     mixer.restart(p.project, 0);
@@ -443,4 +463,91 @@ TEST_CASE("seeking part-way through a sample starts with that sample")
     REQUIRE(decoder->read(got.data(), 8) == 8);
     for (std::size_t i = 0; i < 8; ++i)
         CHECK(got[i * 2] == expected[(2730 + i) * 2]);
+}
+
+TEST_CASE("track volume, balance and solo, with levels for the meters")
+{
+    requireSamples();
+    AudioProject p;
+    const Id toneMedia = p.importAudio("test_tone_440.wav", 3 * kSec);
+    p.push<AddClipCommand>(p.audioTrack, toneMedia, 0, kSec);
+    const Id second = p.push<AddTrackCommand>(TrackKind::Audio, "A2").trackId();
+    p.push<AddClipCommand>(second, toneMedia, 0, kSec);
+    const auto mixOf = [&] {
+        TimelineAudio mixer;
+        mixer.restart(p.project, 0);
+        return drainMix(mixer);
+    };
+    CHECK(peak(mixOf(), 4800, 40000) == Catch::Approx(1.0f).margin(0.01)); // two tones in phase
+
+    // -6 dB on one track; then that track all the way right: nothing of it on the left.
+    p.push<SetTrackMixCommand>(second, TrackMix{-6.0206f, 0.0f, false});
+    CHECK(peak(mixOf(), 4800, 40000) == Catch::Approx(0.75f).margin(0.01));
+    p.push<SetTrackMixCommand>(second, TrackMix{0.0f, 1.0f, false});
+    CHECK(peak(mixOf(), 4800, 40000) == Catch::Approx(0.5f).margin(0.01)); // left channel only
+    // Solo: only the soloed track is heard.
+    p.push<SetTrackMixCommand>(second, TrackMix{0.0f, 0.0f, true});
+    CHECK(peak(mixOf(), 4800, 40000) == Catch::Approx(0.5f).margin(0.01));
+    p.stack.undo();
+    CHECK(p.project->findTrack(second)->pan == 1.0f);
+    CHECK(p.stack.undoLabel() == "Change Track Mix");
+    CHECK(p.stack.push(std::make_unique<SetTrackMixCommand>(second, TrackMix{0.0f, 2.0f, false})).value()
+          == "balance must be between left and right");
+    p.push<SetTrackMixCommand>(second, TrackMix{0.0f, 0.0f, false});
+
+    // The levels of what was mixed: per track and the master, with its loudness.
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    const auto mix = drainMix(mixer);
+    const auto levels = mixer.levelsAt(audio::ticksFromSamples(24000));
+    REQUIRE(levels);
+    CHECK(levels->master.peak[0] == Catch::Approx(1.0f).margin(0.01));
+    CHECK(levels->master.rms[1] == Catch::Approx(1.0f / std::numbers::sqrt2).margin(0.02));
+    const auto track = std::ranges::find(levels->tracks, second, &std::pair<Id, ChannelLevels>::first);
+    REQUIRE(track != levels->tracks.end());
+    CHECK(track->second.peak[0] == Catch::Approx(0.5f).margin(0.01));
+    // Video tracks are metered too (their clips' sound); title tracks are not.
+    CHECK(std::ranges::any_of(levels->tracks, [&](const auto& t) { return t.first == p.videoTrack; }));
+    CHECK(std::isfinite(levels->momentary));
+    CHECK_FALSE(mixer.levelsAt(audio::ticksFromSamples(48000 * 30)));
+}
+
+TEST_CASE("audio effects run after the clip's volume and ring on past its end")
+{
+    requireSamples();
+    AudioProject p;
+    const Id toneMedia = p.importAudio("test_tone_440.wav", 3 * kSec);
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, toneMedia, 0, kSec / 2).clipId();
+    const Id spacer = p.push<AddTrackCommand>(TrackKind::Audio, "A2").trackId();
+    p.push<AddClipCommand>(spacer, toneMedia, 0, 2 * kSec); // keeps the timeline going, unheard
+    p.push<SetTrackFlagCommand>(spacer, SetTrackFlagCommand::Flag::Muted, true);
+    p.push<SetClipAudioEffectsCommand>(
+        clip, std::vector<ClipEffect>{{"tve.audio.echo", true, {{"time", {300.0f}}, {"feedback", {0.5f}}}, {}}}, "Add Audio Effect");
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    const auto mix = drainMix(mixer);
+    // The clip ends at 0.5 s; its echoes go on after it.
+    CHECK(peak(mix, 26000, 38000) > 0.1f);
+    CHECK(peak(mix, 40000, 52000) > 0.05f);
+    // Its sound can take effects only if it has sound.
+    const Id title = p.push<AddTitleCommand>(kNoId, 0, kSec, ClipText{}).clipId();
+    CHECK(p.stack.push(std::make_unique<SetClipAudioEffectsCommand>(title, std::vector<ClipEffect>{}, "x")).value()
+          == "this clip has no sound");
+    p.stack.undo(); // the title
+    CHECK(p.stack.undoLabel() == "Add Audio Effect");
+}
+
+TEST_CASE("loudness of a mix")
+{
+    requireSamples();
+    AudioProject p;
+    const Id toneMedia = p.importAudio("test_tone_440.wav", 3 * kSec);
+    p.push<AddClipCommand>(p.audioTrack, toneMedia, 0, 3 * kSec);
+    // A 440 Hz sine at 0.5 on both channels: -0.691 + 10·log10(2 · 0.125) plus the K-weighting
+    // at 440 Hz (a fraction of a dB below 0).
+    const double loudness = measureLoudness(p.project, 0, 3 * kSec);
+    CHECK(loudness == Catch::Approx(-6.8).margin(0.4));
+    // 6 dB quieter on the track measures 6 LU lower.
+    p.push<SetTrackMixCommand>(p.audioTrack, TrackMix{-6.0f, 0.0f, false});
+    CHECK(measureLoudness(p.project, 0, 3 * kSec) == Catch::Approx(loudness - 6.0).margin(0.05));
 }

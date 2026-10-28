@@ -1,0 +1,16 @@
+{
+  "id": "tve.audio.underwater",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["voice"],
+  "title": {"en": "Underwater"},
+  "params": [
+    {"id": "mix", "type": "float", "title": {"en": "Amount"}, "min": 0, "max": 1, "default": 0.85}
+  ],
+  "chain": [
+    {"processor": "eq", "settings": {"highCut": 600, "b62": 3}},
+    {"processor": "chorus", "settings": {"rate": 0.3, "depth": 6, "delay": 15, "feedback": 0.3}},
+    {"processor": "reverb", "settings": {"size": 0.7, "damping": 0.9}}
+  ],
+  "license": "TVE-Original"
+}

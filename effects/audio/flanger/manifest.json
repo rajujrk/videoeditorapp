@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.flanger",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["modulation"],
+  "title": {"en": "Flanger"},
+  "params": [
+    {"id": "rate", "type": "float", "title": {"en": "Rate (Hz)"}, "min": 0.05, "max": 5, "default": 0.25},
+    {"id": "feedback", "type": "float", "title": {"en": "Resonance"}, "min": -0.9, "max": 0.9, "default": 0.6}
+  ],
+  "chain": [
+    {"processor": "chorus", "settings": {"delay": 1.5, "depth": 2.5}}
+  ],
+  "license": "TVE-Original"
+}

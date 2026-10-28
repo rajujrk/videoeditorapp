@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.chipmunk",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["voice"],
+  "title": {"en": "Chipmunk"},
+  "params": [
+    {"id": "semitones", "type": "float", "title": {"en": "Pitch"}, "min": 6, "max": 24, "default": 12}
+  ],
+  "chain": [
+    {"processor": "pitch", "settings": {"window": 30}},
+    {"processor": "eq", "settings": {"lowCut": 300}}
+  ],
+  "license": "TVE-Original"
+}

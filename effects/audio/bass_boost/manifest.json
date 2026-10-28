@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.bass_boost",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["eq"],
+  "title": {"en": "Bass Boost"},
+  "params": [
+    {"id": "b62", "type": "float", "title": {"en": "Boost"}, "min": 0, "max": 12, "default": 6}
+  ],
+  "chain": [
+    {"processor": "eq", "settings": {"b31": 4, "b125": 3}}
+  ],
+  "license": "TVE-Original"
+}

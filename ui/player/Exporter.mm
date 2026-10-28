@@ -4,6 +4,7 @@
 
 #include "decode/AudioDecoder.h"
 #include "gpu/Compositor.h"
+#include "audio/dsp/Biquad.h"
 #include "playback/TimelineAudio.h"
 #include "playback/TimelinePlayback.h"
 
@@ -12,6 +13,7 @@
 #include <rhi/qrhi_platform.h>
 
 #include <chrono>
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <thread>
@@ -111,7 +113,8 @@ std::vector<std::uint8_t> packedRows(const QRhiReadbackResult& result, int width
 } // namespace
 
 Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, const QString& path,
-                               const tve::Mp4Settings& settings, const std::function<bool(double)>& progress)
+                               const tve::Mp4Settings& settings, const std::function<bool(double)>& progress,
+                               std::optional<double> loudnessTarget)
 {
     Result result;
     std::string error;
@@ -154,11 +157,24 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
         // as fast as it can. Sound: the mixer, likewise.
         tve::TimelinePlayback playback;
         playback.setProject(project);
-        tve::TimelineAudio mixer;
-        mixer.restart(project, 0);
-
         const tve::Ticks frameTicks = tve::frameDuration(settings.frameRate);
         const tve::Ticks duration = project->duration();
+
+        // Loudness normalization: measure the whole mix, then play it louder or quieter by the
+        // difference, the limiter catching peaks the gain pushes past -1 dBFS.
+        float loudnessGain = 1.0f;
+        std::unique_ptr<tve::dsp::Processor> limiter;
+        if (loudnessTarget) {
+            const double measured = tve::measureLoudness(project, 0, duration);
+            if (std::isfinite(measured)) {
+                loudnessGain = tve::dsp::dbToGain(std::clamp(*loudnessTarget - measured, -24.0, 24.0));
+                const tve::dsp::ProcessorInfo& info = *tve::dsp::findProcessor("limiter");
+                limiter = info.make();
+                limiter->configure(info.complete({{"ceiling", -1.0f}}));
+            }
+        }
+        tve::TimelineAudio mixer;
+        mixer.restart(project, 0);
         const std::int64_t totalFrames = std::max<std::int64_t>(1, (duration + frameTicks - 1) / frameTicks);
         tve::CompositeFrame current{0, {}};
         std::int64_t samplesWritten = 0;
@@ -216,6 +232,11 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
             const std::int64_t wanted = tve::audio::samplesFromTicks((n + 1) * frameTicks);
             while (samplesWritten < wanted) {
                 if (auto chunk = mixer.queue().tryPop()) {
+                    if (limiter) {
+                        for (float& sample : chunk->samples)
+                            sample *= loudnessGain;
+                        limiter->process(chunk->samples.data(), tve::AudioChunk::kFrames);
+                    }
                     if (!writer->writeAudio(chunk->samples.data(), tve::AudioChunk::kFrames))
                         return abandon(QString::fromStdString(writer->lastError()));
                     samplesWritten += tve::AudioChunk::kFrames;

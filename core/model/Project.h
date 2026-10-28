@@ -182,6 +182,9 @@ struct Clip {
     float gainDb = 0.0f;
     Ticks fadeIn = 0;
     Ticks fadeOut = 0;
+    // Audio effects (engine/audio), in order, after the clip's volume and fades; their tails
+    // (echoes, reverb) ring on past the clip's end.
+    std::vector<ClipEffect> audioEffects;
 
     // Picture
     ClipVisual visual;
@@ -198,6 +201,9 @@ struct Clip {
     double speed = 1.0;
     bool reversed = false;
     bool freeze = false;
+    // Played faster or slower, the sound keeps its pitch (time-stretched) unless this is
+    // off (then the pitch follows the speed, like tape). Reversed sound always follows it.
+    bool keepPitch = true;
     // A speed that changes through the clip (empty: constant `speed`). While set, `speed`
     // holds the ramp's average, so duration × speed is still the source span.
     SpeedRamp speedRamp;
@@ -248,6 +254,11 @@ struct Track {
     bool locked = false;
     bool hidden = false;
     bool muted = false;
+    // Mixer: the track's volume, its left/right balance (-1..1), and solo (while any track is
+    // soloed only soloed tracks are heard).
+    float gainDb = 0.0f;
+    float pan = 0.0f;
+    bool solo = false;
     std::vector<Clip> clips; // kept sorted by start, never overlapping
 
     const Clip* findClip(Id clipId) const;

@@ -11,6 +11,7 @@
 #include "model/TimelineQuery.h"
 #include "gpu/ColorGrader.h"
 #include "gpu/EffectLibrary.h"
+#include "audio/AudioEffects.h"
 #include "gpu/LayerPlacement.h"
 #include "decode/Thumbnail.h"
 #include "EffectInfo.h"
@@ -29,6 +30,8 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPointer>
+#include <QGuiApplication>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QUuid>
@@ -720,6 +723,9 @@ QVariantList ProjectController::tracks() const
             {QStringLiteral("locked"), track->locked},
             {QStringLiteral("hidden"), track->hidden},
             {QStringLiteral("muted"), track->muted},
+            {QStringLiteral("gainDb"), double(track->gainDb)},
+            {QStringLiteral("pan"), double(track->pan)},
+            {QStringLiteral("solo"), track->solo},
             {QStringLiteral("clips"), clips},
         };
     }
@@ -1474,6 +1480,18 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("reversed"), clip->reversed},
             {QStringLiteral("freeze"), clip->freeze},
             {QStringLiteral("speedRamp"), rampList(clip->speedRamp)},
+            {QStringLiteral("keepPitch"), clip->keepPitch},
+            // Sound the clip plays itself (not detached, not a title or a silent file).
+            {QStringLiteral("hasSound"), !clip->generated() && media && media->hasAudio
+                                             && (track.kind == TrackKind::Audio || clip->audioEnabled)},
+            {QStringLiteral("audioEffects"), effectsList(clip->audioEffects)},
+            {QStringLiteral("loudness"), [&]() -> QVariant {
+                 const auto found = m_loudness.find(clip->id);
+                 if (found == m_loudness.end())
+                     return {};
+                 return QVariantMap{{QStringLiteral("measured"), found->second.first},
+                                    {QStringLiteral("target"), found->second.second}};
+             }()},
         };
     }
     return {};
@@ -2813,7 +2831,10 @@ bool ProjectController::exportVideo(const QUrl& file, const QVariantMap& options
     m_exportProgress = 0;
     auto snapshot = std::make_shared<const Project>(m_project);
     const Mp4Settings settings = exportSettings(options);
-    m_exportThread = std::thread([this, snapshot, path, settings] {
+    std::optional<double> loudness;
+    if (options.value(QStringLiteral("normalizeLoudness")).toBool())
+        loudness = options.value(QStringLiteral("loudnessTarget"), -14.0).toDouble();
+    m_exportThread = std::thread([this, snapshot, path, settings, loudness] {
         // Progress goes to the UI thread at most every 1 %.
         double reported = 0;
         const Exporter::Result result = Exporter::run(snapshot, path, settings, [&](double progress) {
@@ -2825,7 +2846,7 @@ bool ProjectController::exportVideo(const QUrl& file, const QVariantMap& options
                 }, Qt::QueuedConnection);
             }
             return !m_cancelExport.load();
-        });
+        }, loudness);
         QMetaObject::invokeMethod(this, [this, result, path] {
             if (m_exportThread.joinable())
                 m_exportThread.join();
@@ -2904,6 +2925,7 @@ void ProjectController::updatePlayhead()
         if (const Clip* clip = findClip(m_selectedClip); clip && isAnimated(*clip))
             emit selectedClipInfoChanged();
     }
+    updateMixLevels(now);
     const double left = m_audioOutput->peakLeft();
     const double right = m_audioOutput->peakRight();
     if (left != m_levelLeft || right != m_levelRight) {
@@ -3183,4 +3205,201 @@ QString ProjectController::timecode(double value) const
         .arg((totalSeconds / 60) % 60, 2, 10, QLatin1Char('0'))
         .arg(totalSeconds % 60, 2, 10, QLatin1Char('0'))
         .arg(ff, 2, 10, QLatin1Char('0'));
+}
+
+// --- Mixer and audio effects ---
+
+namespace {
+
+QVariantList levelList(const ChannelLevels& l)
+{
+    return {double(l.peak[0]), double(l.peak[1]), double(l.rms[0]), double(l.rms[1])};
+}
+
+QVariant lufs(double value)
+{
+    return std::isfinite(value) ? QVariant(value) : QVariant();
+}
+
+} // namespace
+
+void ProjectController::updateMixLevels(Ticks now)
+{
+    QVariantMap levels;
+    if (m_playback->clock().playing()) {
+        if (const auto mix = m_playback->audio()->levelsAt(now)) {
+            QVariantMap tracks;
+            for (const auto& [id, l] : mix->tracks)
+                tracks.insert(QString::number(id), levelList(l));
+            levels = {{QStringLiteral("tracks"), tracks},
+                      {QStringLiteral("master"), levelList(mix->master)},
+                      {QStringLiteral("momentary"), lufs(mix->momentary)},
+                      {QStringLiteral("shortTerm"), lufs(mix->shortTerm)},
+                      {QStringLiteral("integrated"), lufs(mix->integrated)}};
+        }
+    }
+    if (levels != m_mixLevels) {
+        m_mixLevels = levels;
+        emit mixLevelsChanged();
+    }
+}
+
+QVariantList ProjectController::audioEffects() const
+{
+    // In the library's order of categories, then by title.
+    static const std::vector<std::string> order{"eq", "dynamics", "space", "echo", "modulation", "pitch", "voice"};
+    std::vector<const EffectManifest*> sorted;
+    for (const EffectManifest& m : AudioEffectLibrary::builtIn().effects())
+        sorted.push_back(&m);
+    const auto rank = [](const EffectManifest* m) {
+        return m->categories.empty() ? int(order.size()) : int(std::ranges::find(order, m->categories.front()) - order.begin());
+    };
+    std::ranges::stable_sort(sorted, [&](const EffectManifest* a, const EffectManifest* b) {
+        return std::pair(rank(a), a->displayTitle()) < std::pair(rank(b), b->displayTitle());
+    });
+    QVariantList list;
+    for (const EffectManifest* m : sorted)
+        list << describeEffect(*m);
+    return list;
+}
+
+bool ProjectController::setTrackMix(double trackId, const QVariantMap& changes)
+{
+    const Track* track = m_project.findTrack(toId(trackId));
+    if (!track)
+        return false;
+    TrackMix mix{track->gainDb, track->pan, track->solo};
+    if (changes.contains(QStringLiteral("gainDb")))
+        mix.gainDb = float(changes.value(QStringLiteral("gainDb")).toDouble());
+    if (changes.contains(QStringLiteral("pan")))
+        mix.pan = float(changes.value(QStringLiteral("pan")).toDouble());
+    if (changes.contains(QStringLiteral("solo")))
+        mix.solo = changes.value(QStringLiteral("solo")).toBool();
+    return apply(std::make_unique<SetTrackMixCommand>(track->id, mix));
+}
+
+bool ProjectController::addAudioEffect(double clipId, const QString& effectId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip) {
+        reportError(QStringLiteral("Select a clip with sound"));
+        return false;
+    }
+    if (!AudioEffectLibrary::builtIn().find(effectId.toStdString())) {
+        reportError(QStringLiteral("Unknown audio effect %1").arg(effectId));
+        return false;
+    }
+    auto effects = clip->audioEffects;
+    effects.push_back(ClipEffect{effectId.toStdString(), true, {}, {}});
+    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects), "Add Audio Effect"));
+}
+
+bool ProjectController::removeAudioEffect(double clipId, int index)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || index < 0 || index >= int(clip->audioEffects.size()))
+        return false;
+    auto effects = clip->audioEffects;
+    effects.erase(effects.begin() + index);
+    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects), "Remove Audio Effect"));
+}
+
+bool ProjectController::setAudioEffectEnabled(double clipId, int index, bool enabled)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || index < 0 || index >= int(clip->audioEffects.size()))
+        return false;
+    auto effects = clip->audioEffects;
+    effects[std::size_t(index)].enabled = enabled;
+    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects),
+                                                              enabled ? "Enable Audio Effect" : "Disable Audio Effect"));
+}
+
+bool ProjectController::setAudioEffectParam(double clipId, int index, const QString& paramId, const QVariant& value)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || index < 0 || index >= int(clip->audioEffects.size()))
+        return false;
+    const EffectManifest* manifest = AudioEffectLibrary::builtIn().find(clip->audioEffects[std::size_t(index)].effectId);
+    const EffectParamSpec* param = manifest ? manifest->findParam(paramId.toStdString()) : nullptr;
+    const auto components = componentsOf(value);
+    if (!param || components.empty()) {
+        reportError(QStringLiteral("Unknown setting %1").arg(paramId));
+        return false;
+    }
+    auto effects = clip->audioEffects;
+    effects[std::size_t(index)].values[param->id] = {std::clamp(components.front(), float(param->min), float(param->max))};
+    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects), "Change Audio Effect"));
+}
+
+bool ProjectController::setKeepPitch(double clipId, bool keep)
+{
+    const Clip* clip = findClip(toId(clipId));
+    return clip && apply(std::make_unique<SetClipKeepPitchCommand>(clip->id, keep));
+}
+
+bool ProjectController::normalizeLoudness(double clipId, double targetLufs)
+{
+    const auto location = m_project.locateClip(toId(clipId));
+    if (!location) {
+        reportError(QStringLiteral("Select a clip with sound"));
+        return false;
+    }
+    const Clip& clip = *location->clip;
+    const MediaItem* media = m_project.findMedia(clip.mediaId);
+    if (clip.generated() || !media || !media->hasAudio
+        || (location->track->kind == TrackKind::Video && !clip.audioEnabled)) {
+        reportError(QStringLiteral("This clip has no sound of its own"));
+        return false;
+    }
+    if (clip.keyframesOf(property::kVolume)) {
+        reportError(QStringLiteral("The volume is animated: remove its keyframes to normalize"));
+        return false;
+    }
+    if (m_measuringLoudness)
+        return false;
+    // The clip alone at 0 dB, from the start of a project of its own: what its own volume
+    // then has to make up for.
+    auto alone = std::make_shared<Project>(m_project);
+    Clip copy = clip;
+    copy.start = 0;
+    copy.gainDb = 0.0f;
+    copy.fadeIn = copy.fadeOut = 0;
+    copy.transitionIn.reset();
+    copy.audioEnabled = true;
+    Track track;
+    track.id = alone->allocateId();
+    track.kind = TrackKind::Audio;
+    track.clips = {copy};
+    alone->tracks = {track};
+    const Id id = clip.id;
+    const Ticks length = clip.duration;
+    m_measuringLoudness = true;
+    emit measuringLoudnessChanged();
+    QPointer<ProjectController> self(this);
+    std::thread([self, alone, id, length, targetLufs] {
+        const double measured = measureLoudness(alone, 0, length);
+        QMetaObject::invokeMethod(qApp, [self, id, measured, targetLufs] {
+            if (!self)
+                return;
+            self->m_measuringLoudness = false;
+            emit self->measuringLoudnessChanged();
+            const Clip* clip = self->findClip(id);
+            if (!clip)
+                return;
+            if (!std::isfinite(measured)) {
+                self->reportError(QStringLiteral("This clip is silent"));
+                emit self->loudnessMeasured(double(id), std::nan(""));
+                return;
+            }
+            const float gain = std::clamp(float(targetLufs - measured), kMinGainDb, kMaxGainDb);
+            ClipAudio audio{gain, clip->fadeIn, clip->fadeOut};
+            std::vector<std::unique_ptr<Command>> steps;
+            steps.push_back(std::make_unique<SetClipAudioCommand>(clip->id, audio));
+            self->m_loudness[id] = {measured, targetLufs};
+            if (self->apply(std::make_unique<CompositeCommand>(std::move(steps), "Normalize Loudness")))
+                emit self->loudnessMeasured(double(id), measured);
+        }, Qt::QueuedConnection);
+    }).detach();
+    return true;
 }

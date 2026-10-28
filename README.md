@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a) and the effects library (8b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b) and audio effects, mixing and loudness (9a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -112,6 +112,24 @@ has no speed, but everything else applies — placement and crop, keyframes (a s
 pan), colour, looks, effects, transitions, export — and transparency in PNGs shows what is
 below. An animated GIF plays as a video. Images do not set the project's canvas; the first
 video does.
+
+**Audio effects, mixer and loudness.** The Audio tab's Audio effects section stacks 40 effects
+of our own on a clip's sound: EQ (Graphic EQ, Bass Boost, Treble Boost, Voice Clarity, Warmth,
+Low Cut, High Cut), dynamics (Compressor, Limiter, Noise Gate, Expander, Voice Leveler), rooms
+(Reverb, Small Room, Large Room, Concert Hall, Church, Cave, Corridor, Bathroom, Stadium),
+echoes (Echo, Ping-Pong Echo, Slapback), modulation (Chorus, Flanger, Stereo Widener,
+Rotating), Pitch Shift, and voices (Deeper Voice, Higher Voice, Child, Chipmunk, Monster,
+Robot, Radio, Telephone, Walkie-Talkie, Underwater, Megaphone). They run after the clip's
+volume and fades, and echoes and reverb ring on past its end. Each is a package of data
+(`effects/audio`) chaining built-in processors — a ten-band EQ with 24 dB/octave cuts, a
+compressor, a look-ahead limiter, a gate, an algorithmic reverb, delays, chorus, a widener,
+auto-pan, a granular pitch shifter, distortion, a ring modulator and noise. Played faster or
+slower, a clip now keeps its pitch (time-stretched; the Speed tab's **Keep pitch** switch
+turns it back into tape-style). **Normalize** in the Loudness section measures a clip
+(ITU-R BS.1770) and sets its volume to −14, −16 or −23 LUFS, and the export dialog can
+normalize the whole mix the same way, with a limiter at −1 dBFS. The timeline's **Mixer**
+button opens a strip per track — volume, balance, mute, solo and a peak/RMS meter — and the
+master with momentary, short-term and integrated loudness and its peak.
 
 **Effects library.** The library's Effects tab holds 61 original effects with previews
 rendered on the GPU (they animate on hover), filtered by category chips — Blur (Gaussian Blur,

@@ -190,3 +190,65 @@ TEST_CASE("audio fields survive save and load, and old files default them")
     CHECK(c.gainDb == 0.0f);
     CHECK(c.audioEnabled);
 }
+
+TEST_CASE("audio effects, keep pitch and track mix are commands, kept by splits and saved")
+{
+    AvProject p;
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, p.wavMedia, 0, 4 * kSec, 0).clipId();
+    const std::vector<ClipEffect> stack{{"tve.audio.hall", true, {{"mix", {0.5f}}}, {}},
+                                        {"tve.audio.limiter", false, {}, {}}};
+    p.push<SetClipAudioEffectsCommand>(clip, stack, "Add Audio Effect");
+    CHECK(p.clip(clip).audioEffects == stack);
+    p.stack.undo();
+    CHECK(p.clip(clip).audioEffects.empty());
+    p.stack.redo();
+
+    CHECK(p.clip(clip).keepPitch); // the default
+    auto& pitch = p.push<SetClipKeepPitchCommand>(clip, false);
+    CHECK(pitch.label() == "Pitch Follows Speed");
+    CHECK_FALSE(p.clip(clip).keepPitch);
+
+    p.push<SetTrackMixCommand>(p.audioTrack, TrackMix{-3.0f, -0.5f, true});
+    const Track& track = *p.project.findTrack(p.audioTrack);
+    CHECK(track.gainDb == -3.0f);
+    CHECK(track.pan == -0.5f);
+    CHECK(track.solo);
+    // Mixing is allowed on a locked track, as muting is.
+    p.push<SetTrackFlagCommand>(p.audioTrack, SetTrackFlagCommand::Flag::Locked, true);
+    p.push<SetTrackMixCommand>(p.audioTrack, TrackMix{-4.0f, -0.5f, true});
+    CHECK(p.tryPush<SetClipKeepPitchCommand>(clip, true).value() == "track is locked");
+    p.push<SetTrackFlagCommand>(p.audioTrack, SetTrackFlagCommand::Flag::Locked, false);
+
+    // Both halves of a split keep them.
+    auto& split = p.push<SplitClipCommand>(clip, 2 * kSec);
+    CHECK(p.clip(split.rightClipId()).audioEffects == stack);
+    CHECK_FALSE(p.clip(split.rightClipId()).keepPitch);
+
+    // Saved; older projects get the defaults.
+    nlohmann::json json = projectToJson(p.project);
+    Project loaded = projectFromJson(json);
+    CHECK(loaded.locateClip(clip)->clip->audioEffects == stack);
+    CHECK_FALSE(loaded.locateClip(clip)->clip->keepPitch);
+    CHECK(loaded.findTrack(p.audioTrack)->gainDb == -4.0f);
+    CHECK(loaded.findTrack(p.audioTrack)->solo);
+    for (auto& t : json["tracks"]) {
+        t.erase("gainDb");
+        t.erase("pan");
+        t.erase("solo");
+        for (auto& c : t["clips"]) {
+            c.erase("audioEffects");
+            c.erase("keepPitch");
+        }
+    }
+    Project old = projectFromJson(json);
+    CHECK(old.findTrack(p.audioTrack)->gainDb == 0.0f);
+    CHECK_FALSE(old.findTrack(p.audioTrack)->solo);
+    CHECK(old.locateClip(clip)->clip->keepPitch);
+    CHECK(old.locateClip(clip)->clip->audioEffects.empty());
+
+    // Only clips with sound; only tracks with sound; in range.
+    const Id silent = p.push<AddClipCommand>(p.videoTrack, p.silentMedia, 0, kSec, 0).clipId();
+    CHECK(p.tryPush<SetClipAudioEffectsCommand>(silent, stack, "x").value() == "this clip has no sound");
+    CHECK(p.tryPush<SetTrackMixCommand>(p.audioTrack, TrackMix{20.0f, 0.0f, false}).value()
+          == "volume is out of range");
+}

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <iterator>
 
 namespace tve {
@@ -330,6 +331,7 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.speed = clip.speed;
     right.reversed = clip.reversed;
     right.freeze = clip.freeze;
+    right.keepPitch = clip.keepPitch;
     if (!clip.freeze) {
         // Forward: the right part continues further into the source. Reversed: the left
         // part keeps the top of the span and the right part the bottom.
@@ -353,6 +355,7 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     }
     right.audioEnabled = clip.audioEnabled;
     right.gainDb = clip.gainDb;
+    right.audioEffects = clip.audioEffects;
     right.visual = clip.visual;
     right.effects = clip.effects;
     right.color = clip.color;
@@ -775,6 +778,95 @@ std::optional<std::string> SetClipEffectsCommand::redo(Project& project)
 void SetClipEffectsCommand::undo(Project& project)
 {
     project.locateClip(m_clipId)->clip->effects = m_previous;
+}
+
+// --- SetClipAudioEffectsCommand ---
+
+namespace {
+
+// Why a clip cannot take audio effects or a pitch setting, if it cannot.
+std::optional<std::string> soundError(const Project& project, const Track& track, const Clip& clip)
+{
+    if (clip.generated() || track.kind == TrackKind::Title)
+        return "this clip has no sound";
+    const MediaItem* media = project.findMedia(clip.mediaId);
+    if (!media || !media->hasAudio)
+        return "this clip has no sound";
+    if (track.kind == TrackKind::Video && !clip.audioEnabled)
+        return "this clip's sound is on an audio track now";
+    return std::nullopt;
+}
+
+} // namespace
+
+std::optional<std::string> SetClipAudioEffectsCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    if (auto error = soundError(project, *location->track, *location->clip))
+        return error;
+    if (auto error = validateEffects(m_effects))
+        return error;
+    m_previous = location->clip->audioEffects;
+    location->clip->audioEffects = m_effects;
+    return std::nullopt;
+}
+
+void SetClipAudioEffectsCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->audioEffects = m_previous;
+}
+
+// --- SetClipKeepPitchCommand ---
+
+std::optional<std::string> SetClipKeepPitchCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    if (auto error = soundError(project, *location->track, *location->clip))
+        return error;
+    m_previous = location->clip->keepPitch;
+    location->clip->keepPitch = m_keep;
+    return std::nullopt;
+}
+
+void SetClipKeepPitchCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->keepPitch = m_previous;
+}
+
+// --- SetTrackMixCommand ---
+
+std::optional<std::string> SetTrackMixCommand::redo(Project& project)
+{
+    Track* track = project.findTrack(m_trackId);
+    if (!track)
+        return "track not found";
+    if (track->kind == TrackKind::Title)
+        return "title tracks have no sound";
+    if (!std::isfinite(m_mix.gainDb) || m_mix.gainDb < kMinGainDb || m_mix.gainDb > kMaxGainDb)
+        return "volume is out of range";
+    if (!std::isfinite(m_mix.pan) || m_mix.pan < -1.0f || m_mix.pan > 1.0f)
+        return "balance must be between left and right";
+    m_previous = {track->gainDb, track->pan, track->solo};
+    track->gainDb = m_mix.gainDb;
+    track->pan = m_mix.pan;
+    track->solo = m_mix.solo;
+    return std::nullopt;
+}
+
+void SetTrackMixCommand::undo(Project& project)
+{
+    Track& track = *project.findTrack(m_trackId);
+    track.gainDb = m_previous.gainDb;
+    track.pan = m_previous.pan;
+    track.solo = m_previous.solo;
 }
 
 // --- SetProjectSettingsCommand ---

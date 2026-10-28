@@ -1,0 +1,16 @@
+{
+  "id": "tve.audio.monster",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["voice"],
+  "title": {"en": "Monster"},
+  "params": [
+    {"id": "semitones", "type": "float", "title": {"en": "Pitch"}, "min": -24, "max": -3, "default": -9}
+  ],
+  "chain": [
+    {"processor": "pitch", "settings": {"window": 70}},
+    {"processor": "eq", "settings": {"b62": 4, "b125": 3}},
+    {"processor": "distortion", "settings": {"drive": 6, "tone": 3000, "output": -8}}
+  ],
+  "license": "TVE-Original"
+}

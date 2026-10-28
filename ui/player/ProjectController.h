@@ -108,6 +108,14 @@ class ProjectController : public QObject {
     Q_PROPERTY(double exportProgress READ exportProgress NOTIFY exportChanged)
 
     // Output meters (0..1 peak per channel) and the audio device.
+    // Audio effect packages for the Audio tab, by category: {id, title, categories, params}.
+    Q_PROPERTY(QVariantList audioEffects READ audioEffects CONSTANT)
+    // The mixer's meters while playing: {tracks: {<track id>: [peakL, peakR, rmsL, rmsR]},
+    // master: [...], momentary, shortTerm, integrated} (LUFS; null while unknown); empty
+    // when stopped.
+    Q_PROPERTY(QVariantMap mixLevels READ mixLevels NOTIFY mixLevelsChanged)
+    // A clip's loudness is being measured (normalizeLoudness).
+    Q_PROPERTY(bool measuringLoudness READ measuringLoudness NOTIFY measuringLoudnessChanged)
     Q_PROPERTY(double levelLeft READ levelLeft NOTIFY levelsChanged)
     Q_PROPERTY(double levelRight READ levelRight NOTIFY levelsChanged)
     Q_PROPERTY(QString audioDevice READ audioDevice CONSTANT)
@@ -188,6 +196,10 @@ public:
     ProxyManager& proxies() { return m_proxies; }
     bool exporting() const { return m_exportThread.joinable(); }
     double exportProgress() const { return m_exportProgress; }
+    QVariantList audioEffects() const;
+    void updateMixLevels(tve::Ticks now);
+    QVariantMap mixLevels() const { return m_mixLevels; }
+    bool measuringLoudness() const { return m_measuringLoudness; }
     double levelLeft() const { return m_levelLeft; }
     double levelRight() const { return m_levelRight; }
     QString audioDevice() const;
@@ -232,6 +244,20 @@ public:
     Q_INVOKABLE bool detachAudio(double clipId);
     // flag: "locked", "hidden" or "muted".
     Q_INVOKABLE bool setTrackFlag(double trackId, const QString& flag, bool value);
+    // Mixer: any of {gainDb, pan (-1..1), solo}.
+    Q_INVOKABLE bool setTrackMix(double trackId, const QVariantMap& changes);
+
+    // Audio effects on a clip's sound, like the picture effects (values are numbers).
+    Q_INVOKABLE bool addAudioEffect(double clipId, const QString& effectId);
+    Q_INVOKABLE bool removeAudioEffect(double clipId, int index);
+    Q_INVOKABLE bool setAudioEffectEnabled(double clipId, int index, bool enabled);
+    Q_INVOKABLE bool setAudioEffectParam(double clipId, int index, const QString& paramId, const QVariant& value);
+    // Whether the clip's sound keeps its pitch when it plays faster or slower.
+    Q_INVOKABLE bool setKeepPitch(double clipId, bool keep);
+    // Measures the clip's loudness (after its effects, before its volume) in the background,
+    // then sets its volume so it plays at `targetLufs`: one "Normalize Loudness" step.
+    // loudnessMeasured() reports the measurement (NaN when silent).
+    Q_INVOKABLE bool normalizeLoudness(double clipId, double targetLufs);
 
     // Picture. `visual` keys: x, y (canvas fractions), scale, rotation (degrees), cropLeft,
     // cropTop, cropRight, cropBottom (fractions), opacity (0..1), blend (name). Missing keys
@@ -414,6 +440,9 @@ signals:
     void selectionChanged();
     void selectedClipInfoChanged();
     void levelsChanged();
+    void mixLevelsChanged();
+    void measuringLoudnessChanged();
+    void loudnessMeasured(double clipId, double lufs);
     void errorOccurred(const QString& message);
     void exportChanged();
     void recoveryChanged();
@@ -459,6 +488,10 @@ private:
     TrackListModel m_trackModel;
     std::shared_ptr<tve::TimelinePlayback> m_playback;
     std::unique_ptr<tve::AudioOutput> m_audioOutput;
+    QVariantMap m_mixLevels;
+    bool m_measuringLoudness = false;
+    // Measured and normalized loudness by clip (for the inspector), LUFS.
+    std::map<tve::Id, std::pair<double, double>> m_loudness;
     double m_levelLeft = 0;
     double m_levelRight = 0;
     QPointer<VideoView> m_view;

@@ -1,0 +1,16 @@
+{
+  "id": "tve.audio.echo",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["echo"],
+  "title": {"en": "Echo"},
+  "params": [
+    {"id": "time", "type": "float", "title": {"en": "Time (ms)"}, "min": 20, "max": 2000, "default": 350},
+    {"id": "feedback", "type": "float", "title": {"en": "Repeats"}, "min": 0, "max": 0.9, "default": 0.4},
+    {"id": "level", "type": "float", "title": {"en": "Level"}, "min": 0, "max": 1, "default": 0.5}
+  ],
+  "chain": [
+    {"processor": "delay", "settings": {"tone": 0.6}}
+  ],
+  "license": "TVE-Original"
+}
