@@ -102,3 +102,13 @@ original work (`"license": "TVE-Original"`).
 | `ripple` | `tve.transition.ripple` | amplitude, waves |
 | `door` | `tve.transition.door` | — |
 
+## Overlays and looks
+
+Packages whose `category` includes `"overlay"` are listed after the other effects and
+marked "Overlay" in the library: procedural layers drawn over the picture (light leaks,
+grain, dust and scratches, VHS, a viewfinder, bokeh), animated with `tve_time`.
+
+`looks/looks.json` lists the Filters library: each look is a colour grade (the
+`ColorGrade` JSON of a project file) and usually a 3D LUT in `looks/luts/`, both generated
+by `tools/make_looks.py`. Built-in LUT paths start `:/effects/looks/luts/`.
+

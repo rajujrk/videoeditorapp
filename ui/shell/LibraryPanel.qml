@@ -37,6 +37,7 @@ Rectangle {
         { icon: "titles", label: "Titles", phase: "" },
         { icon: "transitions", label: "Transitions", phase: "" },
         { icon: "effects", label: "Effects", phase: "" },
+        { icon: "filters", label: "Filters", phase: "" },
         { icon: "stickers", label: "Stickers", phase: "Stickers and elements — Phase 2" },
         { icon: "templates", label: "Templates", phase: "Template mode — Phase 4" }
     ]
@@ -171,6 +172,22 @@ Rectangle {
                                 radius: Theme.radius.s
                                 color: Theme.color.surfaceSunken
                                 Icon { anchors.centerIn: parent; name: "effects"; color: tile.active ? Theme.color.accentText : Theme.color.textDisabled }
+                                Rectangle { // overlays are marked
+                                    visible: (tile.modelData.categories || []).indexOf("overlay") >= 0
+                                    x: Theme.space.xs
+                                    y: Theme.space.xs
+                                    width: overlayBadge.implicitWidth + Theme.space.s
+                                    height: overlayBadge.implicitHeight + 2
+                                    radius: Theme.radius.s
+                                    color: Qt.alpha(Theme.color.trackEffect, 0.85)
+                                    Text {
+                                        id: overlayBadge
+                                        anchors.centerIn: parent
+                                        text: "Overlay"
+                                        font: Theme.type.caption
+                                        color: "white"
+                                    }
+                                }
                             }
                             Text {
                                 Layout.leftMargin: Theme.space.s
@@ -180,6 +197,90 @@ Rectangle {
                                 color: Theme.color.textPrimary
                                 elide: Text.ElideRight
                                 Layout.maximumWidth: tile.width - Theme.space.xl
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Filters tab: an adjustment layer, then the looks (click to put one on the selected
+            // clip). Previews are a sample scene graded on the CPU with the same maths.
+            GridView {
+                id: looksGrid
+                objectName: "looksGrid"
+                visible: library.tabs[library.currentTab].label === "Filters"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.leftMargin: Theme.space.m
+                clip: true
+                cellWidth: Math.floor(width / 2)
+                cellHeight: 112
+                model: [{ id: "", title: "Adjustment layer", category: "Layer" }].concat(library.project.looks)
+
+                delegate: Item {
+                    id: lookTile
+                    required property var modelData
+                    readonly property bool adjustment: modelData.id === ""
+                    readonly property bool active: !adjustment && library.project.selectedClipInfo.look !== undefined
+                                                   && library.project.selectedClipInfo.look.id === modelData.id
+                    width: looksGrid.cellWidth
+                    height: looksGrid.cellHeight
+
+                    AbstractButton {
+                        anchors.fill: parent
+                        anchors.rightMargin: Theme.space.m
+                        anchors.bottomMargin: Theme.space.m
+                        hoverEnabled: true
+                        objectName: lookTile.adjustment ? "libraryAdjustmentLayer" : "libraryLook:" + lookTile.modelData.id
+                        onClicked: lookTile.adjustment ? library.project.addAdjustmentLayer()
+                                                       : library.project.applyLook(library.project.selectedClip, lookTile.modelData.id)
+                        ToolTip {
+                            visible: parent.hovered
+                            delay: 600
+                            text: lookTile.adjustment ? "Add an adjustment layer at the playhead: its look, grade and effects change everything below it"
+                                                      : "Put this look on the selected clip"
+                        }
+                        background: Rectangle {
+                            radius: Theme.radius.m
+                            color: Theme.color.surfaceRaised
+                            border.width: lookTile.active ? 2 : 1
+                            border.color: lookTile.active ? Theme.color.accent
+                                        : parent.hovered ? Theme.color.borderStrong : Theme.color.borderSubtle
+                        }
+                        contentItem: ColumnLayout {
+                            spacing: Theme.space.xs
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                Layout.margins: Theme.space.xs
+                                radius: Theme.radius.s
+                                color: Theme.color.surfaceSunken
+                                clip: true
+                                Image {
+                                    objectName: "lookPreview:" + lookTile.modelData.id
+                                    visible: !lookTile.adjustment
+                                    anchors.fill: parent
+                                    fillMode: Image.PreserveAspectCrop
+                                    asynchronous: true
+                                    source: lookTile.adjustment ? "" : "image://tvelook/" + lookTile.modelData.id
+                                }
+                                Rectangle { // an adjustment layer: a band over the layers below
+                                    visible: lookTile.adjustment
+                                    anchors.centerIn: parent
+                                    width: parent.width * 0.6
+                                    height: 14
+                                    radius: 3
+                                    color: Theme.color.trackEffect
+                                }
+                            }
+                            Text {
+                                Layout.leftMargin: Theme.space.s
+                                Layout.bottomMargin: Theme.space.s
+                                text: lookTile.modelData.title
+                                font: Theme.type.label
+                                color: Theme.color.textPrimary
+                                elide: Text.ElideRight
+                                Layout.maximumWidth: lookTile.width - Theme.space.xl
                             }
                         }
                     }
@@ -586,7 +687,7 @@ Rectangle {
             }
 
             Item {
-                visible: !effectsGrid.visible && !transitionsGrid.visible && !titlesGrid.visible && !mediaBin.visible
+                visible: !effectsGrid.visible && !looksGrid.visible && !transitionsGrid.visible && !titlesGrid.visible && !mediaBin.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 

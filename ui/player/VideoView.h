@@ -29,17 +29,20 @@ public:
     void setVisual(tve::Id clipId, const tve::ClipVisual& visual);
     void setEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects);
     void setGrade(tve::Id clipId, const tve::ColorGrade& grade);
+    void setLook(tve::Id clipId, const tve::ColorGrade& look);
     void clear(tve::Id clipId);
     quint64 revision() const { return m_revision.load(); }
 
-    // Replaces `visual`/`effects`/`grade` with any overrides for `clipId` (render thread).
-    void apply(tve::Id clipId, tve::ClipVisual& visual, std::vector<tve::ClipEffect>& effects, tve::ColorGrade& grade);
+    // Replaces `visual`/`effects`/`grade`/`look` with any overrides for `clipId` (render thread).
+    void apply(tve::Id clipId, tve::ClipVisual& visual, std::vector<tve::ClipEffect>& effects, tve::ColorGrade& grade,
+               tve::ColorGrade& look);
 
 private:
     std::mutex m_mutex;
     std::map<tve::Id, tve::ClipVisual> m_visual;
     std::map<tve::Id, std::vector<tve::ClipEffect>> m_effects;
     std::map<tve::Id, tve::ColorGrade> m_grades;
+    std::map<tve::Id, tve::ColorGrade> m_looks;
     std::atomic<quint64> m_revision{1};
 };
 
@@ -94,8 +97,8 @@ public:
     qint64 skippedFrames() const { return m_skipped; }
     bool hardwareAccelerated() const { return m_hardware; }
 
-    // One entry per built-in effect: {id, title, params: [{id, title, type, min, max,
-    // default, values}]}.
+    // One entry per built-in effect, overlays last: {id, title, categories, params: [{id,
+    // title, type, min, max, default, values, keyframable}]}.
     QVariantList availableEffects() const;
     int enabledEffectCount() const;
 
@@ -112,6 +115,7 @@ public:
     void setPreviewVisual(tve::Id clipId, const tve::ClipVisual& visual);
     void setPreviewEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects);
     void setPreviewGrade(tve::Id clipId, const tve::ColorGrade& grade);
+    void setPreviewLook(tve::Id clipId, const tve::ColorGrade& look);
     void clearPreview(tve::Id clipId);
 
     bool scopesEnabled() const { return m_scopesEnabled; }

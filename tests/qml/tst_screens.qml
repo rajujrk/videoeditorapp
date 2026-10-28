@@ -50,7 +50,8 @@ Item {
         function test_editor_exposes_all_built_in_effects() {
             const editor = createScreen(editorComponent)
             verify(editor.player)
-            compare(editor.player.availableEffects.length, 5)
+            compare(editor.player.availableEffects.length, 11) // 5 effects, 6 overlays
+            compare(editor.player.availableEffects.filter((e) => e.categories.indexOf("overlay") >= 0).length, 6)
             compare(editor.player.enabledEffectCount, 0)
         }
 

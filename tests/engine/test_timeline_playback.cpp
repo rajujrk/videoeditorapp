@@ -227,6 +227,45 @@ TEST_CASE("animated clips are placed and filtered as their keyframes say at each
     CHECK(visuals.at(29 * kFrame30).transform.x == Catch::Approx(0.29));
 }
 
+TEST_CASE("adjustment layers play as layers without pictures, with their look and grade")
+{
+    requireSamples();
+    auto project = std::make_shared<Project>();
+    CommandStack stack(*project);
+    auto track = std::make_unique<AddTrackCommand>(TrackKind::Video, "V1");
+    auto* trackCmd = track.get();
+    REQUIRE_FALSE(stack.push(std::move(track)));
+    auto media = std::make_unique<ImportMediaCommand>(sample("test_1080p30_h264.mp4"), 2 * kSec);
+    auto* mediaCmd = media.get();
+    REQUIRE_FALSE(stack.push(std::move(media)));
+    REQUIRE_FALSE(stack.push(std::make_unique<AddClipCommand>(trackCmd->trackId(), mediaCmd->mediaId(), 0, kSec, 0)));
+    auto layer = std::make_unique<AddAdjustmentCommand>(kNoId, 0, kSec);
+    auto* layerCmd = layer.get();
+    REQUIRE_FALSE(stack.push(std::move(layer)));
+    ColorGrade grey;
+    grey.saturation = -1;
+    REQUIRE_FALSE(stack.push(std::make_unique<SetClipColorCommand>(std::vector<Id>{layerCmd->clipId()}, grey)));
+    ColorGrade warm;
+    warm.temperature = 0.8;
+    REQUIRE_FALSE(stack.push(std::make_unique<SetClipLookCommand>(layerCmd->clipId(), ClipLook{"w", "W", 0.5, warm}, "Apply Look")));
+
+    TimelinePlayback playback;
+    playback.setProject(project);
+    for (int attempt = 0; attempt < 200 && !playback.queue().frontPts(); ++attempt)
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    int skipped = 0;
+    auto frame = playback.queue().takeLatestDue(0, skipped);
+    REQUIRE(frame);
+    REQUIRE(frame->layers.size() == 2);
+    CHECK_FALSE(frame->layers[0].adjustment);
+    CHECK(frame->layers[0].frame.pixelBuffer());
+    const VideoLayer& adjustment = frame->layers[1];
+    CHECK(adjustment.adjustment);
+    CHECK_FALSE(adjustment.frame.pixelBuffer());
+    CHECK(adjustment.grade == grey);
+    CHECK(adjustment.look.temperature == Catch::Approx(0.4)); // the look at half strength
+}
+
 TEST_CASE("a 60 fps project shows each frame of a 30 fps clip twice")
 {
     requireSamples();

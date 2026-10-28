@@ -78,6 +78,7 @@ Item {
         // Move there first, like a real cursor: leaving the previous control closes its
         // tooltip, which would otherwise take this click.
         function click(editor, name) {
+            scrollIntoView(settled(editor, name))
             const item = settled(editor, name)
             mouseMove(item)
             mouseClick(item)

@@ -454,7 +454,18 @@ Rectangle {
                         }
                     }
 
+                    Text {
+                        objectName: "adjustmentNote"
+                        visible: inspector.clipInfo.isAdjustment === true
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: "An adjustment layer changes everything below it while it lasts. Give it a look "
+                              + "(Filters), a grade (Color) or effects (Effects); its opacity sets how strongly."
+                        font: Theme.type.body
+                        color: Theme.color.textSecondary
+                    }
                     Section {
+                        visible: inspector.clipInfo.isAdjustment !== true
                         title: "Transform"
                         VisualSlider { key: "x"; objectName: "visual:x"; label: "Position X"; from: -1; to: 1; value: inspector.visual.x || 0
                                        format: (v) => Math.round(v * inspector.project.canvasWidth) + " px" }
@@ -467,6 +478,7 @@ Rectangle {
                                        value: inspector.visual.rotation || 0; format: (v) => v.toFixed(1) + "°" }
                     }
                     Section {
+                        visible: inspector.clipInfo.isAdjustment !== true
                         title: "Crop"
                         VisualSlider { key: "cropLeft"; label: "Left"; from: 0; to: 0.45; value: inspector.visual.cropLeft || 0; format: (v) => Math.round(v * 100) + "%" }
                         VisualSlider { key: "cropRight"; label: "Right"; from: 0; to: 0.45; value: inspector.visual.cropRight || 0; format: (v) => Math.round(v * 100) + "%" }
@@ -506,10 +518,11 @@ Rectangle {
                 }
 
                 Text {
-                    visible: inspector.clipInfo.isTitle === true
+                    visible: inspector.clipInfo.isTitle === true || inspector.clipInfo.isAdjustment === true
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
-                    text: "Titles have no speed; trim them to change how long they show."
+                    text: (inspector.clipInfo.isTitle === true ? "Titles" : "Adjustment layers")
+                          + " have no speed; trim them to change how long they last."
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap
@@ -518,6 +531,7 @@ Rectangle {
                 Section {
                     id: speedSection
                     visible: inspector.clipInfo.id !== undefined && inspector.clipInfo.isTitle !== true
+                             && inspector.clipInfo.isAdjustment !== true
                     Layout.topMargin: Theme.space.s
                     title: "Speed"
                     readonly property bool still: inspector.clipInfo.freeze === true
@@ -829,6 +843,40 @@ Rectangle {
                     }
                 }
 
+                // The clip's look (filter), before the grade below.
+                Section {
+                    objectName: "lookSection"
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    title: "Look"
+                    Text {
+                        objectName: "lookName"
+                        Layout.fillWidth: true
+                        text: inspector.clipInfo.look ? inspector.clipInfo.look.title : "No look. Pick one in the Filters library."
+                        font: Theme.type.body
+                        color: inspector.clipInfo.look ? Theme.color.textPrimary : Theme.color.textSecondary
+                        wrapMode: Text.WordWrap
+                    }
+                    AudioSlider {
+                        objectName: "lookIntensity"
+                        visible: !!inspector.clipInfo.look
+                        label: "Intensity"
+                        from: 0
+                        to: 1
+                        value: inspector.clipInfo.look ? inspector.clipInfo.look.intensity : 1
+                        format: (v) => Math.round(v * 100) + "%"
+                        onLiveValue: (v) => inspector.project.previewLookIntensity(inspector.clipInfo.id, v)
+                        onCommitted: (v) => inspector.project.setLookIntensity(inspector.clipInfo.id, v)
+                    }
+                    TextButton {
+                        objectName: "removeLookButton"
+                        visible: !!inspector.clipInfo.look
+                        text: "Remove look"
+                        variant: "secondary"
+                        onClicked: inspector.project.removeLook(inspector.clipInfo.id)
+                    }
+                }
+
                 Section {
                     visible: colorPage.gradable
                     Layout.fillWidth: true
@@ -1072,6 +1120,21 @@ Rectangle {
                             variant: "secondary"
                             enabled: !!colorPage.grade.lutName
                             onClicked: inspector.project.removeLut(inspector.clipInfo.id)
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xs
+                        Text { text: "Built-in"; font: Theme.type.label; color: Theme.color.textSecondary }
+                        ComboBox {
+                            objectName: "lutLibraryPicker"
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            model: inspector.project.lutLibrary
+                            textRole: "name"
+                            displayText: "Choose…"
+                            onActivated: (index) => inspector.project.chooseLut(inspector.clipInfo.id,
+                                                                                "qrc" + model[index].path)
                         }
                     }
                     GradeSlider { key: "lutIntensity"; label: "Intensity"; from: 0; to: 1

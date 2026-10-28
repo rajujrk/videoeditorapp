@@ -76,6 +76,10 @@ struct ColorGrade {
 };
 
 std::optional<std::string> validateGrade(const ColorGrade& grade);
+
+// `grade` at `amount` of its strength (0: neutral, 1: as is): numbers and wheels scale,
+// curves move towards their neutral line, the LUT's intensity scales.
+ColorGrade scaledGrade(const ColorGrade& grade, double amount);
 std::optional<std::string> validateCurve(const ColorCurve& curve);
 
 // The curve's output at `x` (0..1); `x` itself for an empty curve.

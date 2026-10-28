@@ -149,6 +149,20 @@ struct ClipTransition {
 inline constexpr Ticks kMinTransitionDuration = kTicksPerSecond / 10;
 inline constexpr Ticks kMaxTransitionDuration = 10 * kTicksPerSecond;
 
+// A look (filter) from the library on a clip: the look's own grade, applied before the
+// clip's grade at `intensity` (0..1).
+struct ClipLook {
+    std::string id;
+    std::string title;
+    double intensity = 1.0;
+    ColorGrade grade;
+
+    // The grade to render: the look's at its intensity.
+    ColorGrade effective() const { return scaledGrade(grade, intensity); }
+
+    friend bool operator==(const ClipLook&, const ClipLook&) = default;
+};
+
 struct Clip {
     Id id = kNoId;
     Id mediaId = kNoId;
@@ -166,6 +180,7 @@ struct Clip {
     // Picture
     ClipVisual visual;
     ColorGrade color; // applied before the effects
+    std::optional<ClipLook> look; // applied before `color`
     std::vector<ClipEffect> effects; // applied in order, before placement on the canvas
 
     // Time. At speed 2 one second of timeline plays two seconds of source; reversed plays
@@ -182,6 +197,12 @@ struct Clip {
 
     // A title: drawn text instead of media (mediaId is kNoId).
     std::optional<ClipText> text;
+    // An adjustment layer (no media either): its look, grade and effects apply to
+    // everything below it on screen while it lasts.
+    bool adjustment = false;
+
+    // A clip with no media to play: a title or an adjustment layer.
+    bool generated() const { return text.has_value() || adjustment; }
 
     // Animated properties (see animatableProperties()), by property id. A property with
     // keyframes takes its value from them; its static value above is then unused.

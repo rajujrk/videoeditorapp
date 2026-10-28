@@ -10,6 +10,7 @@
 
 #include "ThumbnailProvider.h"
 #include "TransitionPreviewProvider.h"
+#include "LookLibrary.h"
 #include "TitleRenderer.h"
 
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ThemePlugin)
@@ -29,6 +30,7 @@ public slots:
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
         engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(TitlePreviewProvider::kId), new TitlePreviewProvider);
+        engine->addImageProvider(QString::fromLatin1(LookPreviewProvider::kId), new LookPreviewProvider);
     }
 };
 

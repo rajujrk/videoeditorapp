@@ -1,0 +1,41 @@
+{
+  "id": "tve.overlay.dust_scratches",
+  "version": 1,
+  "kind": "video-effect",
+  "category": [
+    "overlay"
+  ],
+  "title": {
+    "en": "Dust & Scratches"
+  },
+  "params": [
+    {
+      "id": "amount",
+      "type": "float",
+      "title": {
+        "en": "Amount"
+      },
+      "min": 0,
+      "max": 1,
+      "default": 0.6,
+      "keyframable": true
+    },
+    {
+      "id": "scratches",
+      "type": "int",
+      "title": {
+        "en": "Scratches"
+      },
+      "min": 0,
+      "max": 8,
+      "default": 3,
+      "keyframable": true
+    }
+  ],
+  "passes": [
+    {
+      "fragment": "dust_scratches.frag"
+    }
+  ],
+  "license": "TVE-Original"
+}

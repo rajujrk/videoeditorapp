@@ -9,9 +9,11 @@
 #include "io/LutFile.h"
 #include "io/ProjectSerializer.h"
 #include "model/TimelineQuery.h"
+#include "gpu/ColorGrader.h"
 #include "gpu/EffectLibrary.h"
 #include "EffectInfo.h"
 #include "Exporter.h"
+#include "LookLibrary.h"
 #include "MicrophoneAccess.h"
 #include "TitleRenderer.h"
 #include "playback/TimelinePlayback.h"
@@ -436,6 +438,18 @@ QVariantList hslList(const ColorGrade& g)
     return list;
 }
 
+// A LUT's name: a built-in one's title, else its file name.
+QString lutName(const std::string& path)
+{
+    if (path.empty())
+        return {};
+    for (const LookInfo& look : builtInLooks()) {
+        if (look.grade.lutPath == path)
+            return QString::fromStdString(look.title);
+    }
+    return fileName(path);
+}
+
 QVariantMap gradeMap(const ColorGrade& g)
 {
     return {
@@ -457,8 +471,8 @@ QVariantMap gradeMap(const ColorGrade& g)
         {QStringLiteral("hueVsHue"), curveList(g.hueVsHue)},
         {QStringLiteral("lumaVsSat"), curveList(g.lumaVsSat)},
         {QStringLiteral("lutPath"), QString::fromStdString(g.lutPath)},
-        {QStringLiteral("lutName"), g.lutPath.empty() ? QString() : fileName(g.lutPath)},
-        {QStringLiteral("lutMissing"), !g.lutPath.empty() && !QFileInfo::exists(QString::fromStdString(g.lutPath))},
+        {QStringLiteral("lutName"), lutName(g.lutPath)},
+        {QStringLiteral("lutMissing"), !g.lutPath.empty() && !QFile::exists(QString::fromStdString(g.lutPath))},
         {QStringLiteral("lutIntensity"), g.lutIntensity},
         {QStringLiteral("neutral"), g.isNeutral()},
     };
@@ -584,14 +598,17 @@ QVariantList ProjectController::tracks() const
         QVariantList clips;
         for (const Clip& clip : track->clips) {
             const MediaItem* media = m_project.findMedia(clip.mediaId);
-            const QString label = clip.text ? QString::fromStdString(clip.text->text).section(QLatin1Char('\n'), 0, 0)
-                                  : media     ? fileName(media->path)
-                                              : QStringLiteral("Missing media");
+            const QString label = clip.text      ? QString::fromStdString(clip.text->text).section(QLatin1Char('\n'), 0, 0)
+                                  : clip.adjustment ? QStringLiteral("Adjustment layer")
+                                  : media          ? fileName(media->path)
+                                                   : QStringLiteral("Missing media");
             clips << QVariantMap{
                 {QStringLiteral("id"), double(clip.id)},
                 {QStringLiteral("mediaId"), double(clip.mediaId)},
                 {QStringLiteral("label"), label},
                 {QStringLiteral("isTitle"), clip.text.has_value()},
+                {QStringLiteral("isAdjustment"), clip.adjustment},
+                {QStringLiteral("lookTitle"), clip.look ? QString::fromStdString(clip.look->title) : QString()},
                 {QStringLiteral("start"), seconds(clip.start)},
                 {QStringLiteral("duration"), seconds(clip.duration)},
                 {QStringLiteral("sourceIn"), seconds(clip.sourceIn)},
@@ -1303,7 +1320,10 @@ QVariantMap ProjectController::selectedClipInfo() const
         });
         return {
             {QStringLiteral("id"), double(clip->id)},
-            {QStringLiteral("label"), clip->text ? QStringLiteral("Title") : media ? fileName(media->path) : QString()},
+            {QStringLiteral("label"), clip->text         ? QStringLiteral("Title")
+                                      : clip->adjustment ? QStringLiteral("Adjustment layer")
+                                      : media            ? fileName(media->path)
+                                                         : QString()},
             {QStringLiteral("isTitle"), clip->text.has_value()},
             {QStringLiteral("text"), clip->text ? textMap(*clip->text) : QVariantMap()},
             {QStringLiteral("trackKind"), track.kind == TrackKind::Audio ? QStringLiteral("audio") : QStringLiteral("video")},
@@ -1323,6 +1343,11 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("localTime"), seconds(local)},
             {QStringLiteral("effects"), effectsList(clip->effectsAt(now))}, // values at the playhead
             {QStringLiteral("color"), gradeMap(clip->color)},
+            {QStringLiteral("isAdjustment"), clip->adjustment},
+            {QStringLiteral("look"), clip->look ? QVariant(QVariantMap{{QStringLiteral("id"), QString::fromStdString(clip->look->id)},
+                                                                       {QStringLiteral("title"), QString::fromStdString(clip->look->title)},
+                                                                       {QStringLiteral("intensity"), clip->look->intensity}})
+                                                : QVariant()},
             {QStringLiteral("speed"), clip->speed},
             {QStringLiteral("reversed"), clip->reversed},
             {QStringLiteral("freeze"), clip->freeze},
@@ -1524,9 +1549,12 @@ bool ProjectController::resetClipColor(double clipId)
 
 bool ProjectController::chooseLut(double clipId, const QUrl& file)
 {
-    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    // qrc:/… names a built-in LUT (stored as :/…).
+    const QString path = file.isLocalFile()                   ? file.toLocalFile()
+                       : file.scheme() == QLatin1String("qrc") ? QLatin1Char(':') + file.path()
+                                                               : file.toString();
     try {
-        loadLut(path.toStdString());
+        readLut(path.toStdString());
     } catch (const std::exception& e) {
         reportError(QStringLiteral("Could not use %1: %2").arg(QFileInfo(path).fileName(), QString::fromUtf8(e.what())));
         return false;
@@ -1549,6 +1577,96 @@ bool ProjectController::removeLut(double clipId)
     g.lutPath.clear();
     g.lutIntensity = 1.0;
     return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{clip->id}, g, "Remove LUT"));
+}
+
+// --- Looks and adjustment layers ---
+
+QVariantList ProjectController::looks() const
+{
+    QVariantList list;
+    for (const LookInfo& look : builtInLooks())
+        list << QVariantMap{{QStringLiteral("id"), QString::fromStdString(look.id)},
+                            {QStringLiteral("title"), QString::fromStdString(look.title)},
+                            {QStringLiteral("category"), QString::fromStdString(look.category)}};
+    return list;
+}
+
+QVariantList ProjectController::lutLibrary() const
+{
+    QVariantList list;
+    for (const LookInfo& look : builtInLooks()) {
+        if (!look.grade.lutPath.empty())
+            list << QVariantMap{{QStringLiteral("name"), QString::fromStdString(look.title)},
+                                {QStringLiteral("path"), QString::fromStdString(look.grade.lutPath)}};
+    }
+    return list;
+}
+
+bool ProjectController::applyLook(double clipId, const QString& lookId)
+{
+    const LookInfo* look = findLook(lookId.toStdString());
+    if (!look) {
+        reportError(QStringLiteral("Unknown look %1").arg(lookId));
+        return false;
+    }
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip) {
+        reportError(QStringLiteral("Select a video clip"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipLookCommand>(clip->id, ClipLook{look->id, look->title, 1.0, look->grade},
+                                                      "Apply Look"));
+}
+
+bool ProjectController::setLookIntensity(double clipId, double intensity)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->look)
+        return false;
+    ClipLook look = *clip->look;
+    look.intensity = std::clamp(intensity, 0.0, 1.0);
+    return apply(std::make_unique<SetClipLookCommand>(clip->id, look, "Change Look"));
+}
+
+void ProjectController::previewLookIntensity(double clipId, double intensity)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->look || !m_view)
+        return;
+    ClipLook look = *clip->look;
+    look.intensity = std::clamp(intensity, 0.0, 1.0);
+    m_view->setPreviewLook(clip->id, look.effective());
+}
+
+bool ProjectController::removeLook(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->look)
+        return false;
+    return apply(std::make_unique<SetClipLookCommand>(clip->id, std::nullopt, "Remove Look"));
+}
+
+bool ProjectController::addAdjustmentLayer(double trackId, double start)
+{
+    constexpr Ticks kLength = 5 * kTicksPerSecond;
+    const Ticks at = start < 0 ? ticks(m_playhead) : ticks(start);
+    Id track = toId(trackId);
+    if (trackId < 0) {
+        // The lowest free video track above the main one; else a new track on top.
+        const auto main = m_project.trackIndex(mainTrackId());
+        for (std::size_t i = main ? *main + 1 : 0; i < m_project.tracks.size() && track == kNoId; ++i) {
+            const Track& candidate = m_project.tracks[i];
+            if (candidate.kind != TrackKind::Audio && !candidate.locked && !candidate.hidden
+                && !candidate.overlaps(at, kLength))
+                track = candidate.id;
+        }
+    }
+    auto command = std::make_unique<AddAdjustmentCommand>(track, at, kLength);
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return false;
+    setSelectedClip(double(raw->clipId()));
+    return true;
 }
 
 bool ProjectController::copyGrade(double clipId)

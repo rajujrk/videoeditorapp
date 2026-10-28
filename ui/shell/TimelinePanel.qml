@@ -489,7 +489,9 @@ Rectangle {
             id: body
             anchors.fill: parent
             radius: Theme.radius.s
-            readonly property color kindColor: item.clip.isTitle ? Theme.color.trackTitle : timeline.trackColor(item.track.kind)
+            readonly property color kindColor: item.clip.isTitle ? Theme.color.trackTitle
+                                             : item.clip.isAdjustment ? Theme.color.trackEffect
+                                             : timeline.trackColor(item.track.kind)
             color: Qt.alpha(kindColor, Theme.dark ? 0.55 : 0.45)
             border.width: item.selected ? 2 : 1
             border.color: item.selected ? Theme.color.selection : kindColor
@@ -500,7 +502,7 @@ Rectangle {
             // Thumbnail strip: one frame per tile, from the source time under the tile's centre.
             Row {
                 id: strip
-                visible: item.track.kind === "video" && !item.clip.isTitle
+                visible: item.track.kind === "video" && !item.clip.isTitle && !item.clip.isAdjustment
                 anchors { left: parent.left; right: parent.right; top: parent.top; margins: 3; topMargin: 19 }
                 height: parent.height - 22 - (body.showsSound ? 14 : 0)
                 spacing: 1
@@ -592,6 +594,7 @@ Rectangle {
                     width: parent.width - Theme.space.s
                     // Badges first so a short clip still shows them.
                     text: (item.clip.isTitle ? "Title · " : "")
+                          + (item.clip.lookTitle ? item.clip.lookTitle + " · " : "")
                           + (item.clip.freeze ? "Still · " : "")
                           + (item.clip.speedRamp && item.clip.speedRamp.length > 0 ? "Ramp · "
                              : !item.clip.freeze && item.clip.speed !== 1 ? Number(item.clip.speed.toFixed(2)) + "× · " : "")
@@ -677,7 +680,7 @@ Rectangle {
                     const c = item.clip
                     const before = c.sourceIn / c.speed
                     const after = (c.mediaDuration - c.sourceIn) / c.speed - c.duration
-                    const unlimited = c.freeze || c.isTitle
+                    const unlimited = c.freeze || c.isTitle || c.isAdjustment
                     const roomBefore = unlimited ? Infinity : c.reversed ? after : before
                     const roomAfter = unlimited ? Infinity : c.reversed ? before : after
                     if (isStart) {

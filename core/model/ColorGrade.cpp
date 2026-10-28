@@ -77,6 +77,36 @@ std::optional<std::string> validateGrade(const ColorGrade& g)
     return std::nullopt;
 }
 
+ColorGrade scaledGrade(const ColorGrade& g, double amount)
+{
+    amount = std::clamp(amount, 0.0, 1.0);
+    ColorGrade s = g;
+    for (double* v : {&s.exposure, &s.contrast, &s.saturation, &s.temperature, &s.tint})
+        *v *= amount;
+    for (ColorWheel* w : {&s.lift, &s.gamma, &s.gain, &s.offset}) {
+        w->x *= amount;
+        w->y *= amount;
+        w->master *= amount;
+    }
+    for (ColorCurve* curve : {&s.master, &s.red, &s.green, &s.blue}) {
+        for (CurvePoint& p : *curve)
+            p.y = p.x + (p.y - p.x) * amount; // towards the diagonal
+    }
+    for (ColorCurve* curve : {&s.hueVsSat, &s.hueVsHue, &s.lumaVsSat}) {
+        for (CurvePoint& p : *curve)
+            p.y = 0.5 + (p.y - 0.5) * amount; // towards the middle line
+    }
+    for (HslBand& band : s.hsl) {
+        band.hue *= amount;
+        band.saturation *= amount;
+        band.luminance *= amount;
+    }
+    s.lutIntensity *= amount;
+    if (amount == 0.0)
+        return ColorGrade{};
+    return s;
+}
+
 double evaluateColorCurve(const ColorCurve& curve, double x)
 {
     x = std::clamp(x, 0.0, 1.0);
