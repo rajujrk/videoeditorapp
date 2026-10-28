@@ -680,7 +680,7 @@ Rectangle {
                     const c = item.clip
                     const before = c.sourceIn / c.speed
                     const after = (c.mediaDuration - c.sourceIn) / c.speed - c.duration
-                    const unlimited = c.freeze || c.isTitle || c.isAdjustment
+                    const unlimited = c.freeze || c.isTitle || c.isAdjustment || c.isStill
                     const roomBefore = unlimited ? Infinity : c.reversed ? after : before
                     const roomAfter = unlimited ? Infinity : c.reversed ? before : after
                     if (isStart) {

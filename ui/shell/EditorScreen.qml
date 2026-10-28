@@ -83,7 +83,10 @@ Rectangle {
         id: importDialog
         title: "Import media"
         fileMode: FileDialog.OpenFiles
-        nameFilters: ["Media files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg)", "All files (*)"]
+        nameFilters: ["Media files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp)",
+                      "Videos (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif)",
+                      "Images (*.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.gif)",
+                      "Audio (*.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg)", "All files (*)"]
         onAccepted: editor.project.importMedia(selectedFiles)
     }
 

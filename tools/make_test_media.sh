@@ -52,4 +52,7 @@ make test_hevc10_1080p30.mp4 -f lavfi -i testsrc2=size=1920x1080:rate=30 -frames
 make gradients_1080p30_h264.mp4 -f lavfi -i gradients=size=1920x1080:rate=30:speed=0.02:nb_colors=4 -t 10 \
     -c:v h264_videotoolbox -b:v 12M -pix_fmt yuv420p
 
+# An animated GIF (20 frames, 2 s): imported as video, unlike a still.
+make test_anim.gif -f lavfi -i testsrc2=size=320x240:rate=10 -t 2
+
 echo "done: $out"

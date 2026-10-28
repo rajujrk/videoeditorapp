@@ -516,6 +516,7 @@ Phase 1 is delivered in five vertical slices, each usable on its own:
 | 5b. Autosave & recovery | Autosave of unsaved work (debounced, per document session), recovery from crashes, quits and project switches on Home, atomic project saves | **Done** (snapshot autosave; the command journal stays a later option) |
 | 5c. Proxies | 720p short-GOP proxies made in the background (automatic above 1080p, or on request), cached by source identity, used by the preview only; media-bin state and actions, player toggle | **Done** |
 | 5d. Voice-over | Microphone recording at the playhead with the timeline playing (count-in, optional mute, input picker and level), take placed on a free audio track or a new Voice-over track in one undo step, crash-safe WAV takes, macOS microphone permission | **Done** |
+| 5e. Still images | Import of PNG, JPEG, HEIC/HEIF, WebP, TIFF, BMP and one-frame GIFs (EXIF orientation applied; animated GIFs play as video): 5-second clips of any length with no speed, thumbnails, the full picture pipeline (transform, colour, looks, effects, keyframes, transitions) and export | **Done** (added after Phase 1 closed: the P0 import row covered images, the slices had missed them) |
 
 ### 9.2 Phase 2 slices
 

@@ -1,5 +1,6 @@
 #include "FrameCompositor.h"
 
+#include "StillImage.h"
 #include "TitleRenderer.h"
 #include "VideoView.h"
 
@@ -135,6 +136,7 @@ void FrameCompositor::reset()
 {
     m_clipChains.clear();
     m_titles.clear();
+    m_stills.clear();
 }
 
 void FrameCompositor::flushTextureCache()
@@ -265,6 +267,28 @@ QRhiTexture* FrameCompositor::titleTexture(QRhiCommandBuffer* cb, tve::Id clipId
     return title.texture.get();
 }
 
+QRhiTexture* FrameCompositor::stillTexture(QRhiCommandBuffer* cb, const std::string& path)
+{
+    StillTexture& still = m_stills[path];
+    still.lastUsed = m_renders;
+    if (still.texture)
+        return still.texture.get();
+    const QImage image = still::read(QString::fromStdString(path));
+    if (image.isNull()) {
+        m_stills.erase(path);
+        return nullptr;
+    }
+    still.texture.reset(m_rhi->newTexture(QRhiTexture::RGBA8, image.size()));
+    if (!still.texture->create()) {
+        m_stills.erase(path);
+        return nullptr;
+    }
+    QRhiResourceUpdateBatch* upload = m_rhi->nextResourceUpdateBatch();
+    upload->uploadTexture(still.texture.get(), image);
+    cb->resourceUpdate(upload);
+    return still.texture.get();
+}
+
 QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame& frame, QSize canvas, float seconds,
                                      PreviewOverrides* overrides, std::vector<CVMetalTextureRef>& retained)
 {
@@ -284,13 +308,15 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     const auto clipPicture = [&](tve::Id clipId, const tve::DecodedFrame& decoded, tve::ClipVisual& visual,
                                  std::vector<tve::ClipEffect> effects, tve::ColorGrade grade, tve::ColorGrade look,
                                  const std::optional<tve::ClipText>& text = std::nullopt,
-                                 QRhiTexture* canvasBelow = nullptr) -> QRhiTexture* {
+                                 QRhiTexture* canvasBelow = nullptr, const std::string& stillPath = {}) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
         if (canvasBelow) {
             picture = canvasBelow; // an adjustment layer works on what is under it
         } else if (text) {
             picture = titleTexture(cb, clipId, *text);
             liveTitles.insert(clipId);
+        } else if (!stillPath.empty()) {
+            picture = stillTexture(cb, stillPath);
         } else if (decoded.pixelBuffer()) {
             picture = convertLayer(cb, slot(slotIndex++), decoded.pixelBuffer(), retained);
         }
@@ -331,8 +357,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             }
             continue;
         }
-        QRhiTexture* picture =
-            clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look, layer.text);
+        QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look,
+                                           layer.text, nullptr, layer.stillPath);
         if (!layer.transition) {
             if (picture)
                 m_compositor->draw(cb, picture, visual);
@@ -343,7 +369,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         tve::ClipVisual incomingVisual = transition.visual;
         QRhiTexture* incoming =
             clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade,
-                        transition.look);
+                        transition.look, std::nullopt, nullptr, transition.stillPath);
         if (!picture || !incoming) {
             if (picture || incoming)
                 m_compositor->draw(cb, picture ? picture : incoming, picture ? visual : incomingVisual);
@@ -375,6 +401,9 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     // Drop effect chains and title textures of clips no longer on screen.
     std::erase_if(m_clipChains, [&](const auto& entry) { return !liveClips.contains(entry.first); });
     std::erase_if(m_titles, [&](const auto& entry) { return !liveTitles.contains(entry.first); });
+    // Stills stay a while after they leave the screen (scrubbing back and forth), then go.
+    std::erase_if(m_stills, [&](const auto& entry) { return m_renders - entry.second.lastUsed > 120; });
+    ++m_renders;
     return m_compositor->result();
 }
 

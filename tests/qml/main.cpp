@@ -1,5 +1,7 @@
 // Runs the tst_*.qml files in this folder against the app's static QML modules.
 #include <QDir>
+#include <QFile>
+#include <QImage>
 #include <QTemporaryDir>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -17,6 +19,43 @@ Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ThemePlugin)
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_PlayerPlugin)
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ShellPlugin)
 
+// Still images for the tests, written at start-up: a 400 × 200 picture, red on the left and
+// blue on the right, as PNG, JPEG, WebP, TIFF and HEIC; the same JPEG with an EXIF tag saying
+// "turn a quarter clockwise" (so it shows 200 × 400, red on top); and a PNG with a
+// transparent background around a green disc.
+void writeStills(const QString& dir)
+{
+    QImage halves(400, 200, QImage::Format_RGB32);
+    for (int y = 0; y < 200; ++y)
+        for (int x = 0; x < 400; ++x)
+            halves.setPixel(x, y, x < 200 ? qRgb(220, 30, 30) : qRgb(30, 60, 220));
+    for (const char* format : {"png", "jpg", "webp", "tiff", "heic"})
+        halves.save(dir + QStringLiteral("/halves.") + QLatin1String(format), format, 95);
+
+    // An Exif APP1 segment with Orientation = 6, after the JPEG's start-of-image marker.
+    QFile jpeg(dir + QStringLiteral("/halves.jpg"));
+    jpeg.open(QIODevice::ReadOnly);
+    const QByteArray data = jpeg.readAll();
+    const unsigned char exif[] = {0xFF, 0xE1, 0x00, 0x22, 'E', 'x', 'i', 'f', 0, 0,
+                                  'I', 'I', 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00,  // TIFF header, IFD at 8
+                                  0x01, 0x00,                                    // one entry
+                                  0x12, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, // Orientation = 6
+                                  0x00, 0x00, 0x00, 0x00};                       // no next IFD
+    QFile rotated(dir + QStringLiteral("/rotated.jpg"));
+    rotated.open(QIODevice::WriteOnly);
+    rotated.write(data.left(2));
+    rotated.write(reinterpret_cast<const char*>(exif), sizeof exif);
+    rotated.write(data.mid(2));
+
+    QImage disc(200, 200, QImage::Format_ARGB32);
+    disc.fill(Qt::transparent);
+    for (int y = 0; y < 200; ++y)
+        for (int x = 0; x < 200; ++x)
+            if ((x - 100) * (x - 100) + (y - 100) * (y - 100) < 60 * 60)
+                disc.setPixel(x, y, qRgba(40, 200, 80, 255));
+    disc.save(dir + QStringLiteral("/disc.png"));
+}
+
 // Gives tests the sample-media folder and a scratch folder as context properties.
 class Setup : public QObject {
     Q_OBJECT
@@ -27,6 +66,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("tempDir"), QDir::tempPath());
         engine->rootContext()->setContextProperty(QStringLiteral("recordingsDir"), qEnvironmentVariable("TVE_RECORDING_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("fixturesDir"), QStringLiteral(TVE_QML_TESTS_DIR "/fixtures"));
+        engine->rootContext()->setContextProperty(QStringLiteral("stillsDir"), qEnvironmentVariable("TVE_TEST_STILLS_DIR"));
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
         engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(TitlePreviewProvider::kId), new TitlePreviewProvider);
@@ -50,6 +90,9 @@ int main(int argc, char** argv)
     qputenv("TVE_AUDIO_INPUT", "null");
     QTemporaryDir recordings;
     qputenv("TVE_RECORDING_DIR", recordings.path().toLocal8Bit());
+    QTemporaryDir stills;
+    writeStills(stills.path());
+    qputenv("TVE_TEST_STILLS_DIR", stills.path().toLocal8Bit());
     QTemporaryDir colorPresets; // colour presets saved by tests
     qputenv("TVE_COLOR_PRESET_DIR", colorPresets.path().toLocal8Bit());
     Setup setup;

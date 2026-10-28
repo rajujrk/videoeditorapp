@@ -3,8 +3,8 @@
 A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
-**Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5d (export, autosave and
-crash recovery, proxies, voice-over). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b) and looks, overlays and adjustment layers (7c) done.** You can import video and audio files, arrange them on a multi-track timeline
+**Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b) and looks, overlays and adjustment layers (7c) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -103,6 +103,15 @@ it, and Presets save a grade by name (in
 `~/Library/Application Support/TechieVideoEditor/Color Presets`; `TVE_COLOR_PRESET_DIR`
 moves them) to apply to other clips. Sliders preview
 live and each change is one undo step.
+
+**Images.** Photos and graphics import like video: PNG, JPEG, HEIC/HEIF, WebP, TIFF and BMP
+(and a GIF of one frame), from the Import button (⌘I) or by dropping them on the editor. A
+photo taken on its side is turned upright by its EXIF tag. The media bin marks them
+"Image"; on the timeline an image becomes a 5-second clip you can trim to any length. It
+has no speed, but everything else applies — placement and crop, keyframes (a slow push in or
+pan), colour, looks, effects, transitions, export — and transparency in PNGs shows what is
+below. An animated GIF plays as a video. Images do not set the project's canvas; the first
+video does.
 
 **Looks, overlays and adjustment layers.** The library's Filters tab holds 12 looks of our
 own — Warm Film, Teal & Orange, Bleach Bypass, Golden Hour, Cool Night, Vintage Fade, Matte

@@ -15,6 +15,7 @@
 #include "Exporter.h"
 #include "LookLibrary.h"
 #include "MicrophoneAccess.h"
+#include "StillImage.h"
 #include "TitleRenderer.h"
 #include "playback/TimelinePlayback.h"
 
@@ -608,6 +609,7 @@ QVariantList ProjectController::tracks() const
                 {QStringLiteral("label"), label},
                 {QStringLiteral("isTitle"), clip.text.has_value()},
                 {QStringLiteral("isAdjustment"), clip.adjustment},
+                {QStringLiteral("isStill"), media && media->still},
                 {QStringLiteral("lookTitle"), clip.look ? QString::fromStdString(clip.look->title) : QString()},
                 {QStringLiteral("start"), seconds(clip.start)},
                 {QStringLiteral("duration"), seconds(clip.duration)},
@@ -659,6 +661,7 @@ QVariantList ProjectController::media() const
             {QStringLiteral("frameRate"), double(item.frameRate.num) / item.frameRate.den},
             {QStringLiteral("hasVideo"), item.hasVideo},
             {QStringLiteral("hasAudio"), item.hasAudio},
+            {QStringLiteral("still"), item.still},
         };
     }
     return list;
@@ -820,7 +823,15 @@ int ProjectController::importMedia(const QList<QUrl>& files)
             continue;
         }
         QString error;
-        auto item = probeMedia(path, &error);
+        std::optional<MediaItem> item;
+        if (still::isStillImage(QString::fromStdString(path))) {
+            // A photo or graphic: one picture, 5 seconds when first placed.
+            const auto size = still::size(QString::fromStdString(path));
+            item = MediaItem{.path = path, .duration = kStillDuration, .hasVideo = true, .hasAudio = false,
+                             .width = size ? size->width() : 0, .height = size ? size->height() : 0, .still = true};
+        } else {
+            item = probeMedia(path, &error);
+        }
         if (!item) {
             reportError(error);
             continue;
@@ -858,7 +869,8 @@ bool ProjectController::addClip(double mediaId, double trackId, double start)
     }
     // An untouched project takes its canvas from the first video clip.
     const bool projectEmpty = std::ranges::all_of(m_project.tracks, [](const Track& t) { return t.clips.empty(); });
-    if (!m_canvasChosen && projectEmpty && media->hasVideo && media->width > 0 && media->height > 0) {
+    // (A photo's size is no guide to the video's, so stills leave the canvas alone.)
+    if (!m_canvasChosen && projectEmpty && media->hasVideo && !media->still && media->width > 0 && media->height > 0) {
         ProjectSettings settings = m_project.settings;
         settings.width = media->width;
         settings.height = media->height;
@@ -996,7 +1008,7 @@ void ProjectController::requestAutoProxies()
     if (!m_autoProxies)
         return;
     for (const MediaItem& media : m_project.media) {
-        if (media.hasVideo && std::min(media.width, media.height) > kAutoProxyAbove)
+        if (media.hasVideo && !media.still && std::min(media.width, media.height) > kAutoProxyAbove)
             m_proxies.request(QString::fromStdString(media.path));
     }
 }
@@ -1032,7 +1044,7 @@ QVariantMap ProjectController::proxyStates() const
 bool ProjectController::createProxy(double mediaId)
 {
     const MediaItem* media = m_project.findMedia(toId(mediaId));
-    if (!media || !media->hasVideo) {
+    if (!media || !media->hasVideo || media->still) {
         reportError(QStringLiteral("Only videos have proxies"));
         return false;
     }
@@ -1344,6 +1356,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("effects"), effectsList(clip->effectsAt(now))}, // values at the playhead
             {QStringLiteral("color"), gradeMap(clip->color)},
             {QStringLiteral("isAdjustment"), clip->adjustment},
+            {QStringLiteral("isStill"), media && media->still},
             {QStringLiteral("look"), clip->look ? QVariant(QVariantMap{{QStringLiteral("id"), QString::fromStdString(clip->look->id)},
                                                                        {QStringLiteral("title"), QString::fromStdString(clip->look->title)},
                                                                        {QStringLiteral("intensity"), clip->look->intensity}})
