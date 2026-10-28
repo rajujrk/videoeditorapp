@@ -30,12 +30,14 @@ public:
     void setEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects);
     void setGrade(tve::Id clipId, const tve::ColorGrade& grade);
     void setLook(tve::Id clipId, const tve::ColorGrade& look);
+    void setKeying(tve::Id clipId, const tve::ChromaKey& key, const std::vector<tve::ClipMask>& masks);
     void clear(tve::Id clipId);
     quint64 revision() const { return m_revision.load(); }
 
     // Replaces `visual`/`effects`/`grade`/`look` with any overrides for `clipId` (render thread).
     void apply(tve::Id clipId, tve::ClipVisual& visual, std::vector<tve::ClipEffect>& effects, tve::ColorGrade& grade,
                tve::ColorGrade& look);
+    void applyKeying(tve::Id clipId, tve::ChromaKey& key, std::vector<tve::ClipMask>& masks);
 
 private:
     std::mutex m_mutex;
@@ -43,6 +45,7 @@ private:
     std::map<tve::Id, std::vector<tve::ClipEffect>> m_effects;
     std::map<tve::Id, tve::ColorGrade> m_grades;
     std::map<tve::Id, tve::ColorGrade> m_looks;
+    std::map<tve::Id, std::pair<tve::ChromaKey, std::vector<tve::ClipMask>>> m_keying;
     std::atomic<quint64> m_revision{1};
 };
 
@@ -116,6 +119,7 @@ public:
     void setPreviewEffects(tve::Id clipId, std::vector<tve::ClipEffect> effects);
     void setPreviewGrade(tve::Id clipId, const tve::ColorGrade& grade);
     void setPreviewLook(tve::Id clipId, const tve::ColorGrade& look);
+    void setPreviewKeying(tve::Id clipId, const tve::ChromaKey& key, const std::vector<tve::ClipMask>& masks);
     void clearPreview(tve::Id clipId);
 
     bool scopesEnabled() const { return m_scopesEnabled; }

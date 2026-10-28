@@ -6,6 +6,8 @@ add_library(tve_core STATIC
     model/SpeedRamp.cpp
     model/ColorGrade.h
     model/ColorGrade.cpp
+    model/Masks.h
+    model/Masks.cpp
     model/Project.h
     model/Project.cpp
     model/TimelineQuery.h

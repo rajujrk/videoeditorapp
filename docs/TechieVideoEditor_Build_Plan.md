@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a), curves & effect keyframes (6b) and speed ramping (6c), colour grading (7a), qualifiers & scopes (7b) and looks (7c) done, masks & keying (8a) next — see §9.2
+**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a), curves & effect keyframes (6b) and speed ramping (6c), colour grading (7a), qualifiers & scopes (7b), looks (7c) and masks & keying (8a) done, effects library (8b) next — see §9.2
 **Date:** 2026-10-27
 
 ---
@@ -532,8 +532,8 @@ pulled forward into Phase 1 (5c).
 | 7a. Color | Per-clip grade on the GPU before the effects: exposure, contrast, saturation, temperature, tint; lift/gamma/gain/offset wheels; master and R/G/B tone curves (monotone cubic); `.cube`/`.3dl` 3D LUT import with intensity; copy/paste grade; saved colour presets | **Done** (HSL qualifier and hue curves moved to 7b with the scopes) |
 | 7b. Qualifiers & scopes | HSL adjustments in 8 hue bands (blended between neighbours, greys untouched), hue-vs-sat / hue-vs-hue / luma-vs-sat curves, all in the grade pass; waveform, RGB parade, vectorscope (75 % targets, skin-tone line) and histogram of the preview, from a 256-pixel copy read back from the GPU only while shown | **Done** (scopes measure the preview, not the full-resolution export) |
 | 7c. Looks | 12 original looks (10 generated 3D LUTs plus 2 grades, `tools/make_looks.py`) in a Filters tab with CPU-rendered previews, applied before the clip's grade at an intensity; the LUTs as a built-in library in the Color tab; 6 procedural overlays as effect packages (light leak, film grain, dust & scratches, VHS, viewfinder, bokeh); adjustment layers that grade and filter everything below them, blended by opacity | **Done** (overlays are procedural effects rather than stock footage) |
-| 8a. Masks & keying | Shape and pen masks (feather, invert), track matte, chroma key, PiP and split-screen layouts | Next |
-| 8b. Effects library | Effect framework to 60 effects: drop shadow, border, background fill, sharpen, grain, warps and more | Planned |
+| 8a. Masks & keying | Rectangle, ellipse, line, star, heart and pen masks (up to 8 per clip, 32 pen points; position, size, rotation, roundness, feather, invert) as signed distances in one GPU pass with the chroma key (CbCr distance, tolerance, softness, spill suppression), in the clip's own picture after its grade; on-player mask handles and a key colour picker; track mattes (alpha, luma and inverted, from the clip on the track above); 6 PiP and split-screen layouts applied as one undo step | **Done** (masks are not keyframed yet: their sliders set the whole clip) |
+| 8b. Effects library | Effect framework to 60 effects: drop shadow, border, background fill, sharpen, grain, warps and more | Next |
 | 9a. Audio DSP | EQ, dynamics, reverbs and delays, pitch and voice changers as audio effect packages; pitch-preserving time-stretch for speed changes and ramps; loudness normalization; mixer with peak/RMS/LUFS meters | Planned |
 | 9b. Titles system | Text animation presets (per word and character), title templates, shapes and bubbles, rolling credits | Planned |
 | 10a. Transitions to 60 | 3D, warp and luma-wipe transitions; apply to all or random | Planned |

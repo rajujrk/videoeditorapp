@@ -160,13 +160,15 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
             if (layer.clip->adjustment) {
                 composite.layers.push_back(VideoLayer{layer.clip->id, DecodedFrame{}, layer.clip->visualAt(time),
                                                       layer.clip->effectsAt(time), std::nullopt, std::nullopt,
-                                                      layer.clip->color, lookOf(*layer.clip), true});
+                                                      layer.clip->color, lookOf(*layer.clip), true, {}, ChromaKey{},
+                                                      {}, MatteMode::None});
                 continue;
             }
             if (layer.clip->text) {
                 composite.layers.push_back(VideoLayer{layer.clip->id, DecodedFrame{}, layer.clip->visualAt(time),
                                                       layer.clip->effectsAt(time), std::nullopt, layer.clip->text,
-                                                      ColorGrade{}, ColorGrade{}}); // titles are not graded
+                                                      ColorGrade{}, ColorGrade{}, false, {}, ChromaKey{},
+                                                      layer.clip->masks, layer.clip->matte}); // titles are not graded
                 continue;
             }
             // Each side is a decoded frame, or a still image's path (nothing to decode).
@@ -178,7 +180,7 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
                 DecodedFrame picture() const { return frame ? frame->share() : DecodedFrame{}; }
             };
             const auto sideOf = [&](const Clip& clip, Ticks sourceTime) {
-                Side side{&clip};
+                Side side{&clip, nullptr, {}};
                 const MediaItem* media = project->findMedia(clip.mediaId);
                 if (media && media->still)
                     side.stillPath = media->path;
@@ -194,15 +196,16 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
                     layer.clip->id, out.picture(), layer.clip->visualAt(time), layer.clip->effectsAt(time),
                     LayerTransition{t.spec->transitionId, t.spec->values, float(t.progress), t.to->id, in.picture(),
                                     t.to->visualAt(time), t.to->effectsAt(time), t.to->color, lookOf(*t.to),
-                                    in.stillPath},
-                    std::nullopt, layer.clip->color, lookOf(*layer.clip), false, out.stillPath});
+                                    in.stillPath, t.to->chromaKey, t.to->masks},
+                    std::nullopt, layer.clip->color, lookOf(*layer.clip), false, out.stillPath,
+                    layer.clip->chromaKey, layer.clip->masks}); // no matte during a transition
             } else if (out.shown() || in.shown()) {
                 // One side unreadable: show the other alone.
                 const Side& side = out.shown() ? out : in;
                 const Clip& clip = *side.clip;
                 composite.layers.push_back(VideoLayer{clip.id, side.picture(), clip.visualAt(time), clip.effectsAt(time),
                                                       std::nullopt, std::nullopt, clip.color, lookOf(clip), false,
-                                                      side.stillPath});
+                                                      side.stillPath, clip.chromaKey, clip.masks, clip.matte});
             }
         }
         if (!m_queue.push(std::move(composite)))

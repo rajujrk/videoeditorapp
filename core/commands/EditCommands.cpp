@@ -357,6 +357,9 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.effects = clip.effects;
     right.color = clip.color;
     right.look = clip.look;
+    right.chromaKey = clip.chromaKey;
+    right.masks = clip.masks;
+    right.matte = clip.matte;
     right.text = clip.text;
     right.adjustment = clip.adjustment;
     right.keyframes = clip.keyframes; // both halves animate as the whole did
@@ -594,6 +597,57 @@ void SetClipColorCommand::undo(Project& project)
 {
     for (std::size_t i = 0; i < m_clipIds.size(); ++i)
         project.locateClip(m_clipIds[i])->clip->color = m_previous[i];
+}
+
+// --- SetClipKeyingCommand ---
+
+std::optional<std::string> SetClipKeyingCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    if (location->track->kind != TrackKind::Video || location->clip->adjustment)
+        return "masks and keys apply to pictures";
+    if (auto error = validateMasks(m_keying.masks))
+        return error;
+    if (auto error = validateChromaKey(m_keying.chromaKey))
+        return error;
+    Clip& clip = *location->clip;
+    m_previous = {clip.masks, clip.chromaKey, clip.matte};
+    clip.masks = m_keying.masks;
+    clip.chromaKey = m_keying.chromaKey;
+    clip.matte = m_keying.matte;
+    return std::nullopt;
+}
+
+void SetClipKeyingCommand::undo(Project& project)
+{
+    Clip& clip = *project.locateClip(m_clipId)->clip;
+    clip.masks = m_previous.masks;
+    clip.chromaKey = m_previous.chromaKey;
+    clip.matte = m_previous.matte;
+}
+
+// --- CompositeCommand ---
+
+std::optional<std::string> CompositeCommand::redo(Project& project)
+{
+    for (std::size_t i = 0; i < m_commands.size(); ++i) {
+        if (auto error = m_commands[i]->redo(project)) {
+            while (i-- > 0)
+                m_commands[i]->undo(project);
+            return error;
+        }
+    }
+    return std::nullopt;
+}
+
+void CompositeCommand::undo(Project& project)
+{
+    for (auto it = m_commands.rbegin(); it != m_commands.rend(); ++it)
+        (*it)->undo(project);
 }
 
 // --- SetClipLookCommand ---

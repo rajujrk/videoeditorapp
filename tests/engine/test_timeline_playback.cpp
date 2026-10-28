@@ -266,6 +266,42 @@ TEST_CASE("adjustment layers play as layers without pictures, with their look an
     CHECK(adjustment.look.temperature == Catch::Approx(0.4)); // the look at half strength
 }
 
+TEST_CASE("layers carry their clip's masks, key and matte")
+{
+    requireSamples();
+    auto project = std::make_shared<Project>();
+    CommandStack stack(*project);
+    auto track = std::make_unique<AddTrackCommand>(TrackKind::Video, "V1");
+    auto* trackCmd = track.get();
+    REQUIRE_FALSE(stack.push(std::move(track)));
+    auto media = std::make_unique<ImportMediaCommand>(sample("test_1080p30_h264.mp4"), 2 * kSec);
+    auto* mediaCmd = media.get();
+    REQUIRE_FALSE(stack.push(std::move(media)));
+    auto clip = std::make_unique<AddClipCommand>(trackCmd->trackId(), mediaCmd->mediaId(), 0, kSec, 0);
+    auto* clipCmd = clip.get();
+    REQUIRE_FALSE(stack.push(std::move(clip)));
+    ClipMask ellipse;
+    ellipse.shape = MaskShape::Ellipse;
+    ChromaKey key;
+    key.enabled = true;
+    REQUIRE_FALSE(stack.push(std::make_unique<SetClipKeyingCommand>(
+        clipCmd->clipId(), ClipKeying{{ellipse}, key, MatteMode::InvertedLuma}, "Add Mask")));
+
+    TimelinePlayback playback;
+    playback.setProject(project);
+    for (int attempt = 0; attempt < 200 && !playback.queue().frontPts(); ++attempt)
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    int skipped = 0;
+    auto frame = playback.queue().takeLatestDue(0, skipped);
+    REQUIRE(frame);
+    REQUIRE(frame->layers.size() == 1);
+    const VideoLayer& layer = frame->layers[0];
+    REQUIRE(layer.masks.size() == 1);
+    CHECK(layer.masks[0].shape == MaskShape::Ellipse);
+    CHECK(layer.chromaKey.enabled);
+    CHECK(layer.matte == MatteMode::InvertedLuma);
+}
+
 TEST_CASE("still images play as paths, also in transitions")
 {
     requireSamples();

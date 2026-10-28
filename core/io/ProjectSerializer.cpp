@@ -63,6 +63,24 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EasingCurve, x1, y1, x2, y2)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Keyframe, time, value, easing, curve)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipEffect, effectId, enabled, values, keyframes)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SpeedPoint, at, speed)
+NLOHMANN_JSON_SERIALIZE_ENUM(MaskShape, {
+    {MaskShape::Rectangle, "rectangle"},
+    {MaskShape::Ellipse, "ellipse"},
+    {MaskShape::Line, "line"},
+    {MaskShape::Star, "star"},
+    {MaskShape::Heart, "heart"},
+    {MaskShape::Pen, "pen"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipMask, shape, x, y, width, height, rotation, roundness, feather,
+                                                invert, points)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChromaKey, enabled, color, tolerance, softness, spill)
+NLOHMANN_JSON_SERIALIZE_ENUM(MatteMode, {
+    {MatteMode::None, "none"},
+    {MatteMode::Alpha, "alpha"},
+    {MatteMode::InvertedAlpha, "invertedAlpha"},
+    {MatteMode::Luma, "luma"},
+    {MatteMode::InvertedLuma, "invertedLuma"},
+})
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CurvePoint, x, y)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorWheel, x, y, master)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(HslBand, hue, saturation, luminance)
@@ -72,7 +90,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorGrade, exposure, contrast, 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipLook, id, title, intensity, grade)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
-                                                transitionIn, text, keyframes, speedRamp, color, look, adjustment)
+                                                transitionIn, text, keyframes, speedRamp, color, look, adjustment,
+                                                chromaKey, masks, matte)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Track, id, kind, name, locked, hidden, muted, clips)
 
 nlohmann::json projectToJson(const Project& project)

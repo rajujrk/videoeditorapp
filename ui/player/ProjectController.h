@@ -69,6 +69,13 @@ class ProjectController : public QObject {
     Q_PROPERTY(bool hasCopiedGrade READ hasCopiedGrade NOTIFY colorClipboardChanged)
     Q_PROPERTY(QStringList colorPresets READ colorPresets NOTIFY colorPresetsChanged)
     Q_PROPERTY(QString colorPresetDirectory READ colorPresetDirectory CONSTANT)
+    // Editing state shared by the inspector and the player: the selected clip's mask being
+    // edited (-1: none), and whether the next click on the player picks the key colour.
+    Q_PROPERTY(int activeMask READ activeMask WRITE setActiveMask NOTIFY editingChanged)
+    Q_PROPERTY(bool pickingKeyColor READ pickingKeyColor WRITE setPickingKeyColor NOTIFY editingChanged)
+    // Split-screen and picture-in-picture layouts: [{id, title, slots: [[x0, y0, x1, y1]]}],
+    // regions of the canvas from the top clip down.
+    Q_PROPERTY(QVariantList layouts READ layouts CONSTANT)
     // Looks (filters) from the built-in library: [{id, title, category}]; its LUTs alone:
     // [{name, path}] (paths start ":/", for chooseLut).
     Q_PROPERTY(QVariantList looks READ looks CONSTANT)
@@ -158,6 +165,11 @@ public:
     QStringList titleFonts() const;
     QVariantList speedRampPresets() const;
     QVariantList looks() const;
+    QVariantList layouts() const;
+    int activeMask() const { return m_activeMask; }
+    void setActiveMask(int index);
+    bool pickingKeyColor() const { return m_pickingKeyColor; }
+    void setPickingKeyColor(bool picking);
     QVariantList lutLibrary() const;
     bool hasCopiedGrade() const { return m_copiedGrade.has_value(); }
     QStringList colorPresets() const;
@@ -276,6 +288,29 @@ public:
     Q_INVOKABLE bool saveColorPreset(double clipId, const QString& name);
     Q_INVOKABLE bool applyColorPreset(double clipId, const QString& name);
     Q_INVOKABLE bool deleteColorPreset(const QString& name);
+    // Masks, chroma key and track matte (applied after colour, before effects).
+    // selectedClipInfo has masks [{shape, x, y, width, height, rotation, roundness, feather,
+    // invert, points [[x, y]]}], chromaKey {enabled, color [r, g, b], tolerance, softness,
+    // spill} and matte (none, alpha, invertedAlpha, luma, invertedLuma). shape: rectangle,
+    // ellipse, line, star, heart, pen; positions are fractions of the picture.
+    Q_INVOKABLE bool addMask(double clipId, const QString& shape, const QVariantList& points = {});
+    Q_INVOKABLE bool setMask(double clipId, int index, const QVariantMap& changes);
+    Q_INVOKABLE void previewMask(double clipId, int index, const QVariantMap& changes);
+    Q_INVOKABLE bool removeMask(double clipId, int index);
+    Q_INVOKABLE bool setChromaKey(double clipId, const QVariantMap& changes);
+    Q_INVOKABLE void previewChromaKey(double clipId, const QVariantMap& changes);
+    Q_INVOKABLE bool setMatte(double clipId, const QString& mode);
+    // The clip's own colour [r, g, b] at picture point (u, v) under the playhead (before its
+    // grade and key), for picking a key colour; empty if it cannot be read.
+    Q_INVOKABLE QVariantList clipColorAt(double clipId, double u, double v);
+    // How the clip's picture sits on the canvas at the playhead: {m: canvasToPicture [6]
+    // (picture.u = m0·u + m1·v + m2, picture.v = m3·u + m4·v + m5, canvas and picture as
+    // 0–1 fractions), width, height (the picture's pixels)}; empty for no picture.
+    Q_INVOKABLE QVariantMap clipPlacement(double clipId) const;
+    // Places the pictures at the playhead (top track first) in the layout's regions, as one
+    // step; a picture-in-picture sets only the top one.
+    Q_INVOKABLE bool applyLayout(const QString& layoutId);
+
     // Looks: a clip has at most one, applied before its grade at an intensity (0–1).
     // selectedClipInfo.look is {id, title, intensity} or absent.
     Q_INVOKABLE bool applyLook(double clipId, const QString& lookId);
@@ -385,6 +420,7 @@ signals:
     void proxiesChanged();
     void voiceOverChanged();
     void colorClipboardChanged();
+    void editingChanged();
     void colorPresetsChanged();
     void inputLevelChanged();
     // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
@@ -459,6 +495,8 @@ private:
     std::optional<tve::ColorGrade> gradeWith(tve::Id clipId, const QVariantMap& changes) const;
     QString colorPresetPath(const QString& name) const;
     std::optional<tve::ColorGrade> m_copiedGrade;
+    int m_activeMask = -1;
+    bool m_pickingKeyColor = false;
 
     // Voice-over
     QString takePath() const;

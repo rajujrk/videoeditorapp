@@ -380,6 +380,44 @@ private:
     std::vector<ColorGrade> m_previous;
 };
 
+// A clip's masks, chroma key and track matte, as one step ("Change Mask", "Change Key", …).
+struct ClipKeying {
+    std::vector<ClipMask> masks;
+    ChromaKey chromaKey;
+    MatteMode matte = MatteMode::None;
+};
+class SetClipKeyingCommand final : public Command {
+public:
+    SetClipKeyingCommand(Id clipId, ClipKeying keying, std::string label)
+        : m_clipId(clipId), m_keying(std::move(keying)), m_label(std::move(label)) {}
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    ClipKeying m_keying;
+    std::string m_label;
+    ClipKeying m_previous;
+};
+
+// Several commands as one step, done in order and undone in reverse. If one is refused,
+// those before it are undone and the whole is refused.
+class CompositeCommand final : public Command {
+public:
+    CompositeCommand(std::vector<std::unique_ptr<Command>> commands, std::string label)
+        : m_commands(std::move(commands)), m_label(std::move(label)) {}
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    std::vector<std::unique_ptr<Command>> m_commands;
+    std::string m_label;
+};
+
 // Puts a look on a video clip, changes its intensity, or (nullopt) takes it off.
 class SetClipLookCommand final : public Command {
 public:

@@ -509,9 +509,30 @@ void PreviewOverrides::setLook(tve::Id clipId, const tve::ColorGrade& look)
     ++m_revision;
 }
 
+void PreviewOverrides::setKeying(tve::Id clipId, const tve::ChromaKey& key, const std::vector<tve::ClipMask>& masks)
+{
+    std::lock_guard lock(m_mutex);
+    m_keying[clipId] = {key, masks};
+    ++m_revision;
+}
+
+void PreviewOverrides::applyKeying(tve::Id clipId, tve::ChromaKey& key, std::vector<tve::ClipMask>& masks)
+{
+    std::lock_guard lock(m_mutex);
+    if (auto it = m_keying.find(clipId); it != m_keying.end()) {
+        if (it->second.first == key && it->second.second == masks) {
+            m_keying.erase(it); // the frames carry the committed value now
+        } else {
+            key = it->second.first;
+            masks = it->second.second;
+        }
+    }
+}
+
 void PreviewOverrides::clear(tve::Id clipId)
 {
     std::lock_guard lock(m_mutex);
+    m_keying.erase(clipId);
     m_visual.erase(clipId);
     m_effects.erase(clipId);
     m_grades.erase(clipId);
@@ -601,6 +622,12 @@ void VideoView::setPreviewGrade(tve::Id clipId, const tve::ColorGrade& grade)
 void VideoView::setPreviewLook(tve::Id clipId, const tve::ColorGrade& look)
 {
     m_previewOverrides->setLook(clipId, look);
+    update();
+}
+
+void VideoView::setPreviewKeying(tve::Id clipId, const tve::ChromaKey& key, const std::vector<tve::ClipMask>& masks)
+{
+    m_previewOverrides->setKeying(clipId, key, masks);
     update();
 }
 

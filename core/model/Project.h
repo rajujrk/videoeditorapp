@@ -2,6 +2,7 @@
 
 #include "model/ColorGrade.h"
 #include "model/Keyframes.h"
+#include "model/Masks.h"
 #include "model/SpeedRamp.h"
 #include "model/Time.h"
 
@@ -186,6 +187,10 @@ struct Clip {
     ClipVisual visual;
     ColorGrade color; // applied before the effects
     std::optional<ClipLook> look; // applied before `color`
+    // After colour, before effects: the chroma key, then the masks (alpha of their union).
+    ChromaKey chromaKey;
+    std::vector<ClipMask> masks;
+    MatteMode matte = MatteMode::None;
     std::vector<ClipEffect> effects; // applied in order, before placement on the canvas
 
     // Time. At speed 2 one second of timeline plays two seconds of source; reversed plays
