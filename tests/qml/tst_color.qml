@@ -249,5 +249,95 @@ Item {
             verify(!findChild(f.editor, "copyGradeButton").visible)
             verify(!p.setClipColor(p.selectedClip, { exposure: 1 }))
         }
+
+        function test_scopes_follow_the_preview() {
+            const f = gradable()
+            const p = f.project
+            p.seek(0.5)
+            const scope = settled(f.editor, "scopeView")
+            tryVerify(() => f.editor.player.scopesEnabled, 3000)
+            tryVerify(() => scope.frames > 0, 5000, "no scope frame arrived")
+            compare(scope.traceSize().width, 256)
+            compare(scope.traceSize().height, 256)
+
+            const sizes = { parade: [258, 256], vectorscope: [256, 256], histogram: [256, 128], waveform: [256, 256] }
+            for (const mode in sizes) {
+                click(f.editor, "scopeMode:" + mode)
+                compare(scope.mode, mode)
+                compare(scope.traceSize().width, sizes[mode][0])
+                compare(scope.traceSize().height, sizes[mode][1])
+            }
+
+            // Without colour, the vectorscope shows only its centre.
+            click(f.editor, "scopeMode:vectorscope")
+            const before = scope.frames
+            verify(p.setClipColor(p.selectedClip, { saturation: -1 }))
+            const centreOnly = () => {
+                for (let y = 0; y < 256; y += 8)
+                    for (let x = 0; x < 256; x += 8)
+                        if (Math.hypot(x - 128, y - 128) > 12 && scope.tracePixel(x, y).r > 0.05)
+                            return false
+                return scope.tracePixel(128, 128).r > 0.2 || scope.tracePixel(127, 128).r > 0.2
+                       || scope.tracePixel(128, 127).r > 0.2
+            }
+            verify(!centreOnly()) // the colourful picture spreads out
+            tryVerify(() => scope.frames > before && centreOnly(), 5000, "the scope never saw the grade")
+
+            // Off screen, the preview stops sending frames.
+            click(f.editor, "inspectorTab:Video")
+            tryVerify(() => !f.editor.player.scopesEnabled, 3000)
+        }
+
+        function test_hsl_bands() {
+            const f = gradable()
+            const p = f.project
+            const id = p.selectedClip
+            compare(grade(p).hsl.length, 8)
+            click(f.editor, "hslBand:5")
+            compare(findChild(f.editor, "hslBandName").text, "Blue")
+            verify(p.setClipColor(id, { hsl: [{ band: 5, saturation: -1, hue: 0.5 }] }))
+            compare(p.undoText, "Change Color")
+            compare(grade(p).hsl[5].saturation, -1)
+            compare(grade(p).hsl[5].hue, 0.5)
+            compare(grade(p).hsl[0].saturation, 0)
+            compare(findChild(f.editor, "hsl:saturation").value, -1)
+            verify(findChild(f.editor, "hslBand:5").changed)
+            verify(!findChild(f.editor, "hslBand:4").changed)
+            // Other settings of the band stay when one changes.
+            verify(p.setClipColor(id, { hsl: [{ band: 5, luminance: 0.2 }] }))
+            compare(grade(p).hsl[5].saturation, -1)
+            verify(!p.setClipColor(id, { hsl: [{ band: 2, hue: 3 }] }))
+        }
+
+        function test_hue_curves() {
+            const f = gradable()
+            const p = f.project
+            const section = settled(f.editor, "hueCurvesSection")
+            scrollIntoView(settled(f.editor, "hueCurveEditor"))
+            const e = settled(f.editor, "hueCurveEditor")
+            compare(e.kind, "hue")
+            // Double-click adds a point on the middle line's curve; the ends start at 0.5.
+            mouseDoubleClickSequence(e, e.px(0.33), e.py(0.9))
+            compare(grade(p).hueVsSat.length, 3)
+            compare(grade(p).hueVsSat[0].y, 0.5)
+            compare(grade(p).hueVsSat[2].y, 0.5)
+            fuzzyCompare(grade(p).hueVsSat[1].y, 0.9, 0.02)
+            // Dragging one end moves the other: 0° and 360° are the same red.
+            const end = settled(e, "curvePoint:0") // this editor's, not the tone curve's
+            const at = end.mapToItem(e, end.width / 2, end.height / 2)
+            mousePress(e, at.x, at.y)
+            mouseMove(e, at.x, (at.y + e.py(0.2)) / 2)
+            mouseMove(e, at.x, e.py(0.2))
+            mouseRelease(e, at.x, e.py(0.2))
+            fuzzyCompare(grade(p).hueVsSat[0].y, 0.2, 0.02)
+            fuzzyCompare(grade(p).hueVsSat[2].y, 0.2, 0.02)
+
+            click(f.editor, "hueCurve:lumaVsSat")
+            compare(settled(f.editor, "hueCurveEditor").kind, "luma")
+            compare(grade(p).lumaVsSat.length, 0)
+            click(f.editor, "hueCurve:hueVsSat")
+            click(f.editor, "resetHueCurveButton")
+            compare(grade(p).hueVsSat.length, 0)
+        }
     }
 }

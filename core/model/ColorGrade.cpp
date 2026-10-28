@@ -64,7 +64,11 @@ std::optional<std::string> validateGrade(const ColorGrade& g)
         if (auto error = validateWheel(*wheel, name))
             return error;
     }
-    for (const ColorCurve* curve : {&g.master, &g.red, &g.green, &g.blue}) {
+    for (const HslBand& band : g.hsl) {
+        if (!inRange(band.hue, -1.0, 1.0) || !inRange(band.saturation, -1.0, 1.0) || !inRange(band.luminance, -1.0, 1.0))
+            return "HSL adjustments must be between -100% and +100%";
+    }
+    for (const ColorCurve* curve : {&g.master, &g.red, &g.green, &g.blue, &g.hueVsSat, &g.hueVsHue, &g.lumaVsSat}) {
         if (auto error = validateCurve(*curve))
             return error;
     }
@@ -136,6 +140,13 @@ GradeCoefficients gradeCoefficients(const ColorGrade& g)
     }
     c.saturation = 1.0f + float(g.saturation);
     c.curves = !g.master.empty() || !g.red.empty() || !g.green.empty() || !g.blue.empty();
+    for (int b = 0; b < kHslBands; ++b) {
+        const HslBand& band = g.hsl[std::size_t(b)];
+        c.hsl[std::size_t(b)] = {float(band.hue) * 30.0f / 360.0f, 1.0f + float(band.saturation),
+                                 1.0f + 0.5f * float(band.luminance)};
+        c.hslActive = c.hslActive || band != HslBand{};
+    }
+    c.hueCurves = !g.hueVsSat.empty() || !g.hueVsHue.empty() || !g.lumaVsSat.empty();
     return c;
 }
 
@@ -153,8 +164,66 @@ std::array<std::vector<float>, 3> bakeCurves(const ColorGrade& g, int size)
     return tables;
 }
 
+std::array<std::vector<float>, 3> bakeHueCurves(const ColorGrade& g, int size)
+{
+    std::array<std::vector<float>, 3> tables;
+    const ColorCurve* curves[3] = {&g.hueVsSat, &g.hueVsHue, &g.lumaVsSat};
+    for (int c = 0; c < 3; ++c) {
+        tables[std::size_t(c)].resize(std::size_t(size));
+        for (int i = 0; i < size; ++i) {
+            const double x = double(i) / double(size - 1);
+            tables[std::size_t(c)][std::size_t(i)] = curves[c]->empty() ? 0.5f : float(evaluateColorCurve(*curves[c], x));
+        }
+    }
+    return tables;
+}
+
+std::array<float, 3> rgbToHsv(std::array<float, 3> rgb)
+{
+    const float maxC = std::max({rgb[0], rgb[1], rgb[2]});
+    const float minC = std::min({rgb[0], rgb[1], rgb[2]});
+    const float delta = maxC - minC;
+    float hue = 0.0f;
+    if (delta > 1e-6f) {
+        if (maxC == rgb[0])
+            hue = std::fmod((rgb[1] - rgb[2]) / delta + 6.0f, 6.0f);
+        else if (maxC == rgb[1])
+            hue = (rgb[2] - rgb[0]) / delta + 2.0f;
+        else
+            hue = (rgb[0] - rgb[1]) / delta + 4.0f;
+        hue /= 6.0f;
+    }
+    return {hue, maxC > 1e-6f ? delta / maxC : 0.0f, maxC};
+}
+
+std::array<float, 3> hsvToRgb(std::array<float, 3> hsv)
+{
+    const float h = (hsv[0] - std::floor(hsv[0])) * 6.0f;
+    const float s = hsv[1];
+    const float v = hsv[2];
+    std::array<float, 3> rgb{};
+    for (int i = 0; i < 3; ++i) {
+        // The standard k-form: k = (n + h) mod 6 for n = 5, 3, 1.
+        const float k = std::fmod(float(5 - 2 * i) + h, 6.0f);
+        rgb[std::size_t(i)] = v - v * s * std::clamp(std::min(k, 4.0f - k), 0.0f, 1.0f);
+    }
+    return rgb;
+}
+
+namespace {
+
+// Linear lookup in a baked table, like the GPU's filtered read.
+float lookup(const std::vector<float>& table, float v)
+{
+    const float position = std::clamp(v, 0.0f, 1.0f) * float(table.size() - 1);
+    const std::size_t k = std::min(std::size_t(position), table.size() - 2);
+    return table[k] + (table[k + 1] - table[k]) * (position - float(k));
+}
+
+} // namespace
+
 std::array<float, 3> applyGrade(const GradeCoefficients& c, const std::array<std::vector<float>, 3>& curves,
-                                std::array<float, 3> rgb)
+                                std::array<float, 3> rgb, const std::array<std::vector<float>, 3>& hueCurves)
 {
     for (int i = 0; i < 3; ++i) {
         float v = std::pow(std::max(rgb[i], 0.0f), 2.2f) * c.linearGain[i];
@@ -165,16 +234,45 @@ std::array<float, 3> applyGrade(const GradeCoefficients& c, const std::array<std
         rgb[i] = v + c.offset[i];
     }
     const float luma = 0.2126f * rgb[0] + 0.7152f * rgb[1] + 0.0722f * rgb[2];
-    for (int i = 0; i < 3; ++i) {
-        float v = std::clamp(luma + (rgb[i] - luma) * c.saturation, 0.0f, 1.0f);
-        if (c.curves) {
-            // Linear between the table's samples, like the GPU's filtered lookup.
-            const auto& table = curves[std::size_t(i)];
-            const float position = v * float(table.size() - 1);
-            const std::size_t k = std::min(std::size_t(position), table.size() - 2);
-            v = table[k] + (table[k + 1] - table[k]) * (position - float(k));
+    for (int i = 0; i < 3; ++i)
+        rgb[i] = std::clamp(luma + (rgb[i] - luma) * c.saturation, 0.0f, 1.0f);
+
+    if (c.hslActive || c.hueCurves) {
+        std::array<float, 3> hsv = rgbToHsv(rgb);
+        const float hue = hsv[0];
+        if (c.hslActive) {
+            // The two bands around this hue, blended by where it falls between their centres.
+            const float degrees = hue * 360.0f;
+            int a = kHslBands - 1;
+            for (int b = 0; b < kHslBands; ++b) {
+                if (degrees >= float(kHslBandHues[std::size_t(b)]))
+                    a = b;
+            }
+            const int next = (a + 1) % kHslBands;
+            const float from = float(kHslBandHues[std::size_t(a)]);
+            const float to = next == 0 ? 360.0f : float(kHslBandHues[std::size_t(next)]);
+            const float t = (degrees - from) / (to - from);
+            const float strength = std::clamp(hsv[1] / 0.15f, 0.0f, 1.0f); // greys stay grey
+            std::array<float, 3> adjust{};
+            for (int k = 0; k < 3; ++k)
+                adjust[std::size_t(k)] = c.hsl[std::size_t(a)][std::size_t(k)] * (1 - t) + c.hsl[std::size_t(next)][std::size_t(k)] * t;
+            hsv[0] += adjust[0] * strength;
+            hsv[1] *= 1.0f + (adjust[1] - 1.0f) * strength;
+            hsv[2] *= 1.0f + (adjust[2] - 1.0f) * strength;
         }
-        rgb[i] = v;
+        if (c.hueCurves) {
+            hsv[1] *= 2.0f * lookup(hueCurves[0], hue);
+            hsv[0] += (lookup(hueCurves[1], hue) - 0.5f) / 3.0f; // ±60°
+            hsv[1] *= 2.0f * lookup(hueCurves[2], std::clamp(luma, 0.0f, 1.0f));
+        }
+        hsv[1] = std::clamp(hsv[1], 0.0f, 1.0f);
+        hsv[2] = std::clamp(hsv[2], 0.0f, 1.0f);
+        rgb = hsvToRgb(hsv);
+    }
+
+    if (c.curves) {
+        for (int i = 0; i < 3; ++i)
+            rgb[i] = lookup(curves[std::size_t(i)], rgb[i]);
     }
     return rgb;
 }

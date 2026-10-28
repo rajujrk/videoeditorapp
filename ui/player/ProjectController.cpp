@@ -426,6 +426,16 @@ QVariantList curveList(const ColorCurve& curve)
     return list;
 }
 
+QVariantList hslList(const ColorGrade& g)
+{
+    QVariantList list;
+    for (const HslBand& band : g.hsl)
+        list << QVariantMap{{QStringLiteral("hue"), band.hue},
+                            {QStringLiteral("saturation"), band.saturation},
+                            {QStringLiteral("luminance"), band.luminance}};
+    return list;
+}
+
 QVariantMap gradeMap(const ColorGrade& g)
 {
     return {
@@ -442,6 +452,10 @@ QVariantMap gradeMap(const ColorGrade& g)
         {QStringLiteral("red"), curveList(g.red)},
         {QStringLiteral("green"), curveList(g.green)},
         {QStringLiteral("blue"), curveList(g.blue)},
+        {QStringLiteral("hsl"), hslList(g)},
+        {QStringLiteral("hueVsSat"), curveList(g.hueVsSat)},
+        {QStringLiteral("hueVsHue"), curveList(g.hueVsHue)},
+        {QStringLiteral("lumaVsSat"), curveList(g.lumaVsSat)},
         {QStringLiteral("lutPath"), QString::fromStdString(g.lutPath)},
         {QStringLiteral("lutName"), g.lutPath.empty() ? QString() : fileName(g.lutPath)},
         {QStringLiteral("lutMissing"), !g.lutPath.empty() && !QFileInfo::exists(QString::fromStdString(g.lutPath))},
@@ -1465,6 +1479,22 @@ std::optional<ColorGrade> ProjectController::gradeWith(Id clipId, const QVariant
     curve("red", g.red);
     curve("green", g.green);
     curve("blue", g.blue);
+    curve("hueVsSat", g.hueVsSat);
+    curve("hueVsHue", g.hueVsHue);
+    curve("lumaVsSat", g.lumaVsSat);
+    // hsl: the bands to change, [{band (0–7), hue, saturation, luminance}] (missing values stay).
+    if (const auto it = changes.constFind(QStringLiteral("hsl")); it != changes.constEnd()) {
+        for (const QVariant& entry : it->toList()) {
+            const QVariantMap m = entry.toMap();
+            const int band = m.value(QStringLiteral("band"), -1).toInt();
+            if (band < 0 || band >= kHslBands)
+                continue;
+            HslBand& target = g.hsl[std::size_t(band)];
+            target.hue = m.value(QStringLiteral("hue"), target.hue).toDouble();
+            target.saturation = m.value(QStringLiteral("saturation"), target.saturation).toDouble();
+            target.luminance = m.value(QStringLiteral("luminance"), target.luminance).toDouble();
+        }
+    }
     return g;
 }
 

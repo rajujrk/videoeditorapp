@@ -739,9 +739,49 @@ Rectangle {
                 readonly property var grade: inspector.clipInfo.color || ({})
                 readonly property bool gradable: inspector.clipIsVideo && inspector.clipInfo.isTitle !== true
                 property string channel: "master"
+                property string scopeMode: "waveform"
+                property int hslBand: 0
+                property string hueCurve: "hueVsSat"
+                readonly property var bandColors: ["#E5484D", "#F2994A", "#F5D90A", "#46A758", "#12A594", "#3E63DD", "#8E4EC6", "#D6409F"]
+                readonly property var bandNames: ["Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta"]
+                readonly property var band: (grade.hsl || [])[hslBand] || ({ hue: 0, saturation: 0, luminance: 0 })
 
                 function preview(changes) { inspector.project.previewClipColor(inspector.clipInfo.id, changes) }
                 function commit(changes) { inspector.project.setClipColor(inspector.clipInfo.id, changes) }
+
+                // Scopes of the preview (whatever is on screen, graded or not).
+                Section {
+                    objectName: "scopesSection"
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.space.s
+                    title: "Scopes"
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xxs
+                        Repeater {
+                            model: [{ id: "waveform", label: "Waveform" }, { id: "parade", label: "Parade" },
+                                    { id: "vectorscope", label: "Vector" }, { id: "histogram", label: "Histogram" }]
+                            delegate: TextButton {
+                                required property var modelData
+                                objectName: "scopeMode:" + modelData.id
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                                implicitWidth: 40
+                                text: modelData.label
+                                variant: colorPage.scopeMode === modelData.id ? "primary" : "secondary"
+                                onClicked: colorPage.scopeMode = modelData.id
+                            }
+                        }
+                    }
+                    ScopeView {
+                        id: scope
+                        objectName: "scopeView"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: colorPage.scopeMode === "vectorscope" ? 220 : colorPage.scopeMode === "histogram" ? 120 : 170
+                        view: inspector.player
+                        mode: colorPage.scopeMode
+                    }
+                }
 
                 Text {
                     visible: !colorPage.gradable
@@ -873,6 +913,128 @@ Rectangle {
                             variant: "ghost"
                             enabled: (colorPage.grade[colorPage.channel] || []).length > 0
                             onClicked: { const m = {}; m[colorPage.channel] = []; colorPage.commit(m) }
+                        }
+                    }
+                }
+
+                // HSL: change one range of hues at a time.
+                Section {
+                    objectName: "hslSection"
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    title: "HSL"
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xs
+                        Repeater {
+                            model: 8
+                            delegate: Rectangle {
+                                id: chip
+                                required property int index
+                                readonly property var settings: (colorPage.grade.hsl || [])[index] || ({})
+                                readonly property bool changed: settings.hue !== 0 || settings.saturation !== 0 || settings.luminance !== 0
+                                objectName: "hslBand:" + index
+                                Layout.fillWidth: true
+                                implicitHeight: 22
+                                radius: 11
+                                color: colorPage.bandColors[index]
+                                border.width: colorPage.hslBand === index ? 2 : 0
+                                border.color: Theme.color.textPrimary
+                                Rectangle { // a dot marks bands that change something
+                                    visible: chip.changed
+                                    anchors.centerIn: parent
+                                    width: 6; height: 6; radius: 3
+                                    color: "white"
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: colorPage.hslBand = chip.index
+                                }
+                            }
+                        }
+                    }
+                    Text {
+                        objectName: "hslBandName"
+                        text: colorPage.bandNames[colorPage.hslBand]
+                        font: Theme.type.heading
+                        color: Theme.color.textPrimary
+                    }
+                    Repeater {
+                        model: [{ key: "hue", label: "Hue" }, { key: "saturation", label: "Saturation" },
+                                { key: "luminance", label: "Luminance" }]
+                        delegate: AudioSlider {
+                            required property var modelData
+                            objectName: "hsl:" + modelData.key
+                            label: modelData.label
+                            from: -1
+                            to: 1
+                            value: colorPage.band[modelData.key] || 0
+                            format: modelData.key === "hue" ? ((v) => (v > 0 ? "+" : "") + Math.round(v * 30) + "°")
+                                                            : ((v) => (v > 0 ? "+" : "") + Math.round(v * 100) + "%")
+                            onLiveValue: (v) => {
+                                const change = { band: colorPage.hslBand }
+                                change[modelData.key] = v
+                                colorPage.preview({ hsl: [change] })
+                            }
+                            onCommitted: (v) => {
+                                const change = { band: colorPage.hslBand }
+                                change[modelData.key] = v
+                                colorPage.commit({ hsl: [change] })
+                            }
+                        }
+                    }
+                }
+
+                // Hue curves: saturation or hue by hue, saturation by brightness.
+                Section {
+                    objectName: "hueCurvesSection"
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    title: "Hue curves"
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xxs
+                        Repeater {
+                            model: [{ key: "hueVsSat", label: "Hue · Sat" }, { key: "hueVsHue", label: "Hue · Hue" },
+                                    { key: "lumaVsSat", label: "Luma · Sat" }]
+                            delegate: TextButton {
+                                required property var modelData
+                                objectName: "hueCurve:" + modelData.key
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                                implicitWidth: 40
+                                text: modelData.label
+                                variant: colorPage.hueCurve === modelData.key ? "primary" : "secondary"
+                                onClicked: colorPage.hueCurve = modelData.key
+                            }
+                        }
+                    }
+                    ToneCurveEditor {
+                        objectName: "hueCurveEditor"
+                        Layout.fillWidth: true
+                        project: inspector.project
+                        kind: colorPage.hueCurve === "lumaVsSat" ? "luma" : "hue"
+                        points: colorPage.grade[colorPage.hueCurve] || []
+                        onCommitted: (points) => { const m = {}; m[colorPage.hueCurve] = points; colorPage.commit(m) }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            wrapMode: Text.WordWrap
+                            text: colorPage.hueCurve === "hueVsHue" ? "Above the line turns those hues forward, below turns them back (up to 60°)."
+                                : "Above the line adds saturation there, below takes it away."
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                        TextButton {
+                            objectName: "resetHueCurveButton"
+                            text: "Reset"
+                            variant: "ghost"
+                            enabled: (colorPage.grade[colorPage.hueCurve] || []).length > 0
+                            onClicked: { const m = {}; m[colorPage.hueCurve] = []; colorPage.commit(m) }
                         }
                     }
                 }

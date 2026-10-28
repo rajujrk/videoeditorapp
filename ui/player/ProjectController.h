@@ -253,7 +253,10 @@ public:
     Q_INVOKABLE bool freezeFrame(double holdSeconds = 2.0);
     // Colour grades. `changes` holds any of: exposure, contrast, saturation, temperature,
     // tint (numbers); lift, gamma, gain, offset ({x, y, master}); master, red, green, blue
-    // (curves: [{x, y}], empty for none); lutIntensity. selectedClipInfo.color has them all,
+    // (curves: [{x, y}], empty for none); hueVsSat, hueVsHue, lumaVsSat (curves where y 0.5
+    // changes nothing); hsl ([{band 0–7, hue, saturation, luminance}], the bands to change:
+    // red, orange, yellow, green, aqua, blue, purple, magenta); lutIntensity.
+    // selectedClipInfo.color has them all (hsl as eight {hue, saturation, luminance}),
     // plus lutPath, lutName, lutMissing and neutral.
     Q_INVOKABLE bool setClipColor(double clipId, const QVariantMap& changes);
     Q_INVOKABLE void previewClipColor(double clipId, const QVariantMap& changes);
