@@ -1,4 +1,4 @@
-# Built-in effects, transitions and audio effects
+# Built-in effects, transitions, audio effects and stickers
 
 Each effect is a folder under `video/` holding a `manifest.json` and one GLSL fragment
 shader per pass; each transition is a folder under `transitions/` with a manifest of kind
@@ -353,3 +353,13 @@ settings, every param used) and leaves out — with a reason — any that fail.
 | Telephone | `telephone` | voice | eq → distortion | mix |
 | Underwater | `underwater` | voice | eq → chorus → reverb | mix |
 | Walkie-Talkie | `walkie_talkie` | voice | eq → distortion → noise | drive |
+
+## Stickers
+
+`stickers/` holds the built-in stickers: Lottie (Bodymovin JSON) animations of 512 × 512 at
+30 fps in two-second loops, one file each, and `stickers.json`, the catalog the Stickers tab
+reads (`{id, title, category, file}`; categories shapes, marks, nature, emoji, party). They
+are generated, with original designs, by `tools/make_stickers.py`; edit that and run it again
+rather than editing the files. The app draws them with ThorVG (`engine/decode/LottieAnimation`),
+which reads shape layers (ellipses, rectangles, stars and polygons, paths), fills and strokes,
+groups with transforms, and animated layer transforms.

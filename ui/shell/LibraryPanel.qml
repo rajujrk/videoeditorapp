@@ -32,6 +32,12 @@ Rectangle {
     // Titles tab's category ("" for all).
     readonly property var titleStyles: TitleTemplates.templates
     property string titleCategory: ""
+    // The Stickers tab's category ("" for all).
+    property string stickerCategory: ""
+    readonly property var stickerCategories: [
+        { id: "", label: "All" }, { id: "shapes", label: "Shapes" }, { id: "marks", label: "Arrows & marks" },
+        { id: "nature", label: "Nature" }, { id: "emoji", label: "Emoji" }, { id: "party", label: "Party" }
+    ]
     // The Transitions tab's category ("" for all).
     property string transitionCategory: ""
     readonly property var transitionCategories: [
@@ -48,7 +54,7 @@ Rectangle {
         { icon: "transitions", label: "Transitions", phase: "" },
         { icon: "effects", label: "Effects", phase: "" },
         { icon: "filters", label: "Filters", phase: "" },
-        { icon: "stickers", label: "Stickers", phase: "Stickers and elements — Phase 2" },
+        { icon: "stickers", label: "Stickers", phase: "" },
         { icon: "templates", label: "Templates", phase: "Template mode — Phase 4" }
     ]
 
@@ -175,6 +181,101 @@ Rectangle {
                     variant: "ghost"
                     tip: "Put a different random transition on each cut between clips"
                     onClicked: library.project.applyRandomTransitions()
+                }
+            }
+
+            // Stickers tab: category chips over the stickers.
+            Flow {
+                visible: stickersGrid.visible
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.space.m
+                Layout.rightMargin: Theme.space.m
+                Layout.bottomMargin: Theme.space.s
+                spacing: Theme.space.xs
+                Repeater {
+                    model: library.stickerCategories
+                    delegate: AbstractButton {
+                        id: stickerChip
+                        required property var modelData
+                        objectName: "stickerCategory:" + (modelData.id || "all")
+                        checked: library.stickerCategory === modelData.id
+                        hoverEnabled: true
+                        implicitWidth: stickerChipLabel.implicitWidth + Theme.space.m * 2
+                        implicitHeight: 24
+                        onClicked: library.stickerCategory = modelData.id
+                        background: Rectangle {
+                            radius: height / 2
+                            color: stickerChip.checked ? Theme.color.accentSubtle
+                                 : stickerChip.hovered ? Theme.color.surfaceHover : "transparent"
+                            border.color: stickerChip.checked ? Theme.color.accent : Theme.color.borderSubtle
+                        }
+                        contentItem: Text {
+                            id: stickerChipLabel
+                            text: stickerChip.modelData.label
+                            font: Theme.type.caption
+                            color: stickerChip.checked ? Theme.color.accentText : Theme.color.textSecondary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
+            }
+
+            // Stickers tab: animated stickers (Lottie), playing on hover; click to add one at the
+            // playhead.
+            GridView {
+                id: stickersGrid
+                objectName: "stickersGrid"
+                visible: library.tabs[library.currentTab].label === "Stickers"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.leftMargin: Theme.space.m
+                clip: true
+                cellWidth: Math.floor(width / 3)
+                cellHeight: cellWidth
+                model: library.project.stickers.filter(
+                           (s) => (library.stickerCategory === "" || s.category === library.stickerCategory)
+                                  && library.matchesSearch(s.title))
+
+                delegate: Item {
+                    id: stickerTile
+                    required property var modelData
+                    width: stickersGrid.cellWidth
+                    height: stickersGrid.cellHeight
+
+                    AbstractButton {
+                        id: stickerButton
+                        objectName: "librarySticker:" + stickerTile.modelData.id
+                        anchors.fill: parent
+                        anchors.rightMargin: Theme.space.s
+                        anchors.bottomMargin: Theme.space.s
+                        hoverEnabled: true
+                        onClicked: library.project.addSticker(stickerTile.modelData.id)
+                        ToolTip.visible: hovered
+                        ToolTip.delay: 600
+                        ToolTip.text: stickerTile.modelData.title + " — click to add at the playhead"
+                        background: Rectangle {
+                            radius: Theme.radius.m
+                            color: stickerButton.hovered ? Theme.color.surfaceHover : Theme.color.surfaceRaised
+                            border.color: stickerButton.hovered ? Theme.color.borderStrong : Theme.color.borderSubtle
+                        }
+                        contentItem: Image {
+                            id: stickerPreview
+                            objectName: "stickerPreview:" + stickerTile.modelData.id
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                            property real seconds: 0.4
+                            source: "image://tvesticker/" + stickerTile.modelData.id + "@" + seconds.toFixed(3)
+                            anchors.margins: Theme.space.s
+                            Timer {
+                                running: stickerButton.hovered
+                                repeat: true
+                                interval: 66
+                                onTriggered: stickerPreview.seconds = (stickerPreview.seconds + 1 / 15) % 2
+                                onRunningChanged: if (!running) stickerPreview.seconds = 0.4
+                            }
+                        }
+                    }
                 }
             }
 
@@ -725,7 +826,7 @@ Rectangle {
                                             anchors.centerIn: parent
                                             objectName: "mediaDuration:" + mediaTile.modelData.name
                                             // A still has no length of its own.
-                                            text: mediaTile.modelData.still ? "Image"
+                                            text: mediaTile.modelData.sticker ? "Sticker" : mediaTile.modelData.still ? "Image"
                                                   : library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
                                             font: Theme.type.caption
                                             color: "#FFFFFF"
@@ -748,10 +849,13 @@ Rectangle {
                                     elide: Text.ElideRight
                                     text: !mediaTile.modelData.hasVideo
                                           ? "Audio only"
+                                          : mediaTile.modelData.sticker
+                                          ? "Animated sticker"
                                           : mediaTile.modelData.still
                                           ? mediaTile.modelData.width + "×" + mediaTile.modelData.height + " · image"
                                           : mediaTile.modelData.width + "×" + mediaTile.modelData.height
                                             + " · " + mediaTile.modelData.frameRate.toFixed(mediaTile.modelData.frameRate % 1 ? 2 : 0) + " fps"
+                                            + (mediaTile.modelData.alpha ? " · transparent" : "")
                                             + (mediaTile.modelData.hasAudio ? " · sound" : "")
                                     font: Theme.type.caption
                                     color: Theme.color.textSecondary
@@ -864,7 +968,8 @@ Rectangle {
             }
 
             Item {
-                visible: !effectsGrid.visible && !looksGrid.visible && !transitionsGrid.visible && !titlesGrid.visible && !mediaBin.visible
+                visible: !effectsGrid.visible && !looksGrid.visible && !transitionsGrid.visible && !titlesGrid.visible
+                         && !mediaBin.visible && !stickersGrid.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 

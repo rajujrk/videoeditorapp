@@ -86,3 +86,29 @@ TEST_CASE("the still flag is saved", "[stills]")
     old["media"][0].erase("still");
     CHECK_FALSE(projectFromJson(old).media[0].still);
 }
+
+TEST_CASE("stickers and transparent video are media like any other, flagged and saved", "[stills]")
+{
+    StillProject p;
+    // A sticker: a Lottie animation that lasts as long as its clip, like a still.
+    const Id sticker = p.push<ImportMediaCommand>(MediaItem{.path = ":/effects/stickers/star_spin.json",
+                                                            .duration = kStillDuration, .width = 512, .height = 512,
+                                                            .still = true, .alpha = true, .lottie = true})
+                           .mediaId();
+    ClipVisual small;
+    small.transform.scale = 0.4;
+    auto& added = p.push<AddClipCommand>(p.video, sticker, 20 * kSec, kStillDuration, 0, small, "Add Sticker");
+    CHECK(added.label() == "Add Sticker");
+    CHECK(p.project.locateClip(added.clipId())->clip->visual.transform.scale == 0.4);
+    p.push<TrimClipCommand>(added.clipId(), TrimClipCommand::Edge::End, 60 * kSec); // any length
+    CHECK(p.tryPush(std::make_unique<SetClipSpeedCommand>(added.clipId(), 2.0, false)).has_value());
+    const Id clear = p.push<ImportMediaCommand>(MediaItem{.path = "/alpha.mov", .duration = 2 * kSec, .width = 320,
+                                                          .height = 180, .alpha = true})
+                         .mediaId();
+    const Project loaded = projectFromJson(projectToJson(p.project));
+    CHECK(loaded.findMedia(sticker)->lottie);
+    CHECK(loaded.findMedia(sticker)->alpha);
+    CHECK(loaded.findMedia(clear)->alpha);
+    CHECK_FALSE(loaded.findMedia(clear)->lottie);
+    CHECK_FALSE(loaded.findMedia(p.photo)->alpha);
+}

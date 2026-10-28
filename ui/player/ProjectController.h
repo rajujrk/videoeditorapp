@@ -84,6 +84,8 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantList speedRampPresets READ speedRampPresets CONSTANT)
     // Font families offered for titles.
     Q_PROPERTY(QStringList titleFonts READ titleFonts CONSTANT)
+    // Built-in stickers: [{id, title, category, path}].
+    Q_PROPERTY(QVariantList stickers READ stickers CONSTANT)
     // Title text animations: [{id, title, loop}] (loops keep moving; the others arrive or leave).
     Q_PROPERTY(QVariantList textAnimations READ textAnimations CONSTANT)
 
@@ -174,6 +176,7 @@ public:
     QVariantList availableTransitions() const;
     QStringList titleFonts() const;
     QVariantList textAnimations() const;
+    QVariantList stickers() const;
     QVariantList speedRampPresets() const;
     QVariantList looks() const;
     QVariantList layouts() const;
@@ -390,6 +393,8 @@ public:
     // (the clip's position). trackId < 0: the lowest free video or title track above the
     // main track, or a new track on top; start < 0: the playhead. Lasts 5 s; selected.
     Q_INVOKABLE bool addTitle(const QVariantMap& style, double trackId = -1, double start = -1);
+    // Puts a built-in sticker at the playhead on a free picture track above the main one.
+    Q_INVOKABLE bool addSticker(const QString& stickerId);
     // Applies the text fields in `changes` to a title clip (one undo step).
     Q_INVOKABLE bool setClipText(double clipId, const QVariantMap& changes);
 

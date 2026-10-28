@@ -37,6 +37,11 @@ struct MediaItem {
     // A still image (photo, graphic): one picture for as long as its clips last. `duration`
     // is then the length a new clip of it gets (kStillDuration).
     bool still = false;
+    // The pictures have transparency (ProRes 4444, GIF…): they play over what is below.
+    bool alpha = false;
+    // A Lottie animation (a sticker): drawn, not decoded, looping; like a still it lasts as
+    // long as its clips (`still` is set too), `duration` being one cycle.
+    bool lottie = false;
 
     // A lighter copy of the pictures for the preview to decode instead (same frames and
     // times). Set only in the snapshots handed to playback; never saved.

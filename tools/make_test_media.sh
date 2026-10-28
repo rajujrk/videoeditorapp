@@ -35,6 +35,11 @@ make test_av_1080p30.mp4 -f lavfi -i testsrc2=size=1920x1080:rate=30 \
     -f lavfi -i "aevalsrc=0.5*sin(2*PI*1000*t)|0.5*sin(2*PI*1000*t):s=48000:d=2" \
     -frames:v 60 -c:v h264_videotoolbox -b:v 8M -pix_fmt yuv420p -c:a aac -b:a 192k -shortest
 
+# Video with transparency: ProRes 4444 (yuva444p10), a red disc on a transparent ground
+# moving right, 2 s at 320 × 180.
+make test_alpha_prores.mov -f lavfi -i "color=c=red:s=320x180:r=30:d=2,format=yuva444p10le,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lt(hypot(X-80-T*80,Y-90),50),1023,0)'" \
+    -c:v prores_ks -profile:v 4444 -pix_fmt yuva444p10le
+
 # 20-second 4K clips for the playback spike.
 make 4k30_h264.mp4 -f lavfi -i testsrc2=size=3840x2160:rate=30 -t 20 \
     -c:v h264_videotoolbox -b:v 60M -pix_fmt yuv420p

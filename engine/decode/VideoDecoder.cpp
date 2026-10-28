@@ -65,9 +65,8 @@ int swsColorspace(CFStringRef matrix)
     return SWS_CS_ITU601;
 }
 
-CVPixelBufferPoolRef createNv12Pool(int width, int height)
+CVPixelBufferPoolRef createPool(int width, int height, int pixelFormat)
 {
-    const int pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
     CFNumberRef format = CFNumberCreate(nullptr, kCFNumberIntType, &pixelFormat);
     CFNumberRef w = CFNumberCreate(nullptr, kCFNumberIntType, &width);
     CFNumberRef h = CFNumberCreate(nullptr, kCFNumberIntType, &height);
@@ -124,6 +123,8 @@ struct VideoDecoder::Impl {
     Ticks framePts() const;
     std::optional<DecodedFrame> takeFrame(Ticks pts);
     CVPixelBufferRef convertToNv12();
+    CVPixelBufferRef convertToBgra();
+    bool ensurePool(int pixelFormat);
 };
 
 Ticks VideoDecoder::Impl::framePts() const
@@ -146,23 +147,51 @@ std::optional<DecodedFrame> VideoDecoder::Impl::takeFrame(Ticks pts)
     }
 
     info.hardwareAccelerated = false;
-    CVPixelBufferRef buffer = convertToNv12();
+    CVPixelBufferRef buffer = info.hasAlpha ? convertToBgra() : convertToNv12();
     if (!buffer)
         return std::nullopt;
     return DecodedFrame(buffer, pts);
 }
 
-CVPixelBufferRef VideoDecoder::Impl::convertToNv12()
+bool VideoDecoder::Impl::ensurePool(int pixelFormat)
 {
     if (!pool || poolWidth != frame->width || poolHeight != frame->height) {
         if (pool)
             CVPixelBufferPoolRelease(pool);
-        pool = createNv12Pool(frame->width, frame->height);
+        pool = createPool(frame->width, frame->height, pixelFormat);
         poolWidth = frame->width;
         poolHeight = frame->height;
-        if (!pool)
-            return nullptr;
     }
+    return pool != nullptr;
+}
+
+CVPixelBufferRef VideoDecoder::Impl::convertToBgra()
+{
+    if (!ensurePool(kCVPixelFormatType_32BGRA))
+        return nullptr;
+    sws = sws_getCachedContext(sws, frame->width, frame->height, static_cast<AVPixelFormat>(frame->format),
+                               frame->width, frame->height, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
+    if (!sws)
+        return nullptr;
+    const CFStringRef matrix = matrixAttachment(frame->colorspace, frame->height);
+    const int* coefficients = sws_getCoefficients(swsColorspace(matrix));
+    sws_setColorspaceDetails(sws, coefficients, frame->color_range == AVCOL_RANGE_JPEG ? 1 : 0, coefficients, 1, 0,
+                             1 << 16, 1 << 16);
+    CVPixelBufferRef buffer = nullptr;
+    if (CVPixelBufferPoolCreatePixelBuffer(nullptr, pool, &buffer) != kCVReturnSuccess)
+        return nullptr;
+    CVPixelBufferLockBaseAddress(buffer, 0);
+    std::uint8_t* planes[] = {static_cast<std::uint8_t*>(CVPixelBufferGetBaseAddress(buffer))};
+    const int strides[] = {static_cast<int>(CVPixelBufferGetBytesPerRow(buffer))};
+    sws_scale(sws, frame->data, frame->linesize, 0, frame->height, planes, strides);
+    CVPixelBufferUnlockBaseAddress(buffer, 0);
+    return buffer;
+}
+
+CVPixelBufferRef VideoDecoder::Impl::convertToNv12()
+{
+    if (!ensurePool(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange))
+        return nullptr;
 
     const CFStringRef matrix = matrixAttachment(frame->colorspace, frame->height);
     sws = sws_getCachedContext(sws, frame->width, frame->height, static_cast<AVPixelFormat>(frame->format),
@@ -224,7 +253,11 @@ std::unique_ptr<VideoDecoder> VideoDecoder::open(const std::string& path, std::s
     if (!d->codec || avcodec_parameters_to_context(d->codec, stream->codecpar) < 0)
         return fail("cannot configure decoder");
 
-    for (int i = 0;; ++i) {
+    // Transparency: VideoToolbox would hand back NV12 without it, so such pictures decode in
+    // software.
+    const AVPixFmtDescriptor* sourceFormat = av_pix_fmt_desc_get(static_cast<AVPixelFormat>(stream->codecpar->format));
+    d->info.hasAlpha = sourceFormat && (sourceFormat->flags & AV_PIX_FMT_FLAG_ALPHA);
+    for (int i = 0; !d->info.hasAlpha; ++i) {
         const AVCodecHWConfig* config = avcodec_get_hw_config(decoder, i);
         if (!config)
             break;

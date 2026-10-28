@@ -60,10 +60,13 @@ private:
 
 class AddClipCommand final : public Command {
 public:
-    AddClipCommand(Id trackId, Id mediaId, Ticks start, Ticks duration, Ticks sourceIn = 0)
-        : m_trackId(trackId), m_mediaId(mediaId), m_start(start), m_duration(duration), m_sourceIn(sourceIn) {}
+    // `visual` places the new clip (a sticker starts small, say); `label` names the step.
+    AddClipCommand(Id trackId, Id mediaId, Ticks start, Ticks duration, Ticks sourceIn = 0, ClipVisual visual = {},
+                   std::string label = "Add Clip")
+        : m_trackId(trackId), m_mediaId(mediaId), m_start(start), m_duration(duration), m_sourceIn(sourceIn),
+          m_visual(visual), m_label(std::move(label)) {}
 
-    std::string label() const override { return "Add Clip"; }
+    std::string label() const override { return m_label; }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -75,6 +78,8 @@ private:
     Ticks m_start;
     Ticks m_duration;
     Ticks m_sourceIn;
+    ClipVisual m_visual;
+    std::string m_label;
     Id m_clipId = kNoId;
 };
 

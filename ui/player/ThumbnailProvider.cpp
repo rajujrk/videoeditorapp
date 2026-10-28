@@ -3,6 +3,7 @@
 #include "decode/Thumbnail.h"
 #include "decode/VideoDecoder.h"
 #include "StillImage.h"
+#include "Stickers.h"
 
 #include <QCache>
 #include <QImage>
@@ -103,6 +104,15 @@ public:
         const double seconds = m_id.mid(timeAt + 1, heightAt - timeAt - 1).toDouble();
         const int height = m_id.mid(heightAt + 1).toInt();
 
+        if (tve::isLottieFile(path.toStdString())) {
+            // A sticker: drawn at that moment of its loop.
+            if (auto animation = stickers::open(path))
+                m_image = stickers::frame(*animation, seconds, std::max(1, height));
+            else
+                m_error = QStringLiteral("cannot read %1").arg(path);
+            emit finished();
+            return;
+        }
         if (still::isStillImage(path)) {
             // A still looks the same at every time: one thumbnail per height serves them all.
             const QString key = QStringLiteral("still:%1@%2").arg(path).arg(height);

@@ -22,9 +22,10 @@ struct LayerTransition {
     std::vector<ClipEffect> effects;
     ColorGrade grade;
     ColorGrade look; // the clip's look at its intensity, before `grade`
-    std::string stillPath; // a still image: read from here, with no frame
+    std::string stillPath; // a still image or sticker: read from here, with no frame
     ChromaKey chromaKey;
     std::vector<ClipMask> masks;
+    double clipSeconds = 0.0; // how far into the incoming clip
 };
 
 // One clip's picture at a moment of the timeline, with how to show it. During a
@@ -42,16 +43,16 @@ struct VideoLayer {
     // An adjustment layer: no picture of its own; its look, grade and effects apply to the
     // canvas below it, blended by its opacity.
     bool adjustment = false;
-    std::string stillPath; // a still image: read from here, with no frame
+    std::string stillPath; // a still image or sticker (Lottie): read from here, with no frame
     // After colour, before effects: the key, then the masks.
     ChromaKey chromaKey;
     std::vector<ClipMask> masks;
     // Uses the layer just above as its matte (that layer is then not drawn).
     MatteMode matte = MatteMode::None;
-    // A title: how far into its clip this frame is, and the clip's length, in seconds (its
-    // text animations and scrolling depend on them).
-    double titleSeconds = 0.0;
-    double titleDuration = 0.0;
+    // How far into its clip this frame is, and the clip's length, in seconds (a title's text
+    // animations and scrolling, a sticker's frame, depend on them).
+    double clipSeconds = 0.0;
+    double clipDuration = 0.0;
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.

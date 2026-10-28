@@ -6,6 +6,8 @@ add_library(tve_engine STATIC
     decode/AudioDecoder.cpp
     decode/Thumbnail.h
     decode/Thumbnail.cpp
+    decode/LottieAnimation.h
+    decode/LottieAnimation.cpp
     encode/Mp4Writer.h
     encode/Mp4Writer.cpp
     encode/Proxy.h
@@ -56,12 +58,16 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${TVE_AUDIO_EFFEC
 target_sources(tve_engine PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/BuiltinAudioEffects.cpp)
 set_source_files_properties(audio/MiniaudioImpl.c PROPERTIES COMPILE_OPTIONS "-w")
 
+# ThorVG (MIT) draws Lottie stickers; vcpkg builds it as a static library with its Lottie loader.
+find_path(THORVG_INCLUDE_DIR thorvg.h PATH_SUFFIXES thorvg-1 REQUIRED)
+find_library(THORVG_LIBRARY thorvg-1 REQUIRED)
+
 # miniaudio is a single header from vcpkg.
 find_path(MINIAUDIO_INCLUDE_DIR miniaudio.h REQUIRED)
 add_library(tve::engine ALIAS tve_engine)
 
 target_include_directories(tve_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(tve_engine SYSTEM PRIVATE ${MINIAUDIO_INCLUDE_DIR})
+target_include_directories(tve_engine SYSTEM PRIVATE ${MINIAUDIO_INCLUDE_DIR} ${THORVG_INCLUDE_DIR})
 target_link_libraries(tve_engine
     PUBLIC
         tve::core
@@ -69,6 +75,7 @@ target_link_libraries(tve_engine
         "-framework CoreFoundation"
     PRIVATE
         tve::ffmpeg
+        ${THORVG_LIBRARY}
         "-framework VideoToolbox"
         "-framework CoreMedia"
         "-framework CoreAudio"

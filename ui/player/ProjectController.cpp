@@ -11,7 +11,9 @@
 #include "model/TimelineQuery.h"
 #include "gpu/ColorGrader.h"
 #include "gpu/EffectLibrary.h"
+#include "Stickers.h"
 #include "audio/AudioEffects.h"
+#include "decode/LottieAnimation.h"
 #include "gpu/LayerPlacement.h"
 #include "decode/Thumbnail.h"
 #include "EffectInfo.h"
@@ -71,6 +73,13 @@ QString fileName(const std::string& path)
     return QFileInfo(QString::fromStdString(path)).fileName();
 }
 
+// What a media item is called: its file's name, or a built-in sticker's title.
+QString mediaName(const std::string& path)
+{
+    const QString title = stickers::titleOf(QString::fromStdString(path));
+    return title.isEmpty() ? fileName(path) : title;
+}
+
 // A media file's streams and length, or nullopt (with `error` set) if it has neither
 // pictures nor sound.
 std::optional<MediaItem> probeMedia(const std::string& path, QString* error)
@@ -82,6 +91,7 @@ std::optional<MediaItem> probeMedia(const std::string& path, QString* error)
         item.height = info.height;
         item.frameRate = info.frameRate;
         item.duration = info.duration;
+        item.alpha = info.hasAlpha;
     } else {
         item.hasVideo = false;
     }
@@ -685,7 +695,7 @@ QVariantList ProjectController::tracks() const
             const MediaItem* media = m_project.findMedia(clip.mediaId);
             const QString label = clip.text      ? QString::fromStdString(clip.text->text).section(QLatin1Char('\n'), 0, 0)
                                   : clip.adjustment ? QStringLiteral("Adjustment layer")
-                                  : media          ? fileName(media->path)
+                                  : media          ? mediaName(media->path)
                                                    : QStringLiteral("Missing media");
             clips << QVariantMap{
                 {QStringLiteral("id"), double(clip.id)},
@@ -740,7 +750,7 @@ QVariantList ProjectController::media() const
     for (const MediaItem& item : m_project.media) {
         list << QVariantMap{
             {QStringLiteral("id"), double(item.id)},
-            {QStringLiteral("name"), fileName(item.path)},
+            {QStringLiteral("name"), mediaName(item.path)},
             {QStringLiteral("path"), QString::fromStdString(item.path)},
             {QStringLiteral("duration"), seconds(item.duration)},
             {QStringLiteral("width"), item.width},
@@ -749,6 +759,8 @@ QVariantList ProjectController::media() const
             {QStringLiteral("hasVideo"), item.hasVideo},
             {QStringLiteral("hasAudio"), item.hasAudio},
             {QStringLiteral("still"), item.still},
+            {QStringLiteral("sticker"), item.lottie},
+            {QStringLiteral("alpha"), item.alpha},
         };
     }
     return list;
@@ -934,7 +946,17 @@ int ProjectController::importMedia(const QList<QUrl>& files)
         }
         QString error;
         std::optional<MediaItem> item;
-        if (still::isStillImage(QString::fromStdString(path))) {
+        if (isLottieFile(path)) {
+            // A sticker: plays in a loop for as long as its clips last (5 seconds when placed).
+            const auto animation = stickers::open(QString::fromStdString(path));
+            if (!animation) {
+                reportError(QStringLiteral("%1 is not a Lottie animation this app can play").arg(fileName(path)));
+                continue;
+            }
+            item = MediaItem{.path = path, .duration = kStillDuration, .hasVideo = true, .hasAudio = false,
+                             .width = animation->width(), .height = animation->height(), .still = true, .alpha = true,
+                             .lottie = true};
+        } else if (still::isStillImage(QString::fromStdString(path))) {
             // A photo or graphic: one picture, 5 seconds when first placed.
             const auto size = still::size(QString::fromStdString(path));
             item = MediaItem{.path = path, .duration = kStillDuration, .hasVideo = true, .hasAudio = false,
@@ -1118,7 +1140,8 @@ void ProjectController::requestAutoProxies()
     if (!m_autoProxies)
         return;
     for (const MediaItem& media : m_project.media) {
-        if (media.hasVideo && !media.still && std::min(media.width, media.height) > kAutoProxyAbove)
+        // (A proxy would lose transparency, so pictures with it play as they are.)
+        if (media.hasVideo && !media.still && !media.alpha && std::min(media.width, media.height) > kAutoProxyAbove)
             m_proxies.request(QString::fromStdString(media.path));
     }
 }
@@ -1444,7 +1467,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("id"), double(clip->id)},
             {QStringLiteral("label"), clip->text         ? QStringLiteral("Title")
                                       : clip->adjustment ? QStringLiteral("Adjustment layer")
-                                      : media            ? fileName(media->path)
+                                      : media            ? mediaName(media->path)
                                                          : QString()},
             {QStringLiteral("isTitle"), clip->text.has_value()},
             {QStringLiteral("text"), clip->text ? textMap(*clip->text) : QVariantMap()},
@@ -1475,6 +1498,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("matte"), QString::fromLatin1(kMatteModes[int(clip->matte)])},
             {QStringLiteral("isAdjustment"), clip->adjustment},
             {QStringLiteral("isStill"), media && media->still},
+            {QStringLiteral("isSticker"), media && media->lottie},
             {QStringLiteral("look"), clip->look ? QVariant(QVariantMap{{QStringLiteral("id"), QString::fromStdString(clip->look->id)},
                                                                        {QStringLiteral("title"), QString::fromStdString(clip->look->title)},
                                                                        {QStringLiteral("intensity"), clip->look->intensity}})
@@ -3490,4 +3514,59 @@ int ProjectController::applyRandomTransitions(double duration)
             return all[chosen].manifest.id;
         },
         duration, "Random Transitions");
+}
+
+// --- Stickers ---
+
+QVariantList ProjectController::stickers() const
+{
+    return stickers::catalog();
+}
+
+bool ProjectController::addSticker(const QString& stickerId)
+{
+    const QString path = stickers::pathOf(stickerId);
+    if (path.isEmpty()) {
+        reportError(QStringLiteral("Unknown sticker %1").arg(stickerId));
+        return false;
+    }
+    // Its media, once (a resource path, not a URL); then a clip at the playhead on the lowest
+    // free picture track above the main one (a new track on top if none is free), small, in
+    // the middle.
+    auto media = std::ranges::find(m_project.media, path.toStdString(), &MediaItem::path);
+    if (media == m_project.media.end()) {
+        const auto animation = stickers::open(path);
+        if (!animation
+            || !apply(std::make_unique<ImportMediaCommand>(MediaItem{.path = path.toStdString(), .duration = kStillDuration,
+                                                                     .hasVideo = true, .hasAudio = false,
+                                                                     .width = animation->width(),
+                                                                     .height = animation->height(), .still = true,
+                                                                     .alpha = true, .lottie = true})))
+            return false;
+        media = std::ranges::find(m_project.media, path.toStdString(), &MediaItem::path);
+    }
+    const Ticks at = ticks(m_playhead);
+    Id track = kNoId;
+    const auto main = m_project.trackIndex(mainTrackId());
+    for (std::size_t i = main ? *main + 1 : 0; i < m_project.tracks.size() && track == kNoId; ++i) {
+        const Track& candidate = m_project.tracks[i];
+        if (candidate.kind == TrackKind::Video && !candidate.locked && !candidate.hidden
+            && !candidate.overlaps(at, media->duration))
+            track = candidate.id;
+    }
+    if (track == kNoId) {
+        auto added = std::make_unique<AddTrackCommand>(TrackKind::Video, "Stickers");
+        auto* raw = added.get();
+        if (!apply(std::move(added)))
+            return false;
+        track = raw->trackId();
+    }
+    ClipVisual visual;
+    visual.transform.scale = 0.4;
+    auto clip = std::make_unique<AddClipCommand>(track, media->id, at, media->duration, 0, visual, "Add Sticker");
+    auto* raw = clip.get();
+    if (!apply(std::move(clip)))
+        return false;
+    setSelectedClip(double(raw->clipId()));
+    return true;
 }
