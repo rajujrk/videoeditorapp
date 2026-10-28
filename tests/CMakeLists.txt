@@ -31,9 +31,11 @@ add_executable(tve_engine_tests
     engine/test_recorder.cpp
     engine/test_scopes.cpp
     engine/test_audio_dsp.cpp
+    engine/test_stickers.cpp
 )
 target_link_libraries(tve_engine_tests PRIVATE tve::engine tve::ffmpeg Catch2::Catch2WithMain)
-target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples")
+target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples"
+                                                   TVE_EFFECTS_DIR="${PROJECT_SOURCE_DIR}/effects")
 catch_discover_tests(tve_engine_tests)
 
 if(TARGET tve_gpu)

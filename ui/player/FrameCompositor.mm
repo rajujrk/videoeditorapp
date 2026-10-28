@@ -1,6 +1,7 @@
 #include "FrameCompositor.h"
 
 #include "StillImage.h"
+#include "Stickers.h"
 #include "TitleRenderer.h"
 #include "VideoView.h"
 
@@ -35,6 +36,7 @@ QShader loadShader(const QString& name)
 struct PlaneFormats {
     bool supported = false;
     bool fullRange = false;
+    bool rgba = false; // one BGRA plane: colour and transparency, no conversion
     QRhiTexture::Format luma = QRhiTexture::R8;
     QRhiTexture::Format chroma = QRhiTexture::RG8;
     MTLPixelFormat metalLuma = MTLPixelFormatR8Unorm;
@@ -44,6 +46,9 @@ struct PlaneFormats {
 PlaneFormats planeFormats(OSType pixelFormat)
 {
     switch (pixelFormat) {
+    case kCVPixelFormatType_32BGRA:
+        return {.supported = true, .rgba = true, .luma = QRhiTexture::BGRA8, .chroma = QRhiTexture::BGRA8,
+                .metalLuma = MTLPixelFormatBGRA8Unorm, .metalChroma = MTLPixelFormatBGRA8Unorm};
     case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
         return {.supported = true};
     case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
@@ -140,6 +145,7 @@ void FrameCompositor::reset()
     m_clipChains.clear();
     m_canvasChains.clear();
     m_titles.clear();
+    m_stickers.clear();
     m_stills.clear();
 }
 
@@ -182,17 +188,19 @@ QRhiTexture* FrameCompositor::convertLayer(QRhiCommandBuffer* cb, LayerSlot& slo
     if (!formats.supported)
         return nullptr;
 
-    const size_t lumaWidth = CVPixelBufferGetWidthOfPlane(buffer, 0);
-    const size_t lumaHeight = CVPixelBufferGetHeightOfPlane(buffer, 0);
-    const size_t chromaWidth = CVPixelBufferGetWidthOfPlane(buffer, 1);
-    const size_t chromaHeight = CVPixelBufferGetHeightOfPlane(buffer, 1);
+    // A BGRA buffer has one plane; it stands in for both (the shader reads only the first).
+    const size_t lumaWidth = formats.rgba ? CVPixelBufferGetWidth(buffer) : CVPixelBufferGetWidthOfPlane(buffer, 0);
+    const size_t lumaHeight = formats.rgba ? CVPixelBufferGetHeight(buffer) : CVPixelBufferGetHeightOfPlane(buffer, 0);
+    const size_t chromaWidth = formats.rgba ? lumaWidth : CVPixelBufferGetWidthOfPlane(buffer, 1);
+    const size_t chromaHeight = formats.rgba ? lumaHeight : CVPixelBufferGetHeightOfPlane(buffer, 1);
     CVMetalTextureRef luma = nullptr;
     CVMetalTextureRef chroma = nullptr;
     if (CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, m_textureCache, buffer, nullptr,
                                                   formats.metalLuma, lumaWidth, lumaHeight, 0, &luma)
             != kCVReturnSuccess
         || CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, m_textureCache, buffer, nullptr,
-                                                     formats.metalChroma, chromaWidth, chromaHeight, 1, &chroma)
+                                                     formats.metalChroma, chromaWidth, chromaHeight,
+                                                     formats.rgba ? 0 : 1, &chroma)
             != kCVReturnSuccess) {
         if (luma)
             CFRelease(luma);
@@ -237,7 +245,7 @@ QRhiTexture* FrameCompositor::convertLayer(QRhiCommandBuffer* cb, LayerSlot& slo
     }
 
     const QMatrix4x4 matrix = yuvToRgbMatrix(buffer, formats.fullRange);
-    const float fullFrame[4] = {1.0f, 1.0f, m_rhi->isYUpInNDC() ? 1.0f : 0.0f, 0.0f};
+    const float fullFrame[4] = {1.0f, 1.0f, m_rhi->isYUpInNDC() ? 1.0f : 0.0f, formats.rgba ? 1.0f : 0.0f};
     QRhiResourceUpdateBatch* updates = m_rhi->nextResourceUpdateBatch();
     updates->updateDynamicBuffer(slot.uniforms.get(), 0, 64, matrix.constData());
     updates->updateDynamicBuffer(slot.uniforms.get(), 64, 16, fullFrame);
@@ -297,6 +305,34 @@ QRhiTexture* FrameCompositor::stillTexture(QRhiCommandBuffer* cb, const std::str
     return still.texture.get();
 }
 
+QRhiTexture* FrameCompositor::stickerTexture(QRhiCommandBuffer* cb, tve::Id clipId, const std::string& path,
+                                             double seconds)
+{
+    StickerTexture& sticker = m_stickers[clipId];
+    if (!sticker.animation || sticker.path != path) {
+        sticker = StickerTexture{path, stickers::open(QString::fromStdString(path)), -1, nullptr};
+        if (!sticker.animation)
+            return nullptr;
+    }
+    tve::LottieAnimation& animation = *sticker.animation;
+    const double fps = animation.frameCount() / animation.duration();
+    const auto frame = long(std::floor(std::max(seconds, 0.0) * fps));
+    if (sticker.texture && sticker.frame == frame)
+        return sticker.texture.get();
+    // As tall as the canvas (at most 1080 pixels): sharp at full size, not wasteful.
+    const QImage image = stickers::frame(animation, double(frame) / fps, std::min(m_canvasSize.height(), 1080));
+    if (!sticker.texture || sticker.texture->pixelSize() != image.size()) {
+        sticker.texture.reset(m_rhi->newTexture(QRhiTexture::RGBA8, image.size()));
+        if (!sticker.texture->create())
+            return nullptr;
+    }
+    QRhiResourceUpdateBatch* upload = m_rhi->nextResourceUpdateBatch();
+    upload->uploadTexture(sticker.texture.get(), image);
+    cb->resourceUpdate(upload);
+    sticker.frame = frame;
+    return sticker.texture.get();
+}
+
 QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame& frame, QSize canvas, float seconds,
                                      PreviewOverrides* overrides, std::vector<CVMetalTextureRef>& retained)
 {
@@ -312,6 +348,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::size_t transitionIndex = 0;
 
     std::set<tve::Id> liveTitles;
+    std::set<tve::Id> liveStickers;
     std::set<tve::Id> liveCanvasClips;
     std::size_t effectCanvasIndex = 0;
     // Each clip's canvas effects, by clip, as clipPicture() leaves them for placement.
@@ -324,15 +361,20 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                                  const std::optional<tve::ClipText>& text = std::nullopt,
                                  QRhiTexture* canvasBelow = nullptr, const std::string& stillPath = {},
                                  tve::ChromaKey key = {}, std::vector<tve::ClipMask> masks = {},
-                                 double titleSeconds = 0.0, double titleDuration = 0.0) -> QRhiTexture* {
+                                 double clipSeconds = 0.0, double clipDuration = 0.0) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
         if (canvasBelow) {
             picture = canvasBelow; // an adjustment layer works on what is under it
         } else if (text) {
-            picture = titleTexture(cb, clipId, *text, titleSeconds, titleDuration);
+            picture = titleTexture(cb, clipId, *text, clipSeconds, clipDuration);
             liveTitles.insert(clipId);
         } else if (!stillPath.empty()) {
-            picture = stillTexture(cb, stillPath);
+            if (tve::isLottieFile(stillPath)) {
+                picture = stickerTexture(cb, clipId, stillPath, clipSeconds);
+                liveStickers.insert(clipId);
+            } else {
+                picture = stillTexture(cb, stillPath);
+            }
         } else if (decoded.pixelBuffer()) {
             picture = convertLayer(cb, slot(slotIndex++), decoded.pixelBuffer(), retained);
         }
@@ -426,7 +468,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         }
         QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look,
                                            layer.text, nullptr, layer.stillPath, layer.chromaKey, layer.masks,
-                                           layer.titleSeconds, layer.titleDuration);
+                                           layer.clipSeconds, layer.clipDuration);
         // Track matte: the layer just above is the matte, placed by itself, and not drawn.
         tve::VideoLayer* matteLayer = index + 1 < frame.layers.size() ? &frame.layers[index + 1] : nullptr;
         if (layer.matte != tve::MatteMode::None && !layer.transition && matteLayer && !matteLayer->transition
@@ -436,7 +478,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             QRhiTexture* matte =
                 clipPicture(matteLayer->clipId, matteLayer->frame, matteVisual, matteLayer->effects, matteLayer->grade,
                             matteLayer->look, matteLayer->text, nullptr, matteLayer->stillPath, matteLayer->chromaKey,
-                            matteLayer->masks, matteLayer->titleSeconds, matteLayer->titleDuration);
+                            matteLayer->masks, matteLayer->clipSeconds, matteLayer->clipDuration);
             if (!picture)
                 continue;
             if (m_matteCanvases.size() <= matteIndex)
@@ -467,7 +509,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         QRhiTexture* incoming =
             clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade,
                         transition.look, std::nullopt, nullptr, transition.stillPath, transition.chromaKey,
-                        transition.masks);
+                        transition.masks, transition.clipSeconds);
         if (!picture || !incoming) {
             if (picture || incoming)
                 place(*m_compositor, picture ? layer.clipId : transition.clipId, picture ? picture : incoming,
@@ -501,6 +543,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::erase_if(m_clipChains, [&](const auto& entry) { return !liveClips.contains(entry.first); });
     std::erase_if(m_canvasChains, [&](const auto& entry) { return !liveCanvasClips.contains(entry.first); });
     std::erase_if(m_titles, [&](const auto& entry) { return !liveTitles.contains(entry.first); });
+    std::erase_if(m_stickers, [&](const auto& entry) { return !liveStickers.contains(entry.first); });
     // Stills stay a while after they leave the screen (scrubbing back and forth), then go.
     std::erase_if(m_stills, [&](const auto& entry) { return m_renders - entry.second.lastUsed > 120; });
     ++m_renders;

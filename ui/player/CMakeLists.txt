@@ -27,6 +27,8 @@ qt_add_qml_module(tve_player
         TransitionPreviewProvider.cpp
         EffectPreviewProvider.h
         EffectPreviewProvider.cpp
+        Stickers.h
+        Stickers.cpp
         PreviewImages.h
         PreviewImages.cpp
         TitleRenderer.h

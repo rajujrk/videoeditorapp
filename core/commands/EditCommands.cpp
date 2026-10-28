@@ -237,7 +237,8 @@ std::optional<std::string> AddClipCommand::redo(Project& project)
 
     if (m_clipId == kNoId)
         m_clipId = project.allocateId();
-    track->insertClip(Clip{.id = m_clipId, .mediaId = m_mediaId, .start = m_start, .duration = m_duration, .sourceIn = m_sourceIn});
+    track->insertClip(Clip{.id = m_clipId, .mediaId = m_mediaId, .start = m_start, .duration = m_duration,
+                           .sourceIn = m_sourceIn, .visual = m_visual});
     return std::nullopt;
 }
 

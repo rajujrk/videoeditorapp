@@ -16,11 +16,15 @@ struct VideoStreamInfo {
     Ticks duration = 0; // 0 if the container does not say
     std::string codecName;
     bool hardwareAccelerated = false;
+    // The pictures have transparency (ProRes 4444, GIF, animated PNG or WebP…): decoded in
+    // software to straight-alpha BGRA pixel buffers instead of NV12.
+    bool hasAlpha = false;
 };
 
 // Decodes the best video stream of a file. Uses VideoToolbox when the codec supports it
 // and falls back to FFmpeg's software decoders, converting their output to NV12 so every
-// frame reaches the renderer in the same GPU-friendly form.
+// frame reaches the renderer in the same GPU-friendly form; pictures with transparency
+// become BGRA instead, keeping it.
 class VideoDecoder {
 public:
     static std::unique_ptr<VideoDecoder> open(const std::string& path, std::string* error = nullptr);

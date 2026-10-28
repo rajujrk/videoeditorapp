@@ -958,8 +958,9 @@ Rectangle {
                              || inspector.clipInfo.isStill === true
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
-                    text: (inspector.clipInfo.isTitle === true ? "Titles" : inspector.clipInfo.isStill === true ? "Images"
-                                                                                                     : "Adjustment layers")
+                    text: (inspector.clipInfo.isTitle === true ? "Titles"
+                           : inspector.clipInfo.isSticker === true ? "Stickers"
+                           : inspector.clipInfo.isStill === true ? "Images" : "Adjustment layers")
                           + " have no speed; trim them to change how long they last."
                     font: Theme.type.body
                     color: Theme.color.textSecondary

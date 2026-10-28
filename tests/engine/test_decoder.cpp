@@ -130,3 +130,34 @@ TEST_CASE("thumbnails fail cleanly for missing files")
 {
     CHECK_FALSE(extractThumbnail("/nonexistent.mp4", 0, 90));
 }
+
+TEST_CASE("pictures with transparency keep it: straight-alpha BGRA frames")
+{
+    const std::string path = samplePath("test_alpha_prores.mov");
+    if (!std::filesystem::exists(path))
+        SKIP("sample missing: " << path << " (run tools/make_test_media.sh)");
+    auto decoder = VideoDecoder::open(path);
+    REQUIRE(decoder);
+    CHECK(decoder->info().hasAlpha);
+    CHECK_FALSE(decoder->info().hardwareAccelerated);
+    auto frame = decoder->nextFrame();
+    REQUIRE(frame);
+    CVPixelBufferRef buffer = frame->pixelBuffer();
+    REQUIRE(CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA);
+    CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+    const auto* bytes = static_cast<const std::uint8_t*>(CVPixelBufferGetBaseAddress(buffer));
+    const std::size_t row = CVPixelBufferGetBytesPerRow(buffer);
+    const auto pixel = [&](int x, int y) { return bytes + std::size_t(y) * row + std::size_t(x) * 4; };
+    // The disc starts at (80, 90): opaque red there (B, G, R, A), clear in the corner.
+    CHECK(pixel(80, 90)[3] == 255);
+    CHECK(pixel(80, 90)[2] > 200);
+    CHECK(pixel(80, 90)[1] < 60);
+    CHECK(pixel(5, 5)[3] == 0);
+    CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+    // Ordinary video still comes as NV12.
+    if (auto plain = VideoDecoder::open(samplePath("test_720p30_mjpeg.mov"))) {
+        CHECK_FALSE(plain->info().hasAlpha);
+        CHECK(CVPixelBufferGetPixelFormatType(plain->nextFrame()->pixelBuffer())
+              == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange);
+    }
+}

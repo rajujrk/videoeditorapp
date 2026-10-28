@@ -1,0 +1,604 @@
+{
+ "stickers": [
+  {
+   "id": "star_pulse",
+   "title": "Star · Pulse",
+   "category": "shapes",
+   "file": "star_pulse.json"
+  },
+  {
+   "id": "star_spin",
+   "title": "Star · Spin",
+   "category": "shapes",
+   "file": "star_spin.json"
+  },
+  {
+   "id": "star_bounce",
+   "title": "Star · Bounce",
+   "category": "shapes",
+   "file": "star_bounce.json"
+  },
+  {
+   "id": "star_wobble",
+   "title": "Star · Wobble",
+   "category": "shapes",
+   "file": "star_wobble.json"
+  },
+  {
+   "id": "heart_pulse",
+   "title": "Heart · Pulse",
+   "category": "shapes",
+   "file": "heart_pulse.json"
+  },
+  {
+   "id": "heart_spin",
+   "title": "Heart · Spin",
+   "category": "shapes",
+   "file": "heart_spin.json"
+  },
+  {
+   "id": "heart_bounce",
+   "title": "Heart · Bounce",
+   "category": "shapes",
+   "file": "heart_bounce.json"
+  },
+  {
+   "id": "heart_wobble",
+   "title": "Heart · Wobble",
+   "category": "shapes",
+   "file": "heart_wobble.json"
+  },
+  {
+   "id": "sparkle_pulse",
+   "title": "Sparkle · Pulse",
+   "category": "shapes",
+   "file": "sparkle_pulse.json"
+  },
+  {
+   "id": "sparkle_spin",
+   "title": "Sparkle · Spin",
+   "category": "shapes",
+   "file": "sparkle_spin.json"
+  },
+  {
+   "id": "sparkle_bounce",
+   "title": "Sparkle · Bounce",
+   "category": "shapes",
+   "file": "sparkle_bounce.json"
+  },
+  {
+   "id": "sparkle_wobble",
+   "title": "Sparkle · Wobble",
+   "category": "shapes",
+   "file": "sparkle_wobble.json"
+  },
+  {
+   "id": "burst_pulse",
+   "title": "Burst · Pulse",
+   "category": "shapes",
+   "file": "burst_pulse.json"
+  },
+  {
+   "id": "burst_spin",
+   "title": "Burst · Spin",
+   "category": "shapes",
+   "file": "burst_spin.json"
+  },
+  {
+   "id": "burst_bounce",
+   "title": "Burst · Bounce",
+   "category": "shapes",
+   "file": "burst_bounce.json"
+  },
+  {
+   "id": "burst_wobble",
+   "title": "Burst · Wobble",
+   "category": "shapes",
+   "file": "burst_wobble.json"
+  },
+  {
+   "id": "gem_pulse",
+   "title": "Gem · Pulse",
+   "category": "shapes",
+   "file": "gem_pulse.json"
+  },
+  {
+   "id": "gem_spin",
+   "title": "Gem · Spin",
+   "category": "shapes",
+   "file": "gem_spin.json"
+  },
+  {
+   "id": "gem_bounce",
+   "title": "Gem · Bounce",
+   "category": "shapes",
+   "file": "gem_bounce.json"
+  },
+  {
+   "id": "gem_wobble",
+   "title": "Gem · Wobble",
+   "category": "shapes",
+   "file": "gem_wobble.json"
+  },
+  {
+   "id": "ring_pulse",
+   "title": "Highlight Ring · Pulse",
+   "category": "shapes",
+   "file": "ring_pulse.json"
+  },
+  {
+   "id": "ring_spin",
+   "title": "Highlight Ring · Spin",
+   "category": "shapes",
+   "file": "ring_spin.json"
+  },
+  {
+   "id": "ring_bounce",
+   "title": "Highlight Ring · Bounce",
+   "category": "shapes",
+   "file": "ring_bounce.json"
+  },
+  {
+   "id": "ring_wobble",
+   "title": "Highlight Ring · Wobble",
+   "category": "shapes",
+   "file": "ring_wobble.json"
+  },
+  {
+   "id": "arrow_right_pulse",
+   "title": "Arrow · Pulse",
+   "category": "marks",
+   "file": "arrow_right_pulse.json"
+  },
+  {
+   "id": "arrow_right_spin",
+   "title": "Arrow · Spin",
+   "category": "marks",
+   "file": "arrow_right_spin.json"
+  },
+  {
+   "id": "arrow_right_bounce",
+   "title": "Arrow · Bounce",
+   "category": "marks",
+   "file": "arrow_right_bounce.json"
+  },
+  {
+   "id": "arrow_right_wobble",
+   "title": "Arrow · Wobble",
+   "category": "marks",
+   "file": "arrow_right_wobble.json"
+  },
+  {
+   "id": "arrow_down_pulse",
+   "title": "Arrow Down · Pulse",
+   "category": "marks",
+   "file": "arrow_down_pulse.json"
+  },
+  {
+   "id": "arrow_down_spin",
+   "title": "Arrow Down · Spin",
+   "category": "marks",
+   "file": "arrow_down_spin.json"
+  },
+  {
+   "id": "arrow_down_bounce",
+   "title": "Arrow Down · Bounce",
+   "category": "marks",
+   "file": "arrow_down_bounce.json"
+  },
+  {
+   "id": "arrow_down_wobble",
+   "title": "Arrow Down · Wobble",
+   "category": "marks",
+   "file": "arrow_down_wobble.json"
+  },
+  {
+   "id": "check_pulse",
+   "title": "Check · Pulse",
+   "category": "marks",
+   "file": "check_pulse.json"
+  },
+  {
+   "id": "check_spin",
+   "title": "Check · Spin",
+   "category": "marks",
+   "file": "check_spin.json"
+  },
+  {
+   "id": "check_bounce",
+   "title": "Check · Bounce",
+   "category": "marks",
+   "file": "check_bounce.json"
+  },
+  {
+   "id": "check_wobble",
+   "title": "Check · Wobble",
+   "category": "marks",
+   "file": "check_wobble.json"
+  },
+  {
+   "id": "cross_pulse",
+   "title": "Cross · Pulse",
+   "category": "marks",
+   "file": "cross_pulse.json"
+  },
+  {
+   "id": "cross_spin",
+   "title": "Cross · Spin",
+   "category": "marks",
+   "file": "cross_spin.json"
+  },
+  {
+   "id": "cross_bounce",
+   "title": "Cross · Bounce",
+   "category": "marks",
+   "file": "cross_bounce.json"
+  },
+  {
+   "id": "cross_wobble",
+   "title": "Cross · Wobble",
+   "category": "marks",
+   "file": "cross_wobble.json"
+  },
+  {
+   "id": "exclamation_pulse",
+   "title": "Exclamation · Pulse",
+   "category": "marks",
+   "file": "exclamation_pulse.json"
+  },
+  {
+   "id": "exclamation_spin",
+   "title": "Exclamation · Spin",
+   "category": "marks",
+   "file": "exclamation_spin.json"
+  },
+  {
+   "id": "exclamation_bounce",
+   "title": "Exclamation · Bounce",
+   "category": "marks",
+   "file": "exclamation_bounce.json"
+  },
+  {
+   "id": "exclamation_wobble",
+   "title": "Exclamation · Wobble",
+   "category": "marks",
+   "file": "exclamation_wobble.json"
+  },
+  {
+   "id": "question_pulse",
+   "title": "Question · Pulse",
+   "category": "marks",
+   "file": "question_pulse.json"
+  },
+  {
+   "id": "question_spin",
+   "title": "Question · Spin",
+   "category": "marks",
+   "file": "question_spin.json"
+  },
+  {
+   "id": "question_bounce",
+   "title": "Question · Bounce",
+   "category": "marks",
+   "file": "question_bounce.json"
+  },
+  {
+   "id": "question_wobble",
+   "title": "Question · Wobble",
+   "category": "marks",
+   "file": "question_wobble.json"
+  },
+  {
+   "id": "pin_pulse",
+   "title": "Map Pin · Pulse",
+   "category": "marks",
+   "file": "pin_pulse.json"
+  },
+  {
+   "id": "pin_spin",
+   "title": "Map Pin · Spin",
+   "category": "marks",
+   "file": "pin_spin.json"
+  },
+  {
+   "id": "pin_bounce",
+   "title": "Map Pin · Bounce",
+   "category": "marks",
+   "file": "pin_bounce.json"
+  },
+  {
+   "id": "pin_wobble",
+   "title": "Map Pin · Wobble",
+   "category": "marks",
+   "file": "pin_wobble.json"
+  },
+  {
+   "id": "swoosh_pulse",
+   "title": "Swoosh · Pulse",
+   "category": "marks",
+   "file": "swoosh_pulse.json"
+  },
+  {
+   "id": "swoosh_spin",
+   "title": "Swoosh · Spin",
+   "category": "marks",
+   "file": "swoosh_spin.json"
+  },
+  {
+   "id": "swoosh_bounce",
+   "title": "Swoosh · Bounce",
+   "category": "marks",
+   "file": "swoosh_bounce.json"
+  },
+  {
+   "id": "swoosh_wobble",
+   "title": "Swoosh · Wobble",
+   "category": "marks",
+   "file": "swoosh_wobble.json"
+  },
+  {
+   "id": "sun_pulse",
+   "title": "Sun · Pulse",
+   "category": "nature",
+   "file": "sun_pulse.json"
+  },
+  {
+   "id": "sun_spin",
+   "title": "Sun · Spin",
+   "category": "nature",
+   "file": "sun_spin.json"
+  },
+  {
+   "id": "sun_bounce",
+   "title": "Sun · Bounce",
+   "category": "nature",
+   "file": "sun_bounce.json"
+  },
+  {
+   "id": "sun_wobble",
+   "title": "Sun · Wobble",
+   "category": "nature",
+   "file": "sun_wobble.json"
+  },
+  {
+   "id": "cloud_pulse",
+   "title": "Cloud · Pulse",
+   "category": "nature",
+   "file": "cloud_pulse.json"
+  },
+  {
+   "id": "cloud_spin",
+   "title": "Cloud · Spin",
+   "category": "nature",
+   "file": "cloud_spin.json"
+  },
+  {
+   "id": "cloud_bounce",
+   "title": "Cloud · Bounce",
+   "category": "nature",
+   "file": "cloud_bounce.json"
+  },
+  {
+   "id": "cloud_wobble",
+   "title": "Cloud · Wobble",
+   "category": "nature",
+   "file": "cloud_wobble.json"
+  },
+  {
+   "id": "raindrop_pulse",
+   "title": "Raindrop · Pulse",
+   "category": "nature",
+   "file": "raindrop_pulse.json"
+  },
+  {
+   "id": "raindrop_spin",
+   "title": "Raindrop · Spin",
+   "category": "nature",
+   "file": "raindrop_spin.json"
+  },
+  {
+   "id": "raindrop_bounce",
+   "title": "Raindrop · Bounce",
+   "category": "nature",
+   "file": "raindrop_bounce.json"
+  },
+  {
+   "id": "raindrop_wobble",
+   "title": "Raindrop · Wobble",
+   "category": "nature",
+   "file": "raindrop_wobble.json"
+  },
+  {
+   "id": "flame_pulse",
+   "title": "Flame · Pulse",
+   "category": "nature",
+   "file": "flame_pulse.json"
+  },
+  {
+   "id": "flame_spin",
+   "title": "Flame · Spin",
+   "category": "nature",
+   "file": "flame_spin.json"
+  },
+  {
+   "id": "flame_bounce",
+   "title": "Flame · Bounce",
+   "category": "nature",
+   "file": "flame_bounce.json"
+  },
+  {
+   "id": "flame_wobble",
+   "title": "Flame · Wobble",
+   "category": "nature",
+   "file": "flame_wobble.json"
+  },
+  {
+   "id": "lightning_pulse",
+   "title": "Lightning · Pulse",
+   "category": "nature",
+   "file": "lightning_pulse.json"
+  },
+  {
+   "id": "lightning_spin",
+   "title": "Lightning · Spin",
+   "category": "nature",
+   "file": "lightning_spin.json"
+  },
+  {
+   "id": "lightning_bounce",
+   "title": "Lightning · Bounce",
+   "category": "nature",
+   "file": "lightning_bounce.json"
+  },
+  {
+   "id": "lightning_wobble",
+   "title": "Lightning · Wobble",
+   "category": "nature",
+   "file": "lightning_wobble.json"
+  },
+  {
+   "id": "smiley_pulse",
+   "title": "Smiley · Pulse",
+   "category": "emoji",
+   "file": "smiley_pulse.json"
+  },
+  {
+   "id": "smiley_spin",
+   "title": "Smiley · Spin",
+   "category": "emoji",
+   "file": "smiley_spin.json"
+  },
+  {
+   "id": "smiley_bounce",
+   "title": "Smiley · Bounce",
+   "category": "emoji",
+   "file": "smiley_bounce.json"
+  },
+  {
+   "id": "smiley_wobble",
+   "title": "Smiley · Wobble",
+   "category": "emoji",
+   "file": "smiley_wobble.json"
+  },
+  {
+   "id": "surprised_pulse",
+   "title": "Surprised · Pulse",
+   "category": "emoji",
+   "file": "surprised_pulse.json"
+  },
+  {
+   "id": "surprised_spin",
+   "title": "Surprised · Spin",
+   "category": "emoji",
+   "file": "surprised_spin.json"
+  },
+  {
+   "id": "surprised_bounce",
+   "title": "Surprised · Bounce",
+   "category": "emoji",
+   "file": "surprised_bounce.json"
+  },
+  {
+   "id": "surprised_wobble",
+   "title": "Surprised · Wobble",
+   "category": "emoji",
+   "file": "surprised_wobble.json"
+  },
+  {
+   "id": "bubble_pulse",
+   "title": "Speech Bubble · Pulse",
+   "category": "emoji",
+   "file": "bubble_pulse.json"
+  },
+  {
+   "id": "bubble_spin",
+   "title": "Speech Bubble · Spin",
+   "category": "emoji",
+   "file": "bubble_spin.json"
+  },
+  {
+   "id": "bubble_bounce",
+   "title": "Speech Bubble · Bounce",
+   "category": "emoji",
+   "file": "bubble_bounce.json"
+  },
+  {
+   "id": "bubble_wobble",
+   "title": "Speech Bubble · Wobble",
+   "category": "emoji",
+   "file": "bubble_wobble.json"
+  },
+  {
+   "id": "note_pulse",
+   "title": "Music Note · Pulse",
+   "category": "emoji",
+   "file": "note_pulse.json"
+  },
+  {
+   "id": "note_spin",
+   "title": "Music Note · Spin",
+   "category": "emoji",
+   "file": "note_spin.json"
+  },
+  {
+   "id": "note_bounce",
+   "title": "Music Note · Bounce",
+   "category": "emoji",
+   "file": "note_bounce.json"
+  },
+  {
+   "id": "note_wobble",
+   "title": "Music Note · Wobble",
+   "category": "emoji",
+   "file": "note_wobble.json"
+  },
+  {
+   "id": "crown_pulse",
+   "title": "Crown · Pulse",
+   "category": "party",
+   "file": "crown_pulse.json"
+  },
+  {
+   "id": "crown_spin",
+   "title": "Crown · Spin",
+   "category": "party",
+   "file": "crown_spin.json"
+  },
+  {
+   "id": "crown_bounce",
+   "title": "Crown · Bounce",
+   "category": "party",
+   "file": "crown_bounce.json"
+  },
+  {
+   "id": "crown_wobble",
+   "title": "Crown · Wobble",
+   "category": "party",
+   "file": "crown_wobble.json"
+  },
+  {
+   "id": "confetti_pulse",
+   "title": "Confetti · Pulse",
+   "category": "party",
+   "file": "confetti_pulse.json"
+  },
+  {
+   "id": "confetti_spin",
+   "title": "Confetti · Spin",
+   "category": "party",
+   "file": "confetti_spin.json"
+  },
+  {
+   "id": "confetti_bounce",
+   "title": "Confetti · Bounce",
+   "category": "party",
+   "file": "confetti_bounce.json"
+  },
+  {
+   "id": "confetti_wobble",
+   "title": "Confetti · Wobble",
+   "category": "party",
+   "file": "confetti_wobble.json"
+  }
+ ]
+}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "decode/LottieAnimation.h"
 #include "playback/CompositeFrame.h"
 
 #include <QSize>
@@ -92,6 +93,8 @@ private:
                               double duration);
     // A still image's picture, read once and kept while it is in use (and a few after).
     QRhiTexture* stillTexture(QRhiCommandBuffer* cb, const std::string& path);
+    // A sticker's (Lottie) frame `seconds` into its clip, drawn when the frame changes.
+    QRhiTexture* stickerTexture(QRhiCommandBuffer* cb, tve::Id clipId, const std::string& path, double seconds);
 
     QRhi* m_rhi;
     CVMetalTextureCacheRef m_textureCache = nullptr;
@@ -118,6 +121,13 @@ private:
         std::uint64_t lastUsed = 0; // render count
     };
     std::map<std::string, StillTexture> m_stills;
+    struct StickerTexture {
+        std::string path;
+        std::unique_ptr<tve::LottieAnimation> animation;
+        long frame = -1;
+        std::unique_ptr<QRhiTexture> texture;
+    };
+    std::map<tve::Id, StickerTexture> m_stickers;
     std::uint64_t m_renders = 0;
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_clipChains;
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_canvasChains; // canvas effects
