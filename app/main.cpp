@@ -108,20 +108,28 @@ int main(int argc, char* argv[])
     const QCommandLineOption seekOption(QStringLiteral("seek"), QStringLiteral("Move the playhead to <seconds>."),
                                         QStringLiteral("seconds"));
     const QCommandLineOption exportOption(QStringLiteral("export"),
-                                          QStringLiteral("Export the project to <file> (MP4), then quit."),
+                                          QStringLiteral("Export the project to <file>, then quit."),
                                           QStringLiteral("file"));
     const QCommandLineOption exportSizeOption(QStringLiteral("export-size"),
                                               QStringLiteral("Export size, e.g. 1280x720 (default: the canvas)."),
                                               QStringLiteral("WxH"));
     const QCommandLineOption exportCodecOption(QStringLiteral("export-codec"), QStringLiteral("h264 (default) or hevc."),
                                                QStringLiteral("codec"), QStringLiteral("h264"));
+    const QCommandLineOption exportFormatOption(
+        QStringLiteral("export-format"),
+        QStringLiteral("mp4-h264 (default), mp4-hevc, mov-h264, mov-prores-proxy|lt|422|hq|4444, gif, m4a, wav-16, "
+                       "wav-24 or flac."),
+        QStringLiteral("format"));
+    const QCommandLineOption exportPresetOption(QStringLiteral("export-preset"),
+                                                QStringLiteral("An export preset, e.g. web-1080, vertical, master, gif."),
+                                                QStringLiteral("id"));
     const QCommandLineOption makeProxiesOption(QStringLiteral("make-proxies"),
                                                QStringLiteral("Make proxies of the given media, then quit."));
     const QCommandLineOption noProxiesOption(QStringLiteral("no-proxies"),
                                              QStringLiteral("Play the original media, not proxies."));
     parser.addOptions({statsOption, quitOption, effectsOption, screenshotOption, screenshotAtOption, screenOption,
                        themeOption, playOption, seekOption, exportOption, exportSizeOption, exportCodecOption,
-                       makeProxiesOption, noProxiesOption});
+                       exportFormatOption, exportPresetOption, makeProxiesOption, noProxiesOption});
     parser.addPositionalArgument(QStringLiteral("files"),
                                  QStringLiteral("A .tve project to open, or media files to add to a new project."),
                                  QStringLiteral("[files...]"));
@@ -202,6 +210,10 @@ int main(int argc, char* argv[])
         }
         if (parser.isSet(exportOption)) {
             QVariantMap options{{QStringLiteral("codec"), parser.value(exportCodecOption)}};
+            if (parser.isSet(exportFormatOption))
+                options[QStringLiteral("format")] = parser.value(exportFormatOption);
+            if (parser.isSet(exportPresetOption))
+                options[QStringLiteral("preset")] = parser.value(exportPresetOption);
             const QStringList size = parser.value(exportSizeOption).split(QLatin1Char('x'));
             if (size.size() == 2) {
                 options[QStringLiteral("width")] = size[0].toInt();

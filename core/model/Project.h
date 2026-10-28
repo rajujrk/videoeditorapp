@@ -396,6 +396,8 @@ public:
     // notes ("Chapter N" when empty). When the first starts after 0, an "Opening" chapter
     // covers the time before it (players expect chapters to start at the beginning).
     std::vector<Chapter> chapters() const;
+    // The chapters of an export of `from`–`to` only: those above, cut to it and timed from its start.
+    std::vector<Chapter> chapters(Ticks from, Ticks to) const;
 
     friend bool operator==(const Project&, const Project&) = default;
 

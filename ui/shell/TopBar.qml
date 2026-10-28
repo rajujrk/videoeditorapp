@@ -74,13 +74,50 @@ Rectangle {
             tip: Theme.dark ? "Light theme" : "Dark theme"
             onClicked: Theme.dark = !Theme.dark
         }
+        IconButton {
+            id: queueButton
+            objectName: "renderQueueButton"
+            // Exports still to finish: the running one and those waiting.
+            readonly property int pending: bar.project.exportJobs.filter((j) => j.state === "running" || j.state === "waiting").length
+            visible: bar.project.exportJobs.length > 0
+            iconName: "queue"
+            tip: "Render queue" + (pending > 0 ? " · " + pending + " to go" : "")
+            checkable: true
+            checked: queuePanel.visible
+            onClicked: queuePanel.visible ? queuePanel.close() : queuePanel.open()
+
+            Rectangle {
+                visible: queueButton.pending > 0
+                anchors { right: parent.right; top: parent.top; rightMargin: -2; topMargin: -2 }
+                width: Math.max(16, badge.implicitWidth + 8)
+                height: 16
+                radius: 8
+                color: Theme.color.accent
+                Text {
+                    id: badge
+                    anchors.centerIn: parent
+                    text: queueButton.pending
+                    font: Theme.type.caption
+                    color: Theme.color.textOnAccent
+                }
+            }
+
+            RenderQueuePanel {
+                id: queuePanel
+                objectName: "renderQueuePanel"
+                project: bar.project
+                x: parent.width - width
+                y: parent.height + Theme.space.s
+            }
+        }
         TextButton {
             objectName: "exportButton"
-            text: bar.project.exporting ? "Exporting " + Math.round(bar.project.exportProgress * 100) + " %" : "Export"
+            text: bar.project.exporting ? (bar.project.exportPaused ? "Paused " : "Exporting ")
+                                          + Math.round(bar.project.exportProgress * 100) + " %" : "Export"
             iconName: "export"
             variant: "primary"
             enabled: bar.project.duration > 0
-            tip: "Export the video as an MP4 file (⌘E)"
+            tip: "Export a video, a GIF or the sound (⌘E); exports queue up and run while you edit"
             Layout.leftMargin: Theme.space.s
             onClicked: bar.exportRequested()
         }

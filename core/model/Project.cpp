@@ -243,6 +243,18 @@ std::vector<Chapter> Project::chapters() const
     return list;
 }
 
+std::vector<Chapter> Project::chapters(Ticks from, Ticks to) const
+{
+    std::vector<Chapter> list;
+    for (Chapter chapter : chapters()) {
+        chapter.start = std::max(chapter.start, from) - from;
+        chapter.end = std::min(chapter.end, to) - from;
+        if (chapter.end > chapter.start)
+            list.push_back(std::move(chapter));
+    }
+    return list;
+}
+
 Ticks Sequence::duration() const
 {
     Ticks end = 0;

@@ -27,7 +27,7 @@ add_executable(tve_engine_tests
     engine/test_frame_queue.cpp
     engine/test_timeline_playback.cpp
     engine/test_audio.cpp
-    engine/test_mp4_writer.cpp
+    engine/test_media_writer.cpp
     engine/test_proxy.cpp
     engine/test_recorder.cpp
     engine/test_scopes.cpp
