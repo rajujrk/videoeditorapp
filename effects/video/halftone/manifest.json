@@ -1,0 +1,16 @@
+{
+  "id": "tve.stylize.halftone",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize"],
+  "title": {"en": "Halftone"},
+  "params": [
+    {"id": "dotSize", "type": "float", "title": {"en": "Dot size"}, "min": 0.5, "max": 10, "default": 1.5, "keyframable": true},
+    {"id": "angle", "type": "float", "title": {"en": "Angle"}, "min": 0, "max": 90, "default": 45},
+    {"id": "mode", "type": "enum", "title": {"en": "Ink"}, "values": ["Black", "Colour"], "default": "Black"}
+  ],
+  "passes": [
+    {"fragment": "halftone.frag"}
+  ],
+  "license": "TVE-Original"
+}

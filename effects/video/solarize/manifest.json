@@ -1,0 +1,15 @@
+{
+  "id": "tve.color.solarize",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["color"],
+  "title": {"en": "Solarize"},
+  "params": [
+    {"id": "threshold", "type": "float", "title": {"en": "Threshold"}, "min": 0, "max": 1, "default": 0.5, "keyframable": true},
+    {"id": "intensity", "type": "float", "title": {"en": "Intensity"}, "min": 0, "max": 1, "default": 1}
+  ],
+  "passes": [
+    {"fragment": "solarize.frag"}
+  ],
+  "license": "TVE-Original"
+}

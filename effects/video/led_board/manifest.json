@@ -1,0 +1,16 @@
+{
+  "id": "tve.stylize.led_board",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize"],
+  "title": {"en": "LED Board"},
+  "params": [
+    {"id": "cellSize", "type": "float", "title": {"en": "LED size"}, "min": 0.3, "max": 5, "default": 1.2, "keyframable": true},
+    {"id": "gap", "type": "float", "title": {"en": "Gap"}, "min": 0, "max": 0.9, "default": 0.25},
+    {"id": "glow", "type": "float", "title": {"en": "Glow"}, "min": 0, "max": 1, "default": 0.3}
+  ],
+  "passes": [
+    {"fragment": "led_board.frag"}
+  ],
+  "license": "TVE-Original"
+}

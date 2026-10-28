@@ -31,6 +31,11 @@ struct EffectPassSpec {
     std::string fragment; // shader file name inside the effect's folder, e.g. "blur_h.frag"
 };
 
+// Where a video effect runs. Picture effects work on the clip's own picture before it is
+// placed; canvas effects run after placement on a transparent canvas of the project's size
+// holding just that clip, so they can draw outside the picture (shadows, borders, fills).
+enum class EffectSpace { Picture, Canvas };
+
 inline constexpr const char* kVideoEffectKind = "video-effect";
 inline constexpr const char* kTransitionKind = "transition"; // one pass, two inputs
 
@@ -39,6 +44,7 @@ struct EffectManifest {
     int version = 1;
     std::string kind; // kVideoEffectKind or kTransitionKind
     std::vector<std::string> categories;
+    EffectSpace space = EffectSpace::Picture;
     std::map<std::string, std::string> title;
     std::vector<EffectParamSpec> params;
     std::vector<EffectPassSpec> passes;

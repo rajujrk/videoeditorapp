@@ -1,0 +1,17 @@
+{
+  "id": "tve.distort.wave",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["distort"],
+  "title": {"en": "Wave"},
+  "params": [
+    {"id": "amplitude", "type": "float", "title": {"en": "Amplitude"}, "min": 0, "max": 10, "default": 1.5, "keyframable": true},
+    {"id": "wavelength", "type": "float", "title": {"en": "Wavelength"}, "min": 1, "max": 100, "default": 15},
+    {"id": "speed", "type": "float", "title": {"en": "Speed"}, "min": -5, "max": 5, "default": 1},
+    {"id": "direction", "type": "enum", "title": {"en": "Direction"}, "values": ["Horizontal", "Vertical", "Both"], "default": "Horizontal"}
+  ],
+  "passes": [
+    {"fragment": "wave.frag"}
+  ],
+  "license": "TVE-Original"
+}

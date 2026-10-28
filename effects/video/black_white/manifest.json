@@ -1,0 +1,16 @@
+{
+  "id": "tve.color.black_white",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["color"],
+  "title": {"en": "Black & White"},
+  "params": [
+    {"id": "channel", "type": "enum", "title": {"en": "Filter"}, "values": ["Neutral", "Red", "Yellow", "Green", "Blue"], "default": "Neutral"},
+    {"id": "contrast", "type": "float", "title": {"en": "Contrast"}, "min": 0, "max": 2, "default": 1},
+    {"id": "intensity", "type": "float", "title": {"en": "Intensity"}, "min": 0, "max": 1, "default": 1, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "black_white.frag"}
+  ],
+  "license": "TVE-Original"
+}

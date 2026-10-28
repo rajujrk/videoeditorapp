@@ -4,11 +4,11 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b) looks, overlays and adjustment layers (7c) and masks, keying and split screens (8a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a) and the effects library (8b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
-scopes, put looks (filters) and overlays on clips or on adjustment layers above them, cut clips out with shape and pen masks, a chroma key or a track matte, arrange clips side by side or picture in picture, give each clip its own effects,
+scopes, put looks (filters) and overlays on clips or on adjustment layers above them, cut clips out with shape and pen masks, a chroma key or a track matte, arrange clips side by side or picture in picture, give each clip its own effects from a library of 61 (with shadows, outlines and fills that reach outside the picture),
 put any of 21 transitions on the cuts between clips (with a constant-power sound
 crossfade), add titles (font, size, colour, bold/italic, alignment, letter and line
 spacing, outline, shadow), change a clip's speed (0.1–10×) or ramp it, play it in reverse or insert
@@ -112,6 +112,22 @@ has no speed, but everything else applies — placement and crop, keyframes (a s
 pan), colour, looks, effects, transitions, export — and transparency in PNGs shows what is
 below. An animated GIF plays as a video. Images do not set the project's canvas; the first
 video does.
+
+**Effects library.** The library's Effects tab holds 61 original effects with previews
+rendered on the GPU (they animate on hover), filtered by category chips — Blur (Gaussian Blur,
+Directional Blur, Radial Blur, Spin Blur, Lens Blur, Tilt Shift, Frosted Glass, Smooth, Sharpen),
+Colour (Black & White, Duotone, Tint, Posterize, Solarize, Threshold, Colour Splash, Gradient
+Map, Hue Rotate, Color Adjust), Stylize (Find Edges, Pencil Sketch, Cartoon, Emboss, Halftone, Oil Paint,
+Crystallize, LED Board, CRT Screen, Neon Edges, Pixelate, Vignette), Distort (Swirl, Bulge &
+Pinch, Wave, Water Ripple, Mirror, Kaleidoscope, Little Planet, Camera Shake, Lens Distortion,
+Heat Haze, Flip), Glitch (Digital Glitch, Bad Signal, RGB Split), Light (Glow, Light Rays, Lens
+Flare, Strobe, Spotlight), Frame (Drop Shadow, Outline, Outer Glow, Background Fill, Rounded
+Corners) and the six overlays — and by the search field (which also searches transitions).
+Click one to add it to the selected clip; its settings are in the Effects tab, and the
+numeric ones keyframe. Frame effects work on the placed clip, so a picture-in-picture clip
+casts its shadow onto what is below and Background Fill covers the frame around a clip with
+its own blurred picture or a colour. Effect sizes are relative to the picture, so previews,
+proxies and exports match. See [effects/README.md](effects/README.md) for writing one.
 
 **Masks, keying and split screens.** The Video tab's Masks section adds rectangle, ellipse,
 line, star, heart and pen masks to a clip (up to eight; together they show the union of

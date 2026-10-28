@@ -1,0 +1,17 @@
+{
+  "id": "tve.distort.swirl",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["distort"],
+  "title": {"en": "Swirl"},
+  "params": [
+    {"id": "angle", "type": "float", "title": {"en": "Angle"}, "min": -720, "max": 720, "default": 180, "keyframable": true},
+    {"id": "radius", "type": "float", "title": {"en": "Radius"}, "min": 0, "max": 1.5, "default": 0.5, "keyframable": true},
+    {"id": "centerX", "type": "float", "title": {"en": "Centre X"}, "min": 0, "max": 1, "default": 0.5, "keyframable": true},
+    {"id": "centerY", "type": "float", "title": {"en": "Centre Y"}, "min": 0, "max": 1, "default": 0.5, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "swirl.frag"}
+  ],
+  "license": "TVE-Original"
+}

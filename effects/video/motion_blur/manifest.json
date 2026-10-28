@@ -1,0 +1,15 @@
+{
+  "id": "tve.blur.directional",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["blur"],
+  "title": {"en": "Directional Blur"},
+  "params": [
+    {"id": "strength", "type": "float", "title": {"en": "Length"}, "min": 0, "max": 20, "default": 3, "keyframable": true},
+    {"id": "angle", "type": "float", "title": {"en": "Angle"}, "min": -180, "max": 180, "default": 0, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "motion_blur.frag"}
+  ],
+  "license": "TVE-Original"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "tve.stylize.edges",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize"],
+  "title": {"en": "Find Edges"},
+  "params": [
+    {"id": "strength", "type": "float", "title": {"en": "Strength"}, "min": 0, "max": 5, "default": 1.5, "keyframable": true},
+    {"id": "mode", "type": "enum", "title": {"en": "Style"}, "values": ["White on black", "Black on white", "Coloured"], "default": "White on black"}
+  ],
+  "passes": [
+    {"fragment": "edge_detect.frag"}
+  ],
+  "license": "TVE-Original"
+}

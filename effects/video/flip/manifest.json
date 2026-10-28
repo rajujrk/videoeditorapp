@@ -1,0 +1,14 @@
+{
+  "id": "tve.distort.flip",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["distort"],
+  "title": {"en": "Flip"},
+  "params": [
+    {"id": "mode", "type": "enum", "title": {"en": "Flip"}, "values": ["Horizontal", "Vertical", "Both"], "default": "Horizontal"}
+  ],
+  "passes": [
+    {"fragment": "flip.frag"}
+  ],
+  "license": "TVE-Original"
+}

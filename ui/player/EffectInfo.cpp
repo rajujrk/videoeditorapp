@@ -33,6 +33,7 @@ QVariantMap describeEffect(const tve::LoadedEffect& effect)
         {QStringLiteral("id"), QString::fromStdString(m.id)},
         {QStringLiteral("title"), QString::fromStdString(m.displayTitle())},
         {QStringLiteral("categories"), categories},
+        {QStringLiteral("canvas"), m.space == tve::EffectSpace::Canvas},
         {QStringLiteral("params"), params},
     };
 }

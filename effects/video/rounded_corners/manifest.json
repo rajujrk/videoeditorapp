@@ -1,0 +1,14 @@
+{
+  "id": "tve.frame.rounded_corners",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["frame"],
+  "title": {"en": "Rounded Corners"},
+  "params": [
+    {"id": "radius", "type": "float", "title": {"en": "Radius"}, "min": 0, "max": 100, "default": 15, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "rounded_corners.frag"}
+  ],
+  "license": "TVE-Original"
+}

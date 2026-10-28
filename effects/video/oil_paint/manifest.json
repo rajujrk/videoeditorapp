@@ -1,0 +1,14 @@
+{
+  "id": "tve.stylize.oil_paint",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize"],
+  "title": {"en": "Oil Paint"},
+  "params": [
+    {"id": "radius", "type": "int", "title": {"en": "Brush"}, "min": 1, "max": 6, "default": 3}
+  ],
+  "passes": [
+    {"fragment": "oil_paint.frag"}
+  ],
+  "license": "TVE-Original"
+}

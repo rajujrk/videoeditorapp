@@ -1,0 +1,16 @@
+{
+  "id": "tve.distort.shake",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["distort"],
+  "title": {"en": "Camera Shake"},
+  "params": [
+    {"id": "amount", "type": "float", "title": {"en": "Amount"}, "min": 0, "max": 10, "default": 1.5, "keyframable": true},
+    {"id": "speed", "type": "float", "title": {"en": "Speed"}, "min": 0.1, "max": 30, "default": 6},
+    {"id": "rotation", "type": "float", "title": {"en": "Rotation"}, "min": 0, "max": 10, "default": 1}
+  ],
+  "passes": [
+    {"fragment": "shake.frag"}
+  ],
+  "license": "TVE-Original"
+}

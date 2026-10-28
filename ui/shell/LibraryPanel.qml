@@ -9,7 +9,21 @@ Rectangle {
     required property var player  // VideoView, for the live effects list
     required property var project // ProjectController
     property int currentTab: 0
+    // The Effects tab's category ("" for all) and the search text (Effects and Transitions).
+    property string effectCategory: ""
+    property alias searchText: searchField.text
     signal importRequested()
+    onCurrentTabChanged: searchField.text = ""
+
+    readonly property var effectCategories: [
+        { id: "", label: "All" }, { id: "blur", label: "Blur" }, { id: "color", label: "Colour" },
+        { id: "stylize", label: "Stylize" }, { id: "distort", label: "Distort" }, { id: "glitch", label: "Glitch" },
+        { id: "light", label: "Light" }, { id: "frame", label: "Frame" }, { id: "overlay", label: "Overlay" }
+    ]
+    function matchesSearch(title) {
+        const text = searchField.text.trim().toLowerCase()
+        return text === "" || title.toLowerCase().indexOf(text) >= 0
+    }
 
     color: Theme.color.surface
 
@@ -117,14 +131,54 @@ Rectangle {
             }
 
             SearchField {
+                id: searchField
+                objectName: "librarySearch"
                 Layout.fillWidth: true
                 Layout.margins: Theme.space.m
                 placeholderText: "Search " + library.tabs[library.currentTab].label.toLowerCase()
             }
 
-            // Effects tab: the real built-in effects. Other tabs: placeholders.
+            // Effects tab: category chips over the effects.
+            Flow {
+                visible: effectsGrid.visible
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.space.m
+                Layout.rightMargin: Theme.space.m
+                Layout.bottomMargin: Theme.space.s
+                spacing: Theme.space.xs
+                Repeater {
+                    model: library.effectCategories
+                    delegate: AbstractButton {
+                        id: chip
+                        required property var modelData
+                        objectName: "effectCategory:" + (modelData.id || "all")
+                        checked: library.effectCategory === modelData.id
+                        hoverEnabled: true
+                        implicitWidth: chipLabel.implicitWidth + Theme.space.m * 2
+                        implicitHeight: 24
+                        onClicked: library.effectCategory = modelData.id
+                        background: Rectangle {
+                            radius: height / 2
+                            color: chip.checked ? Theme.color.accentSubtle : chip.hovered ? Theme.color.surfaceHover : "transparent"
+                            border.color: chip.checked ? Theme.color.accent : Theme.color.borderSubtle
+                        }
+                        contentItem: Text {
+                            id: chipLabel
+                            text: chip.modelData.label
+                            font: Theme.type.caption
+                            color: chip.checked ? Theme.color.accentText : Theme.color.textSecondary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
+            }
+
+            // Effects tab: the built-in effects with previews, by category, filtered by the
+            // chips and the search.
             GridView {
                 id: effectsGrid
+                objectName: "effectsGrid"
                 visible: library.tabs[library.currentTab].label === "Effects"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -132,7 +186,9 @@ Rectangle {
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: library.player ? library.player.availableEffects : []
+                model: (library.player ? library.player.availableEffects : []).filter(
+                           (e) => (library.effectCategory === "" || e.categories.indexOf(library.effectCategory) >= 0)
+                                  && library.matchesSearch(e.title))
 
                 delegate: Item {
                     id: tile
@@ -142,8 +198,10 @@ Rectangle {
                     // Highlighted when the selected clip uses this effect.
                     readonly property bool active: (library.project.selectedClipInfo.effects || [])
                                                    .some((e) => e.effectId === modelData.id)
+                    readonly property bool hovered: tileButton.hovered
 
                     AbstractButton {
+                        id: tileButton
                         anchors.fill: parent
                         anchors.rightMargin: Theme.space.m
                         anchors.bottomMargin: Theme.space.m
@@ -171,7 +229,25 @@ Rectangle {
                                 Layout.margins: Theme.space.xs
                                 radius: Theme.radius.s
                                 color: Theme.color.surfaceSunken
-                                Icon { anchors.centerIn: parent; name: "effects"; color: tile.active ? Theme.color.accentText : Theme.color.textDisabled }
+                                clip: true
+                                Icon { anchors.centerIn: parent; name: "effects"; color: Theme.color.textDisabled }
+                                // The effect on a sample scene (rendered on the GPU); animates on hover.
+                                Image {
+                                    id: effectPreview
+                                    objectName: "effectPreview:" + tile.modelData.id
+                                    anchors.fill: parent
+                                    asynchronous: true
+                                    fillMode: Image.PreserveAspectCrop
+                                    property real seconds: 0.5
+                                    source: "image://tveeffect/" + tile.modelData.id + "@" + seconds.toFixed(3)
+                                    Timer {
+                                        running: tile.hovered
+                                        repeat: true
+                                        interval: 125
+                                        onTriggered: effectPreview.seconds = effectPreview.seconds >= 1.875 ? 0 : effectPreview.seconds + 0.125
+                                        onRunningChanged: if (!running) effectPreview.seconds = 0.5
+                                    }
+                                }
                                 Rectangle { // overlays are marked
                                     visible: (tile.modelData.categories || []).indexOf("overlay") >= 0
                                     x: Theme.space.xs
@@ -387,7 +463,7 @@ Rectangle {
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: library.project.availableTransitions
+                model: library.project.availableTransitions.filter((t) => library.matchesSearch(t.title))
 
                 delegate: Item {
                     id: transitionTile

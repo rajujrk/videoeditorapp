@@ -1,0 +1,17 @@
+{
+  "id": "tve.light.lens_flare",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["light"],
+  "title": {"en": "Lens Flare"},
+  "params": [
+    {"id": "positionX", "type": "float", "title": {"en": "Light X"}, "min": 0, "max": 1, "default": 0.75, "keyframable": true},
+    {"id": "positionY", "type": "float", "title": {"en": "Light Y"}, "min": 0, "max": 1, "default": 0.25, "keyframable": true},
+    {"id": "intensity", "type": "float", "title": {"en": "Intensity"}, "min": 0, "max": 2, "default": 1, "keyframable": true},
+    {"id": "color", "type": "color", "title": {"en": "Colour"}, "default": [1.0, 0.85, 0.6]}
+  ],
+  "passes": [
+    {"fragment": "lens_flare.frag"}
+  ],
+  "license": "TVE-Original"
+}

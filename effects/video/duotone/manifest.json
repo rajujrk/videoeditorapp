@@ -1,0 +1,17 @@
+{
+  "id": "tve.color.duotone",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["color"],
+  "title": {"en": "Duotone"},
+  "params": [
+    {"id": "shadows", "type": "color", "title": {"en": "Shadows"}, "default": [0.1, 0.05, 0.35]},
+    {"id": "highlights", "type": "color", "title": {"en": "Highlights"}, "default": [1.0, 0.75, 0.3]},
+    {"id": "contrast", "type": "float", "title": {"en": "Contrast"}, "min": 0, "max": 2, "default": 1},
+    {"id": "intensity", "type": "float", "title": {"en": "Intensity"}, "min": 0, "max": 1, "default": 1, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "duotone.frag"}
+  ],
+  "license": "TVE-Original"
+}

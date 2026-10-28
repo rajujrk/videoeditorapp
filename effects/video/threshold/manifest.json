@@ -1,0 +1,17 @@
+{
+  "id": "tve.color.threshold",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["color"],
+  "title": {"en": "Threshold"},
+  "params": [
+    {"id": "level", "type": "float", "title": {"en": "Level"}, "min": 0, "max": 1, "default": 0.5, "keyframable": true},
+    {"id": "softness", "type": "float", "title": {"en": "Softness"}, "min": 0, "max": 0.5, "default": 0.02},
+    {"id": "dark", "type": "color", "title": {"en": "Dark"}, "default": [0.0, 0.0, 0.0]},
+    {"id": "light", "type": "color", "title": {"en": "Light"}, "default": [1.0, 1.0, 1.0]}
+  ],
+  "passes": [
+    {"fragment": "threshold.frag"}
+  ],
+  "license": "TVE-Original"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "tve.color.posterize",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["color"],
+  "title": {"en": "Posterize"},
+  "params": [
+    {"id": "levels", "type": "int", "title": {"en": "Levels"}, "min": 2, "max": 32, "default": 5},
+    {"id": "amount", "type": "float", "title": {"en": "Amount"}, "min": 0, "max": 1, "default": 1, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "posterize.frag"}
+  ],
+  "license": "TVE-Original"
+}

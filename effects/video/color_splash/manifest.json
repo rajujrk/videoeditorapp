@@ -1,0 +1,17 @@
+{
+  "id": "tve.color.splash",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["color"],
+  "title": {"en": "Colour Splash"},
+  "params": [
+    {"id": "hue", "type": "float", "title": {"en": "Hue"}, "min": 0, "max": 360, "default": 0, "keyframable": true},
+    {"id": "range", "type": "float", "title": {"en": "Range"}, "min": 0, "max": 180, "default": 25},
+    {"id": "softness", "type": "float", "title": {"en": "Softness"}, "min": 0, "max": 90, "default": 15},
+    {"id": "desaturate", "type": "float", "title": {"en": "Desaturate others"}, "min": 0, "max": 1, "default": 1}
+  ],
+  "passes": [
+    {"fragment": "color_splash.frag"}
+  ],
+  "license": "TVE-Original"
+}

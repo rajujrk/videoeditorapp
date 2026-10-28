@@ -144,6 +144,7 @@ Item {
             const f = withClip()
             const p = f.project
             click(f.editor, "libraryTab:Effects")
+            click(f.editor, "effectCategory:overlay") // overlays come last in a long list
             click(f.editor, "libraryEffect:tve.overlay.light_leak")
             compare(p.undoText, "Add Effect")
             compare(p.selectedClipInfo.effects[0].effectId, "tve.overlay.light_leak")

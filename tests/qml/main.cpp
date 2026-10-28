@@ -12,6 +12,7 @@
 
 #include "ThumbnailProvider.h"
 #include "TransitionPreviewProvider.h"
+#include "EffectPreviewProvider.h"
 #include "LookLibrary.h"
 #include "TitleRenderer.h"
 
@@ -79,6 +80,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("stillsDir"), qEnvironmentVariable("TVE_TEST_STILLS_DIR"));
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
         engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
+        engine->addImageProvider(QString::fromLatin1(EffectPreviewProvider::kId), new EffectPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(TitlePreviewProvider::kId), new TitlePreviewProvider);
         engine->addImageProvider(QString::fromLatin1(LookPreviewProvider::kId), new LookPreviewProvider);
     }

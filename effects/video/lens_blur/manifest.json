@@ -1,0 +1,15 @@
+{
+  "id": "tve.blur.lens",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["blur"],
+  "title": {"en": "Lens Blur"},
+  "params": [
+    {"id": "radius", "type": "float", "title": {"en": "Radius"}, "min": 0, "max": 5, "default": 1, "keyframable": true},
+    {"id": "bokeh", "type": "float", "title": {"en": "Bright spots"}, "min": 0, "max": 1, "default": 0.5}
+  ],
+  "passes": [
+    {"fragment": "lens_blur.frag"}
+  ],
+  "license": "TVE-Original"
+}

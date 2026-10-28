@@ -43,6 +43,7 @@ constexpr HeaderMember kHeader[] = {
     {"tve_flipY", Desc::Float, 12},
 };
 constexpr HeaderMember kProgress{"tve_progress", Desc::Float, 16};
+constexpr HeaderMember kBounds{"tve_bounds", Desc::Vec4, 16};
 
 struct SamplerSpec {
     const char* name;
@@ -105,6 +106,14 @@ LoadedEffectPass loadPass(const EffectManifest& manifest, const QString& folder,
     }
     if (transition && !hasMember(kProgress))
         fail(where + ": a transition's EffectParams must have tve_progress right after tve_flipY");
+    const bool declaresBounds = std::ranges::any_of(block->members, [](const Desc::BlockVariable& m) {
+        return m.name == kBounds.name;
+    });
+    if (declaresBounds) {
+        if (transition || !hasMember(kBounds))
+            fail(where + ": tve_bounds must be a vec4 right after tve_flipY (video effects only)");
+        pass.boundsOffset = kBounds.offset;
+    }
 
     const auto samplers = description.combinedImageSamplers();
     const auto requiredSamplers = transition ? std::span<const SamplerSpec>(kTransitionSamplers)
@@ -116,6 +125,17 @@ LoadedEffectPass loadPass(const EffectManifest& manifest, const QString& folder,
         if (!found)
             fail(where + ": needs \"uniform sampler2D " + required.name + "\" at binding "
                  + std::to_string(required.binding));
+    }
+    if (!transition) {
+        for (const Desc::InOutVariable& sampler : samplers) {
+            if (sampler.name == "tve_input") {
+                if (sampler.binding != 2 || sampler.type != Desc::Sampler2D)
+                    fail(where + ": tve_input must be a sampler2D at binding 2");
+                pass.readsInput = true;
+            } else if (sampler.name != "tve_source") {
+                fail(where + ": unknown sampler \"" + sampler.name.toStdString() + "\"");
+            }
+        }
     }
 
     for (const Desc::BlockVariable& member : block->members) {
@@ -155,13 +175,15 @@ LoadedEffect loadEffect(const QString& folder)
 
 void writeEffectUniforms(const LoadedEffect& effect, std::size_t passIndex,
                          const std::map<std::string, std::vector<float>>& values, QSize size, float timeSeconds,
-                         bool yUpInNdc, float progress, std::vector<char>& data)
+                         bool yUpInNdc, float progress, std::vector<char>& data, const EffectBounds& bounds)
 {
     std::ranges::fill(data, 0);
     const float header[5] = {1.0f / float(size.width()), 1.0f / float(size.height()), timeSeconds,
                              yUpInNdc ? 1.0f : 0.0f, progress};
     const bool transition = effect.manifest.kind == kTransitionKind;
     std::memcpy(data.data(), header, transition ? sizeof header : 4 * sizeof(float));
+    if (const int offset = effect.passes[passIndex].boundsOffset; offset >= 0)
+        std::memcpy(data.data() + offset, bounds.data(), sizeof bounds);
 
     for (const auto& [paramId, slot] : effect.passes[passIndex].uniformSlots) {
         const EffectParamSpec& spec = *effect.manifest.findParam(paramId);

@@ -1,0 +1,14 @@
+{
+  "id": "tve.blur.frosted_glass",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["blur"],
+  "title": {"en": "Frosted Glass"},
+  "params": [
+    {"id": "amount", "type": "float", "title": {"en": "Amount"}, "min": 0, "max": 3, "default": 0.6, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "frosted_glass.frag"}
+  ],
+  "license": "TVE-Original"
+}

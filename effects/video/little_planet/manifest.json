@@ -1,0 +1,15 @@
+{
+  "id": "tve.distort.little_planet",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["distort"],
+  "title": {"en": "Little Planet"},
+  "params": [
+    {"id": "zoom", "type": "float", "title": {"en": "Zoom"}, "min": 0.2, "max": 4, "default": 1},
+    {"id": "rotation", "type": "float", "title": {"en": "Rotation"}, "min": -180, "max": 180, "default": 0, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "little_planet.frag"}
+  ],
+  "license": "TVE-Original"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "tve.stylize.crystallize",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["stylize"],
+  "title": {"en": "Crystallize"},
+  "params": [
+    {"id": "cellSize", "type": "float", "title": {"en": "Cell size"}, "min": 0.5, "max": 10, "default": 2.5, "keyframable": true}
+  ],
+  "passes": [
+    {"fragment": "crystallize.frag"}
+  ],
+  "license": "TVE-Original"
+}

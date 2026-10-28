@@ -10,6 +10,7 @@
     "version": { "type": "integer", "minimum": 1 },
     "kind": { "enum": ["video-effect", "transition"] },
     "category": { "type": "array", "items": { "type": "string" } },
+    "space": { "enum": ["picture", "canvas"], "description": "Video effects: on the clip's picture (default) or on its placed canvas" },
     "title": { "$ref": "#/$defs/localized" },
     "params": { "type": "array", "items": { "$ref": "#/$defs/param" } },
     "passes": {

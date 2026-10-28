@@ -1,0 +1,19 @@
+{
+  "id": "tve.frame.outer_glow",
+  "version": 1,
+  "kind": "video-effect",
+  "category": ["frame"],
+  "space": "canvas",
+  "title": {"en": "Outer Glow"},
+  "params": [
+    {"id": "size", "type": "float", "title": {"en": "Size"}, "min": 0, "max": 10, "default": 2, "keyframable": true},
+    {"id": "intensity", "type": "float", "title": {"en": "Intensity"}, "min": 0, "max": 4, "default": 1.5, "keyframable": true},
+    {"id": "color", "type": "color", "title": {"en": "Colour"}, "default": [1.0, 0.8, 0.3]}
+  ],
+  "passes": [
+    {"fragment": "halo_h.frag"},
+    {"fragment": "halo_v.frag"},
+    {"fragment": "halo_under.frag"}
+  ],
+  "license": "TVE-Original"
+}

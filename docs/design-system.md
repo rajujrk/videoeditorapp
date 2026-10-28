@@ -114,7 +114,7 @@ Sizes are `Theme.size.*` tokens.
 | Region | File | Status |
 |---|---|---|
 | Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker and "Autosaved hh:mm", undo/redo with labels, save, theme toggle, Export (shows progress while exporting) opening `ExportDialog.qml` |
-| Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions, Effects (overlays marked with a badge) and Filters (an adjustment-layer tile, then looks with previews) tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
+| Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions, Effects (category chips, GPU-rendered previews that animate on hover, overlays marked with a badge; the search field filters effects and transitions) and Filters (an adjustment-layer tile, then looks with previews) tabs are live** (import, drop, drag to timeline, video thumbnails; title styles drawn by the app's text renderer, click or drag onto a track; transitions with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, proxy toggle, stats overlay; `MaskOverlay.qml` draws the selected clip's active mask (dashed accent outline, white handles: round to move and rotate, square to size, one per pen point) and turns the player into a crosshair colour picker while a key colour is picked |
 | Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed (with a speed-ramp section: presets and the `SpeedRampEditor.qml` graph), Audio, Color and Effects tabs are live** for the selected clip (a Keyframes section — add/remove at the playhead, step between, easing, clear — and a ◆ toggle beside every animatable value, a curve editor for the keyframe at the playhead, ◆ on keyframable effect parameters; placement/crop/opacity/blend, masks (shape buttons, numbered mask chips, sliders, invert), chroma key, track matte and split-screen layouts drawn as miniature canvases, a title's Text section, speed/reverse/freeze frame, volume/fades/detach, effect stack); a selected transition replaces the tabs with its own page (kind, duration, position, settings, remove); the Color tab grades the clip (scopes via the `ScopeView` item, basic sliders, `ColorWheelControl.qml` wheels, `ToneCurveEditor.qml` tone and hue curves, HSL band chips, LUT, copy/paste, presets) |
 | Timeline | `ui/shell/TimelinePanel.qml` | **Live**: bound to the project; keyframe button for the selected clip and keyframe diamonds along clips (click to go, drag to move); voice-over button opening `VoiceOverPanel.qml` (a red range marks the take being recorded); move (with snapping and track changes), trim, split, delete, scrub, zoom, track lock/hide/mute, thumbnail strips, waveforms, fade handles, speed/reverse/still badges, title clips (purple, labelled with their text), transition markers over cuts (select, delete, drop target) |
@@ -252,6 +252,16 @@ layout with the Track matte and Split screen sections, dark and light:
 ![Chroma key, light](images/chroma-key-light.png)
 ![Split screen, dark](images/split-screen-dark.png)
 ![Split screen, light](images/split-screen-light.png)
+
+Effects tab with its category chips and previews (the sample scene through each effect),
+Halftone on the clip; and a picture-in-picture clip with Rounded Corners, Outline and Drop
+Shadow — frame effects that work on the placed clip — with the Frame category chosen, dark
+and light:
+
+![Effects library, dark](images/effects-library-dark.png)
+![Effects library, light](images/effects-library-light.png)
+![Frame effects, dark](images/frame-effects-dark.png)
+![Frame effects, light](images/frame-effects-light.png)
 
 Speed ramp: the Hero moment preset on the background clip — the graph (speed on a log
 scale, dashed 1× line, red playhead), presets above it — and the clip labelled `Ramp ·`,
