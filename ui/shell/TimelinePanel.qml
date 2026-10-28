@@ -13,6 +13,9 @@ Rectangle {
 
     property real pixelsPerSecond: 60
     readonly property real snapPixels: 8
+    // While a grouped clip is dragged: its group, and how far it has moved (the rest follow).
+    property real dragGroup: 0
+    property real dragDelta: 0
     readonly property var tracks: project.tracks // top to bottom
 
     color: Theme.color.surface
@@ -88,6 +91,31 @@ Rectangle {
                 checked: keyHere
                 onClicked: keyHere ? timeline.project.removeKeyframes(info.id)
                                    : timeline.project.addKeyframes(info.id)
+            }
+            Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
+            IconButton {
+                objectName: "markerButton"
+                iconName: "marker"
+                tip: "Add a marker at the playhead (M) — click a marker to edit it"
+                onClicked: timeline.project.addMarker()
+            }
+            IconButton {
+                objectName: "groupButton"
+                readonly property bool grouped: (timeline.project.selectedClipInfo.groupId || 0) > 0
+                iconName: "group"
+                tip: grouped ? "Ungroup (⇧⌘G)" : "Group the selected clips (⌘G) — ⇧-click clips to select several"
+                enabled: grouped || timeline.project.selectedClips.length >= 2
+                onClicked: grouped ? timeline.project.ungroupSelected() : timeline.project.groupSelected()
+            }
+            IconButton {
+                objectName: "compoundButton"
+                readonly property bool compound: timeline.project.selectedClipInfo.isCompound === true
+                iconName: "compound"
+                tip: compound ? "Break apart the compound clip (⌥⌘G)"
+                              : "Make the selected clips one compound clip (⌥⌘G)"
+                enabled: timeline.project.selectedClips.length > 0
+                onClicked: compound ? timeline.project.breakCompound(timeline.project.selectedClip)
+                                    : timeline.project.createCompound()
             }
             Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
             IconButton {
@@ -307,6 +335,16 @@ Rectangle {
                                     timeline.project.seek(Math.max(0, mouse.x) / timeline.pixelsPerSecond)
                             }
                         }
+
+                        // Markers: a flag at each (with a band over a range); click to edit,
+                        // drag to move.
+                        Repeater {
+                            model: timeline.project.markers
+                            delegate: MarkerFlag {
+                                required property var modelData
+                                marker: modelData
+                            }
+                        }
                     }
 
                     // Lanes
@@ -429,6 +467,20 @@ Rectangle {
                         }
                     }
 
+                    // Marker lines through the lanes
+                    Repeater {
+                        model: timeline.project.markers
+                        delegate: Rectangle {
+                            required property var modelData
+                            x: modelData.time * timeline.pixelsPerSecond
+                            y: Theme.size.ruler
+                            z: 8
+                            width: 1
+                            height: parent.height - Theme.size.ruler
+                            color: Qt.alpha(Theme.color.markers[modelData.color], 0.55)
+                        }
+                    }
+
                     // Playhead
                     Item {
                         x: timeline.project.playhead * timeline.pixelsPerSecond
@@ -438,6 +490,200 @@ Rectangle {
                         Rectangle { x: -6; y: 0; width: 13; height: 14; radius: 3; color: Theme.color.playhead }
                     }
                 }
+            }
+        }
+    }
+
+    // One marker on the ruler. Chapter markers carry a dot; a range shows as a band.
+    component MarkerFlag: Item {
+        id: flag
+        required property var marker
+        property real previewTime: marker.time
+
+        objectName: "marker:" + marker.id
+        x: previewTime * timeline.pixelsPerSecond
+        height: ruler.height
+        z: 3
+
+        Rectangle {
+            objectName: "markerRange"
+            visible: flag.marker.duration > 0
+            y: parent.height - 5
+            width: flag.marker.duration * timeline.pixelsPerSecond
+            height: 4
+            radius: 2
+            color: Qt.alpha(Theme.color.markers[flag.marker.color], 0.6)
+        }
+        Rectangle {
+            id: flagBody
+            x: -1
+            y: parent.height - 16
+            width: 11
+            height: 11
+            radius: 2
+            color: Theme.color.markers[flag.marker.color]
+            border.width: flagMouse.containsMouse || editor.visible && editor.marker && editor.marker.id === flag.marker.id ? 1 : 0
+            border.color: Theme.color.selection
+            Rectangle {
+                visible: flag.marker.chapter
+                anchors.centerIn: parent
+                width: 4
+                height: 4
+                radius: 2
+                color: "#FFFFFF"
+            }
+        }
+        Rectangle { x: -1; y: parent.height - 6; width: 2; height: 6; color: Theme.color.markers[flag.marker.color] }
+
+        ToolTip {
+            visible: flagMouse.containsMouse && !flagMouse.pressed && !editor.visible
+            delay: 400
+            text: (flag.marker.chapter ? "Chapter · " : "") + (flag.marker.note || "Marker") + " · "
+                  + timeline.project.timecode(flag.marker.time)
+        }
+
+        MouseArea {
+            id: flagMouse
+            x: -4
+            width: 18
+            height: parent.height
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            property real pressX: 0
+            property bool moved: false
+            onPressed: (mouse) => {
+                pressX = mapToItem(content, mouse.x, 0).x
+                moved = false
+            }
+            onPositionChanged: (mouse) => {
+                if (!pressed)
+                    return
+                const x = mapToItem(content, mouse.x, 0).x
+                if (!moved && Math.abs(x - pressX) < 3)
+                    return
+                moved = true
+                let t = Math.max(0, flag.marker.time + (x - pressX) / timeline.pixelsPerSecond)
+                if (snapToggle.checked)
+                    t = timeline.project.snap(t, timeline.snapPixels / timeline.pixelsPerSecond)
+                flag.previewTime = t
+            }
+            onReleased: {
+                if (moved) {
+                    if (!timeline.project.setMarker(flag.marker.id, { time: flag.previewTime }))
+                        flag.previewTime = flag.marker.time
+                    return
+                }
+                editor.marker = flag.marker
+                editor.x = flag.x - lanes.contentX + timeline.mapFromItem(lanes, 0, 0).x - 20
+                editor.open()
+            }
+            onCanceled: flag.previewTime = flag.marker.time
+        }
+    }
+
+    // Edits a marker: note, colour, chapter, length; or removes it.
+    Popup {
+        id: editor
+        objectName: "markerEditor"
+        property var marker: null
+        // The marker as it is now (the list is rebuilt after each change).
+        readonly property var current: {
+            const list = timeline.project.markers
+            for (const m of list)
+                if (marker && m.id === marker.id)
+                    return m
+            return null
+        }
+        onCurrentChanged: if (visible && !current) close()
+        parent: timeline
+        y: -height - Theme.space.s // over the player, like the timeline's other panels
+        width: 280
+        padding: Theme.space.l
+        onAboutToShow: noteField.text = marker ? marker.note : ""
+        onClosed: {
+            if (current && noteField.text !== current.note)
+                timeline.project.setMarker(current.id, { note: noteField.text })
+        }
+
+        background: Rectangle {
+            radius: Theme.radius.l
+            color: Theme.color.surfaceRaised
+            border.color: Theme.color.borderStrong
+        }
+
+        contentItem: ColumnLayout {
+            spacing: Theme.space.m
+
+            Text {
+                text: editor.current ? "Marker at " + timeline.project.timecode(editor.current.time) : ""
+                font: Theme.type.label
+                color: Theme.color.textPrimary
+            }
+            TextField {
+                id: noteField
+                objectName: "markerNote"
+                Layout.fillWidth: true
+                placeholderText: "Note (the chapter's title)"
+                maximumLength: 500
+                onEditingFinished: if (editor.current && text !== editor.current.note)
+                                       timeline.project.setMarker(editor.current.id, { note: text })
+            }
+            RowLayout {
+                spacing: Theme.space.xs
+                Repeater {
+                    model: timeline.project.markerColors
+                    delegate: AbstractButton {
+                        required property string modelData
+                        objectName: "markerColor:" + modelData
+                        implicitWidth: 22
+                        implicitHeight: 22
+                        hoverEnabled: true
+                        onClicked: if (editor.current) timeline.project.setMarker(editor.current.id, { color: modelData })
+                        ToolTip { visible: parent.hovered; delay: 500; text: parent.modelData }
+                        background: Rectangle {
+                            radius: 11
+                            color: Theme.color.markers[parent.modelData]
+                            border.width: editor.current && editor.current.color === parent.modelData ? 2 : 0
+                            border.color: Theme.color.selection
+                        }
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Text { text: "Chapter in exports"; font: Theme.type.body; color: Theme.color.textPrimary; Layout.fillWidth: true }
+                ToggleSwitch {
+                    objectName: "markerChapter"
+                    checked: editor.current ? editor.current.chapter : false
+                    onToggled: if (editor.current) timeline.project.setMarker(editor.current.id, { chapter: checked })
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Text { text: "Range (s)"; font: Theme.type.body; color: Theme.color.textPrimary; Layout.fillWidth: true }
+                TextField {
+                    objectName: "markerDuration"
+                    implicitWidth: 72
+                    text: editor.current ? Number(editor.current.duration.toFixed(2)).toString() : "0"
+                    validator: DoubleValidator { bottom: 0; top: 36000 }
+                    onEditingFinished: if (editor.current) timeline.project.setMarker(editor.current.id, { duration: Number(text) })
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                TextButton {
+                    objectName: "removeMarker"
+                    text: "Remove"
+                    variant: "ghost"
+                    onClicked: {
+                        const id = editor.current.id
+                        editor.marker = null
+                        editor.close()
+                        timeline.project.removeMarker(id)
+                    }
+                }
+                Item { Layout.fillWidth: true }
+                TextButton { text: "Done"; variant: "primary"; onClicked: editor.close() }
             }
         }
     }
@@ -488,11 +734,14 @@ Rectangle {
         property real previewStart: clip.start
         property real previewDuration: clip.duration
         property real previewYOffset: 0
-        readonly property bool selected: timeline.project.selectedClip === clip.id
+        readonly property bool selected: timeline.project.selectedClips.indexOf(clip.id) >= 0
         readonly property real tolerance: timeline.snapPixels / timeline.pixelsPerSecond
+        // Following another clip of its group being dragged.
+        readonly property real groupShift: timeline.dragGroup > 0 && clip.groupId === timeline.dragGroup
+                                           && !moveArea.pressed ? timeline.dragDelta : 0
 
         objectName: "clip:" + clip.id
-        x: previewStart * timeline.pixelsPerSecond
+        x: (previewStart + groupShift) * timeline.pixelsPerSecond
         y: 3 + previewYOffset
         z: moveArea.pressed ? 5 : 1
         width: Math.max(4, previewDuration * timeline.pixelsPerSecond)
@@ -519,7 +768,7 @@ Rectangle {
             // Thumbnail strip: one frame per tile, from the source time under the tile's centre.
             Row {
                 id: strip
-                visible: item.track.kind === "video" && !item.clip.isTitle && !item.clip.isAdjustment
+                visible: item.track.kind === "video" && !item.clip.isTitle && !item.clip.isAdjustment && !item.clip.isCompound
                 anchors { left: parent.left; right: parent.right; top: parent.top; margins: 3; topMargin: 19 }
                 height: parent.height - 22 - (body.showsSound ? 14 : 0)
                 spacing: 1
@@ -622,6 +871,42 @@ Rectangle {
                     elide: Text.ElideRight
                 }
             }
+            // A compound clip: its mark where the thumbnails would be (it plays several clips).
+            Rectangle {
+                objectName: "compoundMark"
+                visible: item.clip.isCompound === true && parent.width > 40
+                x: 3
+                y: 22
+                width: Math.min(compoundRow.implicitWidth + Theme.space.s * 2, parent.width - 6)
+                height: compoundRow.implicitHeight + 4
+                radius: 3
+                color: Qt.alpha("#000000", 0.45)
+                clip: true
+                Row {
+                    id: compoundRow
+                    x: Theme.space.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Theme.space.xs
+                    Icon { name: "compound"; size: Theme.size.iconSmall; color: "#FFFFFF" }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Compound clip"
+                        font: Theme.type.caption
+                        color: "#FFFFFF"
+                    }
+                }
+            }
+            // Grouped clips carry the group mark.
+            Rectangle {
+                objectName: "groupBadge"
+                visible: item.clip.groupId > 0 && parent.width > 48
+                anchors { right: parent.right; top: parent.top; margins: 3 }
+                width: 18
+                height: 16
+                radius: 3
+                color: Qt.alpha("#000000", 0.45)
+                Icon { anchors.centerIn: parent; name: "group"; size: 12; color: "#FFFFFF" }
+            }
         }
 
         // Body: select and move (horizontally and to another track of the same kind)
@@ -635,7 +920,15 @@ Rectangle {
             property real pressY: 0
             property bool moved: false
 
+            property bool toggling: false
+
             onPressed: (mouse) => {
+                // ⇧ or ⌘: add the clip to (or take it out of) the selection, no drag.
+                toggling = (mouse.modifiers & (Qt.ShiftModifier | Qt.ControlModifier)) !== 0
+                if (toggling) {
+                    timeline.project.toggleClipSelection(item.clip.id)
+                    return
+                }
                 timeline.project.selectedClip = item.clip.id
                 const p = mapToItem(content, mouse.x, mouse.y)
                 pressX = p.x
@@ -643,6 +936,8 @@ Rectangle {
                 moved = false
             }
             onPositionChanged: (mouse) => {
+                if (toggling)
+                    return
                 const p = mapToItem(content, mouse.x, mouse.y)
                 if (!moved && Math.abs(p.x - pressX) < 3 && Math.abs(p.y - pressY) < 3)
                     return
@@ -652,18 +947,29 @@ Rectangle {
                 const byEnd = item.snapped(proposed + item.clip.duration) - item.clip.duration
                 item.previewStart = byStart !== proposed ? byStart : byEnd
                 item.previewYOffset = p.y - pressY
+                if (item.clip.groupId > 0) {
+                    timeline.dragGroup = item.clip.groupId
+                    timeline.dragDelta = item.previewStart - item.clip.start
+                }
             }
             onReleased: (mouse) => {
-                if (moved) {
+                if (moved && !toggling) {
                     const p = mapToItem(laneArea, mouse.x, mouse.y)
                     const target = timeline.trackAtY(p.y) || item.track
                     const start = item.previewStart
                     item.previewYOffset = 0
+                    timeline.dragGroup = 0
+                    timeline.dragDelta = 0
                     if (!timeline.project.moveClip(item.clip.id, target.id, start))
                         item.previewStart = item.clip.start
                 }
             }
-            onCanceled: { item.previewStart = item.clip.start; item.previewYOffset = 0 }
+            onCanceled: {
+                item.previewStart = item.clip.start
+                item.previewYOffset = 0
+                timeline.dragGroup = 0
+                timeline.dragDelta = 0
+            }
         }
 
         // Edges: trim

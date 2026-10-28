@@ -121,6 +121,18 @@ Rectangle {
     Shortcut { sequence: "Left"; enabled: editor.visible && !editor.typing; onActivated: editor.project.stepFrames(-1) }
     Shortcut { sequence: "Right"; enabled: editor.visible && !editor.typing; onActivated: editor.project.stepFrames(1) }
     Shortcut { sequence: "Home"; enabled: editor.visible && !editor.typing; onActivated: editor.project.seek(0) }
+    Shortcut { sequence: "M"; enabled: editor.visible && !editor.typing; onActivated: editor.project.addMarker() }
+    Shortcut { sequence: "Alt+Right"; enabled: editor.visible && !editor.typing; onActivated: editor.project.seekMarker(1) }
+    Shortcut { sequence: "Alt+Left"; enabled: editor.visible && !editor.typing; onActivated: editor.project.seekMarker(-1) }
+    Shortcut { sequence: "Ctrl+G"; enabled: editor.visible && !editor.typing; onActivated: editor.project.groupSelected() }
+    Shortcut { sequence: "Ctrl+Shift+G"; enabled: editor.visible && !editor.typing; onActivated: editor.project.ungroupSelected() }
+    Shortcut {
+        sequence: "Ctrl+Alt+G"
+        enabled: editor.visible && !editor.typing
+        onActivated: editor.project.selectedClipInfo.isCompound === true
+                     ? editor.project.breakCompound(editor.project.selectedClip)
+                     : editor.project.createCompound()
+    }
     Shortcut { sequence: "End"; enabled: editor.visible && !editor.typing; onActivated: editor.project.seek(editor.project.duration) }
     Shortcut { sequences: [StandardKey.Undo]; enabled: editor.visible; onActivated: editor.project.undo() }
     Shortcut {

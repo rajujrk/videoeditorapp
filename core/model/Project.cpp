@@ -198,6 +198,61 @@ std::optional<ClipLocation> Project::locateClip(Id clipId)
     return std::nullopt;
 }
 
+const Sequence* Project::findSequence(Id sequenceId) const
+{
+    auto it = std::ranges::find(sequences, sequenceId, &Sequence::id);
+    return it == sequences.end() ? nullptr : &*it;
+}
+
+Marker* Project::findMarker(Id markerId)
+{
+    auto it = std::ranges::find(markers, markerId, &Marker::id);
+    return it == markers.end() ? nullptr : &*it;
+}
+
+std::optional<Ticks> Project::sourceLimit(const Clip& clip) const
+{
+    if (clip.compound()) {
+        const Sequence* sequence = findSequence(clip.sequenceId);
+        return sequence ? sequence->duration() : 0;
+    }
+    if (clip.generated())
+        return std::nullopt;
+    const MediaItem* item = findMedia(clip.mediaId);
+    if (!item)
+        return 0;
+    return item->still ? std::nullopt : std::optional(item->duration);
+}
+
+std::vector<Chapter> Project::chapters() const
+{
+    const Ticks end = duration();
+    std::vector<Chapter> list;
+    for (const Marker& marker : markers) {
+        if (!marker.chapter || marker.time >= end)
+            continue;
+        if (!list.empty() && list.back().start == marker.time)
+            continue; // two chapters cannot start at once
+        if (!list.empty())
+            list.back().end = marker.time;
+        list.push_back({marker.time, end,
+                        marker.note.empty() ? "Chapter " + std::to_string(list.size() + 1) : marker.note});
+    }
+    if (!list.empty() && list.front().start > 0)
+        list.insert(list.begin(), Chapter{0, list.front().start, "Opening"});
+    return list;
+}
+
+Ticks Sequence::duration() const
+{
+    Ticks end = 0;
+    for (const Track& track : tracks) {
+        if (!track.clips.empty())
+            end = std::max(end, track.clips.back().end());
+    }
+    return end;
+}
+
 Ticks Project::duration() const
 {
     Ticks end = 0;

@@ -118,8 +118,18 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipLook, id, title, intensity, 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
-                                                chromaKey, masks, matte, audioEffects, keepPitch)
+                                                chromaKey, masks, matte, audioEffects, keepPitch, sequenceId, groupId)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, clips)
+NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {
+    {MarkerColor::Red, "red"},
+    {MarkerColor::Orange, "orange"},
+    {MarkerColor::Yellow, "yellow"},
+    {MarkerColor::Green, "green"},
+    {MarkerColor::Blue, "blue"},
+    {MarkerColor::Purple, "purple"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Marker, id, time, duration, color, note, chapter)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Sequence, id, name, tracks)
 
 nlohmann::json projectToJson(const Project& project)
 {
@@ -130,6 +140,8 @@ nlohmann::json projectToJson(const Project& project)
         {"settings", project.settings},
         {"media", project.media},
         {"tracks", project.tracks},
+        {"markers", project.markers},
+        {"sequences", project.sequences},
     };
 }
 
@@ -145,6 +157,11 @@ Project projectFromJson(const nlohmann::json& json)
     json.at("settings").get_to(project.settings);
     json.at("media").get_to(project.media);
     json.at("tracks").get_to(project.tracks);
+    // Added after schema 1 shipped: absent in older projects.
+    if (json.contains("markers"))
+        json.at("markers").get_to(project.markers);
+    if (json.contains("sequences"))
+        json.at("sequences").get_to(project.sequences);
     project.setNextId(json.at("nextId").get<Id>());
     return project;
 }

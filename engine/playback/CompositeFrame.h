@@ -5,6 +5,7 @@
 #include "playback/FrameQueue.h"
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -12,6 +13,8 @@
 namespace tve {
 
 // The incoming clip of a layer that is in a transition, and how far the transition is.
+struct CompositeFrame;
+
 struct LayerTransition {
     std::string transitionId;
     std::map<std::string, std::vector<float>> values;
@@ -53,6 +56,8 @@ struct VideoLayer {
     // animations and scrolling, a sticker's frame, depend on them).
     double clipSeconds = 0.0;
     double clipDuration = 0.0;
+    // A compound clip: its sequence's layers at this moment, drawn as its picture.
+    std::shared_ptr<CompositeFrame> nested;
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.

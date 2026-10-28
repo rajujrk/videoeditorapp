@@ -1,5 +1,6 @@
 #include "commands/CommandStack.h"
 #include "commands/EditCommands.h"
+#include "commands/StructureCommands.h"
 #include "decode/VideoDecoder.h"
 #include "playback/PlaybackClock.h"
 #include "playback/TimelinePlayback.h"
@@ -675,4 +676,74 @@ TEST_CASE("keyframe seek cost", "[.][perf]")
     for (int f = 0; f < 240; ++f)
         decoder->nextFrame();
     WARN("240 frames straight: " << std::chrono::duration<double>(std::chrono::steady_clock::now() - linear).count() * 1000 << " ms");
+}
+
+TEST_CASE("a compound clip plays as one layer holding its sequence's layers")
+{
+    requireSamples();
+    auto project = std::make_shared<Project>();
+    CommandStack stack(*project);
+    auto push = [&](std::unique_ptr<Command> c) { REQUIRE_FALSE(stack.push(std::move(c))); };
+    auto v1 = std::make_unique<AddTrackCommand>(TrackKind::Video, "V1");
+    auto* v1Cmd = v1.get();
+    push(std::move(v1));
+    auto v2 = std::make_unique<AddTrackCommand>(TrackKind::Video, "V2");
+    auto* v2Cmd = v2.get();
+    push(std::move(v2));
+    auto media = std::make_unique<ImportMediaCommand>(sample("test_1080p30_h264.mp4"), 2 * kSec);
+    auto* mediaCmd = media.get();
+    push(std::move(media));
+    // Bottom: source 0–1 s at 0–1 s; top: source 0.5 s on, at 0.5–1 s, scaled down.
+    auto bottom = std::make_unique<AddClipCommand>(v1Cmd->trackId(), mediaCmd->mediaId(), 0, kSec, 0);
+    auto* bottomCmd = bottom.get();
+    push(std::move(bottom));
+    auto top = std::make_unique<AddClipCommand>(v2Cmd->trackId(), mediaCmd->mediaId(), kSec / 2, kSec / 2, kSec / 2);
+    auto* topCmd = top.get();
+    push(std::move(top));
+    ClipVisual small;
+    small.transform.scale = 0.4;
+    push(std::make_unique<SetClipVisualCommand>(topCmd->clipId(), small));
+    auto compound = std::make_unique<CreateCompoundCommand>(std::vector<Id>{bottomCmd->clipId(), topCmd->clipId()}, "Both");
+    auto* compoundCmd = compound.get();
+    push(std::move(compound));
+    // The compound clip starts a quarter second into its sequence and moves to 1 s.
+    push(std::make_unique<TrimClipCommand>(compoundCmd->clipId(), TrimClipCommand::Edge::Start, kSec / 4));
+    push(std::make_unique<MoveClipCommand>(compoundCmd->clipId(), v1Cmd->trackId(), kSec));
+    ClipVisual faded;
+    faded.opacity = 0.5;
+    push(std::make_unique<SetClipVisualCommand>(compoundCmd->clipId(), faded));
+
+    const auto frameAt = [&](TimelinePlayback& playback, Ticks time) {
+        playback.seek(time);
+        for (int attempt = 0; attempt < 400 && !playback.queue().frontPts(); ++attempt)
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        int skipped = 0;
+        auto frame = playback.queue().takeLatestDue(time, skipped);
+        REQUIRE(frame);
+        return std::move(*frame);
+    };
+    TimelinePlayback playback;
+    playback.setProject(project);
+
+    // At 1.1 s: sequence time 0.35 s, the bottom clip alone.
+    CompositeFrame early = frameAt(playback, kSec + 3 * kFrame30);
+    REQUIRE(early.layers.size() == 1);
+    CHECK(early.layers[0].clipId == compoundCmd->clipId());
+    CHECK(early.layers[0].visual == faded);
+    REQUIRE(early.layers[0].nested);
+    REQUIRE(early.layers[0].nested->layers.size() == 1);
+    // Source 0.35 s: frame 10 is on screen (frames are 1/30 s apart).
+    CHECK(early.layers[0].nested->layers[0].frame.pts() == 10 * kFrame30);
+
+    // At 1.5 s: sequence time 0.75 s, both, the top one placed as it was.
+    CompositeFrame late = frameAt(playback, kSec + 15 * kFrame30);
+    REQUIRE(late.layers.size() == 1);
+    REQUIRE(late.layers[0].nested);
+    const auto& inside = late.layers[0].nested->layers;
+    REQUIRE(inside.size() == 2);
+    CHECK(inside[0].clipId == bottomCmd->clipId());
+    CHECK(inside[0].frame.pts() == 22 * kFrame30); // source 0.75 s
+    CHECK(inside[1].clipId == topCmd->clipId());
+    CHECK(inside[1].visual == small);
+    CHECK(inside[1].frame.pts() == 22 * kFrame30); // its in-point 0.5 s, 0.25 s in
 }

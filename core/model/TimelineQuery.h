@@ -56,6 +56,8 @@ std::optional<VisibleClip> visibleVideoAt(const Project& project, Ticks time);
 
 // Every visible video clip covering `time`, bottom track first: the layers to composite.
 std::vector<VisibleClip> visibleVideoLayersAt(const Project& project, Ticks time);
+// The same for other tracks (a compound clip's sequence), media from `project`.
+std::vector<VisibleClip> visibleVideoLayersAt(const Project& project, const std::vector<Track>& tracks, Ticks time);
 
 // Where a clip is heard: its own span, widened into its handles by the transitions on
 // either side of it.

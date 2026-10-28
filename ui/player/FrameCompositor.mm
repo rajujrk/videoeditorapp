@@ -353,18 +353,29 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::size_t effectCanvasIndex = 0;
     // Each clip's canvas effects, by clip, as clipPicture() leaves them for placement.
     std::map<tve::Id, std::vector<tve::EffectInstance>> canvasEffects;
-    // One clip's picture (decoded video, a still, or a title's text), through its colour, key
-    // and masks, and picture effects (with any live preview). Its canvas effects are kept in
-    // `canvasEffects` for place().
+    // Draws layers onto a canvas (the frame's, or a compound clip's own); defined below.
+    std::function<void(std::vector<tve::VideoLayer>&, tve::Compositor&)> drawLayers;
+    std::size_t nestedIndex = 0;
+    // One clip's picture (decoded video, a still, a title's text, or a compound clip's
+    // sequence drawn on a canvas of its own), through its colour, key and masks, and picture
+    // effects (with any live preview). Its canvas effects are kept in `canvasEffects` for place().
     const auto clipPicture = [&](tve::Id clipId, const tve::DecodedFrame& decoded, tve::ClipVisual& visual,
                                  std::vector<tve::ClipEffect> effects, tve::ColorGrade grade, tve::ColorGrade look,
                                  const std::optional<tve::ClipText>& text = std::nullopt,
                                  QRhiTexture* canvasBelow = nullptr, const std::string& stillPath = {},
                                  tve::ChromaKey key = {}, std::vector<tve::ClipMask> masks = {},
-                                 double clipSeconds = 0.0, double clipDuration = 0.0) -> QRhiTexture* {
+                                 double clipSeconds = 0.0, double clipDuration = 0.0,
+                                 tve::CompositeFrame* nested = nullptr) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
         if (canvasBelow) {
             picture = canvasBelow; // an adjustment layer works on what is under it
+        } else if (nested) {
+            if (m_nestedCanvases.size() <= nestedIndex)
+                m_nestedCanvases.push_back(std::make_unique<tve::Compositor>(m_rhi));
+            tve::Compositor& own = *m_nestedCanvases[nestedIndex++];
+            own.begin(cb, m_canvasSize, true);
+            drawLayers(nested->layers, own);
+            picture = own.result();
         } else if (text) {
             picture = titleTexture(cb, clipId, *text, clipSeconds, clipDuration);
             liveTitles.insert(clipId);
@@ -450,95 +461,99 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     };
 
     std::size_t matteIndex = 0;
-    for (std::size_t index = 0; index < frame.layers.size(); ++index) {
-        tve::VideoLayer& layer = frame.layers[index];
-        tve::ClipVisual visual = layer.visual;
-        if (layer.adjustment) {
-            // Grade and filter the canvas so far, then lay the result over it by the layer's
-            // opacity (the passes read the canvas before the draw replaces it).
-            QRhiTexture* below = m_compositor->result();
-            QRhiTexture* adjusted =
-                clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look, std::nullopt, below);
-            if (adjusted && adjusted != below) {
-                tve::ClipVisual cover;
-                cover.opacity = visual.opacity;
-                m_compositor->draw(cb, adjusted, cover);
-            }
-            continue;
-        }
-        QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look,
-                                           layer.text, nullptr, layer.stillPath, layer.chromaKey, layer.masks,
-                                           layer.clipSeconds, layer.clipDuration);
-        // Track matte: the layer just above is the matte, placed by itself, and not drawn.
-        tve::VideoLayer* matteLayer = index + 1 < frame.layers.size() ? &frame.layers[index + 1] : nullptr;
-        if (layer.matte != tve::MatteMode::None && !layer.transition && matteLayer && !matteLayer->transition
-            && !matteLayer->adjustment) {
-            ++index;
-            tve::ClipVisual matteVisual = matteLayer->visual;
-            QRhiTexture* matte =
-                clipPicture(matteLayer->clipId, matteLayer->frame, matteVisual, matteLayer->effects, matteLayer->grade,
-                            matteLayer->look, matteLayer->text, nullptr, matteLayer->stillPath, matteLayer->chromaKey,
-                            matteLayer->masks, matteLayer->clipSeconds, matteLayer->clipDuration);
-            if (!picture)
+    drawLayers = [&](std::vector<tve::VideoLayer>& layers, tve::Compositor& target) {
+        for (std::size_t index = 0; index < layers.size(); ++index) {
+            tve::VideoLayer& layer = layers[index];
+            tve::ClipVisual visual = layer.visual;
+            if (layer.adjustment) {
+                // Grade and filter the canvas so far, then lay the result over it by the layer's
+                // opacity (the passes read the canvas before the draw replaces it).
+                QRhiTexture* below = target.result();
+                QRhiTexture* adjusted =
+                    clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look, std::nullopt, below);
+                if (adjusted && adjusted != below) {
+                    tve::ClipVisual cover;
+                    cover.opacity = visual.opacity;
+                    target.draw(cb, adjusted, cover);
+                }
                 continue;
-            if (m_matteCanvases.size() <= matteIndex)
-                m_matteCanvases.push_back({std::make_unique<tve::Compositor>(m_rhi), std::make_unique<tve::Compositor>(m_rhi)});
-            auto& canvases = m_matteCanvases[matteIndex++];
-            const tve::BlendMode blend = visual.blend;
+            }
+            QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look,
+                                               layer.text, nullptr, layer.stillPath, layer.chromaKey, layer.masks,
+                                               layer.clipSeconds, layer.clipDuration, layer.nested.get());
+            // Track matte: the layer just above is the matte, placed by itself, and not drawn.
+            tve::VideoLayer* matteLayer = index + 1 < layers.size() ? &layers[index + 1] : nullptr;
+            if (layer.matte != tve::MatteMode::None && !layer.transition && matteLayer && !matteLayer->transition
+                && !matteLayer->adjustment) {
+                ++index;
+                tve::ClipVisual matteVisual = matteLayer->visual;
+                QRhiTexture* matte =
+                    clipPicture(matteLayer->clipId, matteLayer->frame, matteVisual, matteLayer->effects, matteLayer->grade,
+                                matteLayer->look, matteLayer->text, nullptr, matteLayer->stillPath, matteLayer->chromaKey,
+                                matteLayer->masks, matteLayer->clipSeconds, matteLayer->clipDuration,
+                                matteLayer->nested.get());
+                if (!picture)
+                    continue;
+                if (m_matteCanvases.size() <= matteIndex)
+                    m_matteCanvases.push_back({std::make_unique<tve::Compositor>(m_rhi), std::make_unique<tve::Compositor>(m_rhi)});
+                auto& canvases = m_matteCanvases[matteIndex++];
+                const tve::BlendMode blend = visual.blend;
+                visual.blend = tve::BlendMode::Normal;
+                matteVisual.blend = tve::BlendMode::Normal;
+                canvases[0]->begin(cb, m_canvasSize, true);
+                place(*canvases[0], layer.clipId, picture, visual);
+                canvases[1]->begin(cb, m_canvasSize, true);
+                if (matte)
+                    place(*canvases[1], matteLayer->clipId, matte, matteVisual);
+                tve::ClipVisual whole;
+                whole.blend = blend;
+                target.draw(cb, m_masks->combineMatte(cb, canvases[0]->result(), canvases[1]->result(), layer.matte),
+                            whole);
+                continue;
+            }
+            if (!layer.transition) {
+                if (picture)
+                    place(target, layer.clipId, picture, visual);
+                continue;
+            }
+
+            tve::LayerTransition& transition = *layer.transition;
+            tve::ClipVisual incomingVisual = transition.visual;
+            QRhiTexture* incoming =
+                clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade,
+                            transition.look, std::nullopt, nullptr, transition.stillPath, transition.chromaKey,
+                            transition.masks, transition.clipSeconds);
+            if (!picture || !incoming) {
+                if (picture || incoming)
+                    place(target, picture ? layer.clipId : transition.clipId, picture ? picture : incoming,
+                          picture ? visual : incomingVisual);
+                continue;
+            }
+            if (m_transitionCanvases.size() <= transitionIndex)
+                m_transitionCanvases.push_back({std::make_unique<tve::Compositor>(m_rhi), std::make_unique<tve::Compositor>(m_rhi)});
+            auto& canvases = m_transitionCanvases[transitionIndex++];
+            // Each side is placed by itself (blend modes need what is below, which comes after).
+            const tve::BlendMode blend = visual.blend == incomingVisual.blend ? visual.blend : tve::BlendMode::Normal;
             visual.blend = tve::BlendMode::Normal;
-            matteVisual.blend = tve::BlendMode::Normal;
+            incomingVisual.blend = tve::BlendMode::Normal;
             canvases[0]->begin(cb, m_canvasSize, true);
             place(*canvases[0], layer.clipId, picture, visual);
             canvases[1]->begin(cb, m_canvasSize, true);
-            if (matte)
-                place(*canvases[1], matteLayer->clipId, matte, matteVisual);
-            tve::ClipVisual whole;
-            whole.blend = blend;
-            m_compositor->draw(cb, m_masks->combineMatte(cb, canvases[0]->result(), canvases[1]->result(), layer.matte),
-                               whole);
-            continue;
+            place(*canvases[1], transition.clipId, incoming, incomingVisual);
+            QRhiTexture* blended = m_transitions->render(cb, transition.transitionId, transition.values, transition.progress,
+                                                         canvases[0]->result(), canvases[1]->result(), seconds);
+            if (blended) {
+                tve::ClipVisual whole;
+                whole.blend = blend;
+                target.draw(cb, blended, whole);
+            } else {
+                // Unknown transition (e.g. from a newer version): cut at the half-way point.
+                target.draw(cb, transition.progress < 0.5f ? canvases[0]->result() : canvases[1]->result(),
+                            tve::ClipVisual{});
+            }
         }
-        if (!layer.transition) {
-            if (picture)
-                place(*m_compositor, layer.clipId, picture, visual);
-            continue;
-        }
-
-        tve::LayerTransition& transition = *layer.transition;
-        tve::ClipVisual incomingVisual = transition.visual;
-        QRhiTexture* incoming =
-            clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade,
-                        transition.look, std::nullopt, nullptr, transition.stillPath, transition.chromaKey,
-                        transition.masks, transition.clipSeconds);
-        if (!picture || !incoming) {
-            if (picture || incoming)
-                place(*m_compositor, picture ? layer.clipId : transition.clipId, picture ? picture : incoming,
-                      picture ? visual : incomingVisual);
-            continue;
-        }
-        if (m_transitionCanvases.size() <= transitionIndex)
-            m_transitionCanvases.push_back({std::make_unique<tve::Compositor>(m_rhi), std::make_unique<tve::Compositor>(m_rhi)});
-        auto& canvases = m_transitionCanvases[transitionIndex++];
-        // Each side is placed by itself (blend modes need what is below, which comes after).
-        const tve::BlendMode blend = visual.blend == incomingVisual.blend ? visual.blend : tve::BlendMode::Normal;
-        visual.blend = tve::BlendMode::Normal;
-        incomingVisual.blend = tve::BlendMode::Normal;
-        canvases[0]->begin(cb, m_canvasSize, true);
-        place(*canvases[0], layer.clipId, picture, visual);
-        canvases[1]->begin(cb, m_canvasSize, true);
-        place(*canvases[1], transition.clipId, incoming, incomingVisual);
-        QRhiTexture* blended = m_transitions->render(cb, transition.transitionId, transition.values, transition.progress,
-                                                     canvases[0]->result(), canvases[1]->result(), seconds);
-        if (blended) {
-            tve::ClipVisual whole;
-            whole.blend = blend;
-            m_compositor->draw(cb, blended, whole);
-        } else {
-            // Unknown transition (e.g. from a newer version): cut at the half-way point.
-            m_compositor->draw(cb, transition.progress < 0.5f ? canvases[0]->result() : canvases[1]->result(),
-                               tve::ClipVisual{});
-        }
-    }
+    };
+    drawLayers(frame.layers, *m_compositor);
     // Drop effect chains and title textures of clips no longer on screen.
     std::erase_if(m_clipChains, [&](const auto& entry) { return !liveClips.contains(entry.first); });
     std::erase_if(m_canvasChains, [&](const auto& entry) { return !liveCanvasClips.contains(entry.first); });

@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a), curves & effect keyframes (6b) and speed ramping (6c), colour grading (7a), qualifiers & scopes (7b), looks (7c), masks & keying (8a), the effects library (8b), audio DSP (9a), the titles system (9b), transitions to 60 (10a) and stickers (10b) done, structure (11a) next — see §9.2
+**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a), curves & effect keyframes (6b) and speed ramping (6c), colour grading (7a), qualifiers & scopes (7b), looks (7c), masks & keying (8a), the effects library (8b), audio DSP (9a), the titles system (9b), transitions to 60 (10a), stickers (10b) and structure (11a) done, delivery (11b) next — see §9.2
 **Date:** 2026-10-27
 
 ---
@@ -538,8 +538,8 @@ pulled forward into Phase 1 (5c).
 | 9b. Titles system | 33 text animations (14 in/out presets — fade, rise, drop, slide left/right, zoom, pop, spin, flip, bounce, typewriter, focus, wipe, tracking — played forwards in and backwards out, and 5 loops: wave, pulse, flicker, shake, swing) on the whole text, lines, words or characters with stagger, evaluated per glyph; 10 shapes and bubbles behind the text (box, rounded, pill, speech and thought bubbles, banner, underline, circle, arrow, tag); rolling credits and crawling tickers; 40 original title templates in 5 categories with animated previews | **Done** (gradient fills, text on a path and shape-only elements later) |
 | 10a. Transitions to 60 | 39 new original transition packages (60 in all): 3D (cube, card flip, page turn, fold, swing in, fall, tumble, doorway, fly through, carousel), distortions (swirl, water drop, morph, dreamy, pinch, stretch, kaleidoscope, glitch, chromatic, whip pan), ten procedural luma wipes, growing shapes (heart, star, diamond, inset, corner, zigzag, polka dots, tiles) and film burn; library category chips; apply one to every cut, or a random one to each, as one undo step | **Done** (luma wipes from user images later) |
 | 10b. Stickers | Lottie stickers drawn by ThorVG (MIT; Skottie would need all of Skia) into textures per frame, looping for the clip's length; 100 original stickers (25 designs × 4 looping motions, `tools/make_stickers.py`) in a Stickers tab with categories, search and animated previews; Lottie import; video with alpha (ProRes 4444, GIF, APNG, WebP) decoded in software to BGRA and composited with its transparency | **Done** (WebM VP9 alpha needs libvpx; HEVC with alpha later) |
-| 11a. Structure | Markers and chapters, groups, compound clips | Next |
-| 11b. Delivery | Export formats and presets, export ranges, background render queue | Planned |
+| 11a. Structure | Markers (colour, note, range, chapter; ruler flags, snapping, M and ⌥←/⌥→) with chapter markers written into exported MP4s; multi-select, groups that select, move and delete together; compound clips holding a sequence of tracks, rendered on a canvas of their own (nested up to 8 deep) and mixed from their sequence's tracks, with break apart | **Done** (compound clips take no speed or transitions yet) |
+| 11b. Delivery | Export formats and presets, export ranges, background render queue | Next |
 | 11c. Hardening | Relink missing media, shortcut editor, golden-frame suite of 500 cases | Planned |
 
 ---

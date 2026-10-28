@@ -118,7 +118,10 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
 {
     Result result;
     std::string error;
-    auto writer = tve::Mp4Writer::open(path.toStdString(), settings, &error);
+    // The project's chapter markers become the file's chapters.
+    tve::Mp4Settings fileSettings = settings;
+    fileSettings.chapters = project->chapters();
+    auto writer = tve::Mp4Writer::open(path.toStdString(), fileSettings, &error);
     if (!writer) {
         result.error = QString::fromStdString(error);
         return result;

@@ -202,6 +202,22 @@ std::unique_ptr<Mp4Writer> Mp4Writer::open(const std::string& path, const Mp4Set
 
     if (int rc = avio_open(&d->format->pb, path.c_str(), AVIO_FLAG_WRITE); rc < 0)
         return fail("cannot write " + path + ": " + avError(rc));
+    // Chapters go in before the header (the muxer makes its chapter track from them).
+    for (const Chapter& chapter : settings.chapters) {
+        auto* added = static_cast<AVChapter*>(av_mallocz(sizeof(AVChapter)));
+        if (!added)
+            return fail("out of memory");
+        added->id = std::int64_t(d->format->nb_chapters);
+        added->time_base = AVRational{1, int(kTicksPerSecond)};
+        added->start = chapter.start;
+        added->end = chapter.end;
+        av_dict_set(&added->metadata, "title", chapter.title.c_str(), 0);
+        int count = int(d->format->nb_chapters);
+        av_dynarray_add(&d->format->chapters, &count, added);
+        if (!d->format->chapters)
+            return fail("out of memory");
+        d->format->nb_chapters = unsigned(count);
+    }
     AVDictionary* options = nullptr;
     av_dict_set(&options, "movflags", "+faststart", 0);
     const int rc = avformat_write_header(d->format, &options);

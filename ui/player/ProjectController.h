@@ -55,6 +55,11 @@ class ProjectController : public QObject {
     Q_PROPERTY(double playhead READ playhead NOTIFY playheadChanged)
     Q_PROPERTY(bool playing READ playing NOTIFY playingChanged)
     Q_PROPERTY(double selectedClip READ selectedClip WRITE setSelectedClip NOTIFY selectionChanged)
+    // Every selected clip (the selected clip, its group, and any added with toggleClipSelection).
+    Q_PROPERTY(QVariantList selectedClips READ selectedClips NOTIFY selectionChanged)
+    // {id, time, duration, color, note, chapter} in time order (seconds).
+    Q_PROPERTY(QVariantList markers READ markers NOTIFY projectChanged)
+    Q_PROPERTY(QStringList markerColors READ markerColors CONSTANT)
     Q_PROPERTY(QString lastError READ lastError NOTIFY errorOccurred)
     // The selected clip's details for the inspector (empty map when nothing is selected).
     Q_PROPERTY(QVariantMap selectedClipInfo READ selectedClipInfo NOTIFY selectedClipInfoChanged)
@@ -168,6 +173,9 @@ public:
     bool playing() const;
     double selectedClip() const { return double(m_selectedClip); }
     void setSelectedClip(double clipId);
+    QVariantList selectedClips() const;
+    QVariantList markers() const;
+    QStringList markerColors() const;
     QString lastError() const { return m_lastError; }
     QVariantMap selectedClipInfo() const;
     double selectedTransition() const { return double(m_selectedTransition); }
@@ -398,6 +406,22 @@ public:
     // Applies the text fields in `changes` to a title clip (one undo step).
     Q_INVOKABLE bool setClipText(double clipId, const QVariantMap& changes);
 
+    // Markers. addMarker puts one at `seconds` (the playhead when negative) and returns its
+    // id (0 on failure). setMarker takes any of time, duration, color, note, chapter.
+    Q_INVOKABLE double addMarker(double seconds = -1, const QString& note = {});
+    Q_INVOKABLE bool setMarker(double markerId, const QVariantMap& changes);
+    Q_INVOKABLE bool removeMarker(double markerId);
+    // Moves the playhead to the next (direction > 0) or previous marker.
+    Q_INVOKABLE bool seekMarker(int direction);
+
+    // Selection of several clips, groups and compound clips.
+    Q_INVOKABLE void toggleClipSelection(double clipId);
+    Q_INVOKABLE bool groupSelected();
+    Q_INVOKABLE bool ungroupSelected();
+    // Makes the selected clips one compound clip ("Compound N"); returns its id (0 on failure).
+    Q_INVOKABLE double createCompound();
+    Q_INVOKABLE bool breakCompound(double clipId);
+
     // Makes (in the background) or deletes the proxy of a video.
     // Voice-over. openVoiceOver asks for microphone access first if it has not been given
     // (returning false until it is; voiceOverChanged follows the answer). closeVoiceOver
@@ -514,6 +538,7 @@ private:
     QString m_filePath;
     QString m_lastError;
     tve::Id m_selectedClip = tve::kNoId;
+    std::vector<tve::Id> m_selectedClips; // includes m_selectedClip
     tve::Id m_selectedTransition = tve::kNoId;
     double m_playhead = 0;
     bool m_canvasChosen = false; // false: the first video clip sets the canvas
