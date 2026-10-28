@@ -11,11 +11,13 @@ add_library(tve_gpu STATIC
     TransitionRenderer.cpp
     ColorGrader.h
     ColorGrader.cpp
+    MaskRenderer.h
+    MaskRenderer.cpp
 )
 
 qt_add_shaders(tve_gpu "tve_gpu_shaders"
     PREFIX "/gpu"
-    FILES shaders/composite.frag shaders/grade.frag
+    FILES shaders/composite.frag shaders/grade.frag shaders/mask.frag shaders/matte.frag
 )
 add_library(tve::gpu ALIAS tve_gpu)
 

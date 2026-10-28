@@ -4,11 +4,11 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b) and looks, overlays and adjustment layers (7c) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b) looks, overlays and adjustment layers (7c) and masks, keying and split screens (8a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
-scopes, put looks (filters) and overlays on clips or on adjustment layers above them, give each clip its own effects,
+scopes, put looks (filters) and overlays on clips or on adjustment layers above them, cut clips out with shape and pen masks, a chroma key or a track matte, arrange clips side by side or picture in picture, give each clip its own effects,
 put any of 21 transitions on the cuts between clips (with a constant-power sound
 crossfade), add titles (font, size, colour, bold/italic, alignment, letter and line
 spacing, outline, shadow), change a clip's speed (0.1–10×) or ramp it, play it in reverse or insert
@@ -113,6 +113,21 @@ pan), colour, looks, effects, transitions, export — and transparency in PNGs s
 below. An animated GIF plays as a video. Images do not set the project's canvas; the first
 video does.
 
+**Masks, keying and split screens.** The Video tab's Masks section adds rectangle, ellipse,
+line, star, heart and pen masks to a clip (up to eight; together they show the union of
+their insides). The selected mask is drawn on the player with handles: drag the centre to
+move it, the square to size it, the knob above it to rotate it; a pen mask's points drag one
+by one, a click on the player adds a point on the nearest edge and a double-click removes
+one. Sliders set the centre, size, rotation, corner roundness and feather, and Invert keeps
+the outside instead. **Chroma key** removes a colour — Green, Blue, or Pick and click the
+player — with tolerance, edge softness and spill removal (the key's colour cast is taken out
+of what stays). **Track matte** shapes a clip by the clip on the track just above it, by
+alpha or luma (each also inverted); the matte clip itself is not shown. **Split screen**
+arranges the clips at the playhead, top track first: picture in picture, side by side, top
+and bottom, three columns, one and two, or a grid of four, each clip cropped to fill its
+part; one undo step puts them all back. Masks and keys are applied in the clip's own
+picture, after its grade and before its effects, so they move, scale and animate with it,
+and export renders them exactly as the player does.
 **Looks, overlays and adjustment layers.** The library's Filters tab holds 12 looks of our
 own — Warm Film, Teal & Orange, Bleach Bypass, Golden Hour, Cool Night, Vintage Fade, Matte
 Pastel, Cross Process, Sepia, Noir, Vivid and Black & White — each previewed on a sample

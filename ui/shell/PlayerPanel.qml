@@ -27,6 +27,12 @@ Rectangle {
                 anchors.margins: Theme.space.s
             }
 
+            MaskOverlay {
+                objectName: "maskOverlay"
+                anchors.fill: video
+                project: panel.project
+            }
+
             DropArea {
                 anchors.fill: parent
                 keys: ["text/uri-list"]

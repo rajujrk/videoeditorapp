@@ -25,6 +25,11 @@ Rectangle {
                 times.add(Math.round(k.time * 1000))
         return times.size
     }
+    readonly property var masks: clipInfo.masks || []
+    readonly property var activeMaskData: project.activeMask >= 0 && project.activeMask < masks.length
+                                          ? masks[project.activeMask] : null
+    readonly property var chromaKey: clipInfo.chromaKey || ({})
+    function commitMask(changes) { project.setMask(clipInfo.id, project.activeMask, changes) }
     readonly property var transitionInfo: project.selectedTransitionInfo
     readonly property bool showsTransition: transitionInfo.clipId !== undefined
 
@@ -500,6 +505,282 @@ Rectangle {
                                 currentIndex: Math.max(0, modes.indexOf(inspector.visual.blend || "normal"))
                                 onActivated: (index) => inspector.project.setClipVisual(inspector.clipInfo.id, { blend: modes[index] })
                             }
+                        }
+                    }
+
+                    // Masks: shapes that keep (or, inverted, cut out) part of the picture. The
+                    // selected one is also drawn on the player, where it can be dragged.
+                    Section {
+                        id: maskSection
+                        objectName: "masksSection"
+                        visible: inspector.clipInfo.isAdjustment !== true
+                        Layout.fillWidth: true
+                        title: "Masks"
+                        readonly property var masks: inspector.masks
+                        readonly property int active: inspector.project.activeMask
+                        readonly property var mask: inspector.activeMaskData
+                        function commit(changes) { inspector.commitMask(changes) }
+
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            Repeater {
+                                model: [{ id: "rectangle", label: "Rectangle" }, { id: "ellipse", label: "Ellipse" },
+                                        { id: "line", label: "Line" }, { id: "star", label: "Star" },
+                                        { id: "heart", label: "Heart" }, { id: "pen", label: "Pen" }]
+                                delegate: TextButton {
+                                    required property var modelData
+                                    objectName: "addMask:" + modelData.id
+                                    text: "+ " + modelData.label
+                                    variant: "ghost"
+                                    enabled: maskSection.masks.length < 8
+                                    onClicked: inspector.project.addMask(inspector.clipInfo.id, modelData.id)
+                                }
+                            }
+                        }
+                        Text {
+                            visible: maskSection.masks.length === 0
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: "Add a shape to show only part of the picture. Pen masks take any outline: "
+                                  + "click on the player to add points."
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                        Flow {
+                            visible: maskSection.masks.length > 0
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            Repeater {
+                                model: maskSection.masks.length
+                                delegate: AbstractButton {
+                                    id: maskChip
+                                    required property int index
+                                    readonly property var mask: maskSection.masks[index]
+                                    objectName: "maskChip:" + index
+                                    checked: maskSection.active === index
+                                    hoverEnabled: true
+                                    implicitWidth: chipText.implicitWidth + Theme.space.m * 2
+                                    implicitHeight: 26
+                                    onClicked: inspector.project.activeMask = checked ? -1 : index
+                                    background: Rectangle {
+                                        radius: Theme.radius.s
+                                        color: maskChip.checked ? Theme.color.accentSubtle
+                                             : maskChip.hovered ? Theme.color.surfaceHover : Theme.color.surfaceRaised
+                                        border.color: maskChip.checked ? Theme.color.accent : Theme.color.borderSubtle
+                                    }
+                                    contentItem: Text {
+                                        id: chipText
+                                        text: (maskChip.index + 1) + " · " + maskChip.mask.shape.charAt(0).toUpperCase()
+                                              + maskChip.mask.shape.slice(1) + (maskChip.mask.invert ? " (inverted)" : "")
+                                        font: Theme.type.label
+                                        color: Theme.color.textPrimary
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                            }
+                        }
+                        ColumnLayout {
+                            objectName: "maskEditor"
+                            visible: maskSection.mask !== null
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            readonly property bool shaped: maskSection.mask !== null && maskSection.mask.shape !== "pen"
+
+                            MaskSlider { key: "x"; label: "Centre X"; from: -0.5; to: 1.5; visible: parent.shaped
+                                         format: (v) => Math.round(v * 100) + "%" }
+                            MaskSlider { key: "y"; label: "Centre Y"; from: -0.5; to: 1.5; visible: parent.shaped
+                                         format: (v) => Math.round(v * 100) + "%" }
+                            MaskSlider { key: "width"; label: "Width"; from: 0.01; to: 2
+                                         visible: parent.shaped && maskSection.mask.shape !== "line"
+                                         format: (v) => Math.round(v * 100) + "%" }
+                            MaskSlider { key: "height"; label: "Height"; from: 0.01; to: 2
+                                         visible: parent.shaped && maskSection.mask.shape !== "line"
+                                         format: (v) => Math.round(v * 100) + "%" }
+                            MaskSlider { key: "rotation"; label: "Rotation"; from: -180; to: 180; visible: parent.shaped
+                                         format: (v) => v.toFixed(1) + "°" }
+                            MaskSlider { key: "roundness"; label: "Roundness"; from: 0; to: 1
+                                         visible: maskSection.mask !== null && maskSection.mask.shape === "rectangle"
+                                         format: (v) => Math.round(v * 100) + "%" }
+                            MaskSlider { key: "feather"; label: "Feather"; from: 0; to: 0.5
+                                         format: (v) => Math.round(v * 200) + "%" }
+                            Text {
+                                visible: maskSection.mask !== null && maskSection.mask.shape === "pen"
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                                text: "Drag the points on the player; click between them to add one, double-click one to remove it."
+                                font: Theme.type.caption
+                                color: Theme.color.textSecondary
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text { text: "Invert"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                                ToggleSwitch {
+                                    objectName: "maskInvert"
+                                    checked: maskSection.mask !== null && maskSection.mask.invert
+                                    onToggled: maskSection.commit({ invert: checked })
+                                }
+                            }
+                            TextButton {
+                                objectName: "removeMaskButton"
+                                text: "Remove mask"
+                                variant: "ghost"
+                                onClicked: inspector.project.removeMask(inspector.clipInfo.id, maskSection.active)
+                            }
+                        }
+                    }
+
+                    // Chroma key: removes a colour (a green or blue screen) from the picture.
+                    Section {
+                        id: keySection
+                        objectName: "chromaKeySection"
+                        visible: inspector.clipInfo.isAdjustment !== true && inspector.clipInfo.isTitle !== true
+                        Layout.fillWidth: true
+                        expanded: key.enabled === true
+                        title: "Chroma key"
+                        readonly property var key: inspector.chromaKey
+                        readonly property var keyColor: key.color || [0, 0.69, 0.25]
+                        function commit(changes) { inspector.project.setChromaKey(inspector.clipInfo.id, changes) }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: "Remove a colour"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            ToggleSwitch {
+                                objectName: "chromaKeyEnabled"
+                                checked: keySection.key.enabled === true
+                                onToggled: keySection.commit({ enabled: checked })
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.s
+                            Rectangle {
+                                objectName: "keyColorSwatch"
+                                width: 26
+                                height: 26
+                                radius: Theme.radius.s
+                                color: Qt.rgba(keySection.keyColor[0], keySection.keyColor[1], keySection.keyColor[2], 1)
+                                border.color: Theme.color.borderStrong
+                            }
+                            TextButton {
+                                objectName: "keyGreen"
+                                text: "Green"
+                                variant: "ghost"
+                                onClicked: keySection.commit({ enabled: true, color: [0, 0.69, 0.25] })
+                            }
+                            TextButton {
+                                objectName: "keyBlue"
+                                text: "Blue"
+                                variant: "ghost"
+                                onClicked: keySection.commit({ enabled: true, color: [0.05, 0.28, 0.85] })
+                            }
+                            Item { Layout.fillWidth: true }
+                            TextButton {
+                                objectName: "pickKeyColor"
+                                text: inspector.project.pickingKeyColor ? "Click the player…" : "Pick"
+                                variant: inspector.project.pickingKeyColor ? "primary" : "secondary"
+                                tip: "Click a colour on the player to remove it"
+                                onClicked: inspector.project.pickingKeyColor = !inspector.project.pickingKeyColor
+                            }
+                        }
+                        KeySlider { key: "tolerance"; objectName: "keyTolerance"; label: "Tolerance"; from: 0; to: 0.6
+                                    format: (v) => Math.round(v * 100 / 0.6) + "%" }
+                        KeySlider { key: "softness"; objectName: "keySoftness"; label: "Edge softness"; from: 0; to: 0.4
+                                    format: (v) => Math.round(v * 100 / 0.4) + "%" }
+                        KeySlider { key: "spill"; objectName: "keySpill"; label: "Spill removal"; from: 0; to: 1
+                                    format: (v) => Math.round(v * 100) + "%" }
+                    }
+
+                    // Track matte: this clip shows only where the clip on the track above it does.
+                    Section {
+                        objectName: "matteSection"
+                        visible: inspector.clipInfo.isAdjustment !== true
+                        Layout.fillWidth: true
+                        expanded: (inspector.clipInfo.matte || "none") !== "none"
+                        title: "Track matte"
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: "Shape from above"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            ComboBox {
+                                objectName: "matteMode"
+                                readonly property var modes: ["none", "alpha", "invertedAlpha", "luma", "invertedLuma"]
+                                model: ["None", "Alpha", "Alpha inverted", "Luma", "Luma inverted"]
+                                currentIndex: Math.max(0, modes.indexOf(inspector.clipInfo.matte || "none"))
+                                onActivated: (index) => inspector.project.setMatte(inspector.clipInfo.id, modes[index])
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: "The clip on the track just above becomes the shape (by its transparency or brightness) "
+                                  + "and is not shown itself."
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                    }
+
+                    // Layouts: arranges the clips at the playhead into a split screen or an inset.
+                    Section {
+                        objectName: "layoutSection"
+                        visible: inspector.clipInfo.isAdjustment !== true
+                        Layout.fillWidth: true
+                        expanded: false
+                        title: "Split screen"
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.s
+                            Repeater {
+                                model: inspector.project.layouts
+                                delegate: AbstractButton {
+                                    id: layoutButton
+                                    required property var modelData
+                                    objectName: "layout:" + modelData.id
+                                    hoverEnabled: true
+                                    implicitWidth: 64
+                                    implicitHeight: 52
+                                    ToolTip.visible: hovered
+                                    ToolTip.text: modelData.title
+                                    onClicked: inspector.project.applyLayout(modelData.id)
+                                    background: Rectangle {
+                                        radius: Theme.radius.s
+                                        color: layoutButton.hovered ? Theme.color.surfaceHover : Theme.color.surfaceRaised
+                                        border.color: layoutButton.hovered ? Theme.color.borderStrong : Theme.color.borderSubtle
+                                    }
+                                    // A miniature canvas with the layout's regions.
+                                    contentItem: Item {
+                                        Rectangle {
+                                            id: miniCanvas
+                                            anchors.centerIn: parent
+                                            width: 48
+                                            height: 27
+                                            color: Theme.color.surfaceSunken
+                                            border.color: Theme.color.borderStrong
+                                            Repeater {
+                                                model: layoutButton.modelData.regions
+                                                delegate: Rectangle {
+                                                    required property var modelData
+                                                    x: modelData[0] * miniCanvas.width + 1
+                                                    y: modelData[1] * miniCanvas.height + 1
+                                                    width: (modelData[2] - modelData[0]) * miniCanvas.width - 2
+                                                    height: (modelData[3] - modelData[1]) * miniCanvas.height - 2
+                                                    radius: 1
+                                                    color: Theme.color.accentSubtle
+                                                    border.color: Theme.color.accent
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: "Uses the clips at the playhead on separate tracks, top track first. "
+                                  + "Picture in picture shrinks the top one into the corner."
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
                         }
                     }
                 }
@@ -1289,6 +1570,23 @@ Rectangle {
         animKey: key
         onLiveValue: (v) => { const m = {}; m[key] = v; inspector.project.previewClipVisual(inspector.clipInfo.id, m) }
         onCommitted: (v) => { const m = {}; m[key] = v; inspector.project.setClipVisual(inspector.clipInfo.id, m) }
+    }
+
+    // A slider for the active mask's `key` field (see the Masks section).
+    component MaskSlider: AudioSlider {
+        required property string key
+        objectName: "mask:" + key
+        value: inspector.activeMaskData !== null && inspector.activeMaskData[key] !== undefined ? inspector.activeMaskData[key] : 0
+        onLiveValue: (v) => { const m = {}; m[key] = v; inspector.project.previewMask(inspector.clipInfo.id, inspector.project.activeMask, m) }
+        onCommitted: (v) => { const m = {}; m[key] = v; inspector.commitMask(m) }
+    }
+
+    // A slider for the chroma key's `key` field.
+    component KeySlider: AudioSlider {
+        required property string key
+        value: inspector.chromaKey[key] !== undefined ? inspector.chromaKey[key] : 0
+        onLiveValue: (v) => { const m = {}; m[key] = v; inspector.project.previewChromaKey(inspector.clipInfo.id, m) }
+        onCommitted: (v) => { const m = {}; m[key] = v; inspector.project.setChromaKey(inspector.clipInfo.id, m) }
     }
 
     // A row of colour swatches; the one matching `current` is ringed.

@@ -6,6 +6,7 @@
 
 #include "gpu/ColorGrader.h"
 #include "gpu/Compositor.h"
+#include "gpu/MaskRenderer.h"
 #include "gpu/EffectChain.h"
 #include "gpu/TransitionRenderer.h"
 
@@ -124,6 +125,7 @@ FrameCompositor::FrameCompositor(QRhi* rhi) : m_rhi(rhi)
     m_compositor = std::make_unique<tve::Compositor>(m_rhi);
     m_transitions = std::make_unique<tve::TransitionRenderer>(m_rhi, tve::EffectLibrary::builtIn());
     m_grader = std::make_unique<tve::ColorGrader>(m_rhi);
+    m_masks = std::make_unique<tve::MaskRenderer>(m_rhi);
 }
 
 FrameCompositor::~FrameCompositor()
@@ -298,17 +300,19 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     m_compositor->begin(cb, m_canvasSize);
     m_transitions->begin();
     m_grader->begin();
+    m_masks->begin();
     std::set<tve::Id> liveClips;
     std::size_t slotIndex = 0;
     std::size_t transitionIndex = 0;
 
     std::set<tve::Id> liveTitles;
-    // One clip's picture (decoded video, or a title's text), through its effects (with any
-    // live preview).
+    // One clip's picture (decoded video, a still, or a title's text), through its colour, key
+    // and masks, and effects (with any live preview).
     const auto clipPicture = [&](tve::Id clipId, const tve::DecodedFrame& decoded, tve::ClipVisual& visual,
                                  std::vector<tve::ClipEffect> effects, tve::ColorGrade grade, tve::ColorGrade look,
                                  const std::optional<tve::ClipText>& text = std::nullopt,
-                                 QRhiTexture* canvasBelow = nullptr, const std::string& stillPath = {}) -> QRhiTexture* {
+                                 QRhiTexture* canvasBelow = nullptr, const std::string& stillPath = {},
+                                 tve::ChromaKey key = {}, std::vector<tve::ClipMask> masks = {}) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
         if (canvasBelow) {
             picture = canvasBelow; // an adjustment layer works on what is under it
@@ -322,12 +326,16 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         }
         if (!picture)
             return nullptr;
-        if (overrides)
+        if (overrides) {
             overrides->apply(clipId, visual, effects, grade, look);
-        if (!text) { // colour first (the look, then the grade), then effects
+            overrides->applyKeying(clipId, key, masks);
+        }
+        if (!text) { // colour first (the look, then the grade), then the key and masks, then effects
             picture = m_grader->apply(cb, picture, look);
             picture = m_grader->apply(cb, picture, grade);
         }
+        if (!canvasBelow)
+            picture = m_masks->apply(cb, picture, key, masks);
         if (!effects.empty()) {
             auto& chain = m_clipChains[clipId];
             if (!chain)
@@ -342,7 +350,9 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         return picture;
     };
 
-    for (tve::VideoLayer& layer : frame.layers) {
+    std::size_t matteIndex = 0;
+    for (std::size_t index = 0; index < frame.layers.size(); ++index) {
+        tve::VideoLayer& layer = frame.layers[index];
         tve::ClipVisual visual = layer.visual;
         if (layer.adjustment) {
             // Grade and filter the canvas so far, then lay the result over it by the layer's
@@ -358,7 +368,36 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             continue;
         }
         QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look,
-                                           layer.text, nullptr, layer.stillPath);
+                                           layer.text, nullptr, layer.stillPath, layer.chromaKey, layer.masks);
+        // Track matte: the layer just above is the matte, placed by itself, and not drawn.
+        tve::VideoLayer* matteLayer = index + 1 < frame.layers.size() ? &frame.layers[index + 1] : nullptr;
+        if (layer.matte != tve::MatteMode::None && !layer.transition && matteLayer && !matteLayer->transition
+            && !matteLayer->adjustment) {
+            ++index;
+            tve::ClipVisual matteVisual = matteLayer->visual;
+            QRhiTexture* matte =
+                clipPicture(matteLayer->clipId, matteLayer->frame, matteVisual, matteLayer->effects, matteLayer->grade,
+                            matteLayer->look, matteLayer->text, nullptr, matteLayer->stillPath, matteLayer->chromaKey,
+                            matteLayer->masks);
+            if (!picture)
+                continue;
+            if (m_matteCanvases.size() <= matteIndex)
+                m_matteCanvases.push_back({std::make_unique<tve::Compositor>(m_rhi), std::make_unique<tve::Compositor>(m_rhi)});
+            auto& canvases = m_matteCanvases[matteIndex++];
+            const tve::BlendMode blend = visual.blend;
+            visual.blend = tve::BlendMode::Normal;
+            matteVisual.blend = tve::BlendMode::Normal;
+            canvases[0]->begin(cb, m_canvasSize, true);
+            canvases[0]->draw(cb, picture, visual);
+            canvases[1]->begin(cb, m_canvasSize, true);
+            if (matte)
+                canvases[1]->draw(cb, matte, matteVisual);
+            tve::ClipVisual whole;
+            whole.blend = blend;
+            m_compositor->draw(cb, m_masks->combineMatte(cb, canvases[0]->result(), canvases[1]->result(), layer.matte),
+                               whole);
+            continue;
+        }
         if (!layer.transition) {
             if (picture)
                 m_compositor->draw(cb, picture, visual);
@@ -369,7 +408,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         tve::ClipVisual incomingVisual = transition.visual;
         QRhiTexture* incoming =
             clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade,
-                        transition.look, std::nullopt, nullptr, transition.stillPath);
+                        transition.look, std::nullopt, nullptr, transition.stillPath, transition.chromaKey,
+                        transition.masks);
         if (!picture || !incoming) {
             if (picture || incoming)
                 m_compositor->draw(cb, picture ? picture : incoming, picture ? visual : incomingVisual);

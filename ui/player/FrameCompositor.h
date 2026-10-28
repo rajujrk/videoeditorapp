@@ -28,6 +28,7 @@ class Compositor;
 class EffectChain;
 class TransitionRenderer;
 class ColorGrader;
+class MaskRenderer;
 }
 
 // Draws composite frames onto the project canvas on the GPU (Metal), for the preview and
@@ -103,6 +104,9 @@ private:
     std::vector<std::array<std::unique_ptr<tve::Compositor>, 2>> m_transitionCanvases;
     std::unique_ptr<tve::TransitionRenderer> m_transitions;
     std::unique_ptr<tve::ColorGrader> m_grader;
+    std::unique_ptr<tve::MaskRenderer> m_masks;
+    // Per matted layer within a frame: the layer's and its matte's own canvases.
+    std::vector<std::array<std::unique_ptr<tve::Compositor>, 2>> m_matteCanvases;
     std::map<tve::Id, TitleTexture> m_titles;
     struct StillTexture {
         std::unique_ptr<QRhiTexture> texture;

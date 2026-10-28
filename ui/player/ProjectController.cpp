@@ -11,6 +11,8 @@
 #include "model/TimelineQuery.h"
 #include "gpu/ColorGrader.h"
 #include "gpu/EffectLibrary.h"
+#include "gpu/LayerPlacement.h"
+#include "decode/Thumbnail.h"
 #include "EffectInfo.h"
 #include "Exporter.h"
 #include "LookLibrary.h"
@@ -451,6 +453,83 @@ QString lutName(const std::string& path)
     return fileName(path);
 }
 
+const char* const kMaskShapes[] = {"rectangle", "ellipse", "line", "star", "heart", "pen"};
+const char* const kMatteModes[] = {"none", "alpha", "invertedAlpha", "luma", "invertedLuma"};
+
+QVariantMap maskMap(const ClipMask& m)
+{
+    QVariantList points;
+    for (const auto& p : m.points)
+        points << QVariant(QVariantList{p[0], p[1]});
+    return {
+        {QStringLiteral("shape"), QString::fromLatin1(kMaskShapes[int(m.shape)])},
+        {QStringLiteral("x"), m.x},
+        {QStringLiteral("y"), m.y},
+        {QStringLiteral("width"), m.width},
+        {QStringLiteral("height"), m.height},
+        {QStringLiteral("rotation"), m.rotation},
+        {QStringLiteral("roundness"), m.roundness},
+        {QStringLiteral("feather"), m.feather},
+        {QStringLiteral("invert"), m.invert},
+        {QStringLiteral("points"), points},
+    };
+}
+
+QVariantMap chromaKeyMap(const ChromaKey& k)
+{
+    return {
+        {QStringLiteral("enabled"), k.enabled},
+        {QStringLiteral("color"), QVariantList{k.color[0], k.color[1], k.color[2]}},
+        {QStringLiteral("tolerance"), k.tolerance},
+        {QStringLiteral("softness"), k.softness},
+        {QStringLiteral("spill"), k.spill},
+    };
+}
+
+// `mask` with the fields present in `changes`.
+ClipMask maskWith(ClipMask m, const QVariantMap& changes)
+{
+    const auto number = [&](const char* key, double& target) {
+        if (const auto it = changes.constFind(QLatin1String(key)); it != changes.constEnd())
+            target = it->toDouble();
+    };
+    number("x", m.x);
+    number("y", m.y);
+    number("width", m.width);
+    number("height", m.height);
+    number("rotation", m.rotation);
+    number("roundness", m.roundness);
+    number("feather", m.feather);
+    if (const auto it = changes.constFind(QStringLiteral("invert")); it != changes.constEnd())
+        m.invert = it->toBool();
+    if (const auto it = changes.constFind(QStringLiteral("points")); it != changes.constEnd()) {
+        m.points.clear();
+        for (const QVariant& point : it->toList()) {
+            const QVariantList xy = point.toList();
+            if (xy.size() == 2)
+                m.points.push_back({xy[0].toDouble(), xy[1].toDouble()});
+        }
+    }
+    return m;
+}
+
+ChromaKey chromaKeyWith(ChromaKey k, const QVariantMap& changes)
+{
+    if (const auto it = changes.constFind(QStringLiteral("enabled")); it != changes.constEnd())
+        k.enabled = it->toBool();
+    if (const auto it = changes.constFind(QStringLiteral("color")); it != changes.constEnd()) {
+        const QVariantList rgb = it->value<QVariantList>();
+        if (rgb.size() >= 3)
+            k.color = {rgb[0].toDouble(), rgb[1].toDouble(), rgb[2].toDouble()};
+    }
+    for (auto [key, target] : {std::pair{"tolerance", &k.tolerance}, std::pair{"softness", &k.softness},
+                               std::pair{"spill", &k.spill}}) {
+        if (const auto it = changes.constFind(QLatin1String(key)); it != changes.constEnd())
+            *target = it->toDouble();
+    }
+    return k;
+}
+
 QVariantMap gradeMap(const ColorGrade& g)
 {
     return {
@@ -690,8 +769,30 @@ void ProjectController::setSelectedClip(double clipId)
     m_selectedClip = id;
     if (id != kNoId)
         m_selectedTransition = kNoId;
+    // Mask editing and key picking belong to the clip they started on.
+    if (m_activeMask != -1 || m_pickingKeyColor) {
+        m_activeMask = -1;
+        m_pickingKeyColor = false;
+        emit editingChanged();
+    }
     emit selectionChanged();
     emit selectedClipInfoChanged();
+}
+
+void ProjectController::setActiveMask(int index)
+{
+    if (index == m_activeMask)
+        return;
+    m_activeMask = index;
+    emit editingChanged();
+}
+
+void ProjectController::setPickingKeyColor(bool picking)
+{
+    if (picking == m_pickingKeyColor)
+        return;
+    m_pickingKeyColor = picking;
+    emit editingChanged();
 }
 
 void ProjectController::setSelectedTransition(double clipId)
@@ -1355,6 +1456,14 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("localTime"), seconds(local)},
             {QStringLiteral("effects"), effectsList(clip->effectsAt(now))}, // values at the playhead
             {QStringLiteral("color"), gradeMap(clip->color)},
+            {QStringLiteral("masks"), [&] {
+                 QVariantList list;
+                 for (const ClipMask& m : clip->masks)
+                     list << maskMap(m);
+                 return list;
+             }()},
+            {QStringLiteral("chromaKey"), chromaKeyMap(clip->chromaKey)},
+            {QStringLiteral("matte"), QString::fromLatin1(kMatteModes[int(clip->matte)])},
             {QStringLiteral("isAdjustment"), clip->adjustment},
             {QStringLiteral("isStill"), media && media->still},
             {QStringLiteral("look"), clip->look ? QVariant(QVariantMap{{QStringLiteral("id"), QString::fromStdString(clip->look->id)},
@@ -1590,6 +1699,296 @@ bool ProjectController::removeLut(double clipId)
     g.lutPath.clear();
     g.lutIntensity = 1.0;
     return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{clip->id}, g, "Remove LUT"));
+}
+
+// --- Masks, keys and layouts ---
+
+namespace {
+
+ClipKeying keyingOf(const Clip& clip)
+{
+    return {clip.masks, clip.chromaKey, clip.matte};
+}
+
+} // namespace
+
+bool ProjectController::addMask(double clipId, const QString& shape, const QVariantList& points)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip) {
+        reportError(QStringLiteral("Select a clip"));
+        return false;
+    }
+    ClipMask mask;
+    bool known = false;
+    for (int i = 0; i < int(std::size(kMaskShapes)); ++i) {
+        if (shape == QLatin1String(kMaskShapes[i])) {
+            mask.shape = MaskShape(i);
+            known = true;
+        }
+    }
+    if (!known) {
+        reportError(QStringLiteral("Unknown mask shape %1").arg(shape));
+        return false;
+    }
+    // Each starts in the middle of the picture at a useful size.
+    if (mask.shape == MaskShape::Ellipse || mask.shape == MaskShape::Star || mask.shape == MaskShape::Heart)
+        mask.width = mask.height = 0.6;
+    if (mask.shape == MaskShape::Line)
+        mask.feather = 0.05;
+    if (mask.shape == MaskShape::Pen) {
+        mask = maskWith(mask, {{QStringLiteral("points"), points}});
+        if (points.isEmpty())
+            mask.points = {{0.3, 0.3}, {0.7, 0.3}, {0.7, 0.7}, {0.3, 0.7}};
+    }
+    ClipKeying keying = keyingOf(*clip);
+    keying.masks.push_back(mask);
+    const int index = int(keying.masks.size()) - 1;
+    if (!apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), "Add Mask")))
+        return false;
+    setActiveMask(index); // edit the new one
+    return true;
+}
+
+bool ProjectController::setMask(double clipId, int index, const QVariantMap& changes)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || index < 0 || index >= int(clip->masks.size()))
+        return false;
+    ClipKeying keying = keyingOf(*clip);
+    keying.masks[std::size_t(index)] = maskWith(keying.masks[std::size_t(index)], changes);
+    const bool ok = apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), "Change Mask"));
+    if (!ok && m_view)
+        m_view->clearPreview(toId(clipId));
+    return ok;
+}
+
+void ProjectController::previewMask(double clipId, int index, const QVariantMap& changes)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !m_view || index < 0 || index >= int(clip->masks.size()))
+        return;
+    auto masks = clip->masks;
+    masks[std::size_t(index)] = maskWith(masks[std::size_t(index)], changes);
+    if (!validateMasks(masks))
+        m_view->setPreviewKeying(clip->id, clip->chromaKey, masks);
+}
+
+bool ProjectController::removeMask(double clipId, int index)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || index < 0 || index >= int(clip->masks.size()))
+        return false;
+    ClipKeying keying = keyingOf(*clip);
+    keying.masks.erase(keying.masks.begin() + index);
+    if (!apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), "Remove Mask")))
+        return false;
+    setActiveMask(-1);
+    return true;
+}
+
+bool ProjectController::setChromaKey(double clipId, const QVariantMap& changes)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return false;
+    ClipKeying keying = keyingOf(*clip);
+    keying.chromaKey = chromaKeyWith(keying.chromaKey, changes);
+    const bool ok = apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), "Change Key"));
+    if (!ok && m_view)
+        m_view->clearPreview(toId(clipId));
+    return ok;
+}
+
+void ProjectController::previewChromaKey(double clipId, const QVariantMap& changes)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !m_view)
+        return;
+    const ChromaKey key = chromaKeyWith(clip->chromaKey, changes);
+    if (!validateChromaKey(key))
+        m_view->setPreviewKeying(clip->id, key, clip->masks);
+}
+
+bool ProjectController::setMatte(double clipId, const QString& mode)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return false;
+    for (int i = 0; i < int(std::size(kMatteModes)); ++i) {
+        if (mode == QLatin1String(kMatteModes[i])) {
+            ClipKeying keying = keyingOf(*clip);
+            keying.matte = MatteMode(i);
+            return apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), "Change Matte"));
+        }
+    }
+    reportError(QStringLiteral("Unknown matte %1").arg(mode));
+    return false;
+}
+
+QVariantList ProjectController::clipColorAt(double clipId, double u, double v)
+{
+    const Clip* clip = findClip(toId(clipId));
+    const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+    if (!media || !media->hasVideo)
+        return {};
+    QImage picture;
+    if (media->still) {
+        picture = still::read(QString::fromStdString(media->path), 512);
+    } else {
+        const Ticks source = clampedSourceTime(m_project, *clip, ticks(m_playhead));
+        if (auto frame = extractThumbnail(media->path, source, 360))
+            picture = QImage(frame->pixels.data(), frame->width, frame->height, QImage::Format_RGBA8888).copy();
+    }
+    if (picture.isNull())
+        return {};
+    const int x = std::clamp(int(u * picture.width()), 0, picture.width() - 1);
+    const int y = std::clamp(int(v * picture.height()), 0, picture.height() - 1);
+    // A small average, so noise does not decide the colour.
+    double rgb[3] = {0, 0, 0};
+    int count = 0;
+    for (int dy = -2; dy <= 2; ++dy) {
+        for (int dx = -2; dx <= 2; ++dx) {
+            const int px = std::clamp(x + dx, 0, picture.width() - 1);
+            const int py = std::clamp(y + dy, 0, picture.height() - 1);
+            const QColor c = picture.pixelColor(px, py);
+            rgb[0] += c.redF();
+            rgb[1] += c.greenF();
+            rgb[2] += c.blueF();
+            ++count;
+        }
+    }
+    return {rgb[0] / count, rgb[1] / count, rgb[2] / count};
+}
+
+QVariantMap ProjectController::clipPlacement(double clipId) const
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || clip->adjustment)
+        return {};
+    const MediaItem* media = m_project.findMedia(clip->mediaId);
+    // A title is drawn at canvas size.
+    const double width = clip->text ? m_project.settings.width : media ? media->width : 0;
+    const double height = clip->text ? m_project.settings.height : media ? media->height : 0;
+    if (width <= 0 || height <= 0)
+        return {};
+    const LayerPlacement placement = placeLayer(clip->visualAt(ticks(m_playhead)), m_project.settings.width,
+                                                m_project.settings.height, width, height);
+    QVariantList m;
+    for (double v : placement.canvasToLayer)
+        m << v;
+    return {{QStringLiteral("m"), m}, {QStringLiteral("width"), width}, {QStringLiteral("height"), height}};
+}
+
+namespace {
+
+struct Layout {
+    const char* id;
+    const char* title;
+    std::vector<std::array<double, 4>> regions; // canvas regions, top clip first
+    bool inset = false;                        // picture in picture: the top clip, small
+};
+
+const std::vector<Layout>& builtInLayouts()
+{
+    static const std::vector<Layout> layouts{
+        {"pip", "Picture in picture", {{0.62, 0.06, 0.95, 0.39}}, true},
+        {"side-by-side", "Side by side", {{0, 0, 0.5, 1}, {0.5, 0, 1, 1}}},
+        {"top-bottom", "Top and bottom", {{0, 0, 1, 0.5}, {0, 0.5, 1, 1}}},
+        {"three-columns", "Three columns", {{0, 0, 1.0 / 3, 1}, {1.0 / 3, 0, 2.0 / 3, 1}, {2.0 / 3, 0, 1, 1}}},
+        {"one-and-two", "One and two", {{0, 0, 2.0 / 3, 1}, {2.0 / 3, 0, 1, 0.5}, {2.0 / 3, 0.5, 1, 1}}},
+        {"grid", "Grid of four", {{0, 0, 0.5, 0.5}, {0.5, 0, 1, 0.5}, {0, 0.5, 0.5, 1}, {0.5, 0.5, 1, 1}}},
+    };
+    return layouts;
+}
+
+// A visual that makes a picture of `w` × `h` fill canvas region `r` (cropped to its shape).
+ClipVisual fillRegion(ClipVisual v, double w, double h, double canvasW, double canvasH, const std::array<double, 4>& r)
+{
+    const double regionW = (r[2] - r[0]) * canvasW;
+    const double regionH = (r[3] - r[1]) * canvasH;
+    v.crop = {};
+    if (w / h > regionW / regionH) {
+        const double keep = (h * regionW / regionH) / w;
+        v.crop.left = v.crop.right = (1.0 - keep) / 2.0;
+    } else {
+        const double keep = (w * regionH / regionW) / h;
+        v.crop.top = v.crop.bottom = (1.0 - keep) / 2.0;
+    }
+    const double visibleW = w * (1.0 - v.crop.left - v.crop.right);
+    const double visibleH = h * (1.0 - v.crop.top - v.crop.bottom);
+    const double fit = std::min(canvasW / visibleW, canvasH / visibleH);
+    v.transform.scale = regionW / (visibleW * fit);
+    v.transform.x = (r[0] + r[2]) / 2.0 - 0.5;
+    v.transform.y = (r[1] + r[3]) / 2.0 - 0.5;
+    v.transform.rotation = 0.0;
+    return v;
+}
+
+} // namespace
+
+QVariantList ProjectController::layouts() const
+{
+    QVariantList list;
+    for (const Layout& layout : builtInLayouts()) {
+        QVariantList regions;
+        for (const auto& r : layout.regions)
+            regions << QVariant(QVariantList{r[0], r[1], r[2], r[3]});
+        list << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(layout.id)},
+                            {QStringLiteral("title"), QString::fromLatin1(layout.title)},
+                            {QStringLiteral("regions"), regions}};
+    }
+    return list;
+}
+
+bool ProjectController::applyLayout(const QString& layoutId)
+{
+    const auto& all = builtInLayouts();
+    const auto layout = std::ranges::find_if(all, [&](const Layout& l) { return layoutId == QLatin1String(l.id); });
+    if (layout == all.end()) {
+        reportError(QStringLiteral("Unknown layout %1").arg(layoutId));
+        return false;
+    }
+    // The pictures at the playhead, top track first (titles and adjustment layers stay).
+    const Ticks now = ticks(m_playhead);
+    std::vector<const Clip*> pictures;
+    const auto layers = visibleVideoLayersAt(m_project, now);
+    for (auto it = layers.rbegin(); it != layers.rend(); ++it) {
+        if (!it->clip->generated())
+            pictures.push_back(it->clip);
+    }
+    const std::size_t needed = layout->inset ? 1 : layout->regions.size();
+    if (pictures.size() < needed) {
+        reportError(QStringLiteral("%1 needs %2 clips on separate tracks at the playhead")
+                        .arg(QString::fromLatin1(layout->title))
+                        .arg(needed));
+        return false;
+    }
+    const double canvasW = m_project.settings.width;
+    const double canvasH = m_project.settings.height;
+    std::vector<std::unique_ptr<Command>> commands;
+    for (std::size_t i = 0; i < needed; ++i) {
+        const Clip& clip = *pictures[i];
+        const MediaItem* media = m_project.findMedia(clip.mediaId);
+        if (!media || media->width <= 0 || media->height <= 0)
+            continue;
+        ClipVisual visual = clip.visual;
+        if (layout->inset) {
+            // Whole, small, in the region's corner.
+            const auto& r = layout->regions[0];
+            visual.crop = {};
+            const double fit = std::min(canvasW / media->width, canvasH / media->height);
+            visual.transform.scale = std::min((r[2] - r[0]) * canvasW / (media->width * fit),
+                                              (r[3] - r[1]) * canvasH / (media->height * fit));
+            visual.transform.x = (r[0] + r[2]) / 2.0 - 0.5;
+            visual.transform.y = (r[1] + r[3]) / 2.0 - 0.5;
+            visual.transform.rotation = 0.0;
+        } else {
+            visual = fillRegion(visual, media->width, media->height, canvasW, canvasH, layout->regions[i]);
+        }
+        commands.push_back(std::make_unique<SetClipVisualCommand>(clip.id, visual));
+    }
+    return apply(std::make_unique<CompositeCommand>(std::move(commands), "Apply Layout"));
 }
 
 // --- Looks and adjustment layers ---
