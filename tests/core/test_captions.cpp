@@ -132,3 +132,33 @@ TEST_CASE("captions go on a caption track, replacing what it held", "[captions]"
     stack.undo();
     CHECK(project.tracks.empty());
 }
+
+TEST_CASE("filler words are told apart from words", "[captions]")
+{
+    for (const char* filler : {"um", "Um,", "uh.", "UHH", "hmm", "erm", "Mhm!"})
+        CHECK(isFillerWord(filler));
+    for (const char* word : {"umbrella", "huh", "the", "", "a"})
+        CHECK_FALSE(isFillerWord(word));
+}
+
+TEST_CASE("captions made again keep how they look", "[captions]")
+{
+    Project project;
+    CommandStack stack(project);
+    ClipText style = captionText();
+    style.captionMotion = CaptionMotion::Karaoke;
+    style.color = {0.2, 0.9, 0.9, 1.0};
+    ClipVisual visual = captionVisual();
+    visual.transform.y = -0.3; // at the top
+    REQUIRE_FALSE(stack.push(std::make_unique<SetCaptionsCommand>(layoutCaptions(spoken("Hello there.")), "Generate Captions",
+                                                                  style, visual)));
+    const Clip& clip = project.tracks[0].clips[0];
+    CHECK(clip.text->captionMotion == CaptionMotion::Karaoke);
+    CHECK(clip.text->color == style.color);
+    CHECK(clip.text->text == "Hello there.");
+    CHECK(clip.text->words.size() == 2);
+    CHECK(clip.visual.transform.y == -0.3);
+    CHECK(clip.text->animated()); // it changes as the words are said
+    // Saved with the style.
+    CHECK(projectFromJson(projectToJson(project)).tracks[0].clips[0].text->captionMotion == CaptionMotion::Karaoke);
+}

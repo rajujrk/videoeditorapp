@@ -1,6 +1,7 @@
 #include "model/Captions.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <regex>
 #include <sstream>
@@ -112,6 +113,16 @@ std::vector<CaptionBlock> layoutCaptions(const std::vector<TimedWord>& words, co
             captions[i].end = std::min(captions[i].start + minimum, std::max(limit, captions[i].end));
     }
     return captions;
+}
+
+bool isFillerWord(const std::string& word)
+{
+    std::string w;
+    for (unsigned char c : word)
+        if (std::isalpha(c))
+            w += char(std::tolower(c));
+    static const char* const fillers[] = {"um", "umm", "uh", "uhh", "uhm", "erm", "er", "ah", "ahh", "hmm", "hm", "mm", "mhm", "eh"};
+    return std::ranges::any_of(fillers, [&](const char* f) { return w == f; });
 }
 
 ClipText captionText()

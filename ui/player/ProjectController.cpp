@@ -1287,6 +1287,7 @@ void ProjectController::publish()
     m_trackModel.update(tracks());
     emit projectChanged();
     emit selectedClipInfoChanged();
+    emit transcriptChanged();
     scheduleAutosave();
 }
 
@@ -4830,6 +4831,54 @@ void ProjectController::runInBackground(const QString& task, std::function<std::
 
 bool ProjectController::generateCaptions(const QVariantMap& options)
 {
+    return transcribeClips(options, true);
+}
+
+bool ProjectController::transcribe(const QVariantMap& options)
+{
+    return transcribeClips(options, false);
+}
+
+std::vector<ProjectController::PlacedWord> ProjectController::placedWords(const Project& project, const std::string& variant,
+                                                                          const std::set<Id>* only) const
+{
+    std::vector<PlacedWord> words;
+    if (variant.empty())
+        return words;
+    for (const Track& track : project.tracks) {
+        if (track.kind == TrackKind::Title)
+            continue;
+        for (const Clip& clip : track.clips) {
+            const MediaItem* media = project.findMedia(clip.mediaId);
+            if ((only && !only->contains(clip.id)) || !media || clip.speed != 1.0 || clip.reversed || clip.freeze
+                || !clip.speedRamp.empty() || (track.kind == TrackKind::Video && !clip.audioEnabled))
+                continue;
+            const auto found = m_transcripts.find(fingerprintOf(*media) + "|" + variant);
+            if (found == m_transcripts.end())
+                continue;
+            const Ticks from = clip.sourceIn;
+            const Ticks to = clip.sourceIn + clip.duration;
+            for (const tve::TranscriptWord& w : found->second.words) {
+                if (w.start < from || w.start >= to)
+                    continue;
+                words.push_back({w.start - from + clip.start, std::min(w.end, to) - from + clip.start, w.text, clip.id, track.id});
+            }
+        }
+    }
+    std::ranges::stable_sort(words, {}, &PlacedWord::start);
+    return words;
+}
+
+std::pair<std::optional<ClipText>, std::optional<ClipVisual>> ProjectController::captionLook() const
+{
+    const auto track = std::ranges::find_if(m_project.tracks, [](const Track& t) { return t.captions; });
+    if (track == m_project.tracks.end() || track->clips.empty() || !track->clips.front().text)
+        return {};
+    return {track->clips.front().text, track->clips.front().visual};
+}
+
+bool ProjectController::transcribeClips(const QVariantMap& options, bool makeCaptions)
+{
     if (analyzing()) {
         reportError(QStringLiteral("An analysis is already running"));
         return false;
@@ -4849,11 +4898,8 @@ bool ProjectController::generateCaptions(const QVariantMap& options)
     std::set<Id> chosen;
     for (const QVariant& id : selectedClips())
         chosen.insert(toId(id.toDouble()));
-    struct Voice {
-        Id clipId;
-        Id mediaId;
-    };
-    std::vector<Voice> voices;
+    std::set<Id> voices;
+    std::vector<Id> mediaIds;
     for (const Track& track : m_project.tracks) {
         if (track.kind == TrackKind::Title || (chosen.empty() && track.muted))
             continue;
@@ -4863,7 +4909,8 @@ bool ProjectController::generateCaptions(const QVariantMap& options)
                 || (track.kind == TrackKind::Video && !clip.audioEnabled) || clip.speed != 1.0 || clip.reversed
                 || clip.freeze || !clip.speedRamp.empty() || !QFileInfo::exists(QString::fromStdString(media->path)))
                 continue;
-            voices.push_back({clip.id, clip.mediaId});
+            voices.insert(clip.id);
+            mediaIds.push_back(clip.mediaId);
         }
     }
     if (voices.empty()) {
@@ -4880,8 +4927,8 @@ bool ProjectController::generateCaptions(const QVariantMap& options)
         std::string fingerprint;
     };
     std::vector<Job> jobs;
-    for (const Voice& voice : voices) {
-        const MediaItem& media = *m_project.findMedia(voice.mediaId);
+    for (Id mediaId : mediaIds) {
+        const MediaItem& media = *m_project.findMedia(mediaId);
         const std::string fingerprint = fingerprintOf(media);
         const std::string key = fingerprint + "|" + variant;
         if (m_transcripts.contains(key) || std::ranges::any_of(jobs, [&](const Job& j) { return j.key == key; }))
@@ -4894,30 +4941,24 @@ bool ProjectController::generateCaptions(const QVariantMap& options)
     }
 
     auto results = std::make_shared<std::vector<std::pair<std::string, tve::Transcript>>>();
-    const auto place = [this, voices, variant] {
-        std::vector<tve::TimedWord> words;
-        for (const Voice& voice : voices) {
-            const Clip* clip = findClip(voice.clipId);
-            const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
-            const auto found = media ? m_transcripts.find(fingerprintOf(*media) + "|" + variant) : m_transcripts.end();
-            if (found == m_transcripts.end())
-                continue;
-            const Ticks from = clip->sourceIn;
-            const Ticks to = clip->sourceIn + clip->duration;
-            for (const tve::TranscriptWord& w : found->second.words) {
-                if (w.start < from || w.start >= to)
-                    continue;
-                words.push_back({w.start - from + clip->start, std::min(w.end, to) - from + clip->start, w.text});
-            }
-        }
-        std::ranges::sort(words, {}, &tve::TimedWord::start);
-        const auto captions = tve::layoutCaptions(words);
-        if (captions.empty()) {
+    const auto place = [this, voices, variant, makeCaptions] {
+        m_transcriptVariant = variant;
+        emit transcriptChanged();
+        const auto placed = placedWords(m_project, variant, &voices);
+        if (placed.empty()) {
             reportError(QStringLiteral("No speech found"));
             emit analysisFinished(false, lastError());
             return;
         }
-        if (apply(std::make_unique<SetCaptionsCommand>(captions, "Generate Captions")))
+        if (!makeCaptions) {
+            emit analysisFinished(true, {});
+            return;
+        }
+        std::vector<tve::TimedWord> words;
+        for (const PlacedWord& w : placed)
+            words.push_back({w.start, w.end, w.text});
+        const auto [style, visual] = captionLook();
+        if (apply(std::make_unique<SetCaptionsCommand>(tve::layoutCaptions(words), "Generate Captions", style, visual)))
             emit analysisFinished(true, {});
         else
             emit analysisFinished(false, lastError());
@@ -4948,6 +4989,156 @@ bool ProjectController::generateCaptions(const QVariantMap& options)
                         place();
                     });
     return true;
+}
+
+QVariantList ProjectController::transcript() const
+{
+    QVariantList list;
+    int index = 0;
+    for (const PlacedWord& w : placedWords(m_project, m_transcriptVariant)) {
+        list << QVariantMap{{QStringLiteral("index"), index++},
+                            {QStringLiteral("text"), QString::fromStdString(w.text)},
+                            {QStringLiteral("start"), seconds(w.start)},
+                            {QStringLiteral("end"), seconds(w.end)},
+                            {QStringLiteral("clipId"), double(w.clipId)},
+                            {QStringLiteral("filler"), tve::isFillerWord(w.text)}};
+    }
+    return list;
+}
+
+bool ProjectController::cutRanges(const std::map<Id, std::vector<std::pair<Ticks, Ticks>>>& byTrack, const char* label)
+{
+    if (byTrack.empty())
+        return false;
+    const auto removals = [&] {
+        std::vector<std::unique_ptr<Command>> commands;
+        for (const auto& [trackId, ranges] : byTrack)
+            commands.push_back(std::make_unique<RemoveRangesCommand>(trackId, ranges, label));
+        return commands;
+    };
+    std::vector<std::unique_ptr<Command>> commands = removals();
+    // The captions, made again from the transcript as it will be after the cut.
+    if (captionCount() > 0) {
+        Project after = m_project;
+        for (auto& command : removals()) {
+            if (auto error = command->redo(after)) {
+                reportError(QString::fromStdString(*error));
+                return false;
+            }
+        }
+        std::vector<tve::TimedWord> words;
+        for (const PlacedWord& w : placedWords(after, m_transcriptVariant))
+            words.push_back({w.start, w.end, w.text});
+        const auto [style, visual] = captionLook();
+        commands.push_back(std::make_unique<SetCaptionsCommand>(tve::layoutCaptions(words), label, style, visual));
+    }
+    return apply(std::make_unique<CompositeCommand>(std::move(commands), label));
+}
+
+bool ProjectController::deleteWords(const QVariantList& indices)
+{
+    const auto words = placedWords(m_project, m_transcriptVariant);
+    std::vector<int> chosen;
+    for (const QVariant& i : indices)
+        if (const int index = i.toInt(); index >= 0 && index < int(words.size()))
+            chosen.push_back(index);
+    std::ranges::sort(chosen);
+    chosen.erase(std::unique(chosen.begin(), chosen.end()), chosen.end());
+    if (chosen.empty()) {
+        reportError(QStringLiteral("Select the words to delete"));
+        return false;
+    }
+    // Runs of neighbouring words on one track become one range: from the first word's start to
+    // the next kept word on that track (or a quarter second past the last word, if sooner).
+    const auto nextOnTrack = [&](int i) {
+        for (int j = i + 1; j < int(words.size()); ++j)
+            if (words[std::size_t(j)].trackId == words[std::size_t(i)].trackId)
+                return j;
+        return -1;
+    };
+    std::map<Id, std::vector<std::pair<Ticks, Ticks>>> byTrack;
+    for (std::size_t k = 0; k < chosen.size();) {
+        const int first = chosen[k];
+        int last = first;
+        while (k + 1 < chosen.size() && nextOnTrack(last) == chosen[k + 1])
+            last = chosen[++k];
+        ++k;
+        const PlacedWord& a = words[std::size_t(first)];
+        const PlacedWord& b = words[std::size_t(last)];
+        const int after = nextOnTrack(last);
+        const Ticks tail = b.end + kTicksPerSecond / 4;
+        const Ticks end = after >= 0 ? std::min(words[std::size_t(after)].start, tail) : b.end;
+        byTrack[a.trackId].emplace_back(a.start, std::max(end, b.end));
+    }
+    return cutRanges(byTrack, "Delete Words");
+}
+
+int ProjectController::removeFillerWords()
+{
+    QVariantList fillers;
+    for (const QVariant& w : transcript())
+        if (w.toMap().value(QStringLiteral("filler")).toBool())
+            fillers << w.toMap().value(QStringLiteral("index"));
+    if (fillers.isEmpty()) {
+        reportError(QStringLiteral("No filler words in the transcript"));
+        return 0;
+    }
+    return deleteWords(fillers) ? int(fillers.size()) : 0;
+}
+
+int ProjectController::removeTranscriptPauses(double longerThan, double keep)
+{
+    const auto words = placedWords(m_project, m_transcriptVariant);
+    const Ticks minimum = ticks(longerThan);
+    const Ticks margin = ticks(std::max(0.0, keep));
+    std::map<Id, std::vector<std::pair<Ticks, Ticks>>> byTrack;
+    std::map<Id, const PlacedWord*> previous;
+    int count = 0;
+    for (const PlacedWord& w : words) {
+        if (const auto found = previous.find(w.trackId); found != previous.end()) {
+            const Ticks gap = w.start - found->second->end;
+            if (gap > minimum && gap > 2 * margin) {
+                byTrack[w.trackId].emplace_back(found->second->end + margin, w.start - margin);
+                ++count;
+            }
+        }
+        previous[w.trackId] = &w;
+    }
+    if (count == 0) {
+        reportError(QStringLiteral("No pauses that long between words"));
+        return 0;
+    }
+    return cutRanges(byTrack, "Remove Pauses") ? count : 0;
+}
+
+QString ProjectController::captionMotion() const
+{
+    static const char* const names[] = {"none", "highlight", "pop", "karaoke", "reveal"};
+    const auto [style, visual] = captionLook();
+    return style ? QString::fromLatin1(names[int(style->captionMotion)]) : QStringLiteral("none");
+}
+
+bool ProjectController::setCaptionStyle(const QString& motion, const QVariant& highlightColor)
+{
+    const auto track = std::ranges::find_if(m_project.tracks, [](const Track& t) { return t.captions; });
+    if (track == m_project.tracks.end() || track->clips.empty()) {
+        reportError(QStringLiteral("Make captions first"));
+        return false;
+    }
+    QVariantMap changes{{QStringLiteral("captionMotion"), motion}};
+    if (highlightColor.isValid())
+        changes.insert(QStringLiteral("highlightColor"), highlightColor);
+    std::vector<std::unique_ptr<Command>> commands;
+    for (const Clip& clip : track->clips) {
+        if (!clip.text)
+            continue;
+        const ClipText changed = textFrom(changes, *clip.text);
+        if (changed != *clip.text)
+            commands.push_back(std::make_unique<SetClipTextCommand>(clip.id, changed));
+    }
+    if (commands.empty())
+        return true;
+    return apply(std::make_unique<CompositeCommand>(std::move(commands), "Caption Style"));
 }
 
 std::vector<tve::CaptionBlock> ProjectController::captionBlocks() const

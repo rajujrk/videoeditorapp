@@ -39,6 +39,9 @@ struct CaptionLayout {
 // full, or when it would grow past its lines or its time; lines broken between words.
 std::vector<CaptionBlock> layoutCaptions(const std::vector<TimedWord>& words, const CaptionLayout& layout = {});
 
+// A filler sound ("um", "uh", "hmm"…), whatever its case and punctuation.
+bool isFillerWord(const std::string& word);
+
 // How new captions look: white on a dark box near the bottom of the picture.
 ClipText captionText();
 ClipVisual captionVisual();

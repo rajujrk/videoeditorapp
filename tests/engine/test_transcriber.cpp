@@ -1,5 +1,6 @@
 #include "decode/AudioDecoder.h"
 #include "encode/MediaWriter.h"
+#include "model/Captions.h"
 #include "speech/Transcriber.h"
 
 #include <catch2/catch_approx.hpp>
@@ -125,4 +126,25 @@ TEST_CASE("transcription can be cancelled, and a missing model is an error")
     CHECK(error.empty()); // cancelled, not failed
     CHECK_FALSE(transcribe(sample("speech_en.wav"), "/nonexistent/model.bin", {}, {}, &error));
     CHECK(error.find("cannot load the speech model") == 0);
+}
+
+TEST_CASE("fillers are written down, so they can be cut")
+{
+    requireSpeech();
+    if (!fs::exists(sample("speech_fillers.wav")))
+        SKIP("speech_fillers.wav missing (run tools/make_test_media.sh)");
+    std::string error;
+    const auto transcript = transcribe(sample("speech_fillers.wav"), sample("models/ggml-base.en-q5_1.bin"), {.language = "en"}, {},
+                                       &error);
+    INFO(error);
+    REQUIRE(transcript);
+    std::string said;
+    int fillers = 0;
+    for (const TranscriptWord& w : transcript->words) {
+        said += w.text + " ";
+        fillers += isFillerWord(w.text);
+    }
+    INFO(said);
+    CHECK(fillers >= 1);
+    CHECK(said.find("short clips") != std::string::npos);
 }

@@ -20,6 +20,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <atomic>
+#include <set>
 #include <condition_variable>
 #include <mutex>
 #include <memory>
@@ -138,8 +139,13 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantList speechModels READ speechModels NOTIFY speechModelsChanged)
     Q_PROPERTY(QVariantMap modelDownload READ modelDownload NOTIFY speechModelsChanged)
     Q_PROPERTY(QVariantList captionLanguages READ captionLanguages CONSTANT)
-    // How many captions the caption track holds.
+    // How many captions the caption track holds, and how they follow the speech ("none",
+    // "highlight", "pop", "karaoke", "reveal").
     Q_PROPERTY(int captionCount READ captionCount NOTIFY projectChanged)
+    Q_PROPERTY(QString captionMotion READ captionMotion NOTIFY projectChanged)
+    // The words said in the clips on the timeline (once transcribed), in timeline order:
+    // {index, text, start, end, clipId, filler}.
+    Q_PROPERTY(QVariantList transcript READ transcript NOTIFY transcriptChanged)
 
     // Export: the render queue. Jobs run one at a time, in order; `exporting` while one is
     // running (or paused), with its progress (0–1).
@@ -260,6 +266,8 @@ public:
     QVariantMap modelDownload() const { return m_speechModels.progress(); }
     QVariantList captionLanguages() const;
     int captionCount() const;
+    QString captionMotion() const;
+    QVariantList transcript() const;
     QVariantList exportJobs() const;
     QVariantList exportPresets() const;
     QVariantList exportFormats() const;
@@ -529,6 +537,18 @@ public:
     // background and puts captions on the caption track (replacing it; one undo step).
     // options: model (a speechModels id), language (a code, or "auto").
     Q_INVOKABLE bool generateCaptions(const QVariantMap& options = {});
+    // The same, without making captions: just the transcript.
+    Q_INVOKABLE bool transcribe(const QVariantMap& options = {});
+    // Cuts the transcript's words (by index) out of their clips' tracks, closing the gaps; the
+    // captions are made again to match. One undo step.
+    Q_INVOKABLE bool deleteWords(const QVariantList& indices);
+    // Deletes every filler word ("um", "uh"…); returns how many.
+    Q_INVOKABLE int removeFillerWords();
+    // Shortens pauses between words longer than `longerThan` seconds to `keep` on each side;
+    // returns how many.
+    Q_INVOKABLE int removeTranscriptPauses(double longerThan = 0.7, double keep = 0.15);
+    // How every caption follows the speech, and the colour of the words said.
+    Q_INVOKABLE bool setCaptionStyle(const QString& motion, const QVariant& highlightColor = {});
     // SRT or WebVTT (by the file's extension): the caption track out, or a file in (replacing it).
     Q_INVOKABLE bool exportSubtitles(const QUrl& file);
     Q_INVOKABLE bool importSubtitles(const QUrl& file);
@@ -603,6 +623,7 @@ signals:
     void analysisChanged();
     void speechModelsChanged();
     void modelDownloadFinished(const QString& modelId, bool ok, const QString& error);
+    void transcriptChanged();
     // An analysis finished (ok) or failed or was cancelled (message, empty when cancelled).
     void analysisFinished(bool ok, const QString& message);
 
@@ -726,6 +747,23 @@ private:
     void runInBackground(const QString& task, std::function<std::string(const tve::AnalysisProgress&)> work,
                          std::function<void()> then);
     std::vector<tve::CaptionBlock> captionBlocks() const;
+    bool transcribeClips(const QVariantMap& options, bool makeCaptions);
+    // A transcript word on the timeline.
+    struct PlacedWord {
+        tve::Ticks start = 0;
+        tve::Ticks end = 0;
+        std::string text;
+        tve::Id clipId = tve::kNoId;
+        tve::Id trackId = tve::kNoId;
+    };
+    // The words of `project`'s clips (those in `only`, if given) with a transcript in `variant`.
+    std::vector<PlacedWord> placedWords(const tve::Project& project, const std::string& variant,
+                                        const std::set<tve::Id>* only = nullptr) const;
+    // How the captions look now (from the first caption), to keep when they are made again.
+    std::pair<std::optional<tve::ClipText>, std::optional<tve::ClipVisual>> captionLook() const;
+    // Cuts ranges out of tracks, remaking the captions to match; one undo step.
+    bool cutRanges(const std::map<tve::Id, std::vector<std::pair<tve::Ticks, tve::Ticks>>>& byTrack, const char* label);
+    std::string m_transcriptVariant; // the model and language of the transcript shown
     SpeechModels m_speechModels;
     std::map<std::string, tve::Transcript> m_transcripts; // by fingerprint + model + language
     std::map<std::string, tve::AudioFeatures> m_audioFeatures;

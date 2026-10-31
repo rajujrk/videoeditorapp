@@ -140,6 +140,11 @@ struct CaptionWord {
     friend bool operator==(const CaptionWord&, const CaptionWord&) = default;
 };
 
+// How a caption follows its speech, word by word (with its words' timing): the word being
+// said in the highlight colour, popping out, words filling with the colour as they are said
+// (karaoke), or appearing as they are said.
+enum class CaptionMotion { None, Highlight, Pop, Karaoke, Reveal };
+
 // A title that moves through the frame over the whole clip: credits rolling up, or a news
 // crawl from right to left.
 enum class TextScroll { None, RollUp, CrawlLeft };
@@ -167,13 +172,16 @@ struct ClipText {
     TextAnimation animationOut;
     TextAnimation animationLoop{.preset = {}, .duration = 1.5, .unit = TextUnit::Character, .stagger = 0.0};
     TextScroll scroll = TextScroll::None;
-    // A caption's words with their timing (empty for other titles).
+    // A caption's words with their timing (empty for other titles), and how it follows them.
     std::vector<CaptionWord> words;
+    CaptionMotion captionMotion = CaptionMotion::None;
+    ColorRgba highlightColor{1.0, 0.82, 0.2, 1.0};
 
     // Whether it looks different from one moment to the next.
     bool animated() const
     {
-        return animationIn.active() || animationOut.active() || animationLoop.active() || scroll != TextScroll::None;
+        return animationIn.active() || animationOut.active() || animationLoop.active() || scroll != TextScroll::None
+            || (captionMotion != CaptionMotion::None && !words.empty());
     }
 
     friend bool operator==(const ClipText&, const ClipText&) = default;

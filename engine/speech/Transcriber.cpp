@@ -188,6 +188,8 @@ std::optional<Transcript> transcribe(const std::string& mediaPath, const std::st
                                            : std::clamp(int(std::thread::hardware_concurrency()) / 2, 1, 8);
     params.token_timestamps = true;
     params.suppress_nst = true;
+    // Written verbatim, fillers and all (they can then be cut): a prompt in that style.
+    params.initial_prompt = "Umm, let me think, like, hmm. Okay, uh, here's what I'm thinking.";
     params.progress_callback = [](whisper_context*, whisper_state*, int percent, void* user) {
         auto* b = static_cast<Bridge*>(user);
         if (*b->progress && !(*b->progress)(0.2 + 0.8 * percent / 100.0))
