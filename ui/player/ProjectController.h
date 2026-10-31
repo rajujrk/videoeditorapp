@@ -4,6 +4,7 @@
 #include "ProxyManager.h"
 #include "TrackListModel.h"
 #include "VideoView.h"
+#include "analysis/MediaAnalysis.h"
 #include "commands/CommandStack.h"
 #include "encode/MediaWriter.h"
 #include "model/Project.h"
@@ -117,6 +118,18 @@ class ProjectController : public QObject {
     Q_PROPERTY(bool autoProxies READ autoProxies WRITE setAutoProxies NOTIFY proxiesChanged)
     Q_PROPERTY(QVariantMap proxyStates READ proxyStates NOTIFY proxiesChanged)
 
+    // Analysis (Analyze tab): a background job measuring media (progress 0–1, cancellable),
+    // then its findings for one clip, in timeline seconds, until applied or cleared.
+    Q_PROPERTY(bool analyzing READ analyzing NOTIFY analysisChanged)
+    Q_PROPERTY(double analysisProgress READ analysisProgress NOTIFY analysisChanged)
+    Q_PROPERTY(QString analysisTask READ analysisTask NOTIFY analysisChanged)
+    // {clipId, ranges: [{start, end}], total}: pauses to remove.
+    Q_PROPERTY(QVariantMap silences READ silences NOTIFY analysisChanged)
+    // {clipId, cuts: [seconds]}: scene changes.
+    Q_PROPERTY(QVariantMap scenes READ scenes NOTIFY analysisChanged)
+    // {clipId, bpm, times: [seconds]}: the beat.
+    Q_PROPERTY(QVariantMap beats READ beats NOTIFY analysisChanged)
+
     // Export: the render queue. Jobs run one at a time, in order; `exporting` while one is
     // running (or paused), with its progress (0–1).
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportChanged)
@@ -226,6 +239,12 @@ public:
     bool exporting() const { return m_exportThread.joinable(); }
     double exportProgress() const { return m_exportProgress; }
     bool exportPaused() const;
+    bool analyzing() const { return m_analysisThread.joinable(); }
+    double analysisProgress() const { return m_analysisProgress; }
+    QString analysisTask() const { return m_analysisTask; }
+    QVariantMap silences() const { return m_silences; }
+    QVariantMap scenes() const { return m_scenes; }
+    QVariantMap beats() const { return m_beats; }
     QVariantList exportJobs() const;
     QVariantList exportPresets() const;
     QVariantList exportFormats() const;
@@ -468,6 +487,27 @@ public:
     Q_INVOKABLE bool recoverProject(const QString& id);
     Q_INVOKABLE void discardRecovery(const QString& id);
 
+    // Analysis. Each measures the clip's media in the background (once: results are cached
+    // by the file's fingerprint), then publishes what it found; false (with lastError) if it
+    // cannot start. Clips must play at normal speed.
+    // options: thresholdDb, minDuration, padding (seconds).
+    Q_INVOKABLE bool findSilences(double clipId, const QVariantMap& options = {});
+    // Cuts the found pauses out of the clip's track, closing the gaps (one undo step).
+    Q_INVOKABLE bool removeSilences();
+    // options: threshold (0..1), minScene (seconds).
+    Q_INVOKABLE bool findScenes(double clipId, const QVariantMap& options = {});
+    Q_INVOKABLE bool splitAtScenes();
+    Q_INVOKABLE bool markScenes();
+    Q_INVOKABLE bool findBeats(double clipId);
+    // A marker on every `every`th beat (1, 2, 4…), from the first.
+    Q_INVOKABLE bool addBeatMarkers(int every = 1);
+    // Lowers the clip (music) under the sound of the other clips playing with it (speech):
+    // volume keyframes dipping by amountDb with fades of `fade` seconds. options: amountDb,
+    // fade, thresholdDb.
+    Q_INVOKABLE bool duckUnderSpeech(double clipId, const QVariantMap& options = {});
+    Q_INVOKABLE void cancelAnalysis();
+    Q_INVOKABLE void clearAnalysis();
+
     // Queues an export of the project as it is now; it runs when the jobs before it are done,
     // and exportFinished reports its end. `options`: preset (an exportPresets id, whose values
     // come first), format (an exportFormats id; "mp4-h264" by default; codec "hevc" also picks
@@ -534,6 +574,9 @@ signals:
     void inputLevelChanged();
     // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
     void exportFinished(bool ok, const QString& message, double jobId);
+    void analysisChanged();
+    // An analysis finished (ok) or failed or was cancelled (message, empty when cancelled).
+    void analysisFinished(bool ok, const QString& message);
 
 private:
     bool apply(std::unique_ptr<tve::Command> command);
@@ -644,6 +687,22 @@ private:
         QString error;
     };
     ExportJob* findExportJob(tve::Id id);
+    // Analysis: features by media fingerprint, measured on a worker thread; `then` runs on
+    // this thread once every media has them.
+    void withFeatures(const std::vector<tve::Id>& mediaIds, bool video, const QString& task, std::function<void()> then);
+    std::string fingerprintOf(const tve::MediaItem& media) const;
+    // The clip, when its media can be analysed at normal speed; otherwise nullptr and an error.
+    const tve::Clip* analysableClip(tve::Id clipId, bool needsSound, bool needsPictures);
+    std::map<std::string, tve::AudioFeatures> m_audioFeatures;
+    std::map<std::string, tve::VideoFeatures> m_videoFeatures;
+    std::thread m_analysisThread;
+    std::atomic<bool> m_cancelAnalysis{false};
+    double m_analysisProgress = 0;
+    QString m_analysisTask;
+    QVariantMap m_silences;
+    QVariantMap m_scenes;
+    QVariantMap m_beats;
+
     std::vector<ExportJob> m_exportJobs;
     tve::Id m_nextExportJob = 1;
     tve::Id m_runningExport = tve::kNoId;

@@ -16,6 +16,13 @@
 #include "Stickers.h"
 #include "LookLibrary.h"
 #include "TitleRenderer.h"
+#include "decode/AudioDecoder.h"
+#include "encode/MediaWriter.h"
+
+#include <cmath>
+#include <functional>
+#include <numbers>
+#include <random>
 
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ThemePlugin)
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_PlayerPlugin)
@@ -98,6 +105,85 @@ private:
     QString m_root;
 };
 
+// Media for the analysis tests, written at start-up:
+//   talk.wav / talk.mov  6.5 s: sound 0–1, 2–3, 3.3–4.3 and 5.8–6.5 s (a 300 Hz tone), else silence;
+//                        the MOV adds grey pictures (so it goes on a video track)
+//   beat.wav             8 s of noise clicks at 120 BPM from 0.25 s
+//   hum.wav              7 s of a quiet 220 Hz tone (music to duck)
+//   scenes.mov           three one-second shots at 30 fps, each moving
+void writeAnalysisMedia(const QString& dir)
+{
+    using namespace tve;
+    const auto talkAt = [](double t) {
+        const bool on = t < 1.0 || (t >= 2.0 && t < 3.0) || (t >= 3.3 && t < 4.3) || t >= 5.8;
+        return on ? 0.25f * float(std::sin(2.0 * std::numbers::pi * 300.0 * t)) : 0.0f;
+    };
+    const auto writeSound = [&](const QString& name, double length, const std::function<float(double)>& at) {
+        MediaSettings settings;
+        settings.container = Container::Wav;
+        settings.audioCodec = AudioCodec::Pcm16;
+        auto writer = MediaWriter::open((dir + QLatin1Char('/') + name).toStdString(), settings);
+        std::vector<float> samples(std::size_t(length * audio::kSampleRate) * 2);
+        for (std::size_t i = 0; i < samples.size() / 2; ++i)
+            samples[i * 2] = samples[i * 2 + 1] = at(double(i) / audio::kSampleRate);
+        writer->writeAudio(samples.data(), int(samples.size() / 2));
+        writer->finish();
+    };
+    writeSound(QStringLiteral("talk.wav"), 6.5, talkAt);
+    std::mt19937 random(7);
+    std::uniform_real_distribution<float> noise(-1.0f, 1.0f);
+    writeSound(QStringLiteral("beat.wav"), 8.0, [&](double t) {
+        const double into = std::fmod(t - 0.25, 0.5);
+        return t >= 0.25 && into < 0.02 ? 0.6f * noise(random) * float(1.0 - into / 0.02) : 0.0f;
+    });
+    writeSound(QStringLiteral("hum.wav"), 7.0, [](double t) { return 0.1f * float(std::sin(2.0 * std::numbers::pi * 220.0 * t)); });
+
+    const auto writeMovie = [&](const QString& name, int frames, bool sound, const std::function<void(int, std::vector<std::uint8_t>&)>& draw) {
+        MediaSettings settings;
+        settings.container = Container::Mov;
+        settings.codec = VideoCodec::ProRes;
+        settings.proRes = ProResProfile::Proxy;
+        settings.width = 160;
+        settings.height = 90;
+        settings.audio = sound;
+        settings.audioCodec = AudioCodec::Pcm16;
+        auto writer = MediaWriter::open((dir + QLatin1Char('/') + name).toStdString(), settings);
+        std::vector<std::uint8_t> rgba(160 * 90 * 4);
+        std::vector<float> samples(std::size_t(audio::kSampleRate / 30) * 2);
+        for (int f = 0; f < frames; ++f) {
+            draw(f, rgba);
+            writer->writeVideoRgba(rgba.data(), 160 * 4);
+            if (sound) {
+                for (std::size_t i = 0; i < samples.size() / 2; ++i)
+                    samples[i * 2] = samples[i * 2 + 1] = talkAt(f / 30.0 + double(i) / audio::kSampleRate);
+                writer->writeAudio(samples.data(), int(samples.size() / 2));
+            }
+        }
+        writer->finish();
+    };
+    writeMovie(QStringLiteral("talk.mov"), 195, true, [](int, std::vector<std::uint8_t>& rgba) {
+        for (std::size_t i = 0; i < rgba.size(); i += 4)
+            rgba[i] = rgba[i + 1] = rgba[i + 2] = 128, rgba[i + 3] = 255;
+    });
+    writeMovie(QStringLiteral("scenes.mov"), 90, false, [](int f, std::vector<std::uint8_t>& rgba) {
+        for (int y = 0; y < 90; ++y)
+            for (int x = 0; x < 160; ++x) {
+                std::uint8_t* p = &rgba[std::size_t((y * 160 + x) * 4)];
+                const int shot = f / 30, t = f % 30;
+                if (shot == 0) {
+                    const bool bar = std::abs(x - t * 5) < 8;
+                    p[0] = bar ? 250 : 200; p[1] = bar ? 220 : 30; p[2] = 30;
+                } else if (shot == 1) {
+                    p[0] = 20; p[1] = std::uint8_t((x + t * 2) % 160); p[2] = 200;
+                } else {
+                    const bool disc = std::hypot(x - 80, y - 45) < 10 + t;
+                    p[0] = disc ? 240 : 30; p[1] = disc ? 240 : 170; p[2] = disc ? 240 : 60;
+                }
+                p[3] = 255;
+            }
+    });
+}
+
 // Gives tests the sample-media folder and a scratch folder as context properties.
 class Setup : public QObject {
     Q_OBJECT
@@ -115,6 +201,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("recordingsDir"), qEnvironmentVariable("TVE_RECORDING_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("fixturesDir"), QStringLiteral(TVE_QML_TESTS_DIR "/fixtures"));
         engine->rootContext()->setContextProperty(QStringLiteral("stillsDir"), qEnvironmentVariable("TVE_TEST_STILLS_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("analysisMediaDir"), qEnvironmentVariable("TVE_TEST_ANALYSIS_DIR"));
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
         engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(EffectPreviewProvider::kId), new EffectPreviewProvider);
@@ -143,6 +230,11 @@ int main(int argc, char** argv)
     QTemporaryDir stills;
     writeStills(stills.path());
     qputenv("TVE_TEST_STILLS_DIR", stills.path().toLocal8Bit());
+    QTemporaryDir analysis; // measured media
+    qputenv("TVE_ANALYSIS_DIR", analysis.path().toLocal8Bit());
+    QTemporaryDir analysisMedia; // media to measure
+    writeAnalysisMedia(analysisMedia.path());
+    qputenv("TVE_TEST_ANALYSIS_DIR", analysisMedia.path().toLocal8Bit());
     QTemporaryDir keymap; // shortcuts changed by tests
     qputenv("TVE_KEYMAP_FILE", (keymap.path() + QStringLiteral("/keymap.json")).toLocal8Bit());
     QTemporaryDir colorPresets; // colour presets saved by tests

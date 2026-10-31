@@ -640,6 +640,9 @@ ProjectController::~ProjectController()
     m_pauseChanged.notify_all();
     if (m_exportThread.joinable())
         m_exportThread.join();
+    m_cancelAnalysis = true;
+    if (m_analysisThread.joinable())
+        m_analysisThread.join();
     // Quitting with unsaved changes keeps them recoverable; otherwise nothing is left behind.
     blockSignals(true); // nothing should react to a half-destroyed controller
     closeVoiceOver();   // a take in progress lands on the timeline first
@@ -4300,5 +4303,446 @@ bool ProjectController::breakCompound(double clipId)
     if (!apply(std::make_unique<BreakCompoundCommand>(toId(clipId))))
         return false;
     setSelectedClip(0);
+    return true;
+}
+
+// --- Analysis ---
+
+namespace {
+
+QString analysisDirectory()
+{
+    const QString overridden = qEnvironmentVariable("TVE_ANALYSIS_DIR");
+    return overridden.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + QStringLiteral("/Analysis")
+                                : overridden;
+}
+
+QVariantList rangeList(const std::vector<std::pair<Ticks, Ticks>>& ranges)
+{
+    QVariantList list;
+    for (const auto& [start, end] : ranges)
+        list << QVariantMap{{QStringLiteral("start"), toSeconds(start)}, {QStringLiteral("end"), toSeconds(end)}};
+    return list;
+}
+
+} // namespace
+
+std::string ProjectController::fingerprintOf(const MediaItem& media) const
+{
+    // Older projects have none: the path stands in (the cache is then per path).
+    return media.fingerprint.empty() ? "path:" + media.path : media.fingerprint;
+}
+
+const Clip* ProjectController::analysableClip(Id clipId, bool needsSound, bool needsPictures)
+{
+    const Clip* clip = findClip(clipId);
+    const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+    if (!clip || !media) {
+        reportError(QStringLiteral("Select a clip with media to analyse"));
+        return nullptr;
+    }
+    if (needsSound && !media->hasAudio) {
+        reportError(QStringLiteral("%1 has no sound").arg(mediaName(media->path)));
+        return nullptr;
+    }
+    if (needsPictures && (!media->hasVideo || media->still)) {
+        reportError(QStringLiteral("%1 has no moving pictures").arg(mediaName(media->path)));
+        return nullptr;
+    }
+    if (clip->speed != 1.0 || clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
+        reportError(QStringLiteral("Analysis works on clips playing at normal speed"));
+        return nullptr;
+    }
+    if (!QFileInfo::exists(QString::fromStdString(media->path))) {
+        reportError(QStringLiteral("%1 is missing: relink it first").arg(mediaName(media->path)));
+        return nullptr;
+    }
+    return clip;
+}
+
+void ProjectController::withFeatures(const std::vector<Id>& mediaIds, bool video, const QString& task,
+                                     std::function<void()> then)
+{
+    struct Job {
+        std::string path;
+        std::string key;
+    };
+    std::vector<Job> jobs;
+    const tve::AnalysisCache cache(analysisDirectory().toStdString());
+    for (Id id : mediaIds) {
+        const MediaItem* media = m_project.findMedia(id);
+        if (!media)
+            continue;
+        const std::string key = fingerprintOf(*media);
+        if (video ? m_videoFeatures.contains(key) : m_audioFeatures.contains(key))
+            continue;
+        // On disk from an earlier session?
+        if (video) {
+            if (auto found = cache.loadVideo(key)) {
+                m_videoFeatures.emplace(key, std::move(*found));
+                continue;
+            }
+        } else if (auto found = cache.loadAudio(key)) {
+            m_audioFeatures.emplace(key, std::move(*found));
+            continue;
+        }
+        if (std::ranges::none_of(jobs, [&](const Job& j) { return j.key == key; }))
+            jobs.push_back({media->path, key});
+    }
+    if (jobs.empty()) {
+        then();
+        return;
+    }
+    m_cancelAnalysis = false;
+    m_analysisProgress = 0;
+    m_analysisTask = task;
+    m_analysisThread = std::thread([this, jobs, video, directory = analysisDirectory().toStdString(),
+                                    then = std::move(then)]() mutable {
+        const tve::AnalysisCache cache(directory);
+        std::vector<std::pair<std::string, tve::AudioFeatures>> audio;
+        std::vector<std::pair<std::string, tve::VideoFeatures>> pictures;
+        std::string error;
+        double reported = -1;
+        for (std::size_t i = 0; i < jobs.size() && error.empty(); ++i) {
+            const auto progress = [&](double part) {
+                const double done = (double(i) + part) / double(jobs.size());
+                if (done - reported >= 0.01) {
+                    reported = done;
+                    QMetaObject::invokeMethod(this, [this, done] {
+                        m_analysisProgress = done;
+                        emit analysisChanged();
+                    }, Qt::QueuedConnection);
+                }
+                return !m_cancelAnalysis.load();
+            };
+            if (video) {
+                if (auto features = tve::analyzeVideo(jobs[i].path, progress, &error)) {
+                    cache.save(jobs[i].key, *features);
+                    pictures.emplace_back(jobs[i].key, std::move(*features));
+                } else if (error.empty()) {
+                    error = "cancelled";
+                }
+            } else if (auto features = tve::analyzeAudio(jobs[i].path, progress, &error)) {
+                cache.save(jobs[i].key, *features);
+                audio.emplace_back(jobs[i].key, std::move(*features));
+            } else if (error.empty()) {
+                error = "cancelled";
+            }
+        }
+        QMetaObject::invokeMethod(this, [this, audio = std::move(audio), pictures = std::move(pictures), error,
+                                         then = std::move(then)]() mutable {
+            if (m_analysisThread.joinable())
+                m_analysisThread.join();
+            for (auto& [key, features] : audio)
+                m_audioFeatures.insert_or_assign(key, std::move(features));
+            for (auto& [key, features] : pictures)
+                m_videoFeatures.insert_or_assign(key, std::move(features));
+            m_analysisProgress = 0;
+            m_analysisTask.clear();
+            emit analysisChanged();
+            if (error.empty()) {
+                then();
+            } else {
+                const QString message = error == "cancelled" ? QString() : QString::fromStdString(error);
+                if (!message.isEmpty())
+                    reportError(QStringLiteral("Analysis failed: ") + message);
+                emit analysisFinished(false, message);
+            }
+        }, Qt::QueuedConnection);
+    });
+    emit analysisChanged();
+}
+
+void ProjectController::cancelAnalysis()
+{
+    m_cancelAnalysis = true;
+}
+
+void ProjectController::clearAnalysis()
+{
+    m_silences.clear();
+    m_scenes.clear();
+    m_beats.clear();
+    emit analysisChanged();
+}
+
+bool ProjectController::findSilences(double clipId, const QVariantMap& options)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const Clip* clip = analysableClip(toId(clipId), true, false);
+    if (!clip)
+        return false;
+    const Id id = clip->id;
+    const Id mediaId = clip->mediaId;
+    tve::SilenceOptions settings;
+    settings.thresholdDb = options.value(QStringLiteral("thresholdDb"), settings.thresholdDb).toDouble();
+    settings.minDuration = options.value(QStringLiteral("minDuration"), settings.minDuration).toDouble();
+    settings.padding = options.value(QStringLiteral("padding"), settings.padding).toDouble();
+    withFeatures({mediaId}, false, QStringLiteral("Listening for pauses"), [this, id, settings] {
+        const Clip* clip = findClip(id);
+        const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+        if (!media)
+            return;
+        const tve::AudioFeatures& features = m_audioFeatures.at(fingerprintOf(*media));
+        std::vector<std::pair<Ticks, Ticks>> ranges;
+        Ticks total = 0;
+        const Ticks offset = clip->start - clip->sourceIn;
+        for (const tve::TimeRange& r : tve::findSilences(features, settings, clip->sourceIn, clip->sourceIn + clip->duration)) {
+            ranges.emplace_back(r.start + offset, r.end + offset);
+            total += r.length();
+        }
+        m_silences = {{QStringLiteral("clipId"), double(id)},
+                      {QStringLiteral("ranges"), rangeList(ranges)},
+                      {QStringLiteral("total"), toSeconds(total)}};
+        emit analysisChanged();
+        emit analysisFinished(true, {});
+    });
+    return true;
+}
+
+bool ProjectController::removeSilences()
+{
+    const auto location = m_project.locateClip(toId(m_silences.value(QStringLiteral("clipId")).toDouble()));
+    const QVariantList ranges = m_silences.value(QStringLiteral("ranges")).toList();
+    if (!location || ranges.isEmpty()) {
+        reportError(QStringLiteral("Find the pauses first"));
+        return false;
+    }
+    std::vector<std::pair<Ticks, Ticks>> cut;
+    for (const QVariant& r : ranges) {
+        const QVariantMap range = r.toMap();
+        cut.emplace_back(ticks(range.value(QStringLiteral("start")).toDouble()), ticks(range.value(QStringLiteral("end")).toDouble()));
+    }
+    if (!apply(std::make_unique<RemoveRangesCommand>(location->track->id, std::move(cut), "Remove Pauses")))
+        return false;
+    m_silences.clear();
+    emit analysisChanged();
+    return true;
+}
+
+bool ProjectController::findScenes(double clipId, const QVariantMap& options)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const Clip* clip = analysableClip(toId(clipId), false, true);
+    if (!clip)
+        return false;
+    const Id id = clip->id;
+    tve::SceneOptions settings;
+    settings.threshold = options.value(QStringLiteral("threshold"), settings.threshold).toDouble();
+    settings.minScene = options.value(QStringLiteral("minScene"), settings.minScene).toDouble();
+    withFeatures({clip->mediaId}, true, QStringLiteral("Looking for scene changes"), [this, id, settings] {
+        const Clip* clip = findClip(id);
+        const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+        if (!media)
+            return;
+        QVariantList cuts;
+        for (Ticks cut : tve::findSceneCuts(m_videoFeatures.at(fingerprintOf(*media)), settings)) {
+            const Ticks at = cut - clip->sourceIn + clip->start;
+            if (at > clip->start && at < clip->end())
+                cuts << toSeconds(at);
+        }
+        m_scenes = {{QStringLiteral("clipId"), double(id)}, {QStringLiteral("cuts"), cuts}};
+        emit analysisChanged();
+        emit analysisFinished(true, {});
+    });
+    return true;
+}
+
+bool ProjectController::splitAtScenes()
+{
+    const Id id = toId(m_scenes.value(QStringLiteral("clipId")).toDouble());
+    QVariantList cuts = m_scenes.value(QStringLiteral("cuts")).toList();
+    if (!findClip(id) || cuts.isEmpty()) {
+        reportError(QStringLiteral("Find the scene changes first"));
+        return false;
+    }
+    // Latest first: the clip keeps its id on the left of each split.
+    std::vector<std::unique_ptr<Command>> commands;
+    for (auto it = cuts.rbegin(); it != cuts.rend(); ++it)
+        commands.push_back(std::make_unique<SplitClipCommand>(id, ticks(it->toDouble())));
+    if (!apply(std::make_unique<CompositeCommand>(std::move(commands), "Split at Scenes")))
+        return false;
+    m_scenes.clear();
+    emit analysisChanged();
+    return true;
+}
+
+bool ProjectController::markScenes()
+{
+    const QVariantList cuts = m_scenes.value(QStringLiteral("cuts")).toList();
+    if (cuts.isEmpty()) {
+        reportError(QStringLiteral("Find the scene changes first"));
+        return false;
+    }
+    std::vector<std::unique_ptr<Command>> commands;
+    int n = 1;
+    for (const QVariant& cut : cuts) {
+        tve::Marker marker;
+        marker.time = ticks(cut.toDouble());
+        marker.color = MarkerColor::Green;
+        marker.note = "Scene " + std::to_string(++n);
+        commands.push_back(std::make_unique<AddMarkerCommand>(std::move(marker)));
+    }
+    if (!apply(std::make_unique<CompositeCommand>(std::move(commands), "Mark Scenes")))
+        return false;
+    m_scenes.clear();
+    emit analysisChanged();
+    return true;
+}
+
+bool ProjectController::findBeats(double clipId)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const Clip* clip = analysableClip(toId(clipId), true, false);
+    if (!clip)
+        return false;
+    const Id id = clip->id;
+    withFeatures({clip->mediaId}, false, QStringLiteral("Finding the beat"), [this, id] {
+        const Clip* clip = findClip(id);
+        const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+        if (!media)
+            return;
+        const tve::Beats found = tve::findBeats(m_audioFeatures.at(fingerprintOf(*media)));
+        QVariantList times;
+        for (Ticks beat : found.times) {
+            const Ticks at = beat - clip->sourceIn + clip->start;
+            if (at >= clip->start && at < clip->end())
+                times << toSeconds(at);
+        }
+        m_beats = {{QStringLiteral("clipId"), double(id)}, {QStringLiteral("bpm"), found.bpm}, {QStringLiteral("times"), times}};
+        emit analysisChanged();
+        emit analysisFinished(true, {});
+    });
+    return true;
+}
+
+bool ProjectController::addBeatMarkers(int every)
+{
+    const QVariantList times = m_beats.value(QStringLiteral("times")).toList();
+    if (times.isEmpty()) {
+        reportError(QStringLiteral("Find the beat first"));
+        return false;
+    }
+    every = std::max(1, every);
+    std::vector<std::unique_ptr<Command>> commands;
+    for (qsizetype i = 0; i < times.size(); i += every) {
+        tve::Marker marker;
+        marker.time = ticks(times[i].toDouble());
+        marker.color = MarkerColor::Yellow;
+        commands.push_back(std::make_unique<AddMarkerCommand>(std::move(marker)));
+    }
+    return apply(std::make_unique<CompositeCommand>(std::move(commands), "Add Beat Markers"));
+}
+
+bool ProjectController::duckUnderSpeech(double clipId, const QVariantMap& options)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const Clip* music = findClip(toId(clipId));
+    const MediaItem* musicMedia = music ? m_project.findMedia(music->mediaId) : nullptr;
+    if (!music || !musicMedia || !musicMedia->hasAudio) {
+        reportError(QStringLiteral("Select the music to lower under speech"));
+        return false;
+    }
+    // The other clips heard at the same time, at normal speed, with their files.
+    struct Voice {
+        Id clipId;
+        Id mediaId;
+    };
+    std::vector<Voice> voices;
+    for (const Track& track : m_project.tracks) {
+        if (track.muted || track.kind == TrackKind::Title)
+            continue;
+        for (const Clip& clip : track.clips) {
+            const MediaItem* media = m_project.findMedia(clip.mediaId);
+            if (clip.id == music->id || !media || !media->hasAudio || clip.end() <= music->start || clip.start >= music->end()
+                || (track.kind == TrackKind::Video && !clip.audioEnabled) || clip.speed != 1.0 || clip.reversed
+                || clip.freeze || !clip.speedRamp.empty() || !QFileInfo::exists(QString::fromStdString(media->path)))
+                continue;
+            voices.push_back({clip.id, clip.mediaId});
+        }
+    }
+    if (voices.empty()) {
+        reportError(QStringLiteral("No other clip with sound plays under this one"));
+        return false;
+    }
+    const double amount = std::clamp(options.value(QStringLiteral("amountDb"), -12.0).toDouble(), -40.0, -1.0);
+    const double fade = std::clamp(options.value(QStringLiteral("fade"), 0.25).toDouble(), 0.05, 2.0);
+    tve::SpeechOptions speech;
+    speech.thresholdDb = options.value(QStringLiteral("thresholdDb"), speech.thresholdDb).toDouble();
+    std::vector<Id> mediaIds;
+    for (const Voice& v : voices)
+        mediaIds.push_back(v.mediaId);
+    const Id musicId = music->id;
+    withFeatures(mediaIds, false, QStringLiteral("Listening for speech"), [this, musicId, voices, amount, fade, speech] {
+        const Clip* music = findClip(musicId);
+        if (!music)
+            return;
+        // When anyone speaks, on the music clip's own time (from its start), merged where the
+        // fades would meet.
+        std::vector<std::pair<Ticks, Ticks>> spans;
+        for (const Voice& v : voices) {
+            const Clip* clip = findClip(v.clipId);
+            const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+            if (!media)
+                continue;
+            for (const tve::TimeRange& r : tve::findSpeech(m_audioFeatures.at(fingerprintOf(*media)), speech)) {
+                const Ticks from = std::max(r.start, clip->sourceIn) - clip->sourceIn + clip->start;
+                const Ticks to = std::min(r.end, clip->sourceIn + clip->duration) - clip->sourceIn + clip->start;
+                const Ticks a = std::max(from, music->start) - music->start;
+                const Ticks b = std::min(to, music->end()) - music->start;
+                if (b > a)
+                    spans.emplace_back(a, b);
+            }
+        }
+        if (spans.empty()) {
+            reportError(QStringLiteral("No speech under this clip"));
+            emit analysisFinished(false, lastError());
+            return;
+        }
+        std::ranges::sort(spans);
+        const Ticks fadeTicks = Ticks(fade * kTicksPerSecond);
+        std::vector<std::pair<Ticks, Ticks>> merged;
+        for (const auto& span : spans) {
+            if (!merged.empty() && span.first - merged.back().second <= 2 * fadeTicks)
+                merged.back().second = std::max(merged.back().second, span.second);
+            else
+                merged.push_back(span);
+        }
+        // Down `fade` before each span, back up `fade` after it.
+        const double base = music->gainDb;
+        const double low = std::max<double>(kMinGainDb, base + amount);
+        Keyframes keys;
+        const auto key = [&](Ticks time, double value) {
+            time = std::clamp<Ticks>(time, 0, music->duration);
+            if (!keys.empty() && keys.back().time >= time)
+                keys.back().value = std::min(keys.back().value, value);
+            else
+                keys.push_back({time, value, Easing::EaseInOut});
+        };
+        for (const auto& [from, to] : merged) {
+            key(from - fadeTicks, base);
+            key(from, low);
+            key(to, low);
+            key(to + fadeTicks, base);
+        }
+        Clip after = *music;
+        after.keyframes[std::string(property::kVolume)] = keys;
+        if (commitAnimation(*music, after, "Auto Ducking"))
+            emit analysisFinished(true, {});
+        else
+            emit analysisFinished(false, lastError());
+    });
     return true;
 }

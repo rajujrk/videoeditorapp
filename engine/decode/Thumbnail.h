@@ -21,7 +21,10 @@ struct RgbaImage {
 std::optional<RgbaImage> extractThumbnail(const std::string& path, Ticks time, int height);
 
 class VideoDecoder;
+class DecodedFrame;
 // Same, from an open decoder (reusing one saves opening the file and hardware session).
 std::optional<RgbaImage> extractThumbnail(VideoDecoder& decoder, Ticks time, int height);
+// A decoded frame scaled to `height` pixels high, the same way (for analysing every frame).
+std::optional<RgbaImage> pictureOf(const DecodedFrame& frame, int height);
 
 } // namespace tve
