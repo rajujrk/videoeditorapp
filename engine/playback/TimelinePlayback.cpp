@@ -151,6 +151,10 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
         return clip.reversed ? reversedFrameAt(state, *media, sourceTime) : frameAt(state, *media, sourceTime);
     };
     const auto lookOf = [](const Clip& clip) { return clip.look ? clip.look->effective() : ColorGrade{}; };
+    const auto peopleOf = [](const Clip& clip, Ticks sourceTime) {
+        return LayerPeople{clip.cutout, clip.faceMosaic.boxesAt(sourceTime), clip.faceMosaic.style,
+                           float(clip.faceMosaic.amount)};
+    };
     for (const VisibleClip& layer : visibleVideoLayersAt(project, tracks, time)) {
         const Clip& top = *layer.clip;
         live.insert(top.id);
@@ -161,14 +165,14 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
         if (top.adjustment) {
             out.push_back(VideoLayer{top.id, DecodedFrame{}, top.visualAt(time), top.effectsAt(time), std::nullopt,
                                      std::nullopt, top.color, lookOf(top), true, {}, ChromaKey{}, {}, MatteMode::None,
-                                     clipSeconds, clipDuration, nullptr});
+                                     clipSeconds, clipDuration, nullptr, {}});
             continue;
         }
         if (top.text) {
             out.push_back(VideoLayer{top.id, DecodedFrame{}, top.visualAt(time), top.effectsAt(time), std::nullopt,
                                      top.text, ColorGrade{}, ColorGrade{}, false, {}, ChromaKey{}, top.masks,
                                      top.matte, // titles are not graded
-                                     clipSeconds, clipDuration, nullptr});
+                                     clipSeconds, clipDuration, nullptr, {}});
             continue;
         }
         if (top.compound()) {
@@ -178,7 +182,7 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                 buildLayers(project, sequence->tracks, layer.sourceTime, nested->layers, depth + 1, live);
             out.push_back(VideoLayer{top.id, DecodedFrame{}, top.visualAt(time), top.effectsAt(time), std::nullopt,
                                      std::nullopt, top.color, lookOf(top), false, {}, top.chromaKey, top.masks,
-                                     top.matte, clipSeconds, clipDuration, std::move(nested)});
+                                     top.matte, clipSeconds, clipDuration, std::move(nested), {}});
             continue;
         }
         // Each side is a decoded frame, or a still image's path (nothing to decode).
@@ -206,17 +210,19 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                 top.id, outgoing.picture(), top.visualAt(time), top.effectsAt(time),
                 LayerTransition{t.spec->transitionId, t.spec->values, float(t.progress), t.to->id, incoming.picture(),
                                 t.to->visualAt(time), t.to->effectsAt(time), t.to->color, lookOf(*t.to),
-                                incoming.stillPath, t.to->chromaKey, t.to->masks, toSeconds(time - t.to->start)},
+                                incoming.stillPath, t.to->chromaKey, t.to->masks, toSeconds(time - t.to->start),
+                                peopleOf(*t.to, t.toSourceTime)},
                 std::nullopt, top.color, lookOf(top), false, outgoing.stillPath, top.chromaKey, top.masks,
                 MatteMode::None, // no matte during a transition
-                clipSeconds, clipDuration, nullptr});
+                clipSeconds, clipDuration, nullptr, peopleOf(top, layer.sourceTime)});
         } else if (outgoing.shown() || incoming.shown()) {
             // One side unreadable: show the other alone.
             const Side& side = outgoing.shown() ? outgoing : incoming;
             const Clip& clip = *side.clip;
             out.push_back(VideoLayer{clip.id, side.picture(), clip.visualAt(time), clip.effectsAt(time), std::nullopt,
                                      std::nullopt, clip.color, lookOf(clip), false, side.stillPath, clip.chromaKey,
-                                     clip.masks, clip.matte, toSeconds(time - clip.start), toSeconds(clip.duration), nullptr});
+                                     clip.masks, clip.matte, toSeconds(time - clip.start), toSeconds(clip.duration), nullptr,
+                                     peopleOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime)});
         }
     }
 }

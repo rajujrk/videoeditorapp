@@ -83,3 +83,26 @@ if [[ ! -f "$out/speech_fillers.wav" ]]; then
 else
     echo "exists: speech_fillers.wav"
 fi
+
+# A person for the portrait cutout, face and reframe tests: an official NASA astronaut
+# portrait (Kenneth Cockrell, NASA photo S97-06616; a US government work, public domain),
+# from Wikimedia Commons, checked by SHA-256. Then a 3 s 1080p clip of it sliding from left
+# to right across a grey background, so the face moves.
+photo="$out/portrait.jpg"
+photo_sha=e90da813cddfa08dc72f0a99e12bd9ed580aebd08aa4eebf8b2c6081569ceca4
+if [[ ! -f "$photo" ]] || [[ "$(shasum -a 256 "$photo" | cut -d' ' -f1)" != "$photo_sha" ]]; then
+    echo "downloading: portrait.jpg"
+    curl -fsSL --retry 3 -A "TechieVideoEditor test media" -o "$photo.part" \
+        https://upload.wikimedia.org/wikipedia/commons/d/d9/Ken_Cockrell.jpg
+    if [[ "$(shasum -a 256 "$photo.part" | cut -d' ' -f1)" != "$photo_sha" ]]; then
+        rm -f "$photo.part"
+        echo "error: portrait.jpg is not the expected file" >&2
+        exit 1
+    fi
+    mv "$photo.part" "$photo"
+else
+    echo "exists: portrait.jpg"
+fi
+make people.mp4 -f lavfi -i color=c=0x808080:size=1920x1080:rate=30:d=3 -i "$photo" \
+    -filter_complex "[1:v]scale=-2:1080[p];[0:v][p]overlay=x='100+(1920-864-200)*t/3':y=0" \
+    -frames:v 90 -c:v h264_videotoolbox -b:v 8M -pix_fmt yuv420p

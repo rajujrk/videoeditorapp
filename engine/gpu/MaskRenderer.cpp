@@ -33,7 +33,24 @@ struct MatteUniforms {
     float padding[3];
 };
 
-constexpr int kUniformBytes = int(sizeof(MaskUniforms));
+// Matches the EffectParams block in cutout.frag.
+struct CutoutUniforms {
+    float texelSize[2];
+    float time;
+    float flipY;
+    float params[4];
+};
+
+// Matches the EffectParams block in faces.frag.
+struct FacesUniforms {
+    float texelSize[2];
+    float time;
+    float flipY;
+    float params[4];
+    float faces[kMaxCoveredFaces][4];
+};
+
+constexpr int kUniformBytes = int(std::max({sizeof(MaskUniforms), sizeof(CutoutUniforms), sizeof(FacesUniforms)}));
 
 QShader readShader(const QString& path)
 {
@@ -52,6 +69,8 @@ MaskRenderer::MaskRenderer(QRhi* rhi) : m_rhi(rhi)
     m_vertex = readShader(QStringLiteral(":/effects/common/fullscreen.vert.qsb"));
     m_maskFragment = readShader(QStringLiteral(":/gpu/shaders/mask.frag.qsb"));
     m_matteFragment = readShader(QStringLiteral(":/gpu/shaders/matte.frag.qsb"));
+    m_cutoutFragment = readShader(QStringLiteral(":/gpu/shaders/cutout.frag.qsb"));
+    m_facesFragment = readShader(QStringLiteral(":/gpu/shaders/faces.frag.qsb"));
     m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
                                       QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
     m_sampler->create();
@@ -180,7 +199,7 @@ QRhiTexture* MaskRenderer::apply(QRhiCommandBuffer* cb, QRhiTexture* picture, co
             u.maskKind[i][2] = float(point - first);
         }
     }
-    return draw(cb, *slot, m_maskPipeline, m_maskFragment, &u, kUniformBytes) ? slot->output.get() : picture;
+    return draw(cb, *slot, m_maskPipeline, m_maskFragment, &u, int(sizeof(MaskUniforms))) ? slot->output.get() : picture;
 }
 
 QRhiTexture* MaskRenderer::combineMatte(QRhiCommandBuffer* cb, QRhiTexture* layer, QRhiTexture* matte, MatteMode mode)
@@ -203,6 +222,65 @@ QRhiTexture* MaskRenderer::combineMatte(QRhiCommandBuffer* cb, QRhiTexture* laye
     u.flipY = m_rhi->isYUpInNDC() ? 1.0f : 0.0f;
     u.mode = int(mode);
     return draw(cb, *slot, m_mattePipeline, m_matteFragment, &u, int(sizeof(MatteUniforms))) ? slot->output.get() : layer;
+}
+
+QRhiTexture* MaskRenderer::cutout(QRhiCommandBuffer* cb, QRhiTexture* picture, QRhiTexture* personMatte,
+                                  const PortraitCutout& cutout)
+{
+    if (!picture || !personMatte || !cutout.enabled || !m_vertex.isValid() || !m_cutoutFragment.isValid())
+        return picture;
+    const QSize size = picture->pixelSize();
+    Slot* slot = nextSlot(size, int(sizeof(CutoutUniforms)));
+    if (!slot)
+        return picture;
+    slot->bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(
+            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, slot->uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, picture, m_sampler.get()),
+        QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, personMatte,
+                                                  m_sampler.get()),
+    });
+    CutoutUniforms u{};
+    u.texelSize[0] = 1.0f / float(size.width());
+    u.texelSize[1] = 1.0f / float(size.height());
+    u.flipY = m_rhi->isYUpInNDC() ? 1.0f : 0.0f;
+    u.params[0] = float(std::clamp(cutout.softness, 0.0, 1.0));
+    u.params[1] = float(std::clamp(cutout.shift, -1.0, 1.0));
+    u.params[2] = cutout.invert ? 1.0f : 0.0f;
+    return draw(cb, *slot, m_cutoutPipeline, m_cutoutFragment, &u, int(sizeof(CutoutUniforms))) ? slot->output.get()
+                                                                                              : picture;
+}
+
+QRhiTexture* MaskRenderer::coverFaces(QRhiCommandBuffer* cb, QRhiTexture* picture, const std::vector<FaceBox>& faces,
+                                      FaceCover cover, float amount)
+{
+    if (!picture || faces.empty() || !m_vertex.isValid() || !m_facesFragment.isValid())
+        return picture;
+    const QSize size = picture->pixelSize();
+    Slot* slot = nextSlot(size, int(sizeof(FacesUniforms)));
+    if (!slot)
+        return picture;
+    slot->bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(
+            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, slot->uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, picture, m_sampler.get()),
+    });
+    FacesUniforms u{};
+    u.texelSize[0] = 1.0f / float(size.width());
+    u.texelSize[1] = 1.0f / float(size.height());
+    u.flipY = m_rhi->isYUpInNDC() ? 1.0f : 0.0f;
+    const std::size_t count = std::min(faces.size(), kMaxCoveredFaces);
+    u.params[0] = float(count);
+    u.params[1] = float(int(cover));
+    u.params[2] = std::clamp(amount, 0.0f, 1.0f);
+    for (std::size_t i = 0; i < count; ++i) {
+        u.faces[i][0] = float(faces[i].x);
+        u.faces[i][1] = float(faces[i].y);
+        u.faces[i][2] = float(faces[i].width);
+        u.faces[i][3] = float(faces[i].height);
+    }
+    return draw(cb, *slot, m_facesPipeline, m_facesFragment, &u, int(sizeof(FacesUniforms))) ? slot->output.get()
+                                                                                            : picture;
 }
 
 } // namespace tve

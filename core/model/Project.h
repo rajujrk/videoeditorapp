@@ -3,6 +3,7 @@
 #include "model/ColorGrade.h"
 #include "model/Keyframes.h"
 #include "model/Masks.h"
+#include "model/People.h"
 #include "model/SpeedRamp.h"
 #include "model/TextAnimation.h"
 #include "model/Time.h"
@@ -263,6 +264,10 @@ struct Clip {
     ChromaKey chromaKey;
     std::vector<ClipMask> masks;
     MatteMode matte = MatteMode::None;
+    // People (core/model/People.h): the person cut out (after the masks), and faces covered
+    // (after that, before the effects).
+    PortraitCutout cutout;
+    FaceMosaic faceMosaic;
     std::vector<ClipEffect> effects; // applied in order, before placement on the canvas
 
     // Time. At speed 2 one second of timeline plays two seconds of source; reversed plays

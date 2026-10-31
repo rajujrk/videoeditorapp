@@ -283,6 +283,30 @@ private:
     bool m_previous = true;
 };
 
+// Sets what a video clip does with the people in it: the portrait cutout and/or the faces
+// it covers ("Portrait Cutout", "Cover Faces"…). Only clips of video files (not titles,
+// stills or compound clips): what finds people works on decoded frames.
+class SetClipPeopleCommand final : public Command {
+public:
+    SetClipPeopleCommand(Id clipId, std::optional<PortraitCutout> cutout, std::optional<FaceMosaic> faces,
+                         std::string label)
+        : m_clipId(clipId), m_cutout(std::move(cutout)), m_faces(std::move(faces)), m_label(std::move(label))
+    {
+    }
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    std::optional<PortraitCutout> m_cutout;
+    std::optional<FaceMosaic> m_faces;
+    std::string m_label;
+    PortraitCutout m_previousCutout;
+    FaceMosaic m_previousFaces;
+};
+
 // Plays a clip's sound from a cleaned copy (speech enhancement), or (nullopt) its own again.
 class SetClipEnhancedAudioCommand final : public Command {
 public:
