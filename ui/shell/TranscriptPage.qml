@@ -12,6 +12,12 @@ ScrollView {
     required property var project
 
     readonly property var words: project.transcript
+
+    WritePanel {
+        id: writePanel
+        objectName: "writePanel"
+        project: page.project
+    }
     property var selected: []  // word indices
     property int anchor: -1
     property real pauseLimit: 0.7
@@ -100,6 +106,17 @@ ScrollView {
                 font: Theme.type.body
                 color: Theme.color.textPrimary
             }
+        }
+
+        TextButton {
+            objectName: "writeWithAi"
+            visible: page.words.length > 0 || page.project.captionCount > 0
+            Layout.fillWidth: true
+            text: "Write with AI…"
+            iconName: "assistant"
+            variant: "secondary"
+            tip: "Titles, a description or a clean script from what is said"
+            onClicked: writePanel.open()
         }
 
         // Tools

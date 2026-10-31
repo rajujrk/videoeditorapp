@@ -227,6 +227,31 @@ void writeImportFixtures(const QString& dir, const QString& stills, const QStrin
     put(stills + QStringLiteral("/halves.jpg"), QStringLiteral("/devices/Test camera/DSC0002.jpg"));
 }
 
+// Subtitles for the AI tests: talk.srt (three captions) and long.srt (130, past one request).
+void writeCaptionFixtures(const QString& dir)
+{
+    const auto time = [](int ms) {
+        return QStringLiteral("%1:%2:%3,%4").arg(ms / 3600000, 2, 10, QLatin1Char('0')).arg(ms / 60000 % 60, 2, 10, QLatin1Char('0'))
+            .arg(ms / 1000 % 60, 2, 10, QLatin1Char('0')).arg(ms % 1000, 3, 10, QLatin1Char('0'));
+    };
+    const auto write = [&](const QString& name, const QStringList& lines) {
+        QFile file(dir + QLatin1Char('/') + name);
+        if (!file.open(QIODevice::WriteOnly))
+            return;
+        QString srt;
+        for (int i = 0; i < lines.size(); ++i)
+            srt += QStringLiteral("%1\n%2 --> %3\n%4\n\n").arg(i + 1).arg(time(500 + i * 2000)).arg(time(2000 + i * 2000)).arg(lines[i]);
+        file.write(srt.toUtf8());
+    };
+    write(QStringLiteral("talk.srt"), {QStringLiteral("We walked along the beach at dawn."),
+                                       QStringLiteral("The tide had left shells everywhere."),
+                                       QStringLiteral("By noon we were home again.")});
+    QStringList many;
+    for (int i = 1; i <= 130; ++i)
+        many << QStringLiteral("Line number %1").arg(i);
+    write(QStringLiteral("long.srt"), many);
+}
+
 class Setup : public QObject {
     Q_OBJECT
 public:
@@ -244,6 +269,9 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("fixturesDir"), QStringLiteral(TVE_QML_TESTS_DIR "/fixtures"));
         engine->rootContext()->setContextProperty(QStringLiteral("stillsDir"), qEnvironmentVariable("TVE_TEST_STILLS_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("analysisMediaDir"), qEnvironmentVariable("TVE_TEST_ANALYSIS_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("captionFixturesDir"), qEnvironmentVariable("TVE_TEST_CAPTIONS_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("voicesDir"), qEnvironmentVariable("TVE_VOICE_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("keyStoreDir"), qEnvironmentVariable("TVE_KEY_STORE"));
         engine->rootContext()->setContextProperty(QStringLiteral("importFixturesDir"), qEnvironmentVariable("TVE_TEST_IMPORTS_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("importsDir"), qEnvironmentVariable("TVE_IMPORT_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("soundFixturesDir"), qEnvironmentVariable("TVE_TEST_SOUNDS_DIR"));
@@ -334,6 +362,18 @@ int main(int argc, char** argv)
     qputenv("TVE_DEVICE_SOURCE", (importRoot + QStringLiteral("/devices")).toLocal8Bit());
     QTemporaryDir importsInto;
     qputenv("TVE_IMPORT_DIR", QDir(importsInto.path()).canonicalPath().toLocal8Bit());
+    // AI: the mock Claude and ElevenLabs on this machine; keys, settings and voices in
+    // scratch folders (never the real Keychain).
+    qputenv("TVE_CLOUD_MOCK", "1");
+    QTemporaryDir keyStore;
+    qputenv("TVE_KEY_STORE", keyStore.path().toLocal8Bit());
+    QTemporaryDir cloudSettings;
+    qputenv("TVE_CLOUD_SETTINGS_FILE", (cloudSettings.path() + QStringLiteral("/cloud-settings.json")).toLocal8Bit());
+    QTemporaryDir voices;
+    qputenv("TVE_VOICE_DIR", QDir(voices.path()).canonicalPath().toLocal8Bit());
+    QTemporaryDir captionFixtures;
+    writeCaptionFixtures(captionFixtures.path());
+    qputenv("TVE_TEST_CAPTIONS_DIR", captionFixtures.path().toLocal8Bit());
     Setup setup;
     return quick_test_main_with_setup(argc, argv, "tve_qml_tests", TVE_QML_TESTS_DIR, &setup);
 }

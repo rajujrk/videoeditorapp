@@ -3,6 +3,7 @@
 #include "Exporter.h"
 #include "ProxyManager.h"
 #include "MediaImports.h"
+#include "cloud/CloudServices.h"
 #include "SoundLibrary.h"
 #include "SpeechModels.h"
 #include "TrackListModel.h"
@@ -216,6 +217,11 @@ class ProjectController : public QObject {
     // Importing from Photos, Music and devices; fetched items go to importsDirectory.
     Q_PROPERTY(MediaImports* imports READ imports CONSTANT)
     Q_PROPERTY(QString importsDirectory READ importsDirectory NOTIFY projectChanged)
+    // AI: keys, models, the job running and what was used; the languages captions translate
+    // into; where spoken voices are kept.
+    Q_PROPERTY(CloudServices* cloud READ cloud CONSTANT)
+    Q_PROPERTY(QStringList translationLanguages READ translationLanguages CONSTANT)
+    Q_PROPERTY(QString voicesDirectory READ voicesDirectory NOTIFY projectChanged)
 
 public:
     explicit ProjectController(QObject* parent = nullptr);
@@ -329,6 +335,9 @@ public:
     SoundLibrary* soundLibrary() const { return m_soundLibrary; }
     MediaImports* imports() const { return m_imports; }
     QString importsDirectory() const;
+    CloudServices* cloud() const { return m_cloud; }
+    QStringList translationLanguages() const;
+    QString voicesDirectory() const;
     QString cameraAccessName() const;
 
     // Project lifecycle
@@ -559,6 +568,17 @@ public:
     // Fetches items from an imports source ("photos", "music", "devices") and imports them
     // into the media bin when they are all in (imports.fetched says how it went).
     Q_INVOKABLE bool importFrom(const QString& source, const QStringList& itemIds);
+    // Copy from the transcript ("titles", "description" or "script"), streamed into
+    // cloud.draft; cloud.jobFinished says how it ended.
+    Q_INVOKABLE bool writeCopy(const QString& kind, const QString& tone = {}, const QString& notes = {});
+    // Translates the caption track into a language, each caption keeping its time (batches of
+    // captions, one undo step at the end).
+    Q_INVOKABLE bool translateCaptions(const QString& language);
+    // Speaks a text with a voice (a cloud.voices id). options: speed (0.5..2), captions (put
+    // captions for it on the caption track too), preview (just listen). Otherwise it goes at
+    // the playhead on an audio track with room (a new Voice track if none), with its captions,
+    // as one undo step. The same text, voice and speed again uses the sound already made.
+    Q_INVOKABLE bool speakText(const QString& text, const QString& voiceId, const QVariantMap& options = {});
     Q_INVOKABLE bool openVoiceOver();
     Q_INVOKABLE void closeVoiceOver();
     Q_INVOKABLE bool startRecording();
@@ -871,6 +891,14 @@ private:
     bool m_requestingAccess = false;
     SoundLibrary* m_soundLibrary = nullptr;
     MediaImports* m_imports = nullptr;
+    CloudServices* m_cloud = nullptr;
+    // The last voice made (to add what was just listened to without speaking it again).
+    struct SpokenVoice {
+        QString key; // text, voice and speed
+        SpeechResult result;
+    };
+    std::optional<SpokenVoice> m_lastVoice;
+    bool placeVoice(const SpeechResult& speech, bool captions);
 
     struct ExportJob {
         tve::Id id = tve::kNoId;

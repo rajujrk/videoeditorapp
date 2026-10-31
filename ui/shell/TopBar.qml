@@ -11,6 +11,7 @@ Rectangle {
     signal saveRequested()
     signal exportRequested()
     signal shortcutsRequested()
+    signal cloudSettingsRequested()
 
     implicitHeight: Theme.size.topBar
     color: Theme.color.surface
@@ -71,6 +72,12 @@ Rectangle {
             onClicked: bar.project.redo()
         }
         IconButton { iconName: "save"; tip: "Save project" + KeyMap.hints["save"]; onClicked: bar.saveRequested() }
+        IconButton {
+            objectName: "cloudSettingsButton"
+            iconName: "assistant"
+            tip: "AI settings: keys, models and use"
+            onClicked: bar.cloudSettingsRequested()
+        }
         IconButton {
             objectName: "shortcutsButton"
             iconName: "keyboard"

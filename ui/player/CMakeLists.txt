@@ -25,6 +25,18 @@ qt_add_qml_module(tve_player
         SoundLibrary.cpp
         MediaImports.h
         MediaImports.cpp
+        cloud/CloudKeys.h
+        cloud/CloudKeys.mm
+        cloud/CloudText.h
+        cloud/CloudText.cpp
+        cloud/CloudVoices.h
+        cloud/CloudVoices.mm
+        cloud/CloudFeatures.h
+        cloud/CloudFeatures.cpp
+        cloud/CloudServices.h
+        cloud/CloudServices.cpp
+        cloud/MockCloudServer.h
+        cloud/MockCloudServer.cpp
         WaveformItem.h
         WaveformItem.cpp
         TrackListModel.h
@@ -69,6 +81,8 @@ qt_add_resources(tve_player "tve_player_data"
 )
 
 target_include_directories(tve_player PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# (QML type registration includes headers by their bare name.)
+target_include_directories(tve_player PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cloud)
 target_link_libraries(tve_player
     PUBLIC
         Qt6::Quick
@@ -80,4 +94,6 @@ target_link_libraries(tve_player
         "-framework Metal"
         "-framework CoreVideo"
         "-framework AVFoundation"
+        "-framework AVFAudio"
+        "-framework Security"
 )
