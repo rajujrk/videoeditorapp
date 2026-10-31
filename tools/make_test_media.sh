@@ -73,3 +73,13 @@ if [[ ! -f "$out/speech_en.wav" ]]; then
 else
     echo "exists: speech_en.wav"
 fi
+
+# Speech with filler words ("um", "uh") for removing them.
+if [[ ! -f "$out/speech_fillers.wav" ]]; then
+    echo "creating: speech_fillers.wav"
+    say -v Daniel -r 150 -o "$out/speech_fillers.aiff" "So, um, we cut the long video, uh, into short clips every day."
+    afconvert -f WAVE -d LEI16@48000 -c 1 "$out/speech_fillers.aiff" "$out/speech_fillers.wav"
+    rm -f "$out/speech_fillers.aiff"
+else
+    echo "exists: speech_fillers.wav"
+fi

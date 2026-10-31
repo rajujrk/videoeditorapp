@@ -21,7 +21,7 @@ struct TranscriptWord {
 };
 
 struct Transcript {
-    static constexpr int kVersion = 1;
+    static constexpr int kVersion = 2; // 2: verbatim (fillers kept)
     std::string language; // detected (or as asked), e.g. "en"
     std::vector<TranscriptWord> words;
 

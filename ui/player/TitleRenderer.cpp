@@ -372,6 +372,51 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
         }
         d.transform = d.transform * scroll;
     }
+    // A caption following its speech: the words said so far, and the one being said (the last
+    // started, until the next starts). Layout words and caption words match one for one.
+    std::vector<QColor> fills(layout.glyphs.size(), toColor(text.color));
+    if (text.captionMotion != tve::CaptionMotion::None && !text.words.empty() && seconds >= 0.0) {
+        const auto now = tve::Ticks(seconds * double(tve::kTicksPerSecond));
+        int current = -1;
+        for (std::size_t i = 0; i < text.words.size(); ++i)
+            if (text.words[i].start <= now)
+                current = int(i);
+        const QColor highlight = toColor(text.highlightColor);
+        for (std::size_t g = 0; g < layout.glyphs.size(); ++g) {
+            const int word = layout.glyphs[g].word;
+            if (word < 0 || word >= int(text.words.size()))
+                continue;
+            const bool said = word <= current;
+            const bool saying = word == current;
+            switch (text.captionMotion) {
+            case tve::CaptionMotion::Highlight:
+                if (saying)
+                    fills[g] = highlight;
+                break;
+            case tve::CaptionMotion::Pop:
+                if (saying) {
+                    fills[g] = highlight;
+                    // Grows to 115 % over its first tenth of a second.
+                    const double into = tve::toSeconds(now - text.words[std::size_t(word)].start);
+                    tve::TextUnitState pop;
+                    pop.scale = 1.0 + 0.15 * std::clamp(into / 0.1, 0.0, 1.0);
+                    apply(drawn[g], pop, layout.words[std::size_t(word)], em);
+                }
+                break;
+            case tve::CaptionMotion::Karaoke:
+                if (said)
+                    fills[g] = highlight;
+                break;
+            case tve::CaptionMotion::Reveal:
+                if (!said)
+                    drawn[g].opacity = 0.0;
+                break;
+            case tve::CaptionMotion::None:
+                break;
+            }
+        }
+    }
+
     // The shape moves with the text as a whole (in and out, not the loop).
     Drawn shapeDrawn;
     if (moving) {
@@ -386,10 +431,11 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
                                                                              text.shape.padding * em, text.shape.padding * em * 0.6),
                                          em);
 
-    const auto drawGlyphs = [&](QPainter& painter, const std::function<void(QPainter&, const QPainterPath&)>& paint) {
+    const auto drawGlyphs = [&](QPainter& painter,
+                                const std::function<void(QPainter&, const QPainterPath&, std::size_t)>& paint) {
         for (std::size_t g = 0; g < layout.glyphs.size(); ++g) {
             const QPainterPath& path = layout.glyphs[g].path;
-            drawPath(painter, drawn[g], [&](QPainter& p) { paint(p, path); });
+            drawPath(painter, drawn[g], [&](QPainter& p) { paint(p, path, g); });
         }
     };
 
@@ -408,7 +454,7 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
         p.setRenderHint(QPainter::Antialiasing);
         p.scale(0.25, 0.25);
         p.translate(em * 0.05, em * 0.07);
-        drawGlyphs(p, [&](QPainter& q, const QPainterPath& path) {
+        drawGlyphs(p, [&](QPainter& q, const QPainterPath& path, std::size_t) {
             if (text.outlineWidth > 0)
                 q.strokePath(path, QPen(QColor(0, 0, 0, 140), text.outlineWidth * em * 2.0, Qt::SolidLine, Qt::RoundCap,
                                         Qt::RoundJoin));
@@ -422,12 +468,12 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
 
     painter.begin(&image);
     painter.setRenderHint(QPainter::Antialiasing);
-    drawGlyphs(painter, [&](QPainter& p, const QPainterPath& path) {
+    drawGlyphs(painter, [&](QPainter& p, const QPainterPath& path, std::size_t g) {
         // The outline is stroked under the fill, so it grows outwards.
         if (text.outlineWidth > 0)
             p.strokePath(path, QPen(toColor(text.outlineColor), text.outlineWidth * em * 2.0, Qt::SolidLine, Qt::RoundCap,
                                     Qt::RoundJoin));
-        p.fillPath(path, toColor(text.color));
+        p.fillPath(path, fills[g]);
     });
     painter.end();
     return image.convertToFormat(QImage::Format_RGBA8888);
@@ -453,6 +499,7 @@ constexpr const char* kShapeKinds[] = {"none", "box", "rounded", "pill", "speech
                                        "banner", "underline", "circle", "arrow", "tag"};
 constexpr const char* kUnits[] = {"whole", "line", "word", "character"};
 constexpr const char* kScrolls[] = {"none", "rollUp", "crawlLeft"};
+constexpr const char* kCaptionMotions[] = {"none", "highlight", "pop", "karaoke", "reveal"};
 
 template <std::size_t N>
 int indexOf(const char* const (&names)[N], const QString& name, int fallback)
@@ -524,6 +571,9 @@ QVariantMap textMap(const tve::ClipText& text)
         {QStringLiteral("animationOut"), animationMap(text.animationOut)},
         {QStringLiteral("animationLoop"), animationMap(text.animationLoop)},
         {QStringLiteral("scroll"), QString::fromLatin1(kScrolls[int(text.scroll)])},
+        {QStringLiteral("captionMotion"), QString::fromLatin1(kCaptionMotions[int(text.captionMotion)])},
+        {QStringLiteral("highlightColor"), colorList(text.highlightColor)},
+        {QStringLiteral("wordCount"), int(text.words.size())},
     };
 }
 
@@ -579,6 +629,10 @@ tve::ClipText textFrom(const QVariantMap& changes, tve::ClipText text)
         text.animationLoop = animationFrom(get("animationLoop"), text.animationLoop);
     if (has("scroll"))
         text.scroll = tve::TextScroll(indexOf(kScrolls, get("scroll").toString(), int(text.scroll)));
+    if (has("captionMotion"))
+        text.captionMotion = tve::CaptionMotion(indexOf(kCaptionMotions, get("captionMotion").toString(), int(text.captionMotion)));
+    if (has("highlightColor"))
+        text.highlightColor = colorFrom(get("highlightColor"), text.highlightColor);
     return text;
 }
 

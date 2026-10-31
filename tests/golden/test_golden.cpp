@@ -2,7 +2,8 @@
 // times by the real renderer (StillRenderer: playback layers + FrameCompositor on Metal) and
 // compared with reference PNGs in tests/golden/metal/ within a perceptual tolerance.
 //
-//   TVE_GOLDEN_UPDATE=1 tve_golden_tests   writes the references (after a deliberate change)
+//   TVE_GOLDEN_UPDATE=1 tve_golden_tests        writes the references (after a deliberate change)
+//   TVE_GOLDEN_UPDATE=missing tve_golden_tests  writes only those not there yet (new cases)
 //
 // A failing case leaves its picture and a difference image in <temp>/tve_golden_failures/.
 #include "LookLibrary.h"
@@ -10,6 +11,7 @@
 #include "Stickers.h"
 
 #include "gpu/EffectLibrary.h"
+#include "model/Captions.h"
 #include "model/TextAnimation.h"
 
 #include <QDir>
@@ -480,6 +482,20 @@ std::vector<GoldenCase> allCases()
         titled(std::string("loop_") + preset, [preset](ClipText& t) { t.animationLoop = {.preset = preset, .duration = 1.5}; }, 0.8);
     titled("roll_up", [](ClipText& t) { t.scroll = TextScroll::RollUp; t.text = "Credits\nRoll\nUp"; }, 1.5);
 
+    // Captions following their words, a third of the way through "one two three four".
+    const std::pair<const char*, CaptionMotion> motions[] = {{"plain", CaptionMotion::None}, {"highlight", CaptionMotion::Highlight},
+                                                             {"pop", CaptionMotion::Pop}, {"karaoke", CaptionMotion::Karaoke},
+                                                             {"reveal", CaptionMotion::Reveal}};
+    for (const auto& [name, motion] : motions) {
+        titled(std::string("caption_") + name, [motion](ClipText& t) {
+            t = captionText();
+            t.size = 0.12;
+            t.text = "one two three four";
+            t.words = {{0, kSec / 2, "one"}, {kSec / 2, kSec, "two"}, {kSec, 3 * kSec / 2, "three"}, {3 * kSec / 2, 2 * kSec, "four"}};
+            t.captionMotion = motion;
+        }, 0.75);
+    }
+
     // Stickers: one of each design's motions, part way through its loop.
     int stickerIndex = 0;
     for (const QVariant& entry : stickers::catalog()) {
@@ -631,7 +647,9 @@ TEST_CASE("frames render as their references show")
 {
     StillRenderer renderer;
     REQUIRE(renderer.isValid());
-    const bool update = qEnvironmentVariableIntValue("TVE_GOLDEN_UPDATE") == 1;
+    const QString mode = qEnvironmentVariable("TVE_GOLDEN_UPDATE");
+    const bool update = mode == QLatin1String("1");
+    const bool addMissing = mode == QLatin1String("missing");
     const QString failures = QDir::temp().filePath(QStringLiteral("tve_golden_failures"));
     QDir(failures).removeRecursively();
     int compared = 0;
@@ -643,7 +661,7 @@ TEST_CASE("frames render as their references show")
         REQUIRE_FALSE(frame.isNull());
         const QImage actual = frame.scaled(kReference, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
         const QString path = referencePath(golden.name);
-        if (update) {
+        if (update || (addMissing && !QFileInfo::exists(path))) {
             QDir().mkpath(QFileInfo(path).path());
             REQUIRE(actual.save(path));
             ++written;
@@ -669,10 +687,10 @@ TEST_CASE("frames render as their references show")
                                 << failures.toStdString());
         CHECK(ok);
     }
-    if (update)
+    if (update || addMissing)
         WARN("wrote " << written << " references");
-    else
-        CHECK(compared >= 500);
+    if (!update)
+        CHECK(compared + written >= 500);
 }
 
 int main(int argc, char** argv)

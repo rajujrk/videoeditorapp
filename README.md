@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — and speech to text with captions and SRT/VTT (12b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), and caption styles with editing by transcript (12c) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -144,6 +144,17 @@ words' timing (word times are aligned to the sound, so pauses fall between capti
 caption like any title; captions export with the video. **Import SRT or VTT…** and **Export
 SRT… / VTT…** read and write subtitle files. Transcripts are kept per file, model and
 language, so making captions again (after an edit) is instant.
+
+**Caption styles and editing by transcript.** Captions keep each word's timing, so they can
+follow the speech: **Highlight** colours the word being said, **Pop** also makes it grow,
+**Karaoke** fills the words with colour as they are said, **Word by word** shows them as they
+come (the Captions tab's Style row; the colour can be changed). Making captions again keeps the
+style. The library's **Transcript** tab shows what was said in paragraphs, with timestamps;
+click a word to go there, shift-click to select through another (⌘-click adds one), and
+**Delete** (or ⌫) cuts those words out of their clips, closing the gaps; the captions are made
+again to match, all in one undo step. **Remove fillers** cuts every "um", "uh" and the like
+(transcription keeps them: it writes verbatim), and **Shorten pauses** trims pauses between
+words longer than a length down to 0.3 s.
 
 **Analyze.** The inspector's Analyze tab works on the selected clip (at normal speed) without
 any AI model: it measures the media once in the background (with progress and Cancel; the

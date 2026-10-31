@@ -185,6 +185,24 @@ ScrollView {
             wrapMode: Text.WordWrap
         }
 
+        Text { visible: page.project.captionCount > 0; text: "Style"; font: Theme.type.label; color: Theme.color.textSecondary }
+        Flow {
+            visible: page.project.captionCount > 0
+            Layout.fillWidth: true
+            spacing: Theme.space.xs
+            Repeater {
+                model: [{ id: "none", label: "Plain" }, { id: "highlight", label: "Highlight" }, { id: "pop", label: "Pop" },
+                        { id: "karaoke", label: "Karaoke" }, { id: "reveal", label: "Word by word" }]
+                delegate: TextButton {
+                    required property var modelData
+                    objectName: "captionStyle:" + modelData.id
+                    text: modelData.label
+                    variant: page.project.captionMotion === modelData.id ? "primary" : "secondary"
+                    onClicked: page.project.setCaptionStyle(modelData.id)
+                }
+            }
+        }
+
         Text { text: "Subtitle files"; font: Theme.type.label; color: Theme.color.textSecondary }
         Flow {
             Layout.fillWidth: true

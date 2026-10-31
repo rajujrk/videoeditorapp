@@ -384,11 +384,12 @@ std::optional<std::string> SetCaptionsCommand::redo(Project& project)
         clip.id = project.allocateId();
         clip.start = c.start;
         clip.duration = c.end - c.start;
-        clip.text = captionText();
+        clip.text = m_style.value_or(captionText());
         clip.text->text = c.text.substr(0, kMaxTextLength);
+        clip.text->words.clear();
         for (const TimedWord& w : c.words)
             clip.text->words.push_back({w.start - c.start, w.end - c.start, w.text});
-        clip.visual = captionVisual();
+        clip.visual = m_visual.value_or(captionVisual());
         track.insertClip(std::move(clip));
     }
     m_after = project;

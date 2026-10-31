@@ -142,8 +142,10 @@ private:
 // A redo after an undo gives the clips the same ids.
 class SetCaptionsCommand final : public Command {
 public:
-    SetCaptionsCommand(std::vector<CaptionBlock> captions, std::string label = "Set Captions")
-        : m_captions(std::move(captions)), m_label(std::move(label)) {}
+    // `style`: how the captions look (its text and words are replaced); the caption style when absent.
+    SetCaptionsCommand(std::vector<CaptionBlock> captions, std::string label = "Set Captions",
+                       std::optional<ClipText> style = std::nullopt, std::optional<ClipVisual> visual = std::nullopt)
+        : m_captions(std::move(captions)), m_label(std::move(label)), m_style(std::move(style)), m_visual(std::move(visual)) {}
 
     std::string label() const override { return m_label; }
     std::optional<std::string> redo(Project& project) override;
@@ -152,6 +154,8 @@ public:
 private:
     std::vector<CaptionBlock> m_captions;
     std::string m_label;
+    std::optional<ClipText> m_style;
+    std::optional<ClipVisual> m_visual;
     Project m_before;
     std::optional<Project> m_after;
 };

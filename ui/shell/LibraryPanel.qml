@@ -56,6 +56,7 @@ Rectangle {
         { icon: "filters", label: "Filters", phase: "" },
         { icon: "stickers", label: "Stickers", phase: "" },
         { icon: "captions", label: "Captions", phase: "" },
+        { icon: "transcript", label: "Transcript", phase: "" },
         { icon: "templates", label: "Templates", phase: "Template mode — Phase 4" }
     ]
 
@@ -136,7 +137,7 @@ Rectangle {
             SearchField {
                 id: searchField
                 objectName: "librarySearch"
-                visible: library.tabs[library.currentTab].label !== "Captions"
+                visible: library.tabs[library.currentTab].label !== "Captions" && library.tabs[library.currentTab].label !== "Transcript"
                 Layout.fillWidth: true
                 Layout.margins: Theme.space.m
                 placeholderText: "Search " + library.tabs[library.currentTab].label.toLowerCase()
@@ -221,6 +222,15 @@ Rectangle {
                         }
                     }
                 }
+            }
+
+            TranscriptPage {
+                id: transcriptPage
+                objectName: "transcriptPage"
+                visible: library.tabs[library.currentTab].label === "Transcript"
+                project: library.project
+                Layout.fillWidth: true
+                Layout.fillHeight: true
             }
 
             CaptionsPage {
@@ -981,7 +991,7 @@ Rectangle {
 
             Item {
                 visible: !effectsGrid.visible && !looksGrid.visible && !transitionsGrid.visible && !titlesGrid.visible
-                         && !mediaBin.visible && !stickersGrid.visible && !captionsPage.visible
+                         && !mediaBin.visible && !stickersGrid.visible && !captionsPage.visible && !transcriptPage.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
