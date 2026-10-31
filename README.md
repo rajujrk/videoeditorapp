@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) and the music and sound library with imports from Photos, Music and devices (15b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), and AI writing, caption translation and voices with your own keys (16a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -231,6 +231,21 @@ it is saved; `TVE_IMPORT_DIR` moves it), named after the original and never over
 used where they are (songs in the cloud or copy-protected are not listed). macOS asks once to let
 the app read Photos and Music. `TVE_PHOTOS_SOURCE`, `TVE_MUSIC_SOURCE` and `TVE_DEVICE_SOURCE` name
 test folders to use instead (their sub-folders are the albums, playlists and devices).
+
+**AI writing, translation and voices (your own keys).** The speech bubble at the top opens **AI
+settings**: paste a Claude API key (for writing and translation) and an ElevenLabs key (for cloud
+voices). Keys are kept in your Mac's Keychain, never in projects; what you use them on is sent to
+Anthropic or ElevenLabs and billed to your accounts, and the dialog shows this session's tokens, an
+estimated cost and the characters spoken. Claude Opus 5.5 writes by default (Claude Sonnet 5.5 is
+faster and half the price). **Write with AI…** (Transcript tab) writes five titles — each can go on
+the timeline — a description or a clean script from what is said (the transcript, or the captions),
+streaming in as it is written; **Stop** ends it. **Translate** (Captions tab) puts the captions into
+another language, each one keeping its time, as one undo step. The Audio tab's **Voice** speaks a
+text with one of your Mac's voices (offline) or an ElevenLabs voice: **Listen**, then **Add at the
+playhead** puts it on an audio track with captions timed to its words, as one undo step. Voices are
+kept in a `Voices` folder beside the project (`TVE_VOICE_DIR`). Busy or rate-limited services are
+tried again up to three times. `TVE_CLOUD_MOCK=1` runs everything against a local stand-in for both
+services (no keys, nothing sent).
 
 **Advanced vision.** Select two or more clips of the same event (cameras, a sound recorder)
 and **Line up by sound** in the Analyze tab: they are moved so their sound lines up (to about a

@@ -203,6 +203,48 @@ ScrollView {
             }
         }
 
+        // Translation: the same captions at the same times, in another language.
+        Text { visible: page.project.captionCount > 0; text: "Translate"; font: Theme.type.label; color: Theme.color.textSecondary }
+        RowLayout {
+            visible: page.project.captionCount > 0
+            Layout.fillWidth: true
+            spacing: Theme.space.s
+            ComboBox {
+                id: translateLanguage
+                objectName: "translateLanguage"
+                Layout.fillWidth: true
+                model: page.project.translationLanguages
+                enabled: page.project.cloud.job === ""
+                Component.onCompleted: currentIndex = Math.max(0, model.indexOf("Spanish"))
+            }
+            TextButton {
+                objectName: "translateCaptions"
+                text: "Translate"
+                variant: "secondary"
+                visible: page.project.cloud.job !== "translate"
+                enabled: page.project.cloud.hasClaudeKey && page.project.cloud.job === ""
+                tip: "Claude translates each caption, keeping its time (one undo step)"
+                onClicked: page.project.translateCaptions(translateLanguage.currentText)
+            }
+            TextButton {
+                objectName: "cancelTranslate"
+                visible: page.project.cloud.job === "translate"
+                text: "Stop"
+                variant: "ghost"
+                onClicked: page.project.cloud.cancel()
+            }
+        }
+        Text {
+            objectName: "translateStatus"
+            visible: page.project.captionCount > 0 && text !== ""
+            Layout.fillWidth: true
+            text: !page.project.cloud.hasClaudeKey ? "Add your Claude API key in AI settings (the speech bubble at the top) to translate."
+                : page.project.cloud.job === "translate" ? page.project.cloud.status : ""
+            font: Theme.type.caption
+            color: Theme.color.textSecondary
+            wrapMode: Text.WordWrap
+        }
+
         Text { text: "Subtitle files"; font: Theme.type.label; color: Theme.color.textSecondary }
         Flow {
             Layout.fillWidth: true

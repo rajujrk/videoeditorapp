@@ -1,0 +1,45 @@
+#pragma once
+
+#include <QByteArray>
+#include <QJsonObject>
+#include <QMap>
+#include <QObject>
+#include <QString>
+
+class QTcpServer;
+class QTcpSocket;
+
+// A stand-in for the Claude and ElevenLabs APIs on 127.0.0.1, for trying the AI features
+// and testing them without keys or the network (TVE_CLOUD_MOCK=1 starts it and points the
+// providers at it). The real adapters talk to it over HTTP: streamed Claude replies, JSON
+// for structured requests (translations: "[<language>] " before each caption), a voice
+// list, and speech as a WAV with each character's time. A key "bad-key" is refused. Words in
+// a prompt steer it: "#overload" (busy once, then fine), "#refuse" (declined), "#fallback"
+// (a decline mid-answer, then another model's answer), "#slow" (streams slowly).
+class MockCloudServer : public QObject {
+    Q_OBJECT
+public:
+    // The one server of the process, started the first time.
+    static MockCloudServer* instance();
+    QString baseUrl() const;
+
+    struct Request {
+        QString method;
+        QString path;
+        QMap<QString, QString> headers; // lower-case names
+        QJsonObject body;
+    };
+    // The requests so far, oldest first.
+    const QList<Request>& requests() const { return m_requests; }
+    void clearRequests() { m_requests.clear(); }
+
+private:
+    explicit MockCloudServer(QObject* parent = nullptr);
+    void serve(QTcpSocket* socket, const Request& request);
+    void claude(QTcpSocket* socket, const Request& request);
+    void elevenLabs(QTcpSocket* socket, const Request& request);
+
+    QTcpServer* m_server = nullptr;
+    QList<Request> m_requests;
+    QMap<QString, int> m_overloads; // prompt → times refused as busy
+};

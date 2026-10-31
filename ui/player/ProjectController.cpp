@@ -31,6 +31,7 @@
 #include "analysis/Tracking.h"
 #include "encode/VideoProcessing.h"
 #include "encode/WavWriter.h"
+#include "cloud/CloudFeatures.h"
 
 #include <nlohmann/json.hpp>
 
@@ -641,6 +642,7 @@ ProjectController::ProjectController(QObject* parent)
     m_audioOutput = std::make_unique<AudioOutput>(backend);
     m_audioOutput->setSource(m_playback->audio(), &m_playback->clock());
     m_soundLibrary = new SoundLibrary(this);
+    m_cloud = new CloudServices(this);
     m_imports = new MediaImports(this);
     connect(m_imports, &MediaImports::fetched, this, [this](const QStringList& paths, const QStringList& errors) {
         QList<QUrl> files;
@@ -3868,6 +3870,241 @@ bool ProjectController::importFrom(const QString& source, const QStringList& ite
     return true;
 }
 
+// --- AI: words and voices ---
+
+QStringList ProjectController::translationLanguages() const
+{
+    return cloudfeatures::languages();
+}
+
+QString ProjectController::voicesDirectory() const
+{
+    const QByteArray override = qgetenv("TVE_VOICE_DIR");
+    if (!override.isEmpty())
+        return QString::fromLocal8Bit(override);
+    if (!m_filePath.isEmpty()) {
+        const QFileInfo project(m_filePath);
+        return project.absolutePath() + QLatin1Char('/') + project.completeBaseName() + QStringLiteral(" Voices");
+    }
+    return QStandardPaths::writableLocation(QStandardPaths::MoviesLocation) + QStringLiteral("/TechieVideoEditor Voices");
+}
+
+bool ProjectController::writeCopy(const QString& kind, const QString& tone, const QString& notes)
+{
+    // What is said: the transcript, else the captions.
+    QStringList said;
+    for (const PlacedWord& w : placedWords(m_project, m_transcriptVariant))
+        said << QString::fromStdString(w.text);
+    if (said.isEmpty())
+        for (const CaptionBlock& caption : captionBlocks())
+            said << QString::fromStdString(caption.text).replace(QLatin1Char('\n'), QLatin1Char(' '));
+    if (said.isEmpty()) {
+        reportError(QStringLiteral("Transcribe the video first (Transcript tab): the writing works from what is said"));
+        return false;
+    }
+    const TextRequest request = cloudfeatures::copyRequest(kind, said.join(QLatin1Char(' ')), tone, notes, m_cloud->claudeModel());
+    QPointer<ProjectController> self(this);
+    const bool started = m_cloud->generate(QStringLiteral("write"), request, [self](const TextResult& result) {
+        if (!self)
+            return;
+        CloudServices* cloud = self->m_cloud;
+        // The model's name, when it is one offered (a fallback may have answered).
+        QString model = result.usage.model;
+        for (const QVariant& offered : cloud->claudeModels())
+            if (offered.toMap().value(QStringLiteral("id")).toString() == model)
+                model = offered.toMap().value(QStringLiteral("label")).toString();
+        cloud->endJob(result.ok ? QStringLiteral("Written by %1").arg(model) : result.error);
+        emit cloud->jobFinished(QStringLiteral("write"), result.ok, result.cancelled ? QString() : result.error);
+        if (!result.ok && !result.cancelled)
+            self->reportError(result.error);
+    });
+    if (!started)
+        reportError(QStringLiteral("Another AI job is running"));
+    return started;
+}
+
+bool ProjectController::translateCaptions(const QString& language)
+{
+    const std::vector<CaptionBlock> captions = captionBlocks();
+    if (captions.empty()) {
+        reportError(QStringLiteral("There are no captions to translate"));
+        return false;
+    }
+    if (m_cloud->busy()) {
+        reportError(QStringLiteral("Another AI job is running"));
+        return false;
+    }
+    // Batches, one after another; the captions change only when all are in (and only if the
+    // caption track has not changed meanwhile).
+    struct Translation {
+        std::vector<CaptionBlock> captions;
+        QMap<int, QString> texts;
+        int next = 0;
+        QString language;
+    };
+    auto state = std::make_shared<Translation>(Translation{captions, {}, 0, language});
+    QPointer<ProjectController> self(this);
+    auto step = std::make_shared<std::function<void()>>();
+    *step = [self, state, step] {
+        if (!self)
+            return;
+        CloudServices* cloud = self->m_cloud;
+        const int total = int(state->captions.size());
+        const int from = state->next;
+        const int to = std::min(total, from + cloudfeatures::kCaptionsPerRequest);
+        QList<QPair<int, QString>> batch;
+        QList<int> indices;
+        for (int i = from; i < to; ++i) {
+            batch.push_back({i, QString::fromStdString(state->captions[std::size_t(i)].text)});
+            indices << i;
+        }
+        cloud->setProgress(double(from) / total, QStringLiteral("Translating captions %1–%2 of %3…").arg(from + 1).arg(to).arg(total));
+        const auto done = [self, state, step, indices, to, total](const TextResult& result) {
+            if (!self)
+                return;
+            CloudServices* cloud = self->m_cloud;
+            const auto fail = [&](const QString& error) {
+                cloud->endJob(error);
+                emit cloud->jobFinished(QStringLiteral("translate"), false, error);
+                if (!error.isEmpty())
+                    self->reportError(error);
+                *step = nullptr; // (breaks the cycle)
+            };
+            if (!result.ok) {
+                fail(result.cancelled ? QString() : result.error);
+                return;
+            }
+            const auto texts = cloudfeatures::readTranslation(result.text, indices);
+            if (!texts) {
+                fail(QStringLiteral("The translation came back incomplete; try again"));
+                return;
+            }
+            state->texts.insert(*texts);
+            state->next = to;
+            if (to < total) {
+                (*step)();
+                return;
+            }
+            // All in: the same captions at the same times, in the new language.
+            std::vector<CaptionBlock> now = self->captionBlocks();
+            const bool unchanged = now.size() == state->captions.size()
+                                && std::ranges::equal(now, state->captions, [](const CaptionBlock& a, const CaptionBlock& b) {
+                                       return a.start == b.start && a.end == b.end && a.text == b.text;
+                                   });
+            if (!unchanged) {
+                fail(QStringLiteral("The captions changed while they were being translated; try again"));
+                return;
+            }
+            for (std::size_t i = 0; i < now.size(); ++i) {
+                now[i].text = state->texts.value(int(i)).toStdString();
+                now[i].words.clear(); // the words' times belong to the original language
+            }
+            auto [style, visual] = self->captionLook();
+            const bool applied = self->apply(std::make_unique<SetCaptionsCommand>(
+                std::move(now), "Translate Captions to " + state->language.toStdString(), style, visual));
+            cloud->endJob(applied ? QStringLiteral("Translated into %1").arg(state->language) : QString());
+            emit cloud->jobFinished(QStringLiteral("translate"), applied, QString());
+            *step = nullptr;
+        };
+        if (!cloud->generate(QStringLiteral("translate"),
+                             cloudfeatures::translateRequest(batch, state->language, cloud->claudeModel()), done)) {
+            cloud->endJob(QString());
+            *step = nullptr;
+        }
+    };
+    (*step)();
+    return true;
+}
+
+bool ProjectController::speakText(const QString& text, const QString& voiceId, const QVariantMap& options)
+{
+    const QString words = text.trimmed();
+    if (words.isEmpty()) {
+        reportError(QStringLiteral("Type something to say first"));
+        return false;
+    }
+    if (m_cloud->busy()) {
+        reportError(QStringLiteral("Another AI job is running"));
+        return false;
+    }
+    const double speed = std::clamp(options.value(QStringLiteral("speed"), 1.0).toDouble(), 0.5, 2.0);
+    const bool preview = options.value(QStringLiteral("preview")).toBool();
+    const bool captions = options.value(QStringLiteral("captions"), true).toBool();
+    const QString key = voiceId + QLatin1Char('\n') + QString::number(speed, 'f', 2) + QLatin1Char('\n') + words;
+    const auto use = [this, preview, captions](const SpeechResult& speech) {
+        if (preview) {
+            if (!m_soundLibrary->preview(QStringLiteral("file:") + speech.path))
+                reportError(m_soundLibrary->lastError());
+            return true;
+        }
+        return placeVoice(speech, captions);
+    };
+    if (m_lastVoice && m_lastVoice->key == key && QFileInfo::exists(m_lastVoice->result.path))
+        return use(m_lastVoice->result);
+
+    const QDir folder(voicesDirectory());
+    QString base;
+    for (int n = 1;; ++n) {
+        base = folder.filePath(QStringLiteral("Voice %1").arg(n));
+        if (!QFileInfo::exists(base + QStringLiteral(".wav")) && !QFileInfo::exists(base + QStringLiteral(".mp3")))
+            break;
+    }
+    QPointer<ProjectController> self(this);
+    const bool started = m_cloud->speak(words, voiceId, speed, base, [self, key, use](const SpeechResult& speech) {
+        if (!self)
+            return;
+        CloudServices* cloud = self->m_cloud;
+        cloud->endJob(speech.ok ? QString() : speech.error);
+        if (speech.ok) {
+            self->m_lastVoice = SpokenVoice{key, speech};
+            use(speech);
+        } else if (!speech.cancelled) {
+            self->reportError(speech.error);
+        }
+        emit cloud->jobFinished(QStringLiteral("speak"), speech.ok, speech.cancelled ? QString() : speech.error);
+    });
+    return started;
+}
+
+bool ProjectController::placeVoice(const SpeechResult& speech, bool captions)
+{
+    QString probeError;
+    auto item = probeMedia(speech.path.toStdString(), &probeError);
+    if (!item) {
+        reportError(probeError);
+        return false;
+    }
+    item->fingerprint = fingerprintFile(speech.path.toStdString()).value_or(std::string());
+    const Ticks start = ticks(m_playhead);
+    Id target = kNoId;
+    for (auto track = m_project.tracks.rbegin(); track != m_project.tracks.rend(); ++track) {
+        if (track->kind == TrackKind::Audio && !track->locked && !track->muted && !track->overlaps(start, item->duration)) {
+            target = track->id;
+            break;
+        }
+    }
+    const Ticks length = item->duration;
+    auto add = std::make_unique<AddVoiceOverCommand>(std::move(*item), target, start, "Add Voice", "Voice");
+    auto* raw = add.get();
+    std::vector<std::unique_ptr<Command>> commands;
+    commands.push_back(std::move(add));
+    if (captions) {
+        // The voice's captions replace any over the same time.
+        std::vector<CaptionBlock> all;
+        for (CaptionBlock& c : captionBlocks())
+            if (c.end <= start || c.start >= start + length)
+                all.push_back(std::move(c));
+        for (CaptionBlock& c : cloudfeatures::speechCaptions(speech.words, start))
+            all.push_back(std::move(c));
+        auto [style, visual] = captionLook();
+        commands.push_back(std::make_unique<SetCaptionsCommand>(std::move(all), "Add Voice", style, visual));
+    }
+    if (!apply(std::make_unique<CompositeCommand>(std::move(commands), "Add Voice")))
+        return false;
+    setSelectedClip(double(raw->clipId()));
+    return true;
+}
+
 // --- Screen recording ---
 
 namespace {
@@ -6761,8 +6998,12 @@ std::vector<tve::CaptionBlock> ProjectController::captionBlocks() const
     if (track == m_project.tracks.end())
         return blocks;
     for (const Clip& clip : track->clips)
-        if (clip.text)
-            blocks.push_back({clip.start, clip.end(), clip.text->text, {}});
+        if (clip.text) {
+            CaptionBlock block{clip.start, clip.end(), clip.text->text, {}};
+            for (const CaptionWord& w : clip.text->words)
+                block.words.push_back({clip.start + w.start, clip.start + w.end, w.text});
+            blocks.push_back(std::move(block));
+        }
     return blocks;
 }
 

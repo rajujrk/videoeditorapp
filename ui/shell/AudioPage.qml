@@ -6,13 +6,14 @@ import TechieVideoEditor.Theme
 
 // The library's Audio tab: our own music (by mood) and sound effects (by family), sound
 // packs, and My music (the person's folders). Each sound previews with its play button and
-// goes to the timeline at the playhead with its add button (or a double-click).
+// goes to the timeline at the playhead with its add button (or a double-click). Voice speaks a
+// text (VoicePane.qml).
 ColumnLayout {
     id: page
     required property var project
     // The library's search text.
     property string searchText: ""
-    // "music", "sfx" or "mine"; and the category chip ("" for all).
+    // "music", "sfx", "mine" or "voice"; and the category chip ("" for all).
     property string section: "music"
     property string category: ""
     onSectionChanged: category = ""
@@ -25,7 +26,7 @@ ColumnLayout {
     })
     function categoryName(id) { return categoryNames[id] || (id.charAt(0).toUpperCase() + id.slice(1)) }
     readonly property var categories: {
-        if (section === "mine")
+        if (section === "mine" || section === "voice")
             return []
         const seen = []
         for (const sound of library.sounds)
@@ -37,7 +38,8 @@ ColumnLayout {
         const text = searchText.trim().toLowerCase()
         return text === "" || title.toLowerCase().indexOf(text) >= 0
     }
-    readonly property var shown: section === "mine"
+    readonly property var shown: section === "voice" ? []
+        : section === "mine"
         ? library.myMusic.filter((s) => matches(s.title))
         : library.sounds.filter((s) => s.kind === section && (category === "" || s.category === category) && matches(s.title))
     function duration(seconds) {
@@ -67,7 +69,7 @@ ColumnLayout {
         Layout.rightMargin: Theme.space.m
         spacing: 0
         Repeater {
-            model: [{ id: "music", label: "Music" }, { id: "sfx", label: "Sound effects" }, { id: "mine", label: "My music" }]
+            model: [{ id: "music", label: "Music" }, { id: "sfx", label: "Sound effects" }, { id: "mine", label: "My music" }, { id: "voice", label: "Voice" }]
             delegate: AbstractButton {
                 id: sectionButton
                 required property var modelData
@@ -172,9 +174,24 @@ ColumnLayout {
         }
     }
 
+    // Made the first time Voice is opened (it lists the Mac's voices).
+    Loader {
+        active: page.section === "voice" || item !== null
+        visible: page.section === "voice"
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.leftMargin: Theme.space.m
+        Layout.rightMargin: Theme.space.m
+        sourceComponent: VoicePane {
+            objectName: "voicePane"
+            project: page.project
+        }
+    }
+
     ListView {
         id: soundList
         objectName: "soundList"
+        visible: page.section !== "voice"
         Layout.fillWidth: true
         Layout.fillHeight: true
         clip: true
@@ -274,7 +291,7 @@ ColumnLayout {
 
     // Packs: adding one, and what was left out of those installed.
     ColumnLayout {
-        visible: page.section !== "mine"
+        visible: page.section === "music" || page.section === "sfx"
         Layout.fillWidth: true
         Layout.leftMargin: Theme.space.m
         Layout.rightMargin: Theme.space.m

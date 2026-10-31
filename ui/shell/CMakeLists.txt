@@ -21,6 +21,9 @@ qt_add_qml_module(tve_shell
         AnalyzePage.qml
         AudioPage.qml
         CaptionsPage.qml
+        CloudSettingsDialog.qml
+        WritePanel.qml
+        VoicePane.qml
         ImportPanel.qml
         TranscriptPage.qml
         VoiceOverPanel.qml

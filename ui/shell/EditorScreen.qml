@@ -39,6 +39,7 @@ Rectangle {
             onSaveRequested: editor.saveProject()
             onExportRequested: exportDialog.open()
             onShortcutsRequested: shortcutsDialog.open()
+            onCloudSettingsRequested: cloudSettings.open()
         }
 
         // Media files that moved: say so until they are found.
@@ -127,6 +128,12 @@ Rectangle {
     ImportPanel {
         id: importPanel
         objectName: "importPanel"
+        project: editor.project
+    }
+
+    CloudSettingsDialog {
+        id: cloudSettings
+        objectName: "cloudSettings"
         project: editor.project
     }
 
