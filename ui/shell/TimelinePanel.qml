@@ -62,15 +62,15 @@ Rectangle {
             IconButton {
                 objectName: "splitButton"
                 iconName: "split"
-                tip: "Split at playhead (S)"
+                tip: "Split at playhead" + KeyMap.hints["split"]
                 enabled: timeline.project.duration > 0
                 onClicked: timeline.project.splitAtPlayhead()
             }
             IconButton {
                 objectName: "deleteButton"
                 iconName: "delete"
-                tip: timeline.project.selectedTransition > 0 ? "Remove selected transition (⌫)"
-                                                             : "Delete selected clip (⌫) — closes the gap on the main track"
+                tip: timeline.project.selectedTransition > 0 ? "Remove selected transition" + KeyMap.hints["delete"]
+                                                             : "Delete selected clip" + KeyMap.hints["delete"] + " — closes the gap on the main track"
                 enabled: timeline.project.selectedClip > 0 || timeline.project.selectedTransition > 0
                 onClicked: timeline.project.selectedTransition > 0
                            ? timeline.project.removeTransition(timeline.project.selectedTransition)
@@ -96,14 +96,15 @@ Rectangle {
             IconButton {
                 objectName: "markerButton"
                 iconName: "marker"
-                tip: "Add a marker at the playhead (M) — click a marker to edit it"
+                tip: "Add a marker at the playhead" + KeyMap.hints["addMarker"] + " — click a marker to edit it"
                 onClicked: timeline.project.addMarker()
             }
             IconButton {
                 objectName: "groupButton"
                 readonly property bool grouped: (timeline.project.selectedClipInfo.groupId || 0) > 0
                 iconName: "group"
-                tip: grouped ? "Ungroup (⇧⌘G)" : "Group the selected clips (⌘G) — ⇧-click clips to select several"
+                tip: grouped ? "Ungroup" + KeyMap.hints["ungroup"]
+                             : "Group the selected clips" + KeyMap.hints["group"] + " — ⇧-click clips to select several"
                 enabled: grouped || timeline.project.selectedClips.length >= 2
                 onClicked: grouped ? timeline.project.ungroupSelected() : timeline.project.groupSelected()
             }
@@ -111,8 +112,8 @@ Rectangle {
                 objectName: "compoundButton"
                 readonly property bool compound: timeline.project.selectedClipInfo.isCompound === true
                 iconName: "compound"
-                tip: compound ? "Break apart the compound clip (⌥⌘G)"
-                              : "Make the selected clips one compound clip (⌥⌘G)"
+                tip: (compound ? "Break apart the compound clip" : "Make the selected clips one compound clip")
+                     + KeyMap.hints["compound"]
                 enabled: timeline.project.selectedClips.length > 0
                 onClicked: compound ? timeline.project.breakCompound(timeline.project.selectedClip)
                                     : timeline.project.createCompound()
@@ -758,17 +759,19 @@ Rectangle {
             readonly property color kindColor: item.clip.isTitle ? Theme.color.trackTitle
                                              : item.clip.isAdjustment ? Theme.color.trackEffect
                                              : timeline.trackColor(item.track.kind)
-            color: Qt.alpha(kindColor, Theme.dark ? 0.55 : 0.45)
+            color: item.clip.missing ? Qt.alpha(Theme.color.danger, 0.35) : Qt.alpha(kindColor, Theme.dark ? 0.55 : 0.45)
             border.width: item.selected ? 2 : 1
             border.color: item.selected ? Theme.color.selection : kindColor
             clip: true
 
-            readonly property bool showsSound: item.clip.hasAudio && (item.track.kind === "audio" || item.clip.audioEnabled)
+            readonly property bool showsSound: item.clip.hasAudio && !item.clip.missing
+                                               && (item.track.kind === "audio" || item.clip.audioEnabled)
 
             // Thumbnail strip: one frame per tile, from the source time under the tile's centre.
             Row {
                 id: strip
                 visible: item.track.kind === "video" && !item.clip.isTitle && !item.clip.isAdjustment && !item.clip.isCompound
+                         && !item.clip.missing
                 anchors { left: parent.left; right: parent.right; top: parent.top; margins: 3; topMargin: 19 }
                 height: parent.height - 22 - (body.showsSound ? 14 : 0)
                 spacing: 1
@@ -859,7 +862,8 @@ Rectangle {
                     x: Theme.space.s - 3
                     width: parent.width - Theme.space.s
                     // Badges first so a short clip still shows them.
-                    text: (item.clip.isTitle ? "Title · " : "")
+                    text: (item.clip.missing ? "Missing · " : "")
+                          + (item.clip.isTitle ? "Title · " : "")
                           + (item.clip.lookTitle ? item.clip.lookTitle + " · " : "")
                           + (item.clip.freeze ? "Still · " : "")
                           + (item.clip.speedRamp && item.clip.speedRamp.length > 0 ? "Ramp · "

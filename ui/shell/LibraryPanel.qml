@@ -809,7 +809,7 @@ Rectangle {
                                         anchors.margins: 1
                                         asynchronous: true
                                         fillMode: Image.PreserveAspectFit
-                                        source: mediaTile.modelData.hasVideo && height >= 4
+                                        source: mediaTile.modelData.hasVideo && !mediaTile.modelData.missing && height >= 4
                                                 ? "image://tvethumb/!" + encodeURIComponent(mediaTile.modelData.path) + "@"
                                                   + (mediaTile.modelData.duration * 0.1).toFixed(2) + "@" + Math.round(height * 2)
                                                 : ""
@@ -820,13 +820,14 @@ Rectangle {
                                         width: durationText.implicitWidth + Theme.space.s
                                         height: durationText.implicitHeight + Theme.space.xxs
                                         radius: Theme.radius.s
-                                        color: Theme.color.overlay
+                                        color: mediaTile.modelData.missing ? Theme.color.danger : Theme.color.overlay
                                         Text {
                                             id: durationText
                                             anchors.centerIn: parent
                                             objectName: "mediaDuration:" + mediaTile.modelData.name
                                             // A still has no length of its own.
-                                            text: mediaTile.modelData.sticker ? "Sticker" : mediaTile.modelData.still ? "Image"
+                                            text: mediaTile.modelData.missing ? "Missing"
+                                                  : mediaTile.modelData.sticker ? "Sticker" : mediaTile.modelData.still ? "Image"
                                                   : library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
                                             font: Theme.type.caption
                                             color: "#FFFFFF"

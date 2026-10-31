@@ -105,16 +105,16 @@ Rectangle {
 
                 Item { Layout.fillWidth: true }
 
-                IconButton { iconName: "skip-back"; tip: "Previous frame (←)"; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(-1) }
+                IconButton { iconName: "skip-back"; tip: "Previous frame" + KeyMap.hints["frameBack"]; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(-1) }
                 IconButton {
                     objectName: "playButton"
                     iconName: panel.project.playing ? "pause" : "play"
-                    tip: panel.project.playing ? "Pause (Space)" : "Play (Space)"
+                    tip: (panel.project.playing ? "Pause" : "Play") + KeyMap.hints["play"]
                     enabled: panel.project.duration > 0
                     buttonSize: Theme.size.control + 4
                     onClicked: panel.project.togglePlay()
                 }
-                IconButton { iconName: "skip-forward"; tip: "Next frame (→)"; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(1) }
+                IconButton { iconName: "skip-forward"; tip: "Next frame" + KeyMap.hints["frameForward"]; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(1) }
 
                 Item { Layout.fillWidth: true }
 

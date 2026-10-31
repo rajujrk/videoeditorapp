@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
+import TechieVideoEditor.Player
 
 // Editor title bar: back to Home, project name and canvas, history, save, export.
 Rectangle {
@@ -9,6 +10,7 @@ Rectangle {
     signal homeRequested()
     signal saveRequested()
     signal exportRequested()
+    signal shortcutsRequested()
 
     implicitHeight: Theme.size.topBar
     color: Theme.color.surface
@@ -57,18 +59,24 @@ Rectangle {
         IconButton {
             objectName: "undoButton"
             iconName: "undo"
-            tip: bar.project.canUndo ? "Undo " + bar.project.undoText + " (⌘Z)" : "Nothing to undo"
+            tip: bar.project.canUndo ? "Undo " + bar.project.undoText + KeyMap.hints["undo"] : "Nothing to undo"
             enabled: bar.project.canUndo
             onClicked: bar.project.undo()
         }
         IconButton {
             objectName: "redoButton"
             iconName: "redo"
-            tip: bar.project.canRedo ? "Redo " + bar.project.redoText + " (⇧⌘Z)" : "Nothing to redo"
+            tip: bar.project.canRedo ? "Redo " + bar.project.redoText + KeyMap.hints["redo"] : "Nothing to redo"
             enabled: bar.project.canRedo
             onClicked: bar.project.redo()
         }
-        IconButton { iconName: "save"; tip: "Save project (⌘S)"; onClicked: bar.saveRequested() }
+        IconButton { iconName: "save"; tip: "Save project" + KeyMap.hints["save"]; onClicked: bar.saveRequested() }
+        IconButton {
+            objectName: "shortcutsButton"
+            iconName: "keyboard"
+            tip: "Keyboard shortcuts" + KeyMap.hints["shortcuts"]
+            onClicked: bar.shortcutsRequested()
+        }
         IconButton {
             iconName: Theme.dark ? "sun" : "moon"
             tip: Theme.dark ? "Light theme" : "Dark theme"
@@ -117,7 +125,7 @@ Rectangle {
             iconName: "export"
             variant: "primary"
             enabled: bar.project.duration > 0
-            tip: "Export a video, a GIF or the sound (⌘E); exports queue up and run while you edit"
+            tip: "Export a video, a GIF or the sound" + KeyMap.hints["export"] + "; exports queue up and run while you edit"
             Layout.leftMargin: Theme.space.s
             onClicked: bar.exportRequested()
         }

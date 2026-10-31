@@ -68,12 +68,48 @@ void writeStills(const QString& dir)
     keyed.save(dir + QStringLiteral("/keyed.png"));
 }
 
+// File chores for tests (moving media away to relink it, reading the keymap), confined to
+// one scratch folder (`scratchDir`); paths outside it are refused.
+class TestFiles : public QObject {
+    Q_OBJECT
+public:
+    explicit TestFiles(QString root) : m_root(QDir(root).canonicalPath()) {}
+
+    Q_INVOKABLE bool copy(const QString& from, const QString& to) const
+    {
+        return inside(to) && QDir().mkpath(QFileInfo(to).path()) && QFile::copy(from, to);
+    }
+    Q_INVOKABLE bool move(const QString& from, const QString& to) const
+    {
+        return inside(from) && inside(to) && QDir().mkpath(QFileInfo(to).path()) && QDir().rename(from, to);
+    }
+    Q_INVOKABLE bool exists(const QString& path) const { return QFileInfo::exists(path); }
+    Q_INVOKABLE QString read(const QString& path) const
+    {
+        QFile file(path);
+        return file.open(QIODevice::ReadOnly) ? QString::fromUtf8(file.readAll()) : QString();
+    }
+
+private:
+    bool inside(const QString& path) const
+    {
+        return QDir::cleanPath(QFileInfo(path).absoluteFilePath()).startsWith(m_root + QLatin1Char('/'));
+    }
+    QString m_root;
+};
+
 // Gives tests the sample-media folder and a scratch folder as context properties.
 class Setup : public QObject {
     Q_OBJECT
+public:
+    QTemporaryDir scratch;
+    TestFiles files{scratch.path()};
+
 public slots:
     void qmlEngineAvailable(QQmlEngine* engine)
     {
+        engine->rootContext()->setContextProperty(QStringLiteral("scratchDir"), QDir(scratch.path()).canonicalPath());
+        engine->rootContext()->setContextProperty(QStringLiteral("testFiles"), &files);
         engine->rootContext()->setContextProperty(QStringLiteral("samplesDir"), QStringLiteral(TVE_SAMPLES_DIR));
         engine->rootContext()->setContextProperty(QStringLiteral("tempDir"), QDir::tempPath());
         engine->rootContext()->setContextProperty(QStringLiteral("recordingsDir"), qEnvironmentVariable("TVE_RECORDING_DIR"));
@@ -107,6 +143,8 @@ int main(int argc, char** argv)
     QTemporaryDir stills;
     writeStills(stills.path());
     qputenv("TVE_TEST_STILLS_DIR", stills.path().toLocal8Bit());
+    QTemporaryDir keymap; // shortcuts changed by tests
+    qputenv("TVE_KEYMAP_FILE", (keymap.path() + QStringLiteral("/keymap.json")).toLocal8Bit());
     QTemporaryDir colorPresets; // colour presets saved by tests
     qputenv("TVE_COLOR_PRESET_DIR", colorPresets.path().toLocal8Bit());
     Setup setup;

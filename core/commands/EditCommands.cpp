@@ -112,6 +112,33 @@ void ImportMediaCommand::undo(Project& project)
     std::erase_if(project.media, [&](const MediaItem& item) { return item.id == m_item.id; });
 }
 
+// --- RelinkMediaCommand ---
+
+std::optional<std::string> RelinkMediaCommand::redo(Project& project)
+{
+    if (m_items.empty())
+        return "no media to relink";
+    for (const MediaItem& item : m_items) {
+        if (item.path.empty() || item.duration <= 0)
+            return "the new file has no pictures or sound";
+        if (!project.findMedia(item.id))
+            return "media not found";
+    }
+    m_previous.clear();
+    for (const MediaItem& item : m_items) {
+        auto media = std::ranges::find(project.media, item.id, &MediaItem::id);
+        m_previous.push_back(*media);
+        *media = item;
+    }
+    return std::nullopt;
+}
+
+void RelinkMediaCommand::undo(Project& project)
+{
+    for (const MediaItem& item : m_previous)
+        *std::ranges::find(project.media, item.id, &MediaItem::id) = item;
+}
+
 // --- AddVoiceOverCommand ---
 
 std::optional<std::string> AddVoiceOverCommand::redo(Project& project)
