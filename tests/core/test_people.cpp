@@ -215,3 +215,34 @@ TEST_CASE("people settings are one command, kept by splits and saved")
     tooMuch.amount = 1.5;
     CHECK(p.tryPush<SetClipPeopleCommand>(clip, std::nullopt, tooMuch, "x").value() == "face cover setting out of range");
 }
+
+TEST_CASE("a processed copy and a smart cutout's subject are commands, kept by splits and saved")
+{
+    PeopleProject p;
+    const Id clip = p.push<AddClipCommand>(p.track, p.video, 0, 10 * kSec, 2 * kSec).clipId();
+    const ProcessedVideo copy{"/processed/x-smooth4.mov", 2 * kSec, 12 * kSec, {"remove", "smooth4"}};
+    p.push<SetClipProcessedVideoCommand>(clip, copy, "Smooth Slow Motion");
+    CHECK(p.clip(clip).processedVideo == copy);
+    auto& split = p.push<SplitClipCommand>(clip, 4 * kSec);
+    CHECK(p.clip(split.rightClipId()).processedVideo == copy);
+    p.stack.undo();
+    p.stack.undo();
+    CHECK_FALSE(p.clip(clip).processedVideo);
+    p.stack.redo();
+    CHECK(p.tryPush<SetClipProcessedVideoCommand>(clip, ProcessedVideo{"/x.mov", kSec, kSec, {}}, "x").value()
+          == "a processed copy must cover some time");
+
+    PortraitCutout subject{true, false, 0.3, 0.0, {{0, 0.3, 0.5, 0.2, 0.4, 0.0}, {2 * kSec, 0.7, 0.5, 0.2, 0.4, 0.0}}};
+    p.push<SetClipPeopleCommand>(clip, subject, std::nullopt, "Cut Out Subject");
+    // Between its samples the subject's box moves; before and after, it is held.
+    CHECK(p.clip(clip).cutout.subjectAt(kSec)->x == Approx(0.5));
+    CHECK(p.clip(clip).cutout.subjectAt(5 * kSec)->x == Approx(0.7));
+    CHECK_FALSE(PortraitCutout{}.subjectAt(kSec));
+
+    const Project loaded = projectFromJson(projectToJson(p.project));
+    const Clip& again = *const_cast<Project&>(loaded).locateClip(clip)->clip;
+    CHECK(again.processedVideo == copy);
+    CHECK(again.cutout == subject);
+    p.push<SetClipProcessedVideoCommand>(clip, std::nullopt, "Original Picture");
+    CHECK_FALSE(p.clip(clip).processedVideo);
+}

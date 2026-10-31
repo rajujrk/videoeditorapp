@@ -399,6 +399,7 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.deflicker = clip.deflicker;
     right.denoise = clip.denoise;
     right.motionTracks = clip.motionTracks;
+    right.processedVideo = clip.processedVideo;
     right.text = clip.text;
     right.adjustment = clip.adjustment;
     right.sequenceId = clip.sequenceId;
@@ -914,6 +915,31 @@ void SetClipMotionCommand::undo(Project& project)
     clip.stabilization = m_previousStabilization;
     clip.deflicker = m_previousDeflicker;
     clip.denoise = m_previousDenoise;
+}
+
+// --- SetClipProcessedVideoCommand ---
+
+std::optional<std::string> SetClipProcessedVideoCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    Clip& clip = *location->clip;
+    const MediaItem* media = project.findMedia(clip.mediaId);
+    if (clip.generated() || clip.compound() || !media || !media->hasVideo || media->still || media->lottie)
+        return "only clips of video files can be processed";
+    if (m_processed && m_processed->to <= m_processed->from)
+        return "a processed copy must cover some time";
+    m_previous = clip.processedVideo;
+    clip.processedVideo = m_processed;
+    return std::nullopt;
+}
+
+void SetClipProcessedVideoCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->processedVideo = m_previous;
 }
 
 // --- SetClipTracksCommand ---

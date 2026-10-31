@@ -148,6 +148,16 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
         if (!media)
             return nullptr;
         LayerState& state = m_layers[clip.id];
+        // Its processed copy where it covers this time (its own time starts at `from`); the
+        // media's pictures where it does not, or if it cannot be read.
+        if (const auto& processed = clip.processedVideo;
+            processed && sourceTime >= processed->from && sourceTime < processed->to) {
+            MediaItem copy;
+            copy.path = processed->path;
+            const Ticks at = sourceTime - processed->from;
+            if (const DecodedFrame* frame = clip.reversed ? reversedFrameAt(state, copy, at) : frameAt(state, copy, at))
+                return frame;
+        }
         return clip.reversed ? reversedFrameAt(state, *media, sourceTime) : frameAt(state, *media, sourceTime);
     };
     const auto lookOf = [](const Clip& clip) { return clip.look ? clip.look->effective() : ColorGrade{}; };
@@ -169,8 +179,12 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
         return m;
     };
     const auto peopleOf = [](const Clip& clip, Ticks sourceTime) {
-        return LayerPeople{clip.cutout, clip.faceMosaic.boxesAt(sourceTime), clip.faceMosaic.style,
+        LayerPeople people{clip.cutout, std::nullopt, clip.faceMosaic.boxesAt(sourceTime), clip.faceMosaic.style,
                            float(clip.faceMosaic.amount)};
+        people.cutout.subject.clear(); // (the box at this frame is enough)
+        if (clip.cutout.enabled)
+            people.subject = clip.cutout.subjectAt(sourceTime);
+        return people;
     };
     for (const VisibleClip& layer : visibleVideoLayersAt(project, tracks, time)) {
         const Clip& top = *layer.clip;

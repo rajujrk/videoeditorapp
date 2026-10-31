@@ -43,11 +43,16 @@ add_executable(tve_engine_tests
     engine/test_speech_enhancer.cpp
     engine/test_people_vision.cpp
     engine/test_motion_analysis.cpp
+    engine/test_multicam.cpp
+    engine/test_video_processing.cpp
 )
 target_link_libraries(tve_engine_tests PRIVATE tve::engine tve::ffmpeg Catch2::Catch2WithMain)
 target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples"
                                                    TVE_EFFECTS_DIR="${PROJECT_SOURCE_DIR}/effects")
-catch_discover_tests(tve_engine_tests)
+# Tests tagged [apple] work Vision and VideoToolbox hard (GPU, Neural Engine): they share
+# the GPU lock with the UI and golden-frame tests rather than slowing them down.
+catch_discover_tests(tve_engine_tests TEST_SPEC "~[apple]")
+catch_discover_tests(tve_engine_tests TEST_SPEC "[apple]" PROPERTIES RESOURCE_LOCK gpu)
 
 if(TARGET tve_gpu)
     qt_add_executable(tve_gpu_tests gpu/test_effects.cpp gpu/test_compositor.cpp gpu/test_transitions.cpp gpu/test_color.cpp gpu/test_looks.cpp gpu/test_masks.cpp gpu/test_effect_library.cpp)

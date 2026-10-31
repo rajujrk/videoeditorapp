@@ -117,6 +117,17 @@ struct EnhancedAudio {
     friend bool operator==(const EnhancedAudio&, const EnhancedAudio&) = default;
 };
 
+// A clip's pictures processed (upscaled, smooth slow motion, an object removed): a copy of
+// part of its media (`from` to `to`, media time) which the clip plays there instead.
+struct ProcessedVideo {
+    std::string path;               // a MOV in the app's Processed folder
+    Ticks from = 0;
+    Ticks to = 0;
+    std::vector<std::string> steps; // what was done, in order: "upscale2", "smooth4", "remove"…
+
+    friend bool operator==(const ProcessedVideo&, const ProcessedVideo&) = default;
+};
+
 struct ColorRgba {
     double r = 1.0;
     double g = 1.0;
@@ -277,6 +288,8 @@ struct Clip {
     // Things followed through the clip's picture (in its media's time), for other clips
     // (titles, stickers…) to follow.
     std::vector<MotionTrack> motionTracks;
+    // Played instead of the media's pictures where it covers them (if the file is there).
+    std::optional<ProcessedVideo> processedVideo;
     std::vector<ClipEffect> effects; // applied in order, before placement on the canvas
 
     // Time. At speed 2 one second of timeline plays two seconds of source; reversed plays

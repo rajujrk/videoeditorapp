@@ -27,7 +27,7 @@ constexpr Ticks kFrame = kTicksPerSecond / 30;
 
 } // namespace
 
-TEST_CASE("a shaky shot's camera motion is measured and steadied")
+TEST_CASE("a shaky shot's camera motion is measured and steadied", "[apple]")
 {
     // shaky.mp4: a window over a picture at x = 96 + 40 sin(1.3 n), y = 780 + 30 sin(2.1 n)
     // (1920 × 1080 pixels): the content moves the other way, at 320 × 180 a sixth as far.
@@ -68,7 +68,7 @@ TEST_CASE("a shaky shot's camera motion is measured and steadied")
     CHECK_FALSE(analyzeMotion(sample("shaky.mp4"), [](double) { return false; }));
 }
 
-TEST_CASE("flicker is measured and evened out")
+TEST_CASE("flicker is measured and evened out", "[apple]")
 {
     const auto analysis = analyzeMotion(sample("flicker.mp4"));
     REQUIRE(analysis);
@@ -83,7 +83,7 @@ TEST_CASE("flicker is measured and evened out")
     }
 }
 
-TEST_CASE("an object and a flat surface are followed")
+TEST_CASE("an object and a flat surface are followed", "[apple]")
 {
     // people.mp4: the face's centre moves from x ≈ 0.30 to ≈ 0.75 over 3 s, at y ≈ 0.24.
     const std::string people = sample("people.mp4");

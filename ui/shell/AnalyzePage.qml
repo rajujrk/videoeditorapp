@@ -107,25 +107,76 @@ ScrollView {
             }
         }
 
+        // Multicam
+        Section {
+            objectName: "syncSection"
+            visible: page.project.selectedClips.length >= 2
+            Layout.fillWidth: true
+            title: "Sync by sound"
+
+            Finding {
+                text: "Lines the " + page.project.selectedClips.length
+                      + " selected clips up by what they heard (cameras and a recorder at the same event). The first one selected stays; the others move on their tracks."
+                color: Theme.color.textSecondary
+            }
+            TextButton {
+                objectName: "syncBySound"
+                text: "Line up by sound"
+                variant: "primary"
+                enabled: !page.project.analyzing
+                onClicked: page.project.syncBySound(page.project.selectedClips)
+            }
+        }
+
         // Portrait cutout
         Section {
             id: cutout
             objectName: "cutoutSection"
             visible: page.canFindPeople
             Layout.fillWidth: true
-            title: "Portrait cutout"
+            title: "Cutout"
             readonly property var current: page.clipInfo.cutout || ({})
+            readonly property bool hasArea: page.project.trackArea.clipId === page.clipInfo.id
             function change(values) { page.project.setPortraitCutout(page.clipInfo.id, values) }
 
             Finding {
-                text: "Keeps the person and makes the background transparent (Vision, on this Mac), so the tracks below show through."
+                text: "Keeps the person — or any subject you draw a box around — and makes the background transparent (Vision, on this Mac), so the tracks below show through."
                 color: Theme.color.textSecondary
             }
             ToggleSwitch {
                 objectName: "cutoutSwitch"
-                text: "Cut out the person"
+                text: cutout.current.subject ? "Cut out the subject" : "Cut out the person"
                 checked: cutout.current.enabled === true
                 onToggled: cutout.change({ enabled: checked })
+            }
+            Finding {
+                objectName: "subjectState"
+                visible: cutout.current.subject === true
+                text: "Cutting out the subject in the box, followed through the clip."
+            }
+            RowLayout {
+                TextButton {
+                    objectName: "drawSubject"
+                    text: page.project.pickingTrackArea ? "Drag a box on the player…" : "Draw around a subject"
+                    variant: "secondary"
+                    tip: "For something other than people: an object, an animal, a product"
+                    onClicked: page.project.pickingTrackArea = !page.project.pickingTrackArea
+                }
+                TextButton {
+                    objectName: "cutOutSubject"
+                    visible: cutout.hasArea
+                    text: "Cut it out"
+                    variant: "primary"
+                    enabled: !page.project.analyzing && page.steady
+                    onClicked: page.project.cutOutSubject(page.clipInfo.id)
+                }
+                TextButton {
+                    objectName: "backToPeople"
+                    visible: cutout.current.subject === true
+                    text: "People instead"
+                    variant: "ghost"
+                    onClicked: cutout.change({ subject: false })
+                }
             }
             ToggleSwitch {
                 objectName: "cutoutInvert"
@@ -308,6 +359,132 @@ ScrollView {
                 enabled: !page.project.analyzing && page.steady
                 tip: page.steady ? "" : "Works on clips playing forwards at a steady speed"
                 onClicked: page.project.autoReframe(page.clipInfo.id, { aspect: reframe.aspect, smoothing: reframeSmoothing.value })
+            }
+        }
+
+        // Processed pictures: upscale, smooth slow motion, object removal
+        Section {
+            id: picture
+            objectName: "pictureSection"
+            visible: page.canFindPeople
+            Layout.fillWidth: true
+            title: "Picture"
+            readonly property var processed: page.clipInfo.processed
+            readonly property var model: page.project.upscaleModel
+            readonly property bool hasArea: page.project.trackArea.clipId === page.clipInfo.id
+            property int scale: 2
+            property int factor: 4
+            function stepText(s) {
+                return s.startsWith("upscale") ? "upscaled " + s.substring(7) + "×"
+                     : s.startsWith("smooth") ? "smooth slow motion " + s.substring(6) + "×"
+                     : s === "remove" ? "an object removed" : s
+            }
+
+            Finding {
+                text: "Makes a processed copy of the clip's part of its file, which the clip then plays (kept beside the app's data)."
+                color: Theme.color.textSecondary
+            }
+            Finding {
+                objectName: "processedState"
+                visible: picture.processed !== undefined
+                text: !picture.processed ? ""
+                    : picture.processed.missing ? "The processed copy is missing; the clip plays its own pictures."
+                    : "Processed: " + picture.processed.steps.map(picture.stepText).join(", ") + "."
+            }
+            TextButton {
+                objectName: "restoreVideo"
+                visible: picture.processed !== undefined
+                text: "Original picture"
+                variant: "ghost"
+                onClicked: page.project.restoreVideo(page.clipInfo.id)
+            }
+
+            Text { text: "Upscale (Apple's model, pictures up to 1080p)"; font: Theme.type.label; color: Theme.color.textSecondary }
+            RowLayout {
+                visible: picture.model.status === "download" || picture.model.status === "downloading"
+                TextButton {
+                    objectName: "downloadUpscaleModel"
+                    visible: picture.model.status === "download"
+                    text: "Download the model"
+                    variant: "secondary"
+                    tip: "macOS downloads Apple's upscaling model once"
+                    onClicked: page.project.downloadUpscaleModel()
+                }
+                Text {
+                    visible: picture.model.status === "downloading"
+                    text: "Downloading… " + Math.round((picture.model.progress || 0) * 100) + " %"
+                    font: Theme.type.body
+                    color: Theme.color.textPrimary
+                }
+            }
+            RowLayout {
+                visible: picture.model.status === "ready"
+                spacing: Theme.space.xs
+                Repeater {
+                    model: [2, 4]
+                    delegate: TextButton {
+                        required property int modelData
+                        objectName: "upscaleScale:" + modelData
+                        text: modelData + "×"
+                        variant: picture.scale === modelData ? "primary" : "secondary"
+                        onClicked: picture.scale = modelData
+                    }
+                }
+                TextButton {
+                    objectName: "upscale"
+                    text: "Upscale"
+                    variant: "primary"
+                    enabled: !page.project.analyzing
+                    onClicked: page.project.processVideo(page.clipInfo.id, { kind: "upscale", scale: picture.scale })
+                }
+            }
+            Text {
+                visible: picture.model.status === "unsupported"
+                text: "Upscaling is not available on this Mac."
+                font: Theme.type.body
+                color: Theme.color.textSecondary
+            }
+
+            Text { text: "Smooth slow motion (frames made between)"; font: Theme.type.label; color: Theme.color.textSecondary }
+            RowLayout {
+                spacing: Theme.space.xs
+                Repeater {
+                    model: [2, 4, 8]
+                    delegate: TextButton {
+                        required property int modelData
+                        objectName: "smoothFactor:" + modelData
+                        text: modelData + "×"
+                        variant: picture.factor === modelData ? "primary" : "secondary"
+                        onClicked: picture.factor = modelData
+                    }
+                }
+                TextButton {
+                    objectName: "smooth"
+                    text: "Make frames"
+                    variant: "primary"
+                    enabled: !page.project.analyzing
+                    tip: "For slowing the clip down: " + picture.factor + " frames for every one"
+                    onClicked: page.project.processVideo(page.clipInfo.id, { kind: "smooth", factor: picture.factor })
+                }
+            }
+
+            Text { text: "Remove an object"; font: Theme.type.label; color: Theme.color.textSecondary }
+            RowLayout {
+                TextButton {
+                    objectName: "drawObject"
+                    text: page.project.pickingTrackArea ? "Drag a box on the player…" : "Draw around it"
+                    variant: "secondary"
+                    tip: "At the playhead; it is followed to the clip's end"
+                    onClicked: page.project.pickingTrackArea = !page.project.pickingTrackArea
+                }
+                TextButton {
+                    objectName: "removeObject"
+                    visible: picture.hasArea
+                    text: "Remove it"
+                    variant: "primary"
+                    enabled: !page.project.analyzing && page.steady
+                    onClicked: page.project.processVideo(page.clipInfo.id, { kind: "remove" })
+                }
             }
         }
 

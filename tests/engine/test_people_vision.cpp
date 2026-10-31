@@ -41,7 +41,7 @@ double faceXAt(double seconds)
 
 } // namespace
 
-TEST_CASE("Vision finds the person and the face in a frame")
+TEST_CASE("Vision finds the person and the face in a frame", "[apple]")
 {
     const std::string path = people();
     const DecodedFrame frame = frameAt(path, kTicksPerSecond * 3 / 2);
@@ -68,11 +68,22 @@ TEST_CASE("Vision finds the person and the face in a frame")
     REQUIRE(subject);
     CHECK(subject->x == Approx(faces[0].x).margin(1e-9)); // a face: the face
 
+    // Smart cutout: a box drawn around the astronaut keeps what stands out under it, not the grey.
+    const PersonMatte lifted = segmentSubject(frame.pixelBuffer(), {faceXAt(1.5), 0.55, 0.42, 0.9});
+    REQUIRE(lifted);
+    const auto in = [&](double u, double v) {
+        return lifted.pixels[std::size_t(int(v * (lifted.height - 1)) * lifted.width + int(u * (lifted.width - 1)))];
+    };
+    CHECK(in(faceXAt(1.5), 0.3) == 255);
+    CHECK(in(0.02, 0.5) == 0);
+    CHECK(in(0.98, 0.5) == 0);
+    CHECK_FALSE(segmentSubject(nullptr, {0.5, 0.5, 0.2, 0.2}));
+
     CHECK_FALSE(segmentPeople(nullptr));
     CHECK(detectFaces(nullptr).empty());
 }
 
-TEST_CASE("a file's faces become one track that follows the face, kept on disk")
+TEST_CASE("a file's faces become one track that follows the face, kept on disk", "[apple]")
 {
     const std::string path = people();
     std::vector<double> reported;
@@ -108,7 +119,7 @@ TEST_CASE("a file's faces become one track that follows the face, kept on disk")
     fs::remove_all(cache.directory());
 }
 
-TEST_CASE("the subject is followed into a portrait frame")
+TEST_CASE("the subject is followed into a portrait frame", "[apple]")
 {
     const std::string path = people();
     const auto subject = findSubject(path);

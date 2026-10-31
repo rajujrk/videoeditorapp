@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -201,6 +202,66 @@ PersonMatte segmentPeople(CVPixelBufferRef frame, SegmentationQuality quality)
                     std::copy_n(base + std::size_t(y) * stride, matte.width,
                                 matte.pixels.begin() + std::ptrdiff_t(y) * matte.width);
                 CVPixelBufferUnlockBaseAddress(mask, kCVPixelBufferLock_ReadOnly);
+            }
+        }
+        [request release];
+    }
+    return matte;
+}
+
+PersonMatte segmentSubject(CVPixelBufferRef frame, const FaceBox& box)
+{
+    PersonMatte matte;
+    if (!frame)
+        return matte;
+    @autoreleasepool {
+        VNGenerateForegroundInstanceMaskRequest* request = [[VNGenerateForegroundInstanceMaskRequest alloc] init];
+        if (perform(frame, @[request])) {
+            VNInstanceMaskObservation* observation = request.results.firstObject;
+            CVPixelBufferRef labels = observation.instanceMask; // one byte per pixel: 0 background, 1… instances
+            if (labels && CVPixelBufferLockBaseAddress(labels, kCVPixelBufferLock_ReadOnly) == kCVReturnSuccess) {
+                const int w = int(CVPixelBufferGetWidth(labels)), h = int(CVPixelBufferGetHeight(labels));
+                const auto* base = static_cast<const std::uint8_t*>(CVPixelBufferGetBaseAddress(labels));
+                const std::size_t stride = CVPixelBufferGetBytesPerRow(labels);
+                // How much of each instance lies in the box, and how big each is.
+                std::array<int, 256> inside{}, total{};
+                const int x0 = int((box.x - box.width / 2) * w), x1 = int((box.x + box.width / 2) * w);
+                const int y0 = int((box.y - box.height / 2) * h), y1 = int((box.y + box.height / 2) * h);
+                for (int y = 0; y < h; ++y)
+                    for (int x = 0; x < w; ++x) {
+                        const std::uint8_t label = base[std::size_t(y) * stride + std::size_t(x)];
+                        if (label == 0)
+                            continue;
+                        ++total[label];
+                        if (x >= x0 && x < x1 && y >= y0 && y < y1)
+                            ++inside[label];
+                    }
+                // The instances mostly inside the box; failing that, the one it covers most.
+                std::array<bool, 256> kept{};
+                int best = 0;
+                bool any = false;
+                for (int l = 1; l < 256; ++l) {
+                    if (inside[std::size_t(l)] > inside[std::size_t(best)])
+                        best = l;
+                    if (total[std::size_t(l)] > 0 && inside[std::size_t(l)] * 2 >= total[std::size_t(l)]) {
+                        kept[std::size_t(l)] = true;
+                        any = true;
+                    }
+                }
+                if (!any && best > 0) {
+                    kept[std::size_t(best)] = true;
+                    any = true;
+                }
+                if (any) {
+                    matte.width = w;
+                    matte.height = h;
+                    matte.pixels.resize(std::size_t(w) * std::size_t(h));
+                    for (int y = 0; y < h; ++y)
+                        for (int x = 0; x < w; ++x)
+                            matte.pixels[std::size_t(y) * std::size_t(w) + std::size_t(x)] =
+                                kept[base[std::size_t(y) * stride + std::size_t(x)]] ? 255 : 0;
+                }
+                CVPixelBufferUnlockBaseAddress(labels, kCVPixelBufferLock_ReadOnly);
             }
         }
         [request release];

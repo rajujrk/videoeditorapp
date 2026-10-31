@@ -100,7 +100,9 @@ private:
     // drawn was the one before this; the same frame again: as drawn last time).
     QRhiTexture* denoised(QRhiCommandBuffer* cb, tve::Id clipId, QRhiTexture* picture, tve::Ticks frame, float strength);
     // The person matte of a clip's decoded frame (Vision), found once per frame.
-    QRhiTexture* personMatte(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame);
+    // With a subject (smart cutout): what stands out under its box instead of people.
+    QRhiTexture* personMatte(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame,
+                             const std::optional<tve::FaceBox>& subject);
 
     QRhi* m_rhi;
     CVMetalTextureCacheRef m_textureCache = nullptr;
@@ -137,6 +139,7 @@ private:
     struct PersonMatteTexture {
         const void* frame = nullptr; // the pixel buffer it was found in (with its time)
         tve::Ticks pts = -1;
+        std::optional<tve::FaceBox> subject;
         std::unique_ptr<QRhiTexture> texture;
     };
     std::map<tve::Id, PersonMatteTexture> m_personMattes;
