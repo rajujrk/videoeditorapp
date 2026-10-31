@@ -217,9 +217,20 @@ void TimelineAudio::mixClip(const Project& project, const Track& track, const Cl
     const int soundFrames = from < soundTo ? std::min(frames, int(audio::samplesFromTicks(soundTo - from))) : 0;
     int read = 0;
 
+    const std::string enhancedPath = clip.enhancedAudio ? clip.enhancedAudio->path : std::string();
+    if (stream.enhancedPath != enhancedPath) {
+        stream.decoder.reset();
+        stream.nextSourceTime = -1;
+        stream.stretchNext = -1.0;
+        stream.enhancedPath = enhancedPath;
+    }
     if (soundFrames > 0 && !stream.decoder && !clip.compound()) {
+        // Its cleaned sound (speech enhancement) if that file is there, else the media's own.
+        if (clip.enhancedAudio)
+            stream.decoder = AudioDecoder::open(clip.enhancedAudio->path);
         const MediaItem* media = project.findMedia(clip.mediaId);
-        stream.decoder = media ? AudioDecoder::open(media->path) : nullptr;
+        if (!stream.decoder)
+            stream.decoder = media ? AudioDecoder::open(media->path) : nullptr;
     }
     const bool plainSpeed = clip.speed == 1.0 && !clip.reversed && clip.speedRamp.empty();
     if (soundFrames > 0 && clip.compound()) {

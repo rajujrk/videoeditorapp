@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.light_noise_reduction",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["cleanup"],
+  "title": {"en": "Light Noise Reduction"},
+  "params": [
+    {"id": "amount", "type": "float", "title": {"en": "Amount"}, "min": 0, "max": 1, "default": 0.5}
+  ],
+  "chain": [
+    {"processor": "denoise"}
+  ],
+  "license": "TVE-Original"
+}

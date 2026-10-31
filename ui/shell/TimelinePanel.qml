@@ -859,7 +859,7 @@ Rectangle {
                 visible: body.showsSound
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 2 }
                 height: item.track.kind === "audio" ? parent.height - 20 : 14
-                source: item.clip.path
+                source: item.clip.soundPath || item.clip.path
                 sourceIn: item.clip.sourceIn
                 duration: item.previewDuration
                 speed: item.clip.speed

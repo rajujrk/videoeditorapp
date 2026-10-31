@@ -591,3 +591,51 @@ TEST_CASE("a compound clip plays the sound of the clips inside it")
     mix = drainMix(mixer);
     CHECK(peak(mix, 0, mix.size() / 2) == 0.0f);
 }
+
+#include "encode/WavWriter.h"
+
+#include <unistd.h>
+
+TEST_CASE("a clip with enhanced sound plays the cleaned file, at any speed")
+{
+    requireSamples();
+    // The "cleaned" copy: an 880 Hz tone, so it is easy to tell from the 440 Hz original.
+    const std::string cleaned =
+        (std::filesystem::temp_directory_path() / ("tve_enhanced_" + std::to_string(::getpid()) + ".wav")).string();
+    {
+        auto writer = WavWriter::open(cleaned, audio::kSampleRate, 1);
+        REQUIRE(writer);
+        std::vector<float> samples(std::size_t(audio::kSampleRate) * 3);
+        for (std::size_t i = 0; i < samples.size(); ++i)
+            samples[i] = 0.5f * float(std::sin(2.0 * std::numbers::pi * 880.0 * double(i) / audio::kSampleRate));
+        REQUIRE(writer->write(samples.data(), std::int64_t(samples.size())));
+        REQUIRE(writer->finish());
+    }
+    AudioProject p;
+    const Id toneMedia = p.importAudio("test_tone_440.wav", 3 * kSec);
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, toneMedia, 0, 3 * kSec).clipId();
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    CHECK(zeroCrossings(drainMix(mixer), 4800, 52800) == Catch::Approx(880).margin(6));
+
+    // The same mixer, told of the change, opens the cleaned file.
+    p.push<SetClipEnhancedAudioCommand>(clip, EnhancedAudio{cleaned, 100});
+    mixer.restart(p.project, 0);
+    CHECK(zeroCrossings(drainMix(mixer), 4800, 52800) == Catch::Approx(1760).margin(6));
+
+    // Played faster with its pitch kept: still the cleaned tone.
+    p.push<SetClipSpeedCommand>(clip, 2.0, false);
+    mixer.restart(p.project, 0);
+    CHECK(zeroCrossings(drainMix(mixer), 4800, 52800) == Catch::Approx(1760).margin(8));
+
+    // Undone back to the original sound; a cleaned file gone missing plays the original too.
+    p.stack.undo();
+    p.stack.undo();
+    mixer.restart(p.project, 0);
+    CHECK(zeroCrossings(drainMix(mixer), 4800, 52800) == Catch::Approx(880).margin(6));
+    std::filesystem::remove(cleaned);
+    p.push<SetClipEnhancedAudioCommand>(clip, EnhancedAudio{cleaned, 100});
+    TimelineAudio fresh;
+    fresh.restart(p.project, 0);
+    CHECK(zeroCrossings(drainMix(fresh), 4800, 52800) == Catch::Approx(880).margin(6));
+}

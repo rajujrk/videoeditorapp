@@ -252,3 +252,32 @@ TEST_CASE("audio effects, keep pitch and track mix are commands, kept by splits 
     CHECK(p.tryPush<SetTrackMixCommand>(p.audioTrack, TrackMix{20.0f, 0.0f, false}).value()
           == "volume is out of range");
 }
+
+TEST_CASE("enhanced sound is a command, kept by splits and saved")
+{
+    AvProject p;
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, p.wavMedia, 0, 4 * kSec, 0).clipId();
+    const EnhancedAudio cleaned{"/enhanced/v1_123-dfn3-12dB.wav", 12};
+    auto& enhance = p.push<SetClipEnhancedAudioCommand>(clip, cleaned);
+    CHECK(enhance.label() == "Enhance Speech");
+    CHECK(p.clip(clip).enhancedAudio == cleaned);
+    p.stack.undo();
+    CHECK_FALSE(p.clip(clip).enhancedAudio);
+    p.stack.redo();
+
+    auto& split = p.push<SplitClipCommand>(clip, 2 * kSec);
+    CHECK(p.clip(split.rightClipId()).enhancedAudio == cleaned);
+
+    nlohmann::json json = projectToJson(p.project);
+    CHECK(projectFromJson(json).locateClip(clip)->clip->enhancedAudio == cleaned);
+    for (auto& t : json["tracks"])
+        for (auto& c : t["clips"])
+            c.erase("enhancedAudio");
+    CHECK_FALSE(projectFromJson(json).locateClip(clip)->clip->enhancedAudio);
+
+    CHECK(p.push<SetClipEnhancedAudioCommand>(clip, std::nullopt).label() == "Original Sound");
+    CHECK_FALSE(p.clip(clip).enhancedAudio);
+    // Only clips with sound.
+    const Id silent = p.push<AddClipCommand>(p.videoTrack, p.silentMedia, 0, kSec, 0).clipId();
+    CHECK(p.tryPush<SetClipEnhancedAudioCommand>(silent, cleaned).value() == "this clip has no sound");
+}

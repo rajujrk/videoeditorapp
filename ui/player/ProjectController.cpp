@@ -25,6 +25,7 @@
 #include "StillImage.h"
 #include "TitleRenderer.h"
 #include "playback/TimelinePlayback.h"
+#include "speech/SpeechEnhancer.h"
 
 #include <nlohmann/json.hpp>
 
@@ -746,6 +747,12 @@ QVariantList ProjectController::tracks() const
                                                   : media  ? seconds(media->duration)
                                                            : 0.0},
                 {QStringLiteral("path"), media ? QString::fromStdString(media->path) : QString()},
+                // What it sounds like: its cleaned sound when enhanced (and that file is there).
+                {QStringLiteral("soundPath"),
+                 clip.enhancedAudio && QFileInfo::exists(QString::fromStdString(clip.enhancedAudio->path))
+                     ? QString::fromStdString(clip.enhancedAudio->path)
+                     : media ? QString::fromStdString(media->path)
+                             : QString()},
                 {QStringLiteral("hasAudio"), sequenceSound || (media && media->hasAudio)},
                 {QStringLiteral("audioEnabled"), clip.audioEnabled},
                 {QStringLiteral("gainDb"), double(clip.gainDb)},
@@ -1691,6 +1698,11 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("hasSound"), !clip->generated() && (sequence || (media && media->hasAudio))
                                              && (track.kind == TrackKind::Audio || clip->audioEnabled)},
             {QStringLiteral("audioEffects"), effectsList(clip->audioEffects)},
+            {QStringLiteral("enhanced"), clip->enhancedAudio
+                 ? QVariant(QVariantMap{{QStringLiteral("limitDb"), clip->enhancedAudio->limitDb},
+                                        {QStringLiteral("missing"),
+                                         !QFileInfo::exists(QString::fromStdString(clip->enhancedAudio->path))}})
+                 : QVariant()},
             {QStringLiteral("loudness"), [&]() -> QVariant {
                  const auto found = m_loudness.find(clip->id);
                  if (found == m_loudness.end())
@@ -3823,7 +3835,7 @@ void ProjectController::updateMixLevels(Ticks now)
 QVariantList ProjectController::audioEffects() const
 {
     // In the library's order of categories, then by title.
-    static const std::vector<std::string> order{"eq", "dynamics", "space", "echo", "modulation", "pitch", "voice"};
+    static const std::vector<std::string> order{"eq", "dynamics", "space", "echo", "modulation", "pitch", "voice", "cleanup"};
     std::vector<const EffectManifest*> sorted;
     for (const EffectManifest& m : AudioEffectLibrary::builtIn().effects())
         sorted.push_back(&m);
@@ -4650,6 +4662,105 @@ bool ProjectController::addBeatMarkers(int every)
         commands.push_back(std::make_unique<AddMarkerCommand>(std::move(marker)));
     }
     return apply(std::make_unique<CompositeCommand>(std::move(commands), "Add Beat Markers"));
+}
+
+// --- Speech enhancement ---
+
+namespace {
+
+// Cleaned sound is kept (not cached: projects play it), in <app data>/Enhanced.
+QString enhancedDirectory()
+{
+    const QString overridden = qEnvironmentVariable("TVE_ENHANCED_DIR");
+    return overridden.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/Enhanced")
+                                : overridden;
+}
+
+constexpr const char* kEnhanceModel = "deepfilternet3";
+
+} // namespace
+
+QVariantMap ProjectController::enhanceModel() const
+{
+    const QVariantList list = m_speechModels.list(QStringLiteral("enhance"));
+    return list.isEmpty() ? QVariantMap() : list.first().toMap();
+}
+
+bool ProjectController::enhanceSpeech(double clipId, const QVariantMap& options)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const auto location = m_project.locateClip(toId(clipId));
+    const Clip* clip = location ? location->clip : nullptr;
+    const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+    if (!clip || clip->generated() || clip->compound() || !media || !media->hasAudio
+        || (location->track->kind == TrackKind::Video && !clip->audioEnabled)) {
+        reportError(QStringLiteral("Select a clip with sound to enhance"));
+        return false;
+    }
+    if (!QFileInfo::exists(QString::fromStdString(media->path))) {
+        reportError(QStringLiteral("This clip's media is missing"));
+        return false;
+    }
+    const auto modelPath = m_speechModels.path(QString::fromLatin1(kEnhanceModel));
+    if (!modelPath) {
+        reportError(QStringLiteral("Download the speech enhancement model first"));
+        return false;
+    }
+    double limit = options.value(QStringLiteral("limitDb"), 100.0).toDouble();
+    limit = limit >= 100.0 ? 100.0 : std::clamp(std::round(limit), 3.0, 99.0);
+
+    // <fingerprint>-dfn3.wav holds it fully cleaned; a limit mixes some of the original back.
+    const QDir folder(enhancedDirectory());
+    const QString stem = QString::fromStdString(fingerprintOf(*media)).replace(QLatin1Char(':'), QLatin1Char('_'))
+                       + QStringLiteral("-dfn3");
+    const std::string full = folder.filePath(stem + QStringLiteral(".wav")).toStdString();
+    const std::string limited =
+        limit >= 100.0 ? full : folder.filePath(stem + QStringLiteral("-%1dB.wav").arg(int(limit))).toStdString();
+    const Id id = clip->id;
+    const auto place = [this, id, limited, limit] {
+        if (apply(std::make_unique<SetClipEnhancedAudioCommand>(id, EnhancedAudio{limited, limit})))
+            emit analysisFinished(true, {});
+        else
+            emit analysisFinished(false, lastError());
+    };
+    const bool haveFull = QFileInfo::exists(QString::fromStdString(full));
+    if (haveFull && QFileInfo::exists(QString::fromStdString(limited))) {
+        place();
+        return true;
+    }
+    runInBackground(haveFull ? QStringLiteral("Changing the strength") : QStringLiteral("Enhancing speech"),
+                    [source = media->path, full, limited, limit, haveFull,
+                     model = modelPath->toStdString()](const tve::AnalysisProgress& progress) -> std::string {
+                        std::string error;
+                        const double share = limit >= 100.0 ? 1.0 : haveFull ? 0.0 : 0.9;
+                        if (!haveFull) {
+                            const auto enhancer = tve::SpeechEnhancer::load(model, &error);
+                            if (!enhancer)
+                                return error;
+                            if (!enhancer->enhanceFile(source, full, [&](double p) { return progress(p * share); }, &error))
+                                return error.empty() ? std::string("cancelled") : error;
+                        }
+                        if (limited != full
+                            && !tve::limitEnhancement(source, full, limit, limited,
+                                                      [&](double p) { return progress(share + p * (1.0 - share)); }, &error))
+                            return error.empty() ? std::string("cancelled") : error;
+                        return {};
+                    },
+                    place);
+    return true;
+}
+
+bool ProjectController::removeEnhancement(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->enhancedAudio) {
+        reportError(QStringLiteral("This clip's sound is not enhanced"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipEnhancedAudioCommand>(clip->id, std::nullopt));
 }
 
 bool ProjectController::duckUnderSpeech(double clipId, const QVariantMap& options)

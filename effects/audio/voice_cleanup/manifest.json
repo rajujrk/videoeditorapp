@@ -1,0 +1,16 @@
+{
+  "id": "tve.audio.voice_cleanup",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["cleanup"],
+  "title": {"en": "Voice Cleanup"},
+  "params": [
+    {"id": "amount", "type": "float", "title": {"en": "Noise reduction"}, "min": 0, "max": 1, "default": 0.9}
+  ],
+  "chain": [
+    {"processor": "denoise", "settings": {"quiet": -8}},
+    {"processor": "eq", "settings": {"lowCut": 80, "b250": -1.5, "b4k": 2}},
+    {"processor": "compressor", "settings": {"threshold": -24, "ratio": 2.5, "attack": 15, "release": 200, "knee": 10, "makeup": 3}}
+  ],
+  "license": "TVE-Original"
+}

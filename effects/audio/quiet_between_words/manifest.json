@@ -1,0 +1,14 @@
+{
+  "id": "tve.audio.quiet_between_words",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["cleanup"],
+  "title": {"en": "Quiet Between Words"},
+  "params": [
+    {"id": "quiet", "type": "float", "title": {"en": "Lower by (dB)"}, "min": -40, "max": 0, "default": -18}
+  ],
+  "chain": [
+    {"processor": "denoise", "settings": {"amount": 0.85}}
+  ],
+  "license": "TVE-Original"
+}

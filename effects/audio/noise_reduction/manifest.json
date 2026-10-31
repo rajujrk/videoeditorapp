@@ -1,0 +1,15 @@
+{
+  "id": "tve.audio.noise_reduction",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["cleanup"],
+  "title": {"en": "Noise Reduction"},
+  "params": [
+    {"id": "amount", "type": "float", "title": {"en": "Amount"}, "min": 0, "max": 1, "default": 1},
+    {"id": "quiet", "type": "float", "title": {"en": "Between words (dB)"}, "min": -40, "max": 0, "default": 0}
+  ],
+  "chain": [
+    {"processor": "denoise"}
+  ],
+  "license": "TVE-Original"
+}

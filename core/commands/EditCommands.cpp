@@ -385,6 +385,7 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.audioEnabled = clip.audioEnabled;
     right.gainDb = clip.gainDb;
     right.audioEffects = clip.audioEffects;
+    right.enhancedAudio = clip.enhancedAudio;
     right.visual = clip.visual;
     right.effects = clip.effects;
     right.color = clip.color;
@@ -870,6 +871,27 @@ std::optional<std::string> SetClipKeepPitchCommand::redo(Project& project)
 void SetClipKeepPitchCommand::undo(Project& project)
 {
     project.locateClip(m_clipId)->clip->keepPitch = m_previous;
+}
+
+// --- SetClipEnhancedAudioCommand ---
+
+std::optional<std::string> SetClipEnhancedAudioCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    if (auto error = soundError(project, *location->track, *location->clip))
+        return error;
+    m_previous = location->clip->enhancedAudio;
+    location->clip->enhancedAudio = m_enhanced;
+    return std::nullopt;
+}
+
+void SetClipEnhancedAudioCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->enhancedAudio = m_previous;
 }
 
 // --- SetTrackMixCommand ---

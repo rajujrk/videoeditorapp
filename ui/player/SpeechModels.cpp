@@ -7,6 +7,8 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QProcess>
+#include <QScopeGuard>
 #include <QStandardPaths>
 
 SpeechModels::SpeechModels(QObject* parent) : QObject(parent), m_network(new QNetworkAccessManager(this))
@@ -15,9 +17,7 @@ SpeechModels::SpeechModels(QObject* parent) : QObject(parent), m_network(new QNe
     if (m_directory.isEmpty())
         m_directory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/Models");
     m_baseUrl = qEnvironmentVariable("TVE_MODEL_BASE_URL");
-    if (m_baseUrl.isEmpty())
-        m_baseUrl = QStringLiteral("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/");
-    if (!m_baseUrl.endsWith(QLatin1Char('/')))
+    if (!m_baseUrl.isEmpty() && !m_baseUrl.endsWith(QLatin1Char('/')))
         m_baseUrl += QLatin1Char('/');
 }
 
@@ -47,6 +47,13 @@ const std::vector<SpeechModels::Model>& SpeechModels::catalog()
          QStringLiteral("ggml-large-v3-turbo-q5_0.bin"), 574041195,
          QStringLiteral("394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2"), false,
          QStringLiteral("99 languages · most accurate")},
+        // Speech enhancement: the ONNX export in the DeepFilterNet repository (models/).
+        {QStringLiteral("deepfilternet3"), QStringLiteral("DeepFilterNet3"), QStringLiteral("DeepFilterNet3_onnx.tar.gz"),
+         7983136, QStringLiteral("c94d91f70911001c946e0fabb4aa9adc37045f45a03b56008cb0c8244cb63616"), false,
+         QStringLiteral("speech enhancement · 48 kHz"), QStringLiteral("enhance"),
+         QStringLiteral("https://github.com/Rikorose/DeepFilterNet/raw/main/models/DeepFilterNet3_onnx.tar.gz"),
+         {QStringLiteral("enc.onnx"), QStringLiteral("erb_dec.onnx"), QStringLiteral("df_dec.onnx"),
+          QStringLiteral("config.ini")}},
     };
     return models;
 }
@@ -64,6 +71,13 @@ std::optional<QString> SpeechModels::path(const QString& id) const
     const Model* model = find(id);
     if (!model)
         return std::nullopt;
+    if (!model->contents.isEmpty()) {
+        const QDir folder(QDir(m_directory).filePath(model->id));
+        for (const QString& name : model->contents)
+            if (!QFileInfo(folder.filePath(name)).isFile())
+                return std::nullopt;
+        return folder.path();
+    }
     const QString file = QDir(m_directory).filePath(model->file);
     const QFileInfo info(file);
     if (!info.isFile() || info.size() != model->size)
@@ -71,10 +85,12 @@ std::optional<QString> SpeechModels::path(const QString& id) const
     return file;
 }
 
-QVariantList SpeechModels::list() const
+QVariantList SpeechModels::list(const QString& kind) const
 {
     QVariantList list;
     for (const Model& model : catalog()) {
+        if (model.kind != kind)
+            continue;
         list << QVariantMap{{QStringLiteral("id"), model.id},
                             {QStringLiteral("title"), model.title},
                             {QStringLiteral("size"), double(model.size)},
@@ -123,7 +139,10 @@ bool SpeechModels::download(const QString& id, QString* error)
     m_downloading = id;
     m_received = 0;
     m_cancelled = false;
-    QNetworkRequest request(QUrl(m_baseUrl + model->file));
+    const QString url = !m_baseUrl.isEmpty() ? m_baseUrl + model->file
+                      : !model->url.isEmpty() ? model->url
+                                              : QStringLiteral("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/") + model->file;
+    QNetworkRequest request{QUrl(url)};
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     m_reply = m_network->get(request);
     connect(m_reply, &QNetworkReply::readyRead, this, [this] {
@@ -133,7 +152,7 @@ bool SpeechModels::download(const QString& id, QString* error)
         m_received += data.size();
         emit changed();
     });
-    connect(m_reply, &QNetworkReply::finished, this, [this, size = model->size, sha = model->sha256] {
+    connect(m_reply, &QNetworkReply::finished, this, [this, model, size = model->size, sha = model->sha256] {
         const QByteArray rest = m_reply->readAll();
         m_file->write(rest);
         m_hash->addData(rest);
@@ -146,6 +165,10 @@ bool SpeechModels::download(const QString& id, QString* error)
         if (m_received != size || QString::fromLatin1(m_hash->result().toHex()) != sha)
             return end(false, QStringLiteral("The downloaded model is not the expected file (size or SHA-256 differs)"));
         const QString finalPath = m_file->fileName().chopped(5);
+        if (!model->contents.isEmpty()) {
+            const QString why = unpack(*model, m_file->fileName());
+            return end(why.isEmpty(), why);
+        }
         QFile::remove(finalPath);
         if (!QFile::rename(m_file->fileName(), finalPath))
             return end(false, QStringLiteral("Cannot keep the downloaded model in ") + m_directory);
@@ -161,6 +184,43 @@ void SpeechModels::cancel()
         return;
     m_cancelled = true;
     m_reply->abort();
+}
+
+QString SpeechModels::unpack(const Model& model, const QString& archive)
+{
+    // The archive's SHA-256 matched, so what is in it is known; the system's tar unpacks it
+    // into a scratch folder, and the files the model needs move into <id>/.
+    QDir models(m_directory);
+    const QString scratch = models.filePath(model.id + QStringLiteral(".unpack"));
+    QDir(scratch).removeRecursively();
+    models.mkpath(scratch);
+    QProcess tar;
+    tar.start(QStringLiteral("/usr/bin/tar"), {QStringLiteral("-xzf"), archive, QStringLiteral("-C"), scratch});
+    const bool unpacked = tar.waitForFinished(60000) && tar.exitStatus() == QProcess::NormalExit && tar.exitCode() == 0;
+    QFile::remove(archive);
+    const auto cleanUp = qScopeGuard([&] { QDir(scratch).removeRecursively(); });
+    if (!unpacked)
+        return QStringLiteral("The downloaded model could not be unpacked");
+    const QString target = models.filePath(model.id);
+    QDir(target).removeRecursively();
+    models.mkpath(target);
+    for (const QString& name : model.contents) {
+        // Wherever it is in the archive (DeepFilterNet's is under tmp/export/).
+        QString found;
+        QList<QDir> folders{QDir(scratch)};
+        while (!folders.isEmpty() && found.isEmpty()) {
+            const QDir folder = folders.takeFirst();
+            if (QFileInfo(folder.filePath(name)).isFile())
+                found = folder.filePath(name);
+            for (const QString& sub : folder.entryList(QDir::Dirs | QDir::NoDotAndDotDot))
+                folders << QDir(folder.filePath(sub));
+        }
+        if (found.isEmpty() || !QFile::rename(found, QDir(target).filePath(name))) {
+            QDir(target).removeRecursively();
+            return QStringLiteral("The downloaded model is missing ") + name;
+        }
+    }
+    return {};
 }
 
 void SpeechModels::end(bool ok, const QString& error)

@@ -1,6 +1,7 @@
 #include "audio/dsp/Processors.h"
 
 #include "audio/dsp/Biquad.h"
+#include "audio/dsp/Denoise.h"
 
 #include <algorithm>
 #include <array>
@@ -705,6 +706,7 @@ const std::vector<ProcessorInfo>& processors()
             {"distortion", {{"drive", 0, 40, 12}, {"tone", 200, 16000, 6000}, {"output", -36, 12, -6}}, make<Distortion>},
             {"ringmod", {{"frequency", 1, 2000, 50}}, make<RingModulator>},
             {"noise", {{"level", -90, -10, -40}, {"tone", 200, 16000, 5000}}, make<Noise>},
+            {"denoise", {{"amount", 0, 1, 1}, {"quiet", -40, 0, 0}}, makeDenoiser},
         };
     }();
     return all;
