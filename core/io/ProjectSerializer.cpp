@@ -125,10 +125,12 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorGrade, exposure, contrast, 
                                                 gamma, gain, offset, master, red, green, blue, hsl, hueVsSat, hueVsHue,
                                                 lumaVsSat, lutPath, lutIntensity)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipLook, id, title, intensity, grade)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EnhancedAudio, path, limitDb)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
-                                                chromaKey, masks, matte, audioEffects, keepPitch, sequenceId, groupId)
+                                                chromaKey, masks, matte, audioEffects, enhancedAudio, keepPitch,
+                                                sequenceId, groupId)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips)
 NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {

@@ -236,8 +236,10 @@ int main(int argc, char** argv)
     qputenv("TVE_TEST_STILLS_DIR", stills.path().toLocal8Bit());
     QTemporaryDir analysis; // measured media
     qputenv("TVE_ANALYSIS_DIR", analysis.path().toLocal8Bit());
+    QTemporaryDir enhanced; // cleaned speech
+    qputenv("TVE_ENHANCED_DIR", enhanced.path().toLocal8Bit());
     // Speech models: an empty folder to download into, from a local "server" folder holding
-    // the real model (if tools/fetch_models.sh fetched it) and a corrupt one.
+    // the real models (if tools/fetch_models.sh fetched them) and a corrupt one.
     QTemporaryDir models;
     QTemporaryDir modelSource;
     qputenv("TVE_MODEL_DIR", models.path().toLocal8Bit());
@@ -245,6 +247,9 @@ int main(int argc, char** argv)
     const QString realModel = QStringLiteral(TVE_SAMPLES_DIR "/models/ggml-base.en-q5_1.bin");
     if (QFileInfo::exists(realModel))
         QFile::link(realModel, modelSource.path() + QStringLiteral("/ggml-base.en-q5_1.bin"));
+    const QString enhanceModel = QStringLiteral(TVE_SAMPLES_DIR "/models/DeepFilterNet3_onnx.tar.gz");
+    if (QFileInfo::exists(enhanceModel))
+        QFile::link(enhanceModel, modelSource.path() + QStringLiteral("/DeepFilterNet3_onnx.tar.gz"));
     {
         QFile corrupt(modelSource.path() + QStringLiteral("/ggml-small.en-q5_1.bin"));
         if (corrupt.open(QIODevice::WriteOnly))

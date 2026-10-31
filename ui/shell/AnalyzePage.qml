@@ -202,6 +202,84 @@ ScrollView {
             }
         }
 
+        // Speech enhancement
+        Section {
+            id: enhance
+            objectName: "enhanceSection"
+            visible: page.hasClip && page.hasSound && page.clipInfo.trackKind !== undefined
+            Layout.fillWidth: true
+            title: "Enhance speech"
+            readonly property var model: page.project.enhanceModel
+            readonly property var download: page.project.modelDownload
+            readonly property bool downloading: download.id !== undefined && download.id === model.id
+            readonly property var current: page.clipInfo.enhanced
+
+            Finding {
+                text: "Takes noise, hum and room echo out of voices with DeepFilterNet3, on this Mac. The clip then plays the cleaned sound."
+                color: Theme.color.textSecondary
+            }
+            // The model, once
+            RowLayout {
+                visible: enhance.model.downloaded !== true
+                Layout.fillWidth: true
+                TextButton {
+                    objectName: "downloadEnhanceModel"
+                    visible: !enhance.downloading
+                    text: "Download model (" + Math.round((enhance.model.size || 0) / 1e6) + " MB)"
+                    variant: "secondary"
+                    onClicked: page.project.downloadSpeechModel(enhance.model.id)
+                }
+                Text {
+                    objectName: "enhanceModelProgress"
+                    visible: enhance.downloading
+                    Layout.fillWidth: true
+                    text: "Downloading… " + Math.round((enhance.download.progress || 0) * 100) + " %"
+                    font: Theme.type.body
+                    color: Theme.color.textPrimary
+                }
+                TextButton {
+                    visible: enhance.downloading
+                    text: "Cancel"
+                    variant: "ghost"
+                    onClicked: page.project.cancelModelDownload()
+                }
+            }
+            Setting {
+                id: strength
+                objectName: "enhanceStrength"
+                label: "Lower noise by up to"
+                from: 6
+                to: 42
+                stepSize: 6
+                value: enhance.current ? Math.min(42, enhance.current.limitDb) : 42
+                format: (v) => v >= 42 ? "all of it" : v.toFixed(0) + " dB"
+            }
+            Finding {
+                objectName: "enhanceState"
+                visible: enhance.current !== undefined
+                text: !enhance.current ? ""
+                    : enhance.current.missing ? "The cleaned sound is missing; enhance again to make it."
+                    : enhance.current.limitDb >= 100 ? "Enhanced: the clip plays its cleaned sound."
+                    : "Enhanced, noise lowered by up to " + enhance.current.limitDb.toFixed(0) + " dB."
+            }
+            RowLayout {
+                TextButton {
+                    objectName: "enhanceSpeech"
+                    text: enhance.current && !enhance.current.missing ? "Apply strength" : "Enhance speech"
+                    variant: "primary"
+                    enabled: enhance.model.downloaded === true && !page.project.analyzing
+                    onClicked: page.project.enhanceSpeech(page.clipInfo.id, { limitDb: strength.value >= 42 ? 100 : strength.value })
+                }
+                TextButton {
+                    objectName: "removeEnhancement"
+                    visible: enhance.current !== undefined
+                    text: "Original sound"
+                    variant: "ghost"
+                    onClicked: page.project.removeEnhancement(page.clipInfo.id)
+                }
+            }
+        }
+
         // Ducking
         Section {
             objectName: "duckingSection"

@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), and caption styles with editing by transcript (12c) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c) and audio AI — speech enhancement and noise reduction (13a) — done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -36,7 +36,7 @@ What's in the repo:
   lock-free ring and a writer thread; waveform peak cache; thumbnail extraction.
 - `effects/` — built-in packages, all original (manifest + GLSL shaders): 61 video effects,
   60 transitions (basic, slides, wipes, shapes, zooms, 3D, distortions, luma wipes, light) and
-  40 audio effects (manifest chains, no shaders). See [effects/README.md](effects/README.md) for the
+  45 audio effects (manifest chains, no shaders). See [effects/README.md](effects/README.md) for the
   manifest format and shader contract.
 - `engine/gpu/` — effect library (manifests cross-checked against shader reflection), the
   GPU effect chain, and the compositor that places layers on the project canvas
@@ -156,6 +156,22 @@ again to match, all in one undo step. **Remove fillers** cuts every "um", "uh" a
 (transcription keeps them: it writes verbatim), and **Shorten pauses** trims pauses between
 words longer than a length down to 0.3 s.
 
+**Speech enhancement and noise reduction.** The Analyze tab's **Enhance speech** takes noise,
+hum and room echo out of a clip's voices with DeepFilterNet3 (MIT / Apache-2.0) run by ONNX
+Runtime, on this Mac: the first time it downloads the model (8 MB, from the DeepFilterNet
+repository on GitHub, SHA-256 checked), then cleans the clip's whole file in the background
+(with progress and Cancel; several times faster than real time). The clip then plays the
+cleaned copy — same timing, at any speed, in the player and the export — kept in
+`~/Library/Application Support/TechieVideoEditor/Enhanced` (`TVE_ENHANCED_DIR` moves it). **Lower
+noise by up to** sets the strength (6–36 dB, or all of it); a new strength only re-mixes the
+cleaned copy with the original, so it is quick. **Original sound** goes back; each is one undo
+step. For live clean-up there are five Clean-up audio effects on RNNoise (BSD-3-Clause, model
+data CC0): **Noise Reduction** (amount, and how much quieter between words), **Light Noise
+Reduction**, **Quiet Between Words**, **Voice Cleanup** (with a low cut, presence and gentle
+levelling) and **Podcast Voice** (also compressed and limited); they delay the clip's sound by
+30 ms (a frame, plus RNNoise's own two). Stem separation (vocals / music) waits for a model
+whose weights have a clear licence for use in an app.
+
 **Analyze.** The inspector's Analyze tab works on the selected clip (at normal speed) without
 any AI model: it measures the media once in the background (with progress and Cancel; the
 measurements are kept per file fingerprint in `~/Library/Caches/TechieVideoEditor/Analysis`,
@@ -225,17 +241,19 @@ arrives and leaves with the text. **Scroll** rolls the text up the frame over th
 (credits) or crawls it from right to left (a ticker). Everything is drawn per letter, so it
 looks the same in the player and the export.
 
-**Audio effects, mixer and loudness.** The Audio tab's Audio effects section stacks 40 effects
+**Audio effects, mixer and loudness.** The Audio tab's Audio effects section stacks 45 effects
 of our own on a clip's sound: EQ (Graphic EQ, Bass Boost, Treble Boost, Voice Clarity, Warmth,
 Low Cut, High Cut), dynamics (Compressor, Limiter, Noise Gate, Expander, Voice Leveler), rooms
 (Reverb, Small Room, Large Room, Concert Hall, Church, Cave, Corridor, Bathroom, Stadium),
 echoes (Echo, Ping-Pong Echo, Slapback), modulation (Chorus, Flanger, Stereo Widener,
 Rotating), Pitch Shift, and voices (Deeper Voice, Higher Voice, Child, Chipmunk, Monster,
-Robot, Radio, Telephone, Walkie-Talkie, Underwater, Megaphone). They run after the clip's
+Robot, Radio, Telephone, Walkie-Talkie, Underwater, Megaphone), and clean-up (Noise Reduction,
+Light Noise Reduction, Quiet Between Words, Voice Cleanup, Podcast Voice). They run after the clip's
 volume and fades, and echoes and reverb ring on past its end. Each is a package of data
 (`effects/audio`) chaining built-in processors — a ten-band EQ with 24 dB/octave cuts, a
 compressor, a look-ahead limiter, a gate, an algorithmic reverb, delays, chorus, a widener,
-auto-pan, a granular pitch shifter, distortion, a ring modulator and noise. Played faster or
+auto-pan, a granular pitch shifter, distortion, a ring modulator, noise and RNNoise noise
+reduction. Played faster or
 slower, a clip now keeps its pitch (time-stretched; the Speed tab's **Keep pitch** switch
 turns it back into tape-style). **Normalize** in the Loudness section measures a clip
 (ITU-R BS.1770) and sets its volume to −14, −16 or −23 LUFS, and the export dialog can
@@ -424,9 +442,15 @@ Set `TVE_AUDIO=null` to render audio without a sound card (used by the tests), o
 - CMake ≥ 3.25, Ninja, pkg-config, Qt 6.7+ (`brew install cmake ninja pkg-config qt`)
 - vcpkg (`git clone https://github.com/microsoft/vcpkg ~/vcpkg && ~/vcpkg/bootstrap-vcpkg.sh`)
 
-vcpkg builds FFmpeg (LGPL, with VideoToolbox), Catch2, nlohmann-json, miniaudio, ThorVG (MIT, for Lottie stickers) and whisper.cpp with ggml (MIT, with its Metal backend, for speech to text) from `vcpkg.json`.
-Speech models (Whisper, MIT) are not in the repository: the app downloads the one you choose from the
-official whisper.cpp model repository on Hugging Face and checks its SHA-256 before using it.
+vcpkg builds FFmpeg (LGPL, with VideoToolbox), Catch2, nlohmann-json, miniaudio, ThorVG (MIT, for Lottie stickers), whisper.cpp with ggml (MIT, with its Metal backend, for speech to text),
+RNNoise 0.2 (BSD-3-Clause, model data CC0; through an overlay port in `cmake/ports/rnnoise` that fetches the model
+0.2 was released with — vcpkg's own port pairs it with a later one that barely reduces noise — and builds it with
+CMake, so it builds on arm64 without autotools) and ONNX Runtime (MIT, built from source; its first build takes a while)
+from `vcpkg.json`. The vcpkg `overrides` pin ONNX Runtime's dependencies to the checked-out baseline, so a shallow
+vcpkg clone works.
+Models are not in the repository: the app downloads the one you choose — Whisper (MIT) from the
+official whisper.cpp model repository on Hugging Face, DeepFilterNet3 (MIT / Apache-2.0) from the
+DeepFilterNet repository on GitHub — and checks its SHA-256 before using it.
 Qt comes from Homebrew because building it through vcpkg takes hours.
 
 ## Build and test
@@ -436,7 +460,7 @@ export VCPKG_ROOT=~/vcpkg
 cmake --preset macos-release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
 cmake --build --preset macos-release
 tools/make_test_media.sh          # synthetic test videos (and a spoken sample, via `say`) in samples/
-tools/fetch_models.sh             # the speech model the tests use (57 MB, SHA-256 checked) into samples/models/
+tools/fetch_models.sh             # the models the tests use (Whisper 57 MB, DeepFilterNet3 8 MB, SHA-256 checked) into samples/models/
 ctest --preset macos-release
 ```
 

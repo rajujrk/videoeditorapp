@@ -36,6 +36,8 @@ add_library(tve_engine STATIC
     analysis/MediaAnalysis.cpp
     speech/Transcriber.h
     speech/Transcriber.cpp
+    speech/SpeechEnhancer.h
+    speech/SpeechEnhancer.cpp
     audio/WaveformCache.h
     audio/WaveformCache.cpp
     audio/AudioEffects.h
@@ -43,6 +45,8 @@ add_library(tve_engine STATIC
     audio/dsp/Biquad.h
     audio/dsp/Processors.h
     audio/dsp/Processors.cpp
+    audio/dsp/Denoise.h
+    audio/dsp/Denoise.cpp
     audio/dsp/TimeStretch.h
     audio/dsp/TimeStretch.cpp
     audio/dsp/Loudness.h
@@ -71,6 +75,11 @@ find_library(THORVG_LIBRARY thorvg-1 REQUIRED)
 # whisper.cpp (MIT) on ggml (MIT, with its Metal backend) for speech to text.
 find_package(whisper CONFIG REQUIRED)
 
+# RNNoise (BSD-3-Clause, model data CC0) for live voice noise reduction, and ONNX Runtime
+# (MIT) running DeepFilterNet3 (MIT / Apache-2.0) for speech enhancement.
+find_package(rnnoise CONFIG REQUIRED)
+find_package(onnxruntime CONFIG REQUIRED)
+
 # miniaudio is a single header from vcpkg.
 find_path(MINIAUDIO_INCLUDE_DIR miniaudio.h REQUIRED)
 add_library(tve::engine ALIAS tve_engine)
@@ -86,6 +95,9 @@ target_link_libraries(tve_engine
         tve::ffmpeg
         ${THORVG_LIBRARY}
         whisper
+        rnnoise::rnnoise
+        onnxruntime::onnxruntime
+        "-framework Accelerate"
         nlohmann_json::nlohmann_json
         "-framework VideoToolbox"
         "-framework CoreMedia"

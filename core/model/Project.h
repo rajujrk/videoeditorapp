@@ -106,6 +106,15 @@ struct ClipEffect {
     friend bool operator==(const ClipEffect&, const ClipEffect&) = default;
 };
 
+// A clip's sound cleaned by speech enhancement: a copy of its media's whole sound with the
+// same timing (engine/speech/SpeechEnhancer), played instead of the media's own.
+struct EnhancedAudio {
+    std::string path;      // a WAV in the app's analysis folder
+    double limitDb = 100;  // noise lowered by at most this much (≥ 100: all of it)
+
+    friend bool operator==(const EnhancedAudio&, const EnhancedAudio&) = default;
+};
+
 struct ColorRgba {
     double r = 1.0;
     double g = 1.0;
@@ -243,6 +252,8 @@ struct Clip {
     // Audio effects (engine/audio), in order, after the clip's volume and fades; their tails
     // (echoes, reverb) ring on past the clip's end.
     std::vector<ClipEffect> audioEffects;
+    // Plays this cleaned copy of the sound (if the file is there; else the media's own).
+    std::optional<EnhancedAudio> enhancedAudio;
 
     // Picture
     ClipVisual visual;

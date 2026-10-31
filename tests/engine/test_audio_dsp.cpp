@@ -89,8 +89,8 @@ TEST_CASE("the built-in audio effects load and all run", "[audio-dsp]")
         errors += e + "\n";
     INFO(errors);
     CHECK(library.errors().empty());
-    CHECK(library.effects().size() == 40);
-    const std::set<std::string> categories{"eq", "dynamics", "space", "echo", "modulation", "pitch", "voice"};
+    CHECK(library.effects().size() == 45);
+    const std::set<std::string> categories{"eq", "dynamics", "space", "echo", "modulation", "pitch", "voice", "cleanup"};
     std::set<std::string> seen;
     // Speech-like test sound: two tones and a little noise.
     std::vector<float> input = sine(220, 1.0, 0.3);

@@ -1204,7 +1204,7 @@ Rectangle {
                     Layout.fillWidth: true
                     title: "Audio effects"
                     readonly property var categoryNames: ({ eq: "EQ", dynamics: "Dynamics", space: "Room", echo: "Echo",
-                                                            modulation: "Modulation", pitch: "Pitch", voice: "Voice" })
+                                                            modulation: "Modulation", pitch: "Pitch", voice: "Voice", cleanup: "Clean-up" })
                     RowLayout {
                         Layout.fillWidth: true
                         ComboBox {

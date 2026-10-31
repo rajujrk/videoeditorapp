@@ -283,6 +283,24 @@ private:
     bool m_previous = true;
 };
 
+// Plays a clip's sound from a cleaned copy (speech enhancement), or (nullopt) its own again.
+class SetClipEnhancedAudioCommand final : public Command {
+public:
+    SetClipEnhancedAudioCommand(Id clipId, std::optional<EnhancedAudio> enhanced)
+        : m_clipId(clipId), m_enhanced(std::move(enhanced))
+    {
+    }
+
+    std::string label() const override { return m_enhanced ? "Enhance Speech" : "Original Sound"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    std::optional<EnhancedAudio> m_enhanced;
+    std::optional<EnhancedAudio> m_previous;
+};
+
 struct TrackMix {
     float gainDb = 0.0f;
     float pan = 0.0f;

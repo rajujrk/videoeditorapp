@@ -46,7 +46,7 @@ struct ProcessorInfo {
 };
 
 // eq, compressor, limiter, gate, reverb, delay, chorus, widener, autopan, pitch,
-// distortion, ringmod, noise.
+// distortion, ringmod, noise, denoise (RNNoise).
 const std::vector<ProcessorInfo>& processors();
 const ProcessorInfo* findProcessor(std::string_view id);
 

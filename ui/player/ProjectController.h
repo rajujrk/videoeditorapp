@@ -137,6 +137,8 @@ class ProjectController : public QObject {
     // Captions: the speech models ({id, title, size, englishOnly, downloaded}), a download in
     // progress ({id, received, total, progress}), and the languages captions can be made in.
     Q_PROPERTY(QVariantList speechModels READ speechModels NOTIFY speechModelsChanged)
+    // The speech enhancement model: {id, title, size, note, downloaded}.
+    Q_PROPERTY(QVariantMap enhanceModel READ enhanceModel NOTIFY speechModelsChanged)
     Q_PROPERTY(QVariantMap modelDownload READ modelDownload NOTIFY speechModelsChanged)
     Q_PROPERTY(QVariantList captionLanguages READ captionLanguages CONSTANT)
     // How many captions the caption track holds, and how they follow the speech ("none",
@@ -263,6 +265,7 @@ public:
     QVariantMap scenes() const { return m_scenes; }
     QVariantMap beats() const { return m_beats; }
     QVariantList speechModels() const { return m_speechModels.list(); }
+    QVariantMap enhanceModel() const;
     QVariantMap modelDownload() const { return m_speechModels.progress(); }
     QVariantList captionLanguages() const;
     int captionCount() const;
@@ -528,6 +531,13 @@ public:
     // volume keyframes dipping by amountDb with fades of `fade` seconds. options: amountDb,
     // fade, thresholdDb.
     Q_INVOKABLE bool duckUnderSpeech(double clipId, const QVariantMap& options = {});
+    // Speech enhancement (DeepFilterNet3, downloaded with downloadSpeechModel("deepfilternet3")):
+    // the clip plays a cleaned copy of its media's sound, made in the background (once per
+    // media; a new strength only re-mixes it). options: limitDb (noise lowered by at most
+    // this much; ≥ 100 or absent: all of it). One undo step; analysisFinished reports.
+    Q_INVOKABLE bool enhanceSpeech(double clipId, const QVariantMap& options = {});
+    // The clip plays its media's own sound again.
+    Q_INVOKABLE bool removeEnhancement(double clipId);
     Q_INVOKABLE void cancelAnalysis();
 
     // Captions. Downloads a speech model (checked by SHA-256); modelDownloadFinished reports.

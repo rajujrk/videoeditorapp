@@ -1,0 +1,18 @@
+{
+  "id": "tve.audio.podcast_voice",
+  "version": 1,
+  "kind": "audio-effect",
+  "category": ["cleanup"],
+  "title": {"en": "Podcast Voice"},
+  "params": [
+    {"id": "amount", "type": "float", "title": {"en": "Noise reduction"}, "min": 0, "max": 1, "default": 1},
+    {"id": "makeup", "type": "float", "title": {"en": "Loudness"}, "min": 0, "max": 18, "default": 6}
+  ],
+  "chain": [
+    {"processor": "denoise", "settings": {"quiet": -12}},
+    {"processor": "eq", "settings": {"lowCut": 90, "b125": 1.5, "b250": -2, "b4k": 3, "b8k": 1.5}},
+    {"processor": "compressor", "settings": {"threshold": -22, "ratio": 3.5, "attack": 10, "release": 180, "knee": 8}},
+    {"processor": "limiter", "settings": {"ceiling": -1}}
+  ],
+  "license": "TVE-Original"
+}

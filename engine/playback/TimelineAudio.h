@@ -100,6 +100,7 @@ public:
 private:
     struct ClipStream {
         std::unique_ptr<AudioDecoder> decoder;
+        std::string enhancedPath; // the clip's cleaned sound the decoder was opened for ("": none)
         Ticks nextSourceTime = -1;
         std::unique_ptr<AudioEffectChain> effects;
         std::unique_ptr<dsp::TimeStretcher> stretcher;

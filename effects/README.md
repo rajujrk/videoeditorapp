@@ -310,6 +310,7 @@ settings, every param used) and leaves out — with a reason — any that fail.
 | `distortion` | drive, tone, output |
 | `ringmod` | frequency |
 | `noise` | level, tone |
+| `denoise` | amount, quiet (RNNoise 0.2 per channel; 30 ms late, so it blends its own dry sound: no `mix`) |
 
 | Title | Folder | Category | Chain | Params |
 |---|---|---|---|---|
@@ -353,6 +354,11 @@ settings, every param used) and leaves out — with a reason — any that fail.
 | Telephone | `telephone` | voice | eq → distortion | mix |
 | Underwater | `underwater` | voice | eq → chorus → reverb | mix |
 | Walkie-Talkie | `walkie_talkie` | voice | eq → distortion → noise | drive |
+| Light Noise Reduction | `light_noise_reduction` | cleanup | denoise | amount |
+| Noise Reduction | `noise_reduction` | cleanup | denoise | amount, quiet |
+| Podcast Voice | `podcast_voice` | cleanup | denoise → eq → compressor → limiter | amount, makeup |
+| Quiet Between Words | `quiet_between_words` | cleanup | denoise | quiet |
+| Voice Cleanup | `voice_cleanup` | cleanup | denoise → eq → compressor | amount |
 
 ## Stickers
 

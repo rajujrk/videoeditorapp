@@ -98,9 +98,9 @@ Item {
         function test_audio_effects_on_a_clip() {
             const f = withClip()
             const p = f.project
-            compare(p.audioEffects.length, 40)
+            compare(p.audioEffects.length, 45)
             compare(p.audioEffects[0].categories[0], "eq")
-            compare(p.audioEffects[p.audioEffects.length - 1].categories[0], "voice")
+            compare(p.audioEffects[p.audioEffects.length - 1].categories[0], "cleanup")
             click(f.editor, "inspectorTab:Audio")
             const picker = settled(f.editor, "audioEffectPicker")
             const robot = p.audioEffects.findIndex((e) => e.id === "tve.audio.robot")
