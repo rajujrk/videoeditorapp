@@ -1,6 +1,7 @@
 #pragma once
 
 #include "commands/Command.h"
+#include "model/Captions.h"
 #include "model/Project.h"
 
 #include <optional>
@@ -132,6 +133,27 @@ public:
 private:
     Id m_clipId;
     Project m_before;
+};
+
+// --- Captions ---
+
+// Puts captions on the project's caption track (made on top if there is none), replacing what
+// it held: one title clip per caption, in the caption style, keeping its words' timing.
+// A redo after an undo gives the clips the same ids.
+class SetCaptionsCommand final : public Command {
+public:
+    SetCaptionsCommand(std::vector<CaptionBlock> captions, std::string label = "Set Captions")
+        : m_captions(std::move(captions)), m_label(std::move(label)) {}
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    std::vector<CaptionBlock> m_captions;
+    std::string m_label;
+    Project m_before;
+    std::optional<Project> m_after;
 };
 
 // --- Time ranges ---

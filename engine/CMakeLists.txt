@@ -34,6 +34,8 @@ add_library(tve_engine STATIC
     analysis/Scopes.cpp
     analysis/MediaAnalysis.h
     analysis/MediaAnalysis.cpp
+    speech/Transcriber.h
+    speech/Transcriber.cpp
     audio/WaveformCache.h
     audio/WaveformCache.cpp
     audio/AudioEffects.h
@@ -66,6 +68,9 @@ set_source_files_properties(audio/MiniaudioImpl.c PROPERTIES COMPILE_OPTIONS "-w
 find_path(THORVG_INCLUDE_DIR thorvg.h PATH_SUFFIXES thorvg-1 REQUIRED)
 find_library(THORVG_LIBRARY thorvg-1 REQUIRED)
 
+# whisper.cpp (MIT) on ggml (MIT, with its Metal backend) for speech to text.
+find_package(whisper CONFIG REQUIRED)
+
 # miniaudio is a single header from vcpkg.
 find_path(MINIAUDIO_INCLUDE_DIR miniaudio.h REQUIRED)
 add_library(tve::engine ALIAS tve_engine)
@@ -80,6 +85,8 @@ target_link_libraries(tve_engine
     PRIVATE
         tve::ffmpeg
         ${THORVG_LIBRARY}
+        whisper
+        nlohmann_json::nlohmann_json
         "-framework VideoToolbox"
         "-framework CoreMedia"
         "-framework CoreAudio"

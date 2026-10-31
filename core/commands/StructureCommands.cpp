@@ -351,6 +351,55 @@ void BreakCompoundCommand::undo(Project& project)
     restore(project, m_before);
 }
 
+// --- Captions ---
+
+std::optional<std::string> SetCaptionsCommand::redo(Project& project)
+{
+    if (m_after) {
+        const Id next = std::max(project.nextId(), m_after->nextId());
+        m_before = project;
+        project = *m_after;
+        project.setNextId(next);
+        return std::nullopt;
+    }
+    auto found = std::ranges::find_if(project.tracks, [](const Track& t) { return t.captions; });
+    if (found != project.tracks.end() && found->locked)
+        return "the caption track is locked";
+    m_before = project;
+    if (found == project.tracks.end()) {
+        project.tracks.push_back(Track{.id = project.allocateId(), .kind = TrackKind::Title, .name = "Captions", .captions = true});
+        found = project.tracks.end() - 1;
+    }
+    Track& track = *found;
+    track.clips.clear();
+    std::vector<CaptionBlock> captions = m_captions;
+    std::ranges::sort(captions, {}, &CaptionBlock::start);
+    for (std::size_t i = 0; i < captions.size(); ++i) {
+        CaptionBlock& c = captions[i];
+        if (i + 1 < captions.size())
+            c.end = std::min(c.end, captions[i + 1].start); // never over the next one
+        if (c.end <= c.start || c.start < 0)
+            continue;
+        Clip clip;
+        clip.id = project.allocateId();
+        clip.start = c.start;
+        clip.duration = c.end - c.start;
+        clip.text = captionText();
+        clip.text->text = c.text.substr(0, kMaxTextLength);
+        for (const TimedWord& w : c.words)
+            clip.text->words.push_back({w.start - c.start, w.end - c.start, w.text});
+        clip.visual = captionVisual();
+        track.insertClip(std::move(clip));
+    }
+    m_after = project;
+    return std::nullopt;
+}
+
+void SetCaptionsCommand::undo(Project& project)
+{
+    restore(project, m_before);
+}
+
 // --- Time ranges ---
 
 std::optional<std::string> RemoveRangesCommand::redo(Project& project)

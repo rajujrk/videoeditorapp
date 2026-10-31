@@ -2,9 +2,12 @@
 
 #include "Exporter.h"
 #include "ProxyManager.h"
+#include "SpeechModels.h"
 #include "TrackListModel.h"
 #include "VideoView.h"
 #include "analysis/MediaAnalysis.h"
+#include "model/Captions.h"
+#include "speech/Transcriber.h"
 #include "commands/CommandStack.h"
 #include "encode/MediaWriter.h"
 #include "model/Project.h"
@@ -130,6 +133,14 @@ class ProjectController : public QObject {
     // {clipId, bpm, times: [seconds]}: the beat.
     Q_PROPERTY(QVariantMap beats READ beats NOTIFY analysisChanged)
 
+    // Captions: the speech models ({id, title, size, englishOnly, downloaded}), a download in
+    // progress ({id, received, total, progress}), and the languages captions can be made in.
+    Q_PROPERTY(QVariantList speechModels READ speechModels NOTIFY speechModelsChanged)
+    Q_PROPERTY(QVariantMap modelDownload READ modelDownload NOTIFY speechModelsChanged)
+    Q_PROPERTY(QVariantList captionLanguages READ captionLanguages CONSTANT)
+    // How many captions the caption track holds.
+    Q_PROPERTY(int captionCount READ captionCount NOTIFY projectChanged)
+
     // Export: the render queue. Jobs run one at a time, in order; `exporting` while one is
     // running (or paused), with its progress (0–1).
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportChanged)
@@ -245,6 +256,10 @@ public:
     QVariantMap silences() const { return m_silences; }
     QVariantMap scenes() const { return m_scenes; }
     QVariantMap beats() const { return m_beats; }
+    QVariantList speechModels() const { return m_speechModels.list(); }
+    QVariantMap modelDownload() const { return m_speechModels.progress(); }
+    QVariantList captionLanguages() const;
+    int captionCount() const;
     QVariantList exportJobs() const;
     QVariantList exportPresets() const;
     QVariantList exportFormats() const;
@@ -506,6 +521,17 @@ public:
     // fade, thresholdDb.
     Q_INVOKABLE bool duckUnderSpeech(double clipId, const QVariantMap& options = {});
     Q_INVOKABLE void cancelAnalysis();
+
+    // Captions. Downloads a speech model (checked by SHA-256); modelDownloadFinished reports.
+    Q_INVOKABLE bool downloadSpeechModel(const QString& modelId);
+    Q_INVOKABLE void cancelModelDownload();
+    // Transcribes the selected clips (or, with none selected, every clip with sound) in the
+    // background and puts captions on the caption track (replacing it; one undo step).
+    // options: model (a speechModels id), language (a code, or "auto").
+    Q_INVOKABLE bool generateCaptions(const QVariantMap& options = {});
+    // SRT or WebVTT (by the file's extension): the caption track out, or a file in (replacing it).
+    Q_INVOKABLE bool exportSubtitles(const QUrl& file);
+    Q_INVOKABLE bool importSubtitles(const QUrl& file);
     Q_INVOKABLE void clearAnalysis();
 
     // Queues an export of the project as it is now; it runs when the jobs before it are done,
@@ -575,6 +601,8 @@ signals:
     // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
     void exportFinished(bool ok, const QString& message, double jobId);
     void analysisChanged();
+    void speechModelsChanged();
+    void modelDownloadFinished(const QString& modelId, bool ok, const QString& error);
     // An analysis finished (ok) or failed or was cancelled (message, empty when cancelled).
     void analysisFinished(bool ok, const QString& message);
 
@@ -693,6 +721,13 @@ private:
     std::string fingerprintOf(const tve::MediaItem& media) const;
     // The clip, when its media can be analysed at normal speed; otherwise nullptr and an error.
     const tve::Clip* analysableClip(tve::Id clipId, bool needsSound, bool needsPictures);
+    // Runs `work` on the analysis thread (it returns an error, "cancelled", or empty when
+    // done), then `then` here.
+    void runInBackground(const QString& task, std::function<std::string(const tve::AnalysisProgress&)> work,
+                         std::function<void()> then);
+    std::vector<tve::CaptionBlock> captionBlocks() const;
+    SpeechModels m_speechModels;
+    std::map<std::string, tve::Transcript> m_transcripts; // by fingerprint + model + language
     std::map<std::string, tve::AudioFeatures> m_audioFeatures;
     std::map<std::string, tve::VideoFeatures> m_videoFeatures;
     std::thread m_analysisThread;

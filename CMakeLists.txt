@@ -42,7 +42,7 @@ add_subdirectory(engine)
 add_subdirectory(tools)
 
 if(TVE_BUILD_APP)
-    find_package(Qt6 6.7 REQUIRED COMPONENTS Core Gui GuiPrivate Quick QuickControls2 ShaderTools)
+    find_package(Qt6 6.7 REQUIRED COMPONENTS Core Gui GuiPrivate Quick QuickControls2 ShaderTools Network)
     qt_standard_project_setup(REQUIRES 6.7)
     add_subdirectory(effects)
     add_subdirectory(engine/gpu)

@@ -55,6 +55,7 @@ Rectangle {
         { icon: "effects", label: "Effects", phase: "" },
         { icon: "filters", label: "Filters", phase: "" },
         { icon: "stickers", label: "Stickers", phase: "" },
+        { icon: "captions", label: "Captions", phase: "" },
         { icon: "templates", label: "Templates", phase: "Template mode — Phase 4" }
     ]
 
@@ -135,6 +136,7 @@ Rectangle {
             SearchField {
                 id: searchField
                 objectName: "librarySearch"
+                visible: library.tabs[library.currentTab].label !== "Captions"
                 Layout.fillWidth: true
                 Layout.margins: Theme.space.m
                 placeholderText: "Search " + library.tabs[library.currentTab].label.toLowerCase()
@@ -219,6 +221,15 @@ Rectangle {
                         }
                     }
                 }
+            }
+
+            CaptionsPage {
+                id: captionsPage
+                objectName: "captionsPage"
+                visible: library.tabs[library.currentTab].label === "Captions"
+                project: library.project
+                Layout.fillWidth: true
+                Layout.fillHeight: true
             }
 
             // Stickers tab: animated stickers (Lottie), playing on hover; click to add one at the
@@ -970,7 +981,7 @@ Rectangle {
 
             Item {
                 visible: !effectsGrid.visible && !looksGrid.visible && !transitionsGrid.visible && !titlesGrid.visible
-                         && !mediaBin.visible && !stickersGrid.visible
+                         && !mediaBin.visible && !stickersGrid.visible && !captionsPage.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 

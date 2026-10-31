@@ -61,3 +61,15 @@ make gradients_1080p30_h264.mp4 -f lavfi -i gradients=size=1920x1080:rate=30:spe
 make test_anim.gif -f lavfi -i testsrc2=size=320x240:rate=10 -t 2
 
 echo "done: $out"
+
+# Speech for the speech-to-text tests: two sentences with a pause between, spoken by the
+# system's text-to-speech (macOS `say`, voice Daniel), as 48 kHz mono WAV.
+if [[ ! -f "$out/speech_en.wav" ]]; then
+    echo "creating: speech_en.wav"
+    say -v Daniel -r 160 -o "$out/speech_en.aiff" \
+        "The quick brown fox jumps over the lazy dog. [[slnc 1500]] We edit our videos on the timeline every day."
+    afconvert -f WAVE -d LEI16@48000 -c 1 "$out/speech_en.aiff" "$out/speech_en.wav"
+    rm -f "$out/speech_en.aiff"
+else
+    echo "exists: speech_en.wav"
+fi
