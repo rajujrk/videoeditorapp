@@ -311,6 +311,197 @@ ScrollView {
             }
         }
 
+        // Steadying: stabilization, flicker, temporal denoise
+        Section {
+            id: steady
+            objectName: "steadySection"
+            visible: page.canFindPeople
+            Layout.fillWidth: true
+            title: "Steady and clean"
+            readonly property var stab: page.clipInfo.stabilization || ({})
+            readonly property var flicker: page.clipInfo.deflicker || ({})
+
+            Finding {
+                text: "Smooths a shaky camera (zooming in just enough to hide the edges), evens out flicker and takes grain out over time."
+                color: Theme.color.textSecondary
+            }
+            Setting {
+                id: smoothness
+                objectName: "stabilizeSmoothness"
+                label: "Smoothness"
+                from: 0; to: 1; stepSize: 0.05
+                value: steady.stab.smoothness !== undefined ? steady.stab.smoothness : 0.5
+                format: (v) => Math.round(v * 100) + " %"
+                enabled: !lockSwitch.checked
+                onCommitted: if (steady.stab.enabled) page.project.stabilize(page.clipInfo.id, { smoothness: value })
+            }
+            ToggleSwitch {
+                id: lockSwitch
+                objectName: "stabilizeLock"
+                text: "Lock the camera (tripod)"
+                checked: steady.stab.lock === true
+                onToggled: if (steady.stab.enabled) page.project.stabilize(page.clipInfo.id, { lock: checked })
+            }
+            Finding {
+                objectName: "stabilizeState"
+                visible: steady.stab.enabled === true
+                text: "Stabilized, zoomed in " + Math.round(((steady.stab.zoom || 1) - 1) * 100) + " %."
+            }
+            RowLayout {
+                TextButton {
+                    objectName: "stabilize"
+                    text: steady.stab.enabled ? "Stabilize again" : "Stabilize"
+                    variant: "primary"
+                    enabled: !page.project.analyzing
+                    onClicked: page.project.stabilize(page.clipInfo.id, { smoothness: smoothness.value, lock: lockSwitch.checked })
+                }
+                TextButton {
+                    objectName: "removeStabilization"
+                    visible: steady.stab.enabled === true
+                    text: "Remove"
+                    variant: "ghost"
+                    onClicked: page.project.removeStabilization(page.clipInfo.id)
+                }
+            }
+            Setting {
+                id: flickerStrength
+                objectName: "deflickerStrength"
+                label: "Flicker: even out changes up to"
+                from: 0; to: 1; stepSize: 0.05
+                value: steady.flicker.strength !== undefined ? steady.flicker.strength : 0.5
+                format: (v) => (0.1 + 1.9 * v).toFixed(1) + " s"
+                onCommitted: if (steady.flicker.enabled) page.project.removeFlicker(page.clipInfo.id, { strength: value })
+            }
+            RowLayout {
+                TextButton {
+                    objectName: "removeFlicker"
+                    text: steady.flicker.enabled ? "Flicker removed" : "Remove flicker"
+                    variant: steady.flicker.enabled ? "secondary" : "primary"
+                    enabled: !page.project.analyzing && steady.flicker.enabled !== true
+                    onClicked: page.project.removeFlicker(page.clipInfo.id, { strength: flickerStrength.value })
+                }
+                TextButton {
+                    objectName: "keepFlicker"
+                    visible: steady.flicker.enabled === true
+                    text: "Undo it"
+                    variant: "ghost"
+                    onClicked: page.project.keepFlicker(page.clipInfo.id)
+                }
+            }
+            Setting {
+                objectName: "denoiseStrength"
+                label: "Denoise over time"
+                from: 0; to: 1; stepSize: 0.05
+                value: page.clipInfo.denoise || 0
+                format: (v) => v === 0 ? "off" : Math.round(v * 100) + " %"
+                onCommitted: page.project.setDenoise(page.clipInfo.id, value)
+            }
+        }
+
+        // Tracking
+        Section {
+            id: tracking
+            objectName: "trackSection"
+            visible: page.canFindPeople
+            Layout.fillWidth: true
+            title: "Track motion"
+            readonly property bool hasArea: page.project.trackArea.clipId === page.clipInfo.id
+
+            Finding {
+                text: "Follows something through the clip from the playhead, so titles and stickers can move with it."
+                color: Theme.color.textSecondary
+            }
+            TextButton {
+                objectName: "chooseTrackArea"
+                text: page.project.pickingTrackArea ? "Drag a box on the player…" : tracking.hasArea ? "Draw again" : "Choose what to follow"
+                variant: "secondary"
+                onClicked: page.project.pickingTrackArea = !page.project.pickingTrackArea
+            }
+            RowLayout {
+                visible: tracking.hasArea
+                TextButton {
+                    objectName: "trackObject"
+                    text: "Track object"
+                    variant: "primary"
+                    enabled: !page.project.analyzing && page.steady
+                    tip: "Something that moves and may change shape: a person, a car, a ball"
+                    onClicked: page.project.trackMotion(page.clipInfo.id, { surface: false })
+                }
+                TextButton {
+                    objectName: "trackSurface"
+                    text: "Track surface"
+                    variant: "secondary"
+                    enabled: !page.project.analyzing && page.steady
+                    tip: "A flat rectangle that also turns: a screen, a sign, a page"
+                    onClicked: page.project.trackMotion(page.clipInfo.id, { surface: true })
+                }
+            }
+            Repeater {
+                model: page.clipInfo.motionTracks || []
+                delegate: RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    Text {
+                        objectName: "motionTrack:" + modelData.id
+                        Layout.fillWidth: true
+                        text: "Track " + modelData.id + " · " + (modelData.surface ? "surface" : "object") + " · "
+                              + modelData.start.toFixed(1) + "–" + modelData.end.toFixed(1) + " s"
+                        font: Theme.type.body
+                        color: Theme.color.textPrimary
+                    }
+                    TextButton {
+                        objectName: "deleteTrack:" + modelData.id
+                        text: "Delete"
+                        variant: "ghost"
+                        onClicked: page.project.deleteTrack(page.clipInfo.id, modelData.id)
+                    }
+                }
+            }
+        }
+
+        // Following a track (any clip with a picture)
+        Section {
+            id: follow
+            objectName: "followSection"
+            readonly property var choices: {
+                page.project.undoText // new tracks
+                return page.hasClip && page.clipInfo.isAdjustment !== true && page.clipInfo.trackKind === "video"
+                        ? page.project.tracksToFollow(page.clipInfo.id) : []
+            }
+            visible: choices.length > 0
+            Layout.fillWidth: true
+            title: "Follow a track"
+
+            ComboBox {
+                id: followChoice
+                objectName: "followChoice"
+                Layout.fillWidth: true
+                model: follow.choices
+                textRole: "label"
+            }
+            ToggleSwitch {
+                id: followScale
+                objectName: "followScale"
+                text: "Grow and shrink with it"
+            }
+            ToggleSwitch {
+                id: followTurn
+                objectName: "followTurn"
+                text: "Turn with it (surfaces)"
+            }
+            TextButton {
+                objectName: "followTrack"
+                text: "Follow"
+                variant: "primary"
+                tip: "Moves this clip with the track from where it is at the playhead, as keyframes"
+                onClicked: {
+                    const c = follow.choices[followChoice.currentIndex]
+                    page.project.followTrack(page.clipInfo.id, c.clipId, c.trackId,
+                                             { scale: followScale.checked, rotation: followTurn.checked })
+                }
+            }
+        }
+
         // Pauses
         Section {
             id: pauses

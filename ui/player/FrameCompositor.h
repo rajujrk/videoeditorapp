@@ -96,6 +96,9 @@ private:
     QRhiTexture* stillTexture(QRhiCommandBuffer* cb, const std::string& path);
     // A sticker's (Lottie) frame `seconds` into its clip, drawn when the frame changes.
     QRhiTexture* stickerTexture(QRhiCommandBuffer* cb, tve::Id clipId, const std::string& path, double seconds);
+    // A clip's picture denoised over time against its previous frame (when the frame just
+    // drawn was the one before this; the same frame again: as drawn last time).
+    QRhiTexture* denoised(QRhiCommandBuffer* cb, tve::Id clipId, QRhiTexture* picture, tve::Ticks frame, float strength);
     // The person matte of a clip's decoded frame (Vision), found once per frame.
     QRhiTexture* personMatte(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame);
 
@@ -137,6 +140,12 @@ private:
         std::unique_ptr<QRhiTexture> texture;
     };
     std::map<tve::Id, PersonMatteTexture> m_personMattes;
+    struct DenoiseHistory {
+        std::unique_ptr<QRhiTexture> texture; // the last frame drawn, denoised
+        tve::Ticks frame = -1;
+        float strength = 0.0f;
+    };
+    std::map<tve::Id, DenoiseHistory> m_denoise;
     std::uint64_t m_renders = 0;
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_clipChains;
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_canvasChains; // canvas effects

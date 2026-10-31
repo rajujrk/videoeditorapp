@@ -26,6 +26,19 @@ struct LayerPeople {
     bool any() const { return cutout.enabled || !faces.empty(); }
 };
 
+// How a clip's picture is steadied at one frame: the stabilization's correction and zoom,
+// the flicker gain, and the temporal denoise strength.
+struct LayerMotion {
+    bool steady = false;
+    float zoom = 1.0f;
+    float dx = 0.0f, dy = 0.0f, angle = 0.0f, scale = 1.0f; // see SteadySample
+    float gain = 1.0f;
+    float denoise = 0.0f;
+    Ticks sourceTime = 0; // which frame (history is kept only from one frame to the next)
+
+    bool warps() const { return steady || gain != 1.0f; }
+};
+
 struct LayerTransition {
     std::string transitionId;
     std::map<std::string, std::vector<float>> values;
@@ -41,6 +54,7 @@ struct LayerTransition {
     std::vector<ClipMask> masks;
     double clipSeconds = 0.0; // how far into the incoming clip
     LayerPeople people;
+    LayerMotion motion;
 };
 
 // One clip's picture at a moment of the timeline, with how to show it. During a
@@ -70,8 +84,9 @@ struct VideoLayer {
     double clipDuration = 0.0;
     // A compound clip: its sequence's layers at this moment, drawn as its picture.
     std::shared_ptr<CompositeFrame> nested;
-    // After the masks, before the effects.
+    // People and motion: first of all, on the decoded picture (see FrameCompositor).
     LayerPeople people;
+    LayerMotion motion;
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.

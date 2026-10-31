@@ -163,6 +163,7 @@ void FrameCompositor::reset()
     m_stickers.clear();
     m_stills.clear();
     m_personMattes.clear();
+    m_denoise.clear();
 }
 
 void FrameCompositor::flushTextureCache()
@@ -237,7 +238,8 @@ QRhiTexture* FrameCompositor::convertLayer(QRhiCommandBuffer* cb, LayerSlot& slo
         const QRhiTexture::Format format =
             m_rhi->isTextureFormatSupported(QRhiTexture::RGBA16F) ? QRhiTexture::RGBA16F : QRhiTexture::RGBA8;
         slot.target.reset();
-        slot.rgb.reset(m_rhi->newTexture(format, size, 1, QRhiTexture::RenderTarget));
+        // (A transfer source too: temporal denoise keeps a copy of the frame.)
+        slot.rgb.reset(m_rhi->newTexture(format, size, 1, QRhiTexture::RenderTarget | QRhiTexture::UsedAsTransferSource));
         if (!slot.rgb->create())
             return nullptr;
         slot.target.reset(m_rhi->newTextureRenderTarget({slot.rgb.get()}));
@@ -375,6 +377,37 @@ QRhiTexture* FrameCompositor::personMatte(QRhiCommandBuffer* cb, tve::Id clipId,
     return matte.texture.get();
 }
 
+QRhiTexture* FrameCompositor::denoised(QRhiCommandBuffer* cb, tve::Id clipId, QRhiTexture* picture, tve::Ticks frame,
+                                       float strength)
+{
+    DenoiseHistory& history = m_denoise[clipId];
+    const QSize size = picture->pixelSize();
+    if (history.texture && history.texture->pixelSize() == size && history.frame == frame && history.strength == strength)
+        return history.texture.get(); // drawn again (paused, scrubbed back to it)
+    // Only the frame right before counts as history (a jump elsewhere starts afresh).
+    const tve::Ticks gap = frame - history.frame;
+    const bool follows = history.texture && history.texture->pixelSize() == size && history.strength == strength
+                      && gap > 0 && gap <= tve::kTicksPerSecond / 10;
+    QRhiTexture* result = follows ? m_masks->denoise(cb, picture, history.texture.get(), strength) : picture;
+    if (!history.texture || history.texture->pixelSize() != size) {
+        history.texture.reset(m_rhi->newTexture(QRhiTexture::RGBA16F, size, 1, QRhiTexture::UsedAsTransferSource));
+        if (!history.texture->create()) {
+            history.texture.reset();
+            return result;
+        }
+    }
+    if (result->format() == history.texture->format()) {
+        QRhiResourceUpdateBatch* copy = m_rhi->nextResourceUpdateBatch();
+        copy->copyTexture(history.texture.get(), result);
+        cb->resourceUpdate(copy);
+        history.frame = frame;
+        history.strength = strength;
+    } else {
+        history.frame = -1; // (an 8-bit picture: no history kept)
+    }
+    return result;
+}
+
 QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame& frame, QSize canvas, float seconds,
                                      PreviewOverrides* overrides, std::vector<CVMetalTextureRef>& retained)
 {
@@ -392,6 +425,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::set<tve::Id> liveTitles;
     std::set<tve::Id> liveStickers;
     std::set<tve::Id> liveMattes;
+    std::set<tve::Id> liveDenoise;
     std::set<tve::Id> liveCanvasClips;
     std::size_t effectCanvasIndex = 0;
     // Each clip's canvas effects, by clip, as clipPicture() leaves them for placement.
@@ -409,7 +443,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                                  tve::ChromaKey key = {}, std::vector<tve::ClipMask> masks = {},
                                  double clipSeconds = 0.0, double clipDuration = 0.0,
                                  tve::CompositeFrame* nested = nullptr,
-                                 const tve::LayerPeople* people = nullptr) -> QRhiTexture* {
+                                 const tve::LayerPeople* people = nullptr,
+                                 const tve::LayerMotion* motion = nullptr) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
         if (canvasBelow) {
             picture = canvasBelow; // an adjustment layer works on what is under it
@@ -435,6 +470,28 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         }
         if (!picture)
             return nullptr;
+        // First of all, on the decoded picture: people (the cutout from a matte found in this
+        // very frame, then covered faces), where Vision saw them.
+        if (people && decoded.pixelBuffer()) {
+            if (people->cutout.enabled) {
+                liveMattes.insert(clipId);
+                picture = m_masks->cutout(cb, picture, personMatte(cb, clipId, decoded), people->cutout);
+            }
+            picture = m_masks->coverFaces(cb, picture, people->faces, people->cover, people->amount);
+        }
+        // Motion: steadied and evened out, then denoised over time (steady frames denoise best).
+        if (motion && decoded.pixelBuffer()) {
+            if (motion->warps()) {
+                const std::array<float, 4> correction = motion->steady
+                                                            ? std::array<float, 4>{motion->dx, motion->dy, motion->angle, motion->scale}
+                                                            : std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f};
+                picture = m_masks->steady(cb, picture, motion->steady ? motion->zoom : 1.0f, correction, motion->gain);
+            }
+            if (motion->denoise > 0.0f) {
+                liveDenoise.insert(clipId);
+                picture = denoised(cb, clipId, picture, decoded.pts(), motion->denoise);
+            }
+        }
         if (overrides) {
             overrides->apply(clipId, visual, effects, grade, look);
             overrides->applyKeying(clipId, key, masks);
@@ -445,14 +502,6 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         }
         if (!canvasBelow)
             picture = m_masks->apply(cb, picture, key, masks);
-        // People: the cutout (a matte found in this very frame), then covered faces.
-        if (people && decoded.pixelBuffer()) {
-            if (people->cutout.enabled) {
-                liveMattes.insert(clipId);
-                picture = m_masks->cutout(cb, picture, personMatte(cb, clipId, decoded), people->cutout);
-            }
-            picture = m_masks->coverFaces(cb, picture, people->faces, people->cover, people->amount);
-        }
         std::vector<tve::EffectInstance> instances;
         canvasEffects.erase(clipId);
         for (const tve::ClipEffect& effect : effects) {
@@ -532,7 +581,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             }
             QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look,
                                                layer.text, nullptr, layer.stillPath, layer.chromaKey, layer.masks,
-                                               layer.clipSeconds, layer.clipDuration, layer.nested.get(), &layer.people);
+                                               layer.clipSeconds, layer.clipDuration, layer.nested.get(), &layer.people,
+                                               &layer.motion);
             // Track matte: the layer just above is the matte, placed by itself, and not drawn.
             tve::VideoLayer* matteLayer = index + 1 < layers.size() ? &layers[index + 1] : nullptr;
             if (layer.matte != tve::MatteMode::None && !layer.transition && matteLayer && !matteLayer->transition
@@ -543,7 +593,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                     clipPicture(matteLayer->clipId, matteLayer->frame, matteVisual, matteLayer->effects, matteLayer->grade,
                                 matteLayer->look, matteLayer->text, nullptr, matteLayer->stillPath, matteLayer->chromaKey,
                                 matteLayer->masks, matteLayer->clipSeconds, matteLayer->clipDuration,
-                                matteLayer->nested.get(), &matteLayer->people);
+                                matteLayer->nested.get(), &matteLayer->people, &matteLayer->motion);
                 if (!picture)
                     continue;
                 if (m_matteCanvases.size() <= matteIndex)
@@ -574,7 +624,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             QRhiTexture* incoming =
                 clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade,
                             transition.look, std::nullopt, nullptr, transition.stillPath, transition.chromaKey,
-                            transition.masks, transition.clipSeconds, 0.0, nullptr, &transition.people);
+                            transition.masks, transition.clipSeconds, 0.0, nullptr, &transition.people,
+                            &transition.motion);
             if (!picture || !incoming) {
                 if (picture || incoming)
                     place(target, picture ? layer.clipId : transition.clipId, picture ? picture : incoming,
@@ -612,6 +663,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::erase_if(m_titles, [&](const auto& entry) { return !liveTitles.contains(entry.first); });
     std::erase_if(m_stickers, [&](const auto& entry) { return !liveStickers.contains(entry.first); });
     std::erase_if(m_personMattes, [&](const auto& entry) { return !liveMattes.contains(entry.first); });
+    std::erase_if(m_denoise, [&](const auto& entry) { return !liveDenoise.contains(entry.first); });
     // Stills stay a while after they leave the screen (scrubbing back and forth), then go.
     std::erase_if(m_stills, [&](const auto& entry) { return m_renders - entry.second.lastUsed > 120; });
     ++m_renders;

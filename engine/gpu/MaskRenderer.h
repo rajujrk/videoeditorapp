@@ -6,6 +6,7 @@
 #include <rhi/qshader.h>
 #include <QSize>
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -54,6 +55,14 @@ public:
     QRhiTexture* coverFaces(QRhiCommandBuffer* cb, QRhiTexture* picture, const std::vector<FaceBox>& faces,
                             FaceCover cover, float amount);
 
+    // Stabilized and/or evened out (steady.frag): zoomed by `zoom`, the correction (a
+    // SteadySample's dx, dy, angle, scale) applied, colour times `gain`.
+    QRhiTexture* steady(QRhiCommandBuffer* cb, QRhiTexture* picture, float zoom, const std::array<float, 4>& correction,
+                        float gain);
+    // Denoised over time against the denoised frame before (denoise.frag); `previous` is
+    // the same size.
+    QRhiTexture* denoise(QRhiCommandBuffer* cb, QRhiTexture* picture, QRhiTexture* previous, float strength);
+
 private:
     struct Slot {
         std::unique_ptr<QRhiTexture> output;
@@ -72,12 +81,16 @@ private:
     QShader m_matteFragment;
     QShader m_cutoutFragment;
     QShader m_facesFragment;
+    QShader m_steadyFragment;
+    QShader m_denoiseFragment;
     std::unique_ptr<QRhiSampler> m_sampler;
     std::unique_ptr<QRhiRenderPassDescriptor> m_renderPass;
     std::unique_ptr<QRhiGraphicsPipeline> m_maskPipeline;
     std::unique_ptr<QRhiGraphicsPipeline> m_mattePipeline;
     std::unique_ptr<QRhiGraphicsPipeline> m_cutoutPipeline;
     std::unique_ptr<QRhiGraphicsPipeline> m_facesPipeline;
+    std::unique_ptr<QRhiGraphicsPipeline> m_steadyPipeline;
+    std::unique_ptr<QRhiGraphicsPipeline> m_denoisePipeline;
     std::vector<Slot> m_slots;
     std::size_t m_used = 0;
 };

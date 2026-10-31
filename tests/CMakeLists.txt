@@ -21,6 +21,7 @@ add_executable(tve_core_tests
     core/test_ranges.cpp
     core/test_captions.cpp
     core/test_people.cpp
+    core/test_motion.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
@@ -41,6 +42,7 @@ add_executable(tve_engine_tests
     engine/test_transcriber.cpp
     engine/test_speech_enhancer.cpp
     engine/test_people_vision.cpp
+    engine/test_motion_analysis.cpp
 )
 target_link_libraries(tve_engine_tests PRIVATE tve::engine tve::ffmpeg Catch2::Catch2WithMain)
 target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples"

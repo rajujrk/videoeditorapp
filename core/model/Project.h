@@ -3,6 +3,7 @@
 #include "model/ColorGrade.h"
 #include "model/Keyframes.h"
 #include "model/Masks.h"
+#include "model/Motion.h"
 #include "model/People.h"
 #include "model/SpeedRamp.h"
 #include "model/TextAnimation.h"
@@ -264,10 +265,18 @@ struct Clip {
     ChromaKey chromaKey;
     std::vector<ClipMask> masks;
     MatteMode matte = MatteMode::None;
-    // People (core/model/People.h): the person cut out (after the masks), and faces covered
-    // (after that, before the effects).
+    // People (core/model/People.h): the person cut out, and faces covered — first of all, on
+    // the decoded picture, where Vision saw them.
     PortraitCutout cutout;
     FaceMosaic faceMosaic;
+    // Motion (core/model/Motion.h), after the people, before colour, masks and effects:
+    // steadied and its flicker evened out, then denoised over time (strength 0..1, 0: off).
+    Stabilization stabilization;
+    Deflicker deflicker;
+    double denoise = 0.0;
+    // Things followed through the clip's picture (in its media's time), for other clips
+    // (titles, stickers…) to follow.
+    std::vector<MotionTrack> motionTracks;
     std::vector<ClipEffect> effects; // applied in order, before placement on the canvas
 
     // Time. At speed 2 one second of timeline plays two seconds of source; reversed plays

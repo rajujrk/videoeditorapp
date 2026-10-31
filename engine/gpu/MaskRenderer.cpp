@@ -50,7 +50,20 @@ struct FacesUniforms {
     float faces[kMaxCoveredFaces][4];
 };
 
-constexpr int kUniformBytes = int(std::max({sizeof(MaskUniforms), sizeof(CutoutUniforms), sizeof(FacesUniforms)}));
+// Matches the EffectParams block in steady.frag.
+struct SteadyUniforms {
+    float texelSize[2];
+    float time;
+    float flipY;
+    float move[4];
+    float params[4];
+};
+
+// Matches the EffectParams block in denoise.frag (the same layout as cutout.frag's).
+using DenoiseUniforms = CutoutUniforms;
+
+constexpr int kUniformBytes =
+    int(std::max({sizeof(MaskUniforms), sizeof(CutoutUniforms), sizeof(FacesUniforms), sizeof(SteadyUniforms)}));
 
 QShader readShader(const QString& path)
 {
@@ -71,6 +84,8 @@ MaskRenderer::MaskRenderer(QRhi* rhi) : m_rhi(rhi)
     m_matteFragment = readShader(QStringLiteral(":/gpu/shaders/matte.frag.qsb"));
     m_cutoutFragment = readShader(QStringLiteral(":/gpu/shaders/cutout.frag.qsb"));
     m_facesFragment = readShader(QStringLiteral(":/gpu/shaders/faces.frag.qsb"));
+    m_steadyFragment = readShader(QStringLiteral(":/gpu/shaders/steady.frag.qsb"));
+    m_denoiseFragment = readShader(QStringLiteral(":/gpu/shaders/denoise.frag.qsb"));
     m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
                                       QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
     m_sampler->create();
@@ -281,6 +296,57 @@ QRhiTexture* MaskRenderer::coverFaces(QRhiCommandBuffer* cb, QRhiTexture* pictur
     }
     return draw(cb, *slot, m_facesPipeline, m_facesFragment, &u, int(sizeof(FacesUniforms))) ? slot->output.get()
                                                                                             : picture;
+}
+
+QRhiTexture* MaskRenderer::steady(QRhiCommandBuffer* cb, QRhiTexture* picture, float zoom,
+                                  const std::array<float, 4>& correction, float gain)
+{
+    if (!picture || !m_vertex.isValid() || !m_steadyFragment.isValid())
+        return picture;
+    const QSize size = picture->pixelSize();
+    Slot* slot = nextSlot(size, int(sizeof(SteadyUniforms)));
+    if (!slot)
+        return picture;
+    slot->bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(
+            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, slot->uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, picture, m_sampler.get()),
+    });
+    SteadyUniforms u{};
+    u.texelSize[0] = 1.0f / float(size.width());
+    u.texelSize[1] = 1.0f / float(size.height());
+    u.flipY = m_rhi->isYUpInNDC() ? 1.0f : 0.0f;
+    for (int i = 0; i < 4; ++i)
+        u.move[i] = correction[std::size_t(i)];
+    u.move[3] = std::max(1e-3f, u.move[3]);
+    u.params[0] = std::max(1e-3f, zoom);
+    u.params[1] = std::max(0.0f, gain);
+    return draw(cb, *slot, m_steadyPipeline, m_steadyFragment, &u, int(sizeof(SteadyUniforms))) ? slot->output.get()
+                                                                                              : picture;
+}
+
+QRhiTexture* MaskRenderer::denoise(QRhiCommandBuffer* cb, QRhiTexture* picture, QRhiTexture* previous, float strength)
+{
+    if (!picture || !previous || strength <= 0.0f || previous->pixelSize() != picture->pixelSize() || !m_vertex.isValid()
+        || !m_denoiseFragment.isValid())
+        return picture;
+    const QSize size = picture->pixelSize();
+    Slot* slot = nextSlot(size, int(sizeof(DenoiseUniforms)));
+    if (!slot)
+        return picture;
+    slot->bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(
+            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, slot->uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, picture, m_sampler.get()),
+        QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, previous, m_sampler.get()),
+    });
+    DenoiseUniforms u{};
+    u.texelSize[0] = 1.0f / float(size.width());
+    u.texelSize[1] = 1.0f / float(size.height());
+    u.flipY = m_rhi->isYUpInNDC() ? 1.0f : 0.0f;
+    u.params[0] = std::clamp(strength, 0.0f, 1.0f);
+    return draw(cb, *slot, m_denoisePipeline, m_denoiseFragment, &u, int(sizeof(DenoiseUniforms))) ? slot->output.get()
+                                                                                                : picture;
 }
 
 } // namespace tve

@@ -27,6 +27,8 @@
 #include "playback/TimelinePlayback.h"
 #include "speech/SpeechEnhancer.h"
 #include "analysis/PeopleVision.h"
+#include "analysis/MotionAnalysis.h"
+#include "analysis/Tracking.h"
 
 #include <nlohmann/json.hpp>
 
@@ -40,6 +42,7 @@
 #include <QJsonArray>
 #include <QRegularExpression>
 #include <QPointer>
+#include <numbers>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QUuid>
@@ -1726,6 +1729,26 @@ QVariantMap ProjectController::selectedClipInfo() const
                                              && (track.kind == TrackKind::Audio || clip->audioEnabled)},
             {QStringLiteral("audioEffects"), effectsList(clip->audioEffects)},
             {QStringLiteral("cutout"), cutoutMap(clip->cutout)},
+            {QStringLiteral("stabilization"), QVariantMap{{QStringLiteral("enabled"), clip->stabilization.enabled},
+                                                          {QStringLiteral("smoothness"), clip->stabilization.smoothness},
+                                                          {QStringLiteral("lock"), clip->stabilization.lock},
+                                                          {QStringLiteral("zoom"), clip->stabilization.zoom}}},
+            {QStringLiteral("deflicker"), QVariantMap{{QStringLiteral("enabled"), clip->deflicker.enabled},
+                                                      {QStringLiteral("strength"), clip->deflicker.strength}}},
+            {QStringLiteral("denoise"), clip->denoise},
+            {QStringLiteral("motionTracks"), [&] {
+                 QVariantList list;
+                 for (const MotionTrack& t : clip->motionTracks) {
+                     const auto timelineAt = [&](Ticks m) {
+                         return seconds(clip->start + Ticks(std::llround(double(m - clip->sourceIn) / clip->speed)));
+                     };
+                     list << QVariantMap{{QStringLiteral("id"), t.id},
+                                         {QStringLiteral("surface"), t.surface},
+                                         {QStringLiteral("start"), t.samples.empty() ? 0.0 : timelineAt(t.samples.front().time)},
+                                         {QStringLiteral("end"), t.samples.empty() ? 0.0 : timelineAt(t.samples.back().time)}};
+                 }
+                 return list;
+             }()},
             {QStringLiteral("faceCover"), faceCoverMap(clip->faceMosaic)},
             // People can be found in it (a clip of a video file).
             {QStringLiteral("canFindPeople"), !clip->generated() && !sequence && media && media->hasVideo && !media->still
@@ -5000,6 +5023,357 @@ bool ProjectController::autoReframe(double clipId, const QVariantMap& options)
                         place();
                     });
     return true;
+}
+
+// --- Motion ---
+
+namespace {
+
+// A point of a stabilized clip's picture (fractions) back in its shaky frame, and the other
+// way: steady = zoom · (scale · R(angle) · raw + shift), in pixels about the centre.
+std::array<double, 2> steadyToRaw(const Stabilization& s, Ticks mediaTime, double w, double h, double x, double y)
+{
+    if (!s.enabled || s.samples.empty())
+        return {x, y};
+    const SteadySample c = s.at(mediaTime);
+    const double px = (x - 0.5) * w / s.zoom - c.dx * w, py = (y - 0.5) * h / s.zoom - c.dy * h;
+    const double co = std::cos(c.angle), si = std::sin(c.angle);
+    return {(co * px + si * py) / c.scale / w + 0.5, (-si * px + co * py) / c.scale / h + 0.5};
+}
+
+std::array<double, 2> rawToSteady(const Stabilization& s, Ticks mediaTime, double w, double h, double x, double y)
+{
+    if (!s.enabled || s.samples.empty())
+        return {x, y};
+    const SteadySample c = s.at(mediaTime);
+    const double px = (x - 0.5) * w, py = (y - 0.5) * h;
+    const double co = std::cos(c.angle), si = std::sin(c.angle);
+    const double qx = c.scale * (co * px - si * py) + c.dx * w, qy = c.scale * (si * px + co * py) + c.dy * h;
+    return {qx * s.zoom / w + 0.5, qy * s.zoom / h + 0.5};
+}
+
+} // namespace
+
+void ProjectController::withMotion(Id clipId, const QString& task, std::function<void(const MotionAnalysis&)> then)
+{
+    const Clip* clip = findClip(clipId);
+    const MediaItem& media = *m_project.findMedia(clip->mediaId);
+    const std::string key = fingerprintOf(media);
+    if (!m_motion.contains(key)) {
+        if (auto kept = tve::loadMotion(tve::AnalysisCache(analysisDirectory().toStdString()), key))
+            m_motion.emplace(key, std::move(*kept));
+    }
+    if (m_motion.contains(key)) {
+        then(m_motion.at(key));
+        return;
+    }
+    auto found = std::make_shared<MotionAnalysis>();
+    runInBackground(task,
+                    [path = media.path, key, found, directory = analysisDirectory().toStdString()](
+                        const tve::AnalysisProgress& progress) -> std::string {
+                        std::string error;
+                        auto analysis = tve::analyzeMotion(path, progress, &error);
+                        if (!analysis)
+                            return error.empty() ? std::string("cancelled") : error;
+                        tve::saveMotion(tve::AnalysisCache(directory), key, *analysis);
+                        *found = std::move(*analysis);
+                        return {};
+                    },
+                    [this, key, found, then] {
+                        m_motion.insert_or_assign(key, std::move(*found));
+                        then(m_motion.at(key));
+                    });
+}
+
+bool ProjectController::stabilize(double clipId, const QVariantMap& options)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const Clip* clip = peopleClip(toId(clipId), true);
+    if (!clip)
+        return false;
+    const double smoothness = std::clamp(options.value(QStringLiteral("smoothness"), clip->stabilization.smoothness).toDouble(), 0.0, 1.0);
+    const bool lock = options.value(QStringLiteral("lock"), clip->stabilization.lock).toBool();
+    const double maxZoom = std::clamp(options.value(QStringLiteral("maxZoom"), clip->stabilization.maxZoom).toDouble(), 1.0, 2.0);
+    const Id id = clip->id;
+    withMotion(id, QStringLiteral("Measuring camera motion"), [this, id, smoothness, lock, maxZoom](const MotionAnalysis& analysis) {
+        if (apply(std::make_unique<SetClipMotionCommand>(id, tve::stabilize(analysis, smoothness, lock, maxZoom), std::nullopt,
+                                                         std::nullopt, "Stabilize")))
+            emit analysisFinished(true, {});
+        else
+            emit analysisFinished(false, lastError());
+    });
+    return true;
+}
+
+bool ProjectController::removeStabilization(double clipId)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    if (!clip->stabilization.enabled) {
+        reportError(QStringLiteral("This clip is not stabilized"));
+        return false;
+    }
+    Stabilization off;
+    off.smoothness = clip->stabilization.smoothness;
+    off.lock = clip->stabilization.lock;
+    off.maxZoom = clip->stabilization.maxZoom;
+    return apply(std::make_unique<SetClipMotionCommand>(clip->id, off, std::nullopt, std::nullopt, "Remove Stabilization"));
+}
+
+bool ProjectController::removeFlicker(double clipId, const QVariantMap& options)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const Clip* clip = peopleClip(toId(clipId), true);
+    if (!clip)
+        return false;
+    const double strength = std::clamp(options.value(QStringLiteral("strength"), clip->deflicker.strength).toDouble(), 0.0, 1.0);
+    const Id id = clip->id;
+    withMotion(id, QStringLiteral("Measuring brightness"), [this, id, strength](const MotionAnalysis& analysis) {
+        if (apply(std::make_unique<SetClipMotionCommand>(id, std::nullopt, tve::deflicker(analysis, strength), std::nullopt,
+                                                         "Remove Flicker")))
+            emit analysisFinished(true, {});
+        else
+            emit analysisFinished(false, lastError());
+    });
+    return true;
+}
+
+bool ProjectController::keepFlicker(double clipId)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    if (!clip->deflicker.enabled) {
+        reportError(QStringLiteral("This clip's flicker is not removed"));
+        return false;
+    }
+    Deflicker off;
+    off.strength = clip->deflicker.strength;
+    return apply(std::make_unique<SetClipMotionCommand>(clip->id, std::nullopt, off, std::nullopt, "Keep Flicker"));
+}
+
+bool ProjectController::setDenoise(double clipId, double strength)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    return apply(std::make_unique<SetClipMotionCommand>(clip->id, std::nullopt, std::nullopt, strength,
+                                                        clip->denoise > 0.0 && strength > 0.0 ? "Change Denoise"
+                                                        : strength > 0.0                      ? "Denoise"
+                                                                                              : "Remove Denoise"));
+}
+
+void ProjectController::setPickingTrackArea(bool picking)
+{
+    if (picking == m_pickingTrackArea)
+        return;
+    m_pickingTrackArea = picking;
+    emit editingChanged();
+}
+
+bool ProjectController::setTrackArea(double clipId, const QVariantMap& box)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    const double w = box.value(QStringLiteral("width")).toDouble(), h = box.value(QStringLiteral("height")).toDouble();
+    if (w <= 0.005 || h <= 0.005) {
+        reportError(QStringLiteral("Draw a larger box"));
+        return false;
+    }
+    m_trackArea = box;
+    m_trackArea.insert(QStringLiteral("clipId"), double(clip->id));
+    m_pickingTrackArea = false;
+    emit editingChanged();
+    return true;
+}
+
+bool ProjectController::trackMotion(double clipId, const QVariantMap& options)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const Clip* clip = peopleClip(toId(clipId), true);
+    if (!clip)
+        return false;
+    if (clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
+        reportError(QStringLiteral("Tracking works on clips playing forwards at a steady speed"));
+        return false;
+    }
+    if (toId(m_trackArea.value(QStringLiteral("clipId"), -1.0).toDouble()) != clip->id) {
+        reportError(QStringLiteral("Draw a box around what to follow first"));
+        return false;
+    }
+    const MediaItem& media = *m_project.findMedia(clip->mediaId);
+    const Ticks now = std::clamp(ticks(m_playhead), clip->start, clip->end() - 1);
+    const Ticks from = clip->sourceTimeBeyond(now);
+    const Ticks to = clip->sourceIn + Ticks(std::llround(double(clip->duration) * clip->speed));
+    // The box as drawn is in the picture as shown: back into the shaky frame, if steadied.
+    const double w = std::max(1, media.width), h = std::max(1, media.height);
+    const double bx = m_trackArea.value(QStringLiteral("x")).toDouble(), by = m_trackArea.value(QStringLiteral("y")).toDouble();
+    const double bw = m_trackArea.value(QStringLiteral("width")).toDouble(), bh = m_trackArea.value(QStringLiteral("height")).toDouble();
+    const auto centre = steadyToRaw(clip->stabilization, from, w, h, bx, by);
+    const double zoom = clip->stabilization.enabled ? clip->stabilization.zoom : 1.0;
+    const TrackSample box{from, centre[0], centre[1], bw / zoom, bh / zoom, 0.0};
+    const bool surface = options.value(QStringLiteral("surface")).toBool();
+    const Id id = clip->id;
+    auto found = std::make_shared<std::vector<TrackSample>>();
+    runInBackground(QStringLiteral("Following"),
+                    [path = media.path, from, to, box, surface, found](const tve::AnalysisProgress& progress) -> std::string {
+                        std::string error;
+                        auto samples = tve::trackRegion(path, from, to, box, surface, progress, &error);
+                        if (!samples)
+                            return error.empty() ? std::string("cancelled") : error;
+                        *found = tve::thinTrack(*samples);
+                        return {};
+                    },
+                    [this, id, surface, found] {
+                        const Clip* clip = findClip(id);
+                        if (!clip)
+                            return;
+                        std::vector<MotionTrack> tracks = clip->motionTracks;
+                        int next = 1;
+                        for (const MotionTrack& t : tracks)
+                            next = std::max(next, t.id + 1);
+                        tracks.push_back({next, surface, std::move(*found)});
+                        if (apply(std::make_unique<SetClipTracksCommand>(id, std::move(tracks), "Track Motion"))) {
+                            m_trackArea.clear();
+                            emit editingChanged();
+                            emit analysisFinished(true, {});
+                        } else {
+                            emit analysisFinished(false, lastError());
+                        }
+                    });
+    return true;
+}
+
+bool ProjectController::deleteTrack(double clipId, int trackId)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    std::vector<MotionTrack> tracks = clip->motionTracks;
+    if (std::erase_if(tracks, [&](const MotionTrack& t) { return t.id == trackId; }) == 0) {
+        reportError(QStringLiteral("No such track"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipTracksCommand>(clip->id, std::move(tracks), "Delete Track"));
+}
+
+QVariantList ProjectController::tracksToFollow(double clipId) const
+{
+    QVariantList list;
+    const Clip* follower = findClip(toId(clipId));
+    if (!follower)
+        return list;
+    for (const Track& track : m_project.tracks) {
+        for (const Clip& clip : track.clips) {
+            if (clip.id == follower->id || clip.motionTracks.empty() || clip.end() <= follower->start
+                || clip.start >= follower->end())
+                continue;
+            const MediaItem* media = m_project.findMedia(clip.mediaId);
+            for (const MotionTrack& t : clip.motionTracks)
+                list << QVariantMap{{QStringLiteral("clipId"), double(clip.id)},
+                                    {QStringLiteral("trackId"), t.id},
+                                    {QStringLiteral("label"), (media ? mediaName(media->path) : QStringLiteral("Clip"))
+                                                                  + QStringLiteral(" · track %1 (%2)").arg(t.id).arg(
+                                                                      t.surface ? QStringLiteral("surface") : QStringLiteral("object"))}};
+        }
+    }
+    return list;
+}
+
+bool ProjectController::followTrack(double clipId, double sourceClipId, int trackId, const QVariantMap& options)
+{
+    const auto location = m_project.locateClip(toId(clipId));
+    const Clip* follower = location ? location->clip : nullptr;
+    const Clip* source = findClip(toId(sourceClipId));
+    if (!follower || follower->adjustment || !source || source == follower) {
+        reportError(QStringLiteral("Select the clip that should follow"));
+        return false;
+    }
+    const auto track = std::ranges::find(source->motionTracks, trackId, &MotionTrack::id);
+    const MediaItem* media = m_project.findMedia(source->mediaId);
+    if (track == source->motionTracks.end() || !media || media->width <= 0 || media->height <= 0) {
+        reportError(QStringLiteral("No such track"));
+        return false;
+    }
+    const bool withScale = options.value(QStringLiteral("scale")).toBool();
+    const bool withRotation = options.value(QStringLiteral("rotation")).toBool() && track->surface;
+    // Each sample on the canvas: through the source clip's stabilization and placement.
+    const double cw = m_project.settings.width, ch = m_project.settings.height;
+    const double w = media->width, h = media->height;
+    struct Point {
+        Ticks time; // on the timeline
+        double x, y, size, angle;
+    };
+    std::vector<Point> points;
+    for (const TrackSample& s : track->samples) {
+        const Ticks at = source->start + Ticks(std::llround(double(s.time - source->sourceIn) / source->speed));
+        if (at < source->start || at > source->end())
+            continue;
+        const auto shown = rawToSteady(source->stabilization, s.time, w, h, s.x, s.y);
+        const LayerPlacement placement = placeLayer(source->visualAt(at), cw, ch, w, h);
+        const auto& m = placement.canvasToLayer;
+        const double det = m[0] * m[4] - m[1] * m[3];
+        const double a = shown[0] - m[2], b = shown[1] - m[5];
+        const double u = (m[4] * a - m[1] * b) / det, v = (-m[3] * a + m[0] * b) / det;
+        points.push_back({at, u, v, std::sqrt(std::max(1e-9, s.width * s.height)), s.angle});
+    }
+    const Ticks first = std::max(follower->start, points.empty() ? follower->end() : points.front().time);
+    const Ticks last = std::min(follower->end(), points.empty() ? follower->start : points.back().time);
+    if (points.empty() || first > last) {
+        reportError(QStringLiteral("This clip and the track are never on screen together"));
+        return false;
+    }
+    // From where the follower is now (at the playhead, within the track), it moves as the track does.
+    const Ticks anchor = std::clamp(ticks(m_playhead), first, last);
+    const auto pointAt = [&](Ticks t) {
+        if (t <= points.front().time)
+            return points.front();
+        if (t >= points.back().time)
+            return points.back();
+        const auto next = std::ranges::upper_bound(points, t, {}, &Point::time);
+        const Point& q = *next;
+        const Point& p = *(next - 1);
+        const double k = double(t - p.time) / double(std::max<Ticks>(1, q.time - p.time));
+        return Point{t, p.x + (q.x - p.x) * k, p.y + (q.y - p.y) * k, p.size + (q.size - p.size) * k,
+                     p.angle + (q.angle - p.angle) * k};
+    };
+    const Point origin = pointAt(anchor);
+    const ClipVisual start = follower->visualAt(anchor);
+    Keyframes xs, ys, scales, turns;
+    std::vector<Ticks> times;
+    for (const Point& p : points)
+        if (p.time >= follower->start && p.time <= follower->end())
+            times.push_back(p.time);
+    if (times.empty() || times.front() > follower->start)
+        times.insert(times.begin(), std::max(follower->start, first));
+    for (const Ticks t : times) {
+        const Point p = pointAt(t);
+        const Ticks at = t - follower->start;
+        xs.push_back({at, std::clamp(start.transform.x + (p.x - origin.x), -10.0, 10.0)});
+        ys.push_back({at, std::clamp(start.transform.y + (p.y - origin.y), -10.0, 10.0)});
+        if (withScale)
+            scales.push_back({at, std::clamp(start.transform.scale * p.size / origin.size, 0.01, 20.0)});
+        if (withRotation)
+            turns.push_back({at, std::clamp(start.transform.rotation + (p.angle - origin.angle) * 180.0 / std::numbers::pi,
+                                            -3600.0, 3600.0)});
+    }
+    std::map<std::string, Keyframes> changes{{std::string(tve::property::kX), xs}, {std::string(tve::property::kY), ys}};
+    if (withScale)
+        changes.emplace(std::string(tve::property::kScale), scales);
+    if (withRotation)
+        changes.emplace(std::string(tve::property::kRotation), turns);
+    return apply(std::make_unique<SetClipKeyframesCommand>(follower->id, std::move(changes), "Follow Track"));
 }
 
 // --- Speech enhancement ---

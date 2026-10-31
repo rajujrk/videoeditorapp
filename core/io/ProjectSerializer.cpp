@@ -136,10 +136,41 @@ NLOHMANN_JSON_SERIALIZE_ENUM(FaceCover, {
     {FaceCover::Fill, "fill"},
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceMosaic, style, amount, expand, faces)
+// A correction or gain per frame: kept as short arrays, [time, dx, dy, angle, scale] and
+// [time, gain], since a clip has one for every frame.
+void to_json(nlohmann::json& j, const SteadySample& s)
+{
+    j = nlohmann::json::array({s.time, s.dx, s.dy, s.angle, s.scale});
+}
+void from_json(const nlohmann::json& j, SteadySample& s)
+{
+    s = {j.at(0).get<Ticks>(), j.at(1).get<double>(), j.at(2).get<double>(), j.at(3).get<double>(), j.at(4).get<double>()};
+}
+void to_json(nlohmann::json& j, const GainSample& g)
+{
+    j = nlohmann::json::array({g.time, g.gain});
+}
+void from_json(const nlohmann::json& j, GainSample& g)
+{
+    g = {j.at(0).get<Ticks>(), j.at(1).get<float>()};
+}
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Stabilization, enabled, smoothness, lock, maxZoom, zoom, samples)
+void to_json(nlohmann::json& j, const TrackSample& s)
+{
+    j = nlohmann::json::array({s.time, s.x, s.y, s.width, s.height, s.angle});
+}
+void from_json(const nlohmann::json& j, TrackSample& s)
+{
+    s = {j.at(0).get<Ticks>(), j.at(1).get<double>(), j.at(2).get<double>(), j.at(3).get<double>(),
+         j.at(4).get<double>(), j.at(5).get<double>()};
+}
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MotionTrack, id, surface, samples)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Deflicker, enabled, strength, samples)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
-                                                chromaKey, masks, matte, cutout, faceMosaic, audioEffects,
+                                                chromaKey, masks, matte, cutout, faceMosaic, stabilization, deflicker,
+                                                denoise, motionTracks, audioEffects,
                                                 enhancedAudio, keepPitch, sequenceId, groupId)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips)

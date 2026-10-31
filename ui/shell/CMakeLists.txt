@@ -28,6 +28,7 @@ qt_add_qml_module(tve_shell
         ColorWheelControl.qml
         ToneCurveEditor.qml
         MaskOverlay.qml
+        TrackOverlay.qml
         MixerPanel.qml
         TitleTemplates.js
     IMPORTS

@@ -395,6 +395,10 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.matte = clip.matte;
     right.cutout = clip.cutout;
     right.faceMosaic = clip.faceMosaic; // face tracks are in media time: the same for both halves
+    right.stabilization = clip.stabilization; // likewise motion
+    right.deflicker = clip.deflicker;
+    right.denoise = clip.denoise;
+    right.motionTracks = clip.motionTracks;
     right.text = clip.text;
     right.adjustment = clip.adjustment;
     right.sequenceId = clip.sequenceId;
@@ -873,6 +877,66 @@ std::optional<std::string> SetClipKeepPitchCommand::redo(Project& project)
 void SetClipKeepPitchCommand::undo(Project& project)
 {
     project.locateClip(m_clipId)->clip->keepPitch = m_previous;
+}
+
+// --- SetClipMotionCommand ---
+
+std::optional<std::string> SetClipMotionCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    Clip& clip = *location->clip;
+    const MediaItem* media = project.findMedia(clip.mediaId);
+    if (clip.generated() || clip.compound() || !media || !media->hasVideo || media->still || media->lottie)
+        return "only clips of video files have camera motion";
+    if (m_stabilization && (m_stabilization->zoom < 1.0 || m_stabilization->zoom > 2.0 || !std::isfinite(m_stabilization->zoom)))
+        return "stabilization zoom out of range";
+    if (m_denoise && (!std::isfinite(*m_denoise) || *m_denoise < 0.0 || *m_denoise > 1.0))
+        return "denoise strength out of range";
+    m_previousStabilization = clip.stabilization;
+    m_previousDeflicker = clip.deflicker;
+    m_previousDenoise = clip.denoise;
+    if (m_stabilization)
+        clip.stabilization = *m_stabilization;
+    if (m_deflicker)
+        clip.deflicker = *m_deflicker;
+    if (m_denoise)
+        clip.denoise = *m_denoise;
+    return std::nullopt;
+}
+
+void SetClipMotionCommand::undo(Project& project)
+{
+    Clip& clip = *project.locateClip(m_clipId)->clip;
+    clip.stabilization = m_previousStabilization;
+    clip.deflicker = m_previousDeflicker;
+    clip.denoise = m_previousDenoise;
+}
+
+// --- SetClipTracksCommand ---
+
+std::optional<std::string> SetClipTracksCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    Clip& clip = *location->clip;
+    const MediaItem* media = project.findMedia(clip.mediaId);
+    if (clip.generated() || clip.compound() || !media || !media->hasVideo || media->still || media->lottie)
+        return "only clips of video files can be tracked";
+    m_previous = clip.motionTracks;
+    clip.motionTracks = m_tracks;
+    return std::nullopt;
+}
+
+void SetClipTracksCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->motionTracks = m_previous;
 }
 
 // --- SetClipPeopleCommand ---
