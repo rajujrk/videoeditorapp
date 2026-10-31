@@ -257,3 +257,86 @@ TEST_CASE("track mattes keep the layer where the matte lets it through", "[masks
     CHECK(invertedLuma.alpha(0.25, 0.5) == Approx(0.0f));
     CHECK(invertedLuma.alpha(0.75, 0.5) == Approx(1.0f));
 }
+
+TEST_CASE("portrait cutout keeps what the person matte marks")
+{
+    const QImage picture = filled([](int, int) { return QColor(200, 120, 40); });
+    // A small matte (as Vision's are): the person in the top-left quarter.
+    QImage matte(16, 9, QImage::Format_RGBA8888);
+    for (int y = 0; y < 9; ++y)
+        for (int x = 0; x < 16; ++x)
+            matte.setPixelColor(x, y, x < 8 && y < 4 ? QColor(255, 255, 255) : QColor(0, 0, 0));
+    PortraitCutout cutout;
+    cutout.enabled = true;
+    cutout.softness = 0.0;
+    const auto run2 = [&](const PortraitCutout& c) {
+        return run({picture, matte}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+            return m.cutout(cb, t[0], t[1], c);
+        });
+    };
+    const Pixels kept = run2(cutout);
+    CHECK(kept.alpha(0.1, 0.1) == Approx(1.0f).margin(0.01));
+    CHECK(kept.at(0.1, 0.1)[0] == Approx(200.0f / 255.0f).margin(0.01)); // colour untouched
+    CHECK(kept.alpha(0.9, 0.9) == Approx(0.0f).margin(0.01));
+    CHECK(kept.alpha(0.1, 0.9) == Approx(0.0f).margin(0.01)); // the top stays the top
+    CHECK(kept.alpha(0.9, 0.1) == Approx(0.0f).margin(0.01));
+
+    cutout.invert = true;
+    const Pixels removed = run2(cutout);
+    CHECK(removed.alpha(0.1, 0.1) == Approx(0.0f).margin(0.01));
+    CHECK(removed.alpha(0.9, 0.9) == Approx(1.0f).margin(0.01));
+
+    // Shifted out, the edge moves past the matte's boundary (more is kept).
+    cutout.invert = false;
+    cutout.shift = 0.0;
+    const double edgeU = 0.5 + 0.25 / 16.0; // just right of the boundary, on the matte's ramp (0.25)
+    const float atEdge = run2(cutout).alpha(edgeU, 0.1);
+    cutout.shift = 1.0;
+    CHECK(run2(cutout).alpha(edgeU, 0.1) > atEdge + 0.2f);
+
+    // Off: the picture itself.
+    cutout.enabled = false;
+    run({picture, matte}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        CHECK(m.cutout(cb, t[0], t[1], cutout) == t[0]);
+        return t[0];
+    });
+}
+
+TEST_CASE("faces are covered by mosaic, blur or fill inside their ellipses only")
+{
+    // A one-pixel checkerboard: covering it shows plainly.
+    const QImage picture = filled([](int x, int y) { return (x + y) % 2 ? QColor(255, 255, 255) : QColor(0, 0, 0); });
+    const std::vector<FaceBox> face{{0.5, 0.5, 0.5, 0.8}};
+    const auto cover = [&](FaceCover style, float amount) {
+        return run({picture}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+            return m.coverFaces(cb, t[0], face, style, amount);
+        });
+    };
+    const auto value = [](const Pixels& p, int x, int y) { return p.at((x + 0.5) / kW, (y + 0.5) / kH)[0]; };
+
+    const Pixels mosaic = cover(FaceCover::Mosaic, 1.0f);
+    // Inside: neighbouring pixels share their block's colour. Outside: the checkerboard.
+    int same = 0;
+    for (int x = 28; x < 36; ++x)
+        same += std::abs(value(mosaic, x, 18) - value(mosaic, x + 1, 18)) < 0.01f;
+    CHECK(same >= 6);
+    CHECK(std::abs(value(mosaic, 2, 2) - value(mosaic, 3, 2)) > 0.9f);
+
+    const Pixels blur = cover(FaceCover::Blur, 0.5f);
+    CHECK(value(blur, 32, 18) == Approx(0.5f).margin(0.1));
+    CHECK(value(blur, 33, 18) == Approx(0.5f).margin(0.1));
+    CHECK(std::abs(value(blur, 2, 2) - value(blur, 3, 2)) > 0.9f);
+
+    const Pixels fill = cover(FaceCover::Fill, 0.5f);
+    CHECK(value(fill, 32, 18) == Approx(0.08f).margin(0.02));
+    CHECK(value(fill, 33, 18) == Approx(0.08f).margin(0.02));
+    CHECK(fill.alpha(0.5, 0.5) == Approx(1.0f));
+    // A corner of the face's box is outside its ellipse: untouched.
+    CHECK(std::abs(value(fill, 17, 3) - value(fill, 18, 3)) > 0.9f);
+
+    // No faces: the picture itself.
+    run({picture}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        CHECK(m.coverFaces(cb, t[0], {}, FaceCover::Mosaic, 0.5f) == t[0]);
+        return t[0];
+    });
+}

@@ -18,6 +18,9 @@ ScrollView {
     readonly property bool hasPictures: clipInfo.trackKind === "video" && clipInfo.isTitle !== true
                                         && clipInfo.isAdjustment !== true && clipInfo.isStill !== true
                                         && clipInfo.isCompound !== true && clipInfo.isSticker !== true
+    // People (Vision): clips of video files, at any speed; reframing needs a steady one.
+    readonly property bool canFindPeople: hasClip && clipInfo.canFindPeople === true
+    readonly property bool steady: !clipInfo.reversed && !clipInfo.freeze && (clipInfo.speedRamp || []).length === 0
 
     contentWidth: availableWidth
     clip: true
@@ -30,6 +33,8 @@ ScrollView {
         property alias value: slider.value
         property alias stepSize: slider.stepSize
         property var format: (v) => v.toFixed(1)
+        // The value chosen: when the slider is let go (or stepped with the keys).
+        signal committed()
         Layout.fillWidth: true
         spacing: 0
         RowLayout {
@@ -37,7 +42,12 @@ ScrollView {
             Text { text: setting.label; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
             Text { text: setting.format(slider.value); font: Theme.type.mono; color: Theme.color.textPrimary }
         }
-        Slider { id: slider; Layout.fillWidth: true }
+        Slider {
+            id: slider
+            Layout.fillWidth: true
+            onPressedChanged: if (!pressed) setting.committed()
+            Keys.onReleased: (event) => { if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) setting.committed() }
+        }
     }
     component Finding: Text {
         Layout.fillWidth: true
@@ -53,7 +63,7 @@ ScrollView {
         spacing: Theme.space.s
 
         Text {
-            visible: !page.hasClip || !page.plainSpeed || (!page.hasSound && !page.hasPictures)
+            visible: !page.hasClip || (!page.plainSpeed && !page.canFindPeople) || (!page.hasSound && !page.hasPictures)
             Layout.fillWidth: true
             Layout.topMargin: Theme.space.l
             text: !page.hasClip ? "Select a clip to find its pauses, scene changes and beat."
@@ -94,6 +104,210 @@ ScrollView {
                     implicitHeight: 4
                     Rectangle { width: parent.width * progress.visualPosition; height: parent.height; radius: 2; color: Theme.color.accent }
                 }
+            }
+        }
+
+        // Portrait cutout
+        Section {
+            id: cutout
+            objectName: "cutoutSection"
+            visible: page.canFindPeople
+            Layout.fillWidth: true
+            title: "Portrait cutout"
+            readonly property var current: page.clipInfo.cutout || ({})
+            function change(values) { page.project.setPortraitCutout(page.clipInfo.id, values) }
+
+            Finding {
+                text: "Keeps the person and makes the background transparent (Vision, on this Mac), so the tracks below show through."
+                color: Theme.color.textSecondary
+            }
+            ToggleSwitch {
+                objectName: "cutoutSwitch"
+                text: "Cut out the person"
+                checked: cutout.current.enabled === true
+                onToggled: cutout.change({ enabled: checked })
+            }
+            ToggleSwitch {
+                objectName: "cutoutInvert"
+                visible: cutout.current.enabled === true
+                text: "Remove the person instead"
+                checked: cutout.current.invert === true
+                onToggled: cutout.change({ invert: checked })
+            }
+            Setting {
+                id: softness
+                objectName: "cutoutSoftness"
+                visible: cutout.current.enabled === true
+                label: "Edge softness"
+                from: 0; to: 1; stepSize: 0.05
+                value: cutout.current.softness !== undefined ? cutout.current.softness : 0.3
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: cutout.change({ softness: value })
+            }
+            Setting {
+                objectName: "cutoutShift"
+                visible: cutout.current.enabled === true
+                label: "Edge (shrink … grow)"
+                from: -1; to: 1; stepSize: 0.05
+                value: cutout.current.shift || 0
+                format: (v) => (v > 0 ? "+" : "") + v.toFixed(2)
+                onCommitted: cutout.change({ shift: value })
+            }
+        }
+
+        // Faces
+        Section {
+            id: faces
+            objectName: "facesSection"
+            visible: page.canFindPeople
+            Layout.fillWidth: true
+            title: "Faces"
+            readonly property var found: page.hasClip && page.project.faces.clipId === page.clipInfo.id ? page.project.faces : null
+            readonly property var cover: page.clipInfo.faceCover || ({ style: "mosaic", amount: 0.5, faceIds: [] })
+            readonly property bool covering: (cover.faceIds || []).length > 0
+            property var chosen: ({}) // face id → false when left out
+            property string style: cover.style || "mosaic"
+            onFoundChanged: chosen = ({})
+
+            function timeText(s) { // whole seconds, m:ss
+                const m = Math.floor(s / 60)
+                return m + ":" + String(Math.floor(s % 60)).padStart(2, "0")
+            }
+            function chosenIds() {
+                return (found ? found.tracks : []).filter((t) => chosen[t.id] !== false).map((t) => t.id)
+            }
+
+            TextButton {
+                objectName: "findFaces"
+                text: "Find faces"
+                enabled: !page.project.analyzing
+                onClicked: page.project.findFaces(page.clipInfo.id)
+            }
+            Finding {
+                objectName: "facesFound"
+                visible: faces.found !== null
+                text: {
+                    const n = faces.found ? faces.found.tracks.length : 0
+                    return n === 0 ? "No faces in this clip." : n + (n === 1 ? " face" : " faces") + ": choose the ones to cover."
+                }
+            }
+            Flow {
+                visible: faces.found !== null
+                Layout.fillWidth: true
+                spacing: Theme.space.xs
+                Repeater {
+                    model: faces.found ? faces.found.tracks : []
+                    delegate: TextButton {
+                        required property var modelData
+                        objectName: "faceChip:" + modelData.id
+                        readonly property bool on: faces.chosen[modelData.id] !== false
+                        // Its span rounded outwards, so a face seen until 2.97 s reads "–0:03".
+                        text: "Face " + modelData.id + " · " + faces.timeText(Math.floor(modelData.start))
+                              + "–" + faces.timeText(Math.ceil(modelData.end))
+                        variant: on ? "primary" : "secondary"
+                        tip: "Click to " + (on ? "leave it out" : "cover it") + "; double-click to go there"
+                        onClicked: {
+                            const next = Object.assign({}, faces.chosen)
+                            next[modelData.id] = !on
+                            faces.chosen = next
+                        }
+                        onDoubleClicked: page.project.seek(modelData.start)
+                    }
+                }
+            }
+            RowLayout {
+                visible: faces.found !== null || faces.covering
+                spacing: Theme.space.xs
+                Repeater {
+                    model: [{ id: "mosaic", label: "Mosaic" }, { id: "blur", label: "Blur" }, { id: "fill", label: "Fill" }]
+                    delegate: TextButton {
+                        required property var modelData
+                        objectName: "faceStyle:" + modelData.id
+                        text: modelData.label
+                        variant: faces.style === modelData.id ? "primary" : "secondary"
+                        onClicked: {
+                            faces.style = modelData.id
+                            if (faces.covering)
+                                page.project.setFaceCover(page.clipInfo.id, { style: modelData.id })
+                        }
+                    }
+                }
+            }
+            Setting {
+                id: faceAmount
+                objectName: "faceAmount"
+                visible: faces.found !== null || faces.covering
+                label: "Strength"
+                from: 0; to: 1; stepSize: 0.05
+                value: faces.cover.amount !== undefined ? faces.cover.amount : 0.5
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: if (faces.covering) page.project.setFaceCover(page.clipInfo.id, { amount: value })
+            }
+            Finding {
+                objectName: "facesCovered"
+                visible: faces.covering
+                text: "Covering " + (faces.cover.faceIds.length === 1 ? "face " : "faces ") + faces.cover.faceIds.join(", ") + "."
+            }
+            RowLayout {
+                TextButton {
+                    objectName: "coverFaces"
+                    visible: faces.found !== null && faces.found.tracks.length > 0
+                    text: faces.covering ? "Cover these instead" : "Cover faces"
+                    variant: "primary"
+                    enabled: faces.chosenIds().length > 0
+                    onClicked: page.project.coverFaces(page.clipInfo.id, faces.chosenIds(),
+                                                       { style: faces.style, amount: faceAmount.value })
+                }
+                TextButton {
+                    objectName: "uncoverFaces"
+                    visible: faces.covering
+                    text: "Uncover"
+                    variant: "ghost"
+                    onClicked: page.project.uncoverFaces(page.clipInfo.id)
+                }
+            }
+        }
+
+        // Auto reframe
+        Section {
+            id: reframe
+            objectName: "reframeSection"
+            visible: page.canFindPeople
+            Layout.fillWidth: true
+            title: "Auto reframe"
+            property string aspect: "9:16"
+
+            Finding {
+                text: "Changes the canvas shape and keeps the subject (faces, or what draws the eye) in the frame, with position keyframes."
+                color: Theme.color.textSecondary
+            }
+            RowLayout {
+                spacing: Theme.space.xs
+                Repeater {
+                    model: ["9:16", "1:1", "4:5", "16:9"]
+                    delegate: TextButton {
+                        required property string modelData
+                        objectName: "reframeAspect:" + modelData
+                        text: modelData
+                        variant: reframe.aspect === modelData ? "primary" : "secondary"
+                        onClicked: reframe.aspect = modelData
+                    }
+                }
+            }
+            Setting {
+                id: reframeSmoothing
+                objectName: "reframeSmoothing"
+                label: "Smoothness"
+                from: 0; to: 1; stepSize: 0.05; value: 0.6
+                format: (v) => Math.round(v * 100) + " %"
+            }
+            TextButton {
+                objectName: "autoReframe"
+                text: "Reframe"
+                variant: "primary"
+                enabled: !page.project.analyzing && page.steady
+                tip: page.steady ? "" : "Works on clips playing forwards at a steady speed"
+                onClicked: page.project.autoReframe(page.clipInfo.id, { aspect: reframe.aspect, smoothing: reframeSmoothing.value })
             }
         }
 

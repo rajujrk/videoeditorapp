@@ -393,6 +393,8 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.chromaKey = clip.chromaKey;
     right.masks = clip.masks;
     right.matte = clip.matte;
+    right.cutout = clip.cutout;
+    right.faceMosaic = clip.faceMosaic; // face tracks are in media time: the same for both halves
     right.text = clip.text;
     right.adjustment = clip.adjustment;
     right.sequenceId = clip.sequenceId;
@@ -871,6 +873,41 @@ std::optional<std::string> SetClipKeepPitchCommand::redo(Project& project)
 void SetClipKeepPitchCommand::undo(Project& project)
 {
     project.locateClip(m_clipId)->clip->keepPitch = m_previous;
+}
+
+// --- SetClipPeopleCommand ---
+
+std::optional<std::string> SetClipPeopleCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    const Clip& clip = *location->clip;
+    const MediaItem* media = project.findMedia(clip.mediaId);
+    if (clip.generated() || clip.compound() || !media || !media->hasVideo || media->still || media->lottie)
+        return "only clips of video files can find people";
+    if (m_cutout && (!std::isfinite(m_cutout->softness) || m_cutout->softness < 0.0 || m_cutout->softness > 1.0
+                     || !std::isfinite(m_cutout->shift) || m_cutout->shift < -1.0 || m_cutout->shift > 1.0))
+        return "cutout setting out of range";
+    if (m_faces && (!std::isfinite(m_faces->amount) || m_faces->amount < 0.0 || m_faces->amount > 1.0
+                    || !std::isfinite(m_faces->expand) || m_faces->expand < 0.0 || m_faces->expand > 2.0))
+        return "face cover setting out of range";
+    m_previousCutout = clip.cutout;
+    m_previousFaces = clip.faceMosaic;
+    if (m_cutout)
+        location->clip->cutout = *m_cutout;
+    if (m_faces)
+        location->clip->faceMosaic = *m_faces;
+    return std::nullopt;
+}
+
+void SetClipPeopleCommand::undo(Project& project)
+{
+    Clip& clip = *project.locateClip(m_clipId)->clip;
+    clip.cutout = m_previousCutout;
+    clip.faceMosaic = m_previousFaces;
 }
 
 // --- SetClipEnhancedAudioCommand ---

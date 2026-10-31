@@ -133,6 +133,9 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantMap scenes READ scenes NOTIFY analysisChanged)
     // {clipId, bpm, times: [seconds]}: the beat.
     Q_PROPERTY(QVariantMap beats READ beats NOTIFY analysisChanged)
+    // {clipId, tracks: [{id, start, end (timeline seconds), x, y (where first seen)}]}: the
+    // faces found in a clip, numbered as coverFaces takes them.
+    Q_PROPERTY(QVariantMap faces READ faces NOTIFY analysisChanged)
 
     // Captions: the speech models ({id, title, size, englishOnly, downloaded}), a download in
     // progress ({id, received, total, progress}), and the languages captions can be made in.
@@ -262,6 +265,7 @@ public:
     double analysisProgress() const { return m_analysisProgress; }
     QString analysisTask() const { return m_analysisTask; }
     QVariantMap silences() const { return m_silences; }
+    QVariantMap faces() const { return m_faces; }
     QVariantMap scenes() const { return m_scenes; }
     QVariantMap beats() const { return m_beats; }
     QVariantList speechModels() const { return m_speechModels.list(); }
@@ -540,6 +544,23 @@ public:
     Q_INVOKABLE bool removeEnhancement(double clipId);
     Q_INVOKABLE void cancelAnalysis();
 
+    // People, found with Apple's Vision on this Mac (clips of video files, at any speed).
+    // The portrait cutout: settings enabled, invert, softness (0..1), shift (-1..1).
+    Q_INVOKABLE bool setPortraitCutout(double clipId, const QVariantMap& settings);
+    // Finds the faces through the clip's file in the background (kept per file) → `faces`.
+    Q_INVOKABLE bool findFaces(double clipId);
+    // Covers the found faces with these ids (all of them when empty): options style
+    // ("mosaic", "blur", "fill"), amount (0..1), expand (0..2). One undo step.
+    Q_INVOKABLE bool coverFaces(double clipId, const QVariantList& faceIds = {}, const QVariantMap& options = {});
+    // How the covered faces are covered (the same options).
+    Q_INVOKABLE bool setFaceCover(double clipId, const QVariantMap& options);
+    Q_INVOKABLE bool uncoverFaces(double clipId);
+    // Follows the clip's subject (faces, else what draws the eye) into a canvas of another
+    // shape: options aspect ("9:16", "1:1", "4:5", "16:9"; absent: the canvas as it is) and
+    // smoothing (0..1). The canvas takes that shape (its shorter side kept) and the clip is
+    // scaled to fill it with position keyframes, as one undo step (at constant speed only).
+    Q_INVOKABLE bool autoReframe(double clipId, const QVariantMap& options = {});
+
     // Captions. Downloads a speech model (checked by SHA-256); modelDownloadFinished reports.
     Q_INVOKABLE bool downloadSpeechModel(const QString& modelId);
     Q_INVOKABLE void cancelModelDownload();
@@ -645,6 +666,8 @@ private:
     void updatePlayhead();
     tve::Id mainTrackId() const;
     const tve::Clip* findClip(tve::Id clipId) const;
+    // A clip people can be found in (of a video file; its file there, if `needsFile`).
+    const tve::Clip* peopleClip(tve::Id clipId, bool needsFile);
     std::optional<tve::ClipVisual> visualFrom(tve::Id clipId, const QVariantMap& values) const;
     // Playhead on the frame grid, from the clip's start.
     tve::Ticks keyTime(const tve::Clip& clip) const;
@@ -783,6 +806,10 @@ private:
     double m_analysisProgress = 0;
     QString m_analysisTask;
     QVariantMap m_silences;
+    QVariantMap m_faces;
+    std::vector<tve::FaceTrack> m_faceTracks;                       // of m_faces' clip, by id
+    std::map<std::string, std::vector<tve::FaceFrame>> m_faceFrames; // per media fingerprint
+    std::map<std::string, std::vector<tve::SubjectSample>> m_subjects;
     QVariantMap m_scenes;
     QVariantMap m_beats;
 

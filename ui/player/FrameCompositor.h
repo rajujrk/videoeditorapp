@@ -96,6 +96,8 @@ private:
     QRhiTexture* stillTexture(QRhiCommandBuffer* cb, const std::string& path);
     // A sticker's (Lottie) frame `seconds` into its clip, drawn when the frame changes.
     QRhiTexture* stickerTexture(QRhiCommandBuffer* cb, tve::Id clipId, const std::string& path, double seconds);
+    // The person matte of a clip's decoded frame (Vision), found once per frame.
+    QRhiTexture* personMatte(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame);
 
     QRhi* m_rhi;
     CVMetalTextureCacheRef m_textureCache = nullptr;
@@ -129,6 +131,12 @@ private:
         std::unique_ptr<QRhiTexture> texture;
     };
     std::map<tve::Id, StickerTexture> m_stickers;
+    struct PersonMatteTexture {
+        const void* frame = nullptr; // the pixel buffer it was found in (with its time)
+        tve::Ticks pts = -1;
+        std::unique_ptr<QRhiTexture> texture;
+    };
+    std::map<tve::Id, PersonMatteTexture> m_personMattes;
     std::uint64_t m_renders = 0;
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_clipChains;
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_canvasChains; // canvas effects

@@ -26,6 +26,7 @@
 #include "TitleRenderer.h"
 #include "playback/TimelinePlayback.h"
 #include "speech/SpeechEnhancer.h"
+#include "analysis/PeopleVision.h"
 
 #include <nlohmann/json.hpp>
 
@@ -56,6 +57,32 @@
 #include <random>
 
 using namespace tve;
+
+namespace {
+
+// People settings as the inspector shows them.
+const char* const kFaceCovers[] = {"mosaic", "blur", "fill"};
+
+QVariantMap cutoutMap(const PortraitCutout& c)
+{
+    return {{QStringLiteral("enabled"), c.enabled},
+            {QStringLiteral("invert"), c.invert},
+            {QStringLiteral("softness"), c.softness},
+            {QStringLiteral("shift"), c.shift}};
+}
+
+QVariantMap faceCoverMap(const FaceMosaic& m)
+{
+    QVariantList ids;
+    for (const FaceTrack& t : m.faces)
+        ids << t.id;
+    return {{QStringLiteral("style"), QString::fromLatin1(kFaceCovers[int(m.style)])},
+            {QStringLiteral("amount"), m.amount},
+            {QStringLiteral("expand"), m.expand},
+            {QStringLiteral("faceIds"), ids}};
+}
+
+} // namespace
 
 namespace {
 
@@ -1698,6 +1725,11 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("hasSound"), !clip->generated() && (sequence || (media && media->hasAudio))
                                              && (track.kind == TrackKind::Audio || clip->audioEnabled)},
             {QStringLiteral("audioEffects"), effectsList(clip->audioEffects)},
+            {QStringLiteral("cutout"), cutoutMap(clip->cutout)},
+            {QStringLiteral("faceCover"), faceCoverMap(clip->faceMosaic)},
+            // People can be found in it (a clip of a video file).
+            {QStringLiteral("canFindPeople"), !clip->generated() && !sequence && media && media->hasVideo && !media->still
+                                                  && !media->lottie},
             {QStringLiteral("enhanced"), clip->enhancedAudio
                  ? QVariant(QVariantMap{{QStringLiteral("limitDb"), clip->enhancedAudio->limitDb},
                                         {QStringLiteral("missing"),
@@ -4484,6 +4516,8 @@ void ProjectController::clearAnalysis()
     m_silences.clear();
     m_scenes.clear();
     m_beats.clear();
+    m_faces.clear();
+    m_faceTracks.clear();
     emit analysisChanged();
 }
 
@@ -4662,6 +4696,310 @@ bool ProjectController::addBeatMarkers(int every)
         commands.push_back(std::make_unique<AddMarkerCommand>(std::move(marker)));
     }
     return apply(std::make_unique<CompositeCommand>(std::move(commands), "Add Beat Markers"));
+}
+
+// --- People ---
+
+namespace {
+
+// The options over a clip's cover (missing ones kept); false if a value is unknown.
+bool readCover(const QVariantMap& options, FaceMosaic& mosaic)
+{
+    if (options.contains(QStringLiteral("style"))) {
+        const QString style = options.value(QStringLiteral("style")).toString();
+        const auto it = std::ranges::find_if(kFaceCovers, [&](const char* s) { return style == QLatin1String(s); });
+        if (it == std::end(kFaceCovers))
+            return false;
+        mosaic.style = FaceCover(it - std::begin(kFaceCovers));
+    }
+    mosaic.amount = options.value(QStringLiteral("amount"), mosaic.amount).toDouble();
+    mosaic.expand = options.value(QStringLiteral("expand"), mosaic.expand).toDouble();
+    return true;
+}
+
+} // namespace
+
+const Clip* ProjectController::peopleClip(Id clipId, bool needsFile)
+{
+    const auto location = m_project.locateClip(clipId);
+    const Clip* clip = location ? location->clip : nullptr;
+    const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+    if (!clip || clip->generated() || clip->compound() || !media || !media->hasVideo || media->still || media->lottie) {
+        reportError(QStringLiteral("Select a clip of a video file"));
+        return nullptr;
+    }
+    if (needsFile && !QFileInfo::exists(QString::fromStdString(media->path))) {
+        reportError(QStringLiteral("%1 is missing: relink it first").arg(mediaName(media->path)));
+        return nullptr;
+    }
+    return clip;
+}
+
+bool ProjectController::setPortraitCutout(double clipId, const QVariantMap& settings)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    PortraitCutout cutout = clip->cutout;
+    cutout.enabled = settings.value(QStringLiteral("enabled"), cutout.enabled).toBool();
+    cutout.invert = settings.value(QStringLiteral("invert"), cutout.invert).toBool();
+    cutout.softness = settings.value(QStringLiteral("softness"), cutout.softness).toDouble();
+    cutout.shift = settings.value(QStringLiteral("shift"), cutout.shift).toDouble();
+    const char* label = cutout.enabled == clip->cutout.enabled ? "Change Cutout"
+                      : cutout.enabled                          ? "Portrait Cutout"
+                                                                 : "Remove Cutout";
+    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, cutout, std::nullopt, label));
+}
+
+bool ProjectController::findFaces(double clipId)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const Clip* clip = peopleClip(toId(clipId), true);
+    if (!clip)
+        return false;
+    const MediaItem& media = *m_project.findMedia(clip->mediaId);
+    const std::string key = fingerprintOf(media);
+    const Id id = clip->id;
+    const auto place = [this, id, key] {
+        const Clip* clip = findClip(id);
+        const auto frames = m_faceFrames.find(key);
+        if (!clip || frames == m_faceFrames.end())
+            return;
+        // The faces seen while the clip plays, at their times on the timeline.
+        const Ticks from = clip->sourceIn;
+        const Ticks to = clip->sourceIn + Ticks(std::llround(double(clip->duration) * clip->speed));
+        const auto timelineAt = [&](Ticks media) {
+            const double along = std::clamp(double(media - from) / double(std::max<Ticks>(1, to - from)), 0.0, 1.0);
+            return clip->start + Ticks(std::llround(along * double(clip->duration)));
+        };
+        m_faceTracks.clear();
+        QVariantList tracks;
+        for (FaceTrack& track : tve::linkFaces(frames->second)) {
+            if (track.end() < from || track.start() > to)
+                continue;
+            const FaceBox first = track.samples.front().box;
+            Ticks start = timelineAt(track.start());
+            Ticks end = timelineAt(track.end());
+            if (clip->reversed)
+                std::tie(start, end) = std::pair(clip->start + clip->end() - end, clip->start + clip->end() - start);
+            tracks << QVariantMap{{QStringLiteral("id"), track.id},       {QStringLiteral("start"), seconds(start)},
+                                  {QStringLiteral("end"), seconds(end)},   {QStringLiteral("x"), first.x},
+                                  {QStringLiteral("y"), first.y}};
+            m_faceTracks.push_back(std::move(track));
+        }
+        m_faces = {{QStringLiteral("clipId"), double(id)}, {QStringLiteral("tracks"), tracks}};
+        emit analysisChanged();
+        emit analysisFinished(true, {});
+    };
+    if (!m_faceFrames.contains(key)) {
+        if (auto kept = tve::loadFaces(tve::AnalysisCache(analysisDirectory().toStdString()), key))
+            m_faceFrames.emplace(key, std::move(*kept));
+    }
+    if (m_faceFrames.contains(key)) {
+        place();
+        return true;
+    }
+    auto found = std::make_shared<std::vector<FaceFrame>>();
+    runInBackground(QStringLiteral("Looking for faces"),
+                    [path = media.path, key, found, directory = analysisDirectory().toStdString()](
+                        const tve::AnalysisProgress& progress) -> std::string {
+                        std::string error;
+                        auto frames = tve::findFaces(path, progress, &error);
+                        if (!frames)
+                            return error.empty() ? std::string("cancelled") : error;
+                        tve::saveFaces(tve::AnalysisCache(directory), key, *frames);
+                        *found = std::move(*frames);
+                        return {};
+                    },
+                    [this, key, found, place] {
+                        m_faceFrames.insert_or_assign(key, std::move(*found));
+                        place();
+                    });
+    return true;
+}
+
+bool ProjectController::coverFaces(double clipId, const QVariantList& faceIds, const QVariantMap& options)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    if (toId(m_faces.value(QStringLiteral("clipId"), -1.0).toDouble()) != clip->id) {
+        reportError(QStringLiteral("Find the faces first"));
+        return false;
+    }
+    FaceMosaic mosaic = clip->faceMosaic;
+    if (!readCover(options, mosaic)) {
+        reportError(QStringLiteral("Unknown face cover"));
+        return false;
+    }
+    mosaic.faces.clear();
+    for (const FaceTrack& track : m_faceTracks) {
+        if (faceIds.isEmpty() || faceIds.contains(QVariant(track.id)) || faceIds.contains(QVariant(double(track.id))))
+            mosaic.faces.push_back(track);
+    }
+    if (mosaic.faces.empty()) {
+        reportError(m_faceTracks.empty() ? QStringLiteral("No faces were found in this clip")
+                                         : QStringLiteral("Choose the faces to cover"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, std::nullopt, mosaic, "Cover Faces"));
+}
+
+bool ProjectController::setFaceCover(double clipId, const QVariantMap& options)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    FaceMosaic mosaic = clip->faceMosaic;
+    if (!mosaic.active()) {
+        reportError(QStringLiteral("This clip covers no faces"));
+        return false;
+    }
+    if (!readCover(options, mosaic)) {
+        reportError(QStringLiteral("Unknown face cover"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, std::nullopt, mosaic, "Change Face Cover"));
+}
+
+bool ProjectController::uncoverFaces(double clipId)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    if (!clip->faceMosaic.active()) {
+        reportError(QStringLiteral("This clip covers no faces"));
+        return false;
+    }
+    FaceMosaic none = clip->faceMosaic;
+    none.faces.clear();
+    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, std::nullopt, none, "Uncover Faces"));
+}
+
+bool ProjectController::autoReframe(double clipId, const QVariantMap& options)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const Clip* clip = peopleClip(toId(clipId), true);
+    if (!clip)
+        return false;
+    if (clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
+        reportError(QStringLiteral("Auto reframe works on clips playing forwards at a steady speed"));
+        return false;
+    }
+    const MediaItem& media = *m_project.findMedia(clip->mediaId);
+    if (media.width <= 0 || media.height <= 0) {
+        reportError(QStringLiteral("The size of %1 is not known").arg(mediaName(media.path)));
+        return false;
+    }
+    // The canvas: the shape asked for, its shorter side kept (even sizes, for encoders).
+    ProjectSettings canvas = m_project.settings;
+    const QString aspect = options.value(QStringLiteral("aspect")).toString();
+    if (!aspect.isEmpty()) {
+        const QStringList parts = aspect.split(QLatin1Char(':'));
+        const double a = parts.size() == 2 ? parts[0].toDouble() : 0.0;
+        const double b = parts.size() == 2 ? parts[1].toDouble() : 0.0;
+        if (a <= 0.0 || b <= 0.0) {
+            reportError(QStringLiteral("Unknown shape: ") + aspect);
+            return false;
+        }
+        const int shorter = std::min(canvas.width, canvas.height);
+        const auto even = [](double v) { return std::max(2, int(std::lround(v / 2.0)) * 2); };
+        canvas.width = a <= b ? shorter : even(shorter * a / b);
+        canvas.height = a <= b ? even(shorter * b / a) : shorter;
+    }
+    const double smoothing = std::clamp(options.value(QStringLiteral("smoothing"), 0.6).toDouble(), 0.0, 1.0);
+    const std::string key = fingerprintOf(media);
+    const Id id = clip->id;
+    const auto place = [this, id, key, canvas, smoothing] {
+        const Clip* clip = findClip(id);
+        const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+        if (!clip || !media)
+            return;
+        const tve::ReframePath path = tve::reframe(m_subjects[key], media->width, media->height, canvas.width,
+                                                   canvas.height, {.smoothing = smoothing});
+        // Media time → time in the clip; the ends get the path's value there.
+        const auto clipTime = [&](Ticks media) {
+            return Ticks(std::llround(double(media - clip->sourceIn) / clip->speed));
+        };
+        const auto positionAt = [&](Ticks media) {
+            const auto& p = path.positions;
+            if (media <= p.front().first)
+                return p.front().second;
+            if (media >= p.back().first)
+                return p.back().second;
+            const auto next = std::ranges::upper_bound(p, media, {}, [](const auto& e) { return e.first; });
+            const auto& [t1, b] = *next;
+            const auto& [t0, a] = *(next - 1);
+            const double u = double(media - t0) / double(std::max<Ticks>(1, t1 - t0));
+            return std::array<double, 2>{a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u};
+        };
+        Keyframes xs, ys;
+        if (!path.positions.empty()) {
+            const Ticks sourceEnd = clip->sourceIn + Ticks(std::llround(double(clip->duration) * clip->speed));
+            std::vector<std::pair<Ticks, std::array<double, 2>>> points{{0, positionAt(clip->sourceIn)}};
+            for (const auto& [time, xy] : path.positions) {
+                const Ticks at = clipTime(time);
+                if (at > 0 && at < clip->duration)
+                    points.push_back({at, xy});
+            }
+            points.push_back({clip->duration, positionAt(sourceEnd)});
+            for (const auto& [at, xy] : points) {
+                xs.push_back({at, std::clamp(xy[0], -10.0, 10.0)});
+                ys.push_back({at, std::clamp(xy[1], -10.0, 10.0)});
+            }
+        }
+        ClipVisual visual = clip->visual;
+        visual.transform.scale = path.scale;
+        visual.transform.x = 0.0;
+        visual.transform.y = 0.0;
+        visual.transform.rotation = 0.0;
+        visual.crop = {};
+        std::map<std::string, Keyframes> changes{{std::string(tve::property::kX), xs},
+                                                 {std::string(tve::property::kY), ys},
+                                                 {std::string(tve::property::kScale), {}},
+                                                 {std::string(tve::property::kRotation), {}}};
+        std::vector<std::unique_ptr<Command>> commands;
+        if (canvas.width != m_project.settings.width || canvas.height != m_project.settings.height)
+            commands.push_back(std::make_unique<SetProjectSettingsCommand>(canvas));
+        commands.push_back(std::make_unique<SetClipKeyframesCommand>(id, std::move(changes), "Auto Reframe", visual));
+        if (apply(std::make_unique<CompositeCommand>(std::move(commands), "Auto Reframe"))) {
+            m_canvasChosen = true;
+            emit analysisFinished(true, {});
+        } else {
+            emit analysisFinished(false, lastError());
+        }
+    };
+    if (!m_subjects.contains(key)) {
+        if (auto kept = tve::loadSubject(tve::AnalysisCache(analysisDirectory().toStdString()), key))
+            m_subjects.emplace(key, std::move(*kept));
+    }
+    if (m_subjects.contains(key)) {
+        place();
+        return true;
+    }
+    auto found = std::make_shared<std::vector<SubjectSample>>();
+    runInBackground(QStringLiteral("Following the subject"),
+                    [path = media.path, key, found, directory = analysisDirectory().toStdString()](
+                        const tve::AnalysisProgress& progress) -> std::string {
+                        std::string error;
+                        auto samples = tve::findSubject(path, progress, &error);
+                        if (!samples)
+                            return error.empty() ? std::string("cancelled") : error;
+                        tve::saveSubject(tve::AnalysisCache(directory), key, *samples);
+                        *found = std::move(*samples);
+                        return {};
+                    },
+                    [this, key, found, place] {
+                        m_subjects.insert_or_assign(key, std::move(*found));
+                        place();
+                    });
+    return true;
 }
 
 // --- Speech enhancement ---

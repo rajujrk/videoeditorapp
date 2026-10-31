@@ -126,11 +126,21 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorGrade, exposure, contrast, 
                                                 lumaVsSat, lutPath, lutIntensity)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipLook, id, title, intensity, grade)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EnhancedAudio, path, limitDb)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PortraitCutout, enabled, invert, softness, shift)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceBox, x, y, width, height)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceSample, time, box)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceTrack, id, samples)
+NLOHMANN_JSON_SERIALIZE_ENUM(FaceCover, {
+    {FaceCover::Mosaic, "mosaic"},
+    {FaceCover::Blur, "blur"},
+    {FaceCover::Fill, "fill"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceMosaic, style, amount, expand, faces)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
-                                                chromaKey, masks, matte, audioEffects, enhancedAudio, keepPitch,
-                                                sequenceId, groupId)
+                                                chromaKey, masks, matte, cutout, faceMosaic, audioEffects,
+                                                enhancedAudio, keepPitch, sequenceId, groupId)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips)
 NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {

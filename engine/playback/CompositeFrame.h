@@ -15,6 +15,17 @@ namespace tve {
 // The incoming clip of a layer that is in a transition, and how far the transition is.
 struct CompositeFrame;
 
+// What a clip does with the people in its picture at one frame: its portrait cutout, and
+// the faces to cover there (with the cover).
+struct LayerPeople {
+    PortraitCutout cutout;
+    std::vector<FaceBox> faces;
+    FaceCover cover = FaceCover::Mosaic;
+    float amount = 0.5f;
+
+    bool any() const { return cutout.enabled || !faces.empty(); }
+};
+
 struct LayerTransition {
     std::string transitionId;
     std::map<std::string, std::vector<float>> values;
@@ -29,6 +40,7 @@ struct LayerTransition {
     ChromaKey chromaKey;
     std::vector<ClipMask> masks;
     double clipSeconds = 0.0; // how far into the incoming clip
+    LayerPeople people;
 };
 
 // One clip's picture at a moment of the timeline, with how to show it. During a
@@ -58,6 +70,8 @@ struct VideoLayer {
     double clipDuration = 0.0;
     // A compound clip: its sequence's layers at this moment, drawn as its picture.
     std::shared_ptr<CompositeFrame> nested;
+    // After the masks, before the effects.
+    LayerPeople people;
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.
