@@ -49,6 +49,8 @@ class ProjectController : public QObject {
     // The same tracks as a model whose rows survive edits (use this for delegates).
     Q_PROPERTY(QAbstractListModel* trackModel READ trackModel CONSTANT)
     Q_PROPERTY(QVariantList media READ media NOTIFY projectChanged)
+    // Media whose files are not where the project says: {id, name, path, folder}.
+    Q_PROPERTY(QVariantList missingMedia READ missingMedia NOTIFY projectChanged)
 
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY projectChanged)
     Q_PROPERTY(bool canRedo READ canRedo NOTIFY projectChanged)
@@ -175,6 +177,7 @@ public:
     QVariantList tracks() const;
     QAbstractListModel* trackModel() { return &m_trackModel; }
     QVariantList media() const;
+    QVariantList missingMedia() const;
 
     bool canUndo() const { return m_stack->canUndo(); }
     bool canRedo() const { return m_stack->canRedo(); }
@@ -256,6 +259,13 @@ public:
     // Places a media item on a video track. trackId < 0 means the main track; start < 0
     // means right after that track's last clip.
     Q_INVOKABLE bool addClip(double mediaId, double trackId = -1, double start = -1);
+    // Points media at another file (moved or renamed). A file whose content differs from the
+    // one imported is refused unless `force`; one of another kind (no pictures for a video…)
+    // always is.
+    Q_INVOKABLE bool relinkMedia(double mediaId, const QUrl& file, bool force = false);
+    // Finds the missing media's files in `folder` (and the folders in it) by name and content,
+    // and relinks them all in one undo step; returns how many.
+    Q_INVOKABLE int relinkFromFolder(const QUrl& folder);
     // Imports one file and appends it to the main track.
     Q_INVOKABLE bool importAndAppend(const QUrl& file);
 
@@ -550,6 +560,9 @@ private:
     std::optional<tve::Id> clipAtPlayhead() const;
     // The clip after the cut nearest `time` on `track` (a cut: a clip starting where another
     // ends), within `tolerance`.
+    // What a media file is (probed, or a still or sticker), with its fingerprint; nullopt and
+    // `error` if it cannot be used.
+    std::optional<tve::MediaItem> describeMedia(const std::string& path, QString* error) const;
     // The settings and range `options` ask for (a preset's values first), or why they cannot be.
     std::optional<Exporter::Options> exportOptions(const QVariantMap& options, QString* error = nullptr) const;
     // Runs the first waiting job, if none is running.

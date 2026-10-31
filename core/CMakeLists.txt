@@ -25,6 +25,8 @@ add_library(tve_core STATIC
     io/ProjectSerializer.cpp
     io/LutFile.h
     io/LutFile.cpp
+    io/MediaRelink.h
+    io/MediaRelink.cpp
     content/EffectManifest.h
     content/EffectManifest.cpp
 )

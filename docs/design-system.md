@@ -114,7 +114,8 @@ Sizes are `Theme.size.*` tokens.
 
 | Region | File | Status |
 |---|---|---|
-| Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker and "Autosaved hh:mm", undo/redo with labels, save, theme toggle, Export (shows progress, or "Paused", while exporting) opening `ExportDialog.qml` (preset picker with its description, format, size, frame rate, quality, sound and loudness, range with from–to fields, size estimate; Export to watch the progress, with Keep editing, or Add to queue); a render-queue button with a count badge opening `RenderQueuePanel.qml` (a card per export: name, format, length, state, progress, pause/resume, cancel, Show in Finder, remove; Clear finished) |
+| Top bar | `ui/shell/TopBar.qml` | **Live**: project name with unsaved marker and "Autosaved hh:mm", undo/redo with labels, save, theme toggle, Export (shows progress, or "Paused", while exporting) opening `ExportDialog.qml` (preset picker with its description, format, size, frame rate, quality, sound and loudness, range with from–to fields, size estimate; Export to watch the progress, with Keep editing, or Add to queue); a keyboard button opening `ShortcutsDialog.qml` (actions by group with search, key chips that record the next key press, a conflict banner with Replace, reset and clear per action, Reset all); a render-queue button with a count badge opening `RenderQueuePanel.qml` (a card per export: name, format, length, state, progress, pause/resume, cancel, Show in Finder, remove; Clear finished) |
+| Missing media | `ui/shell/EditorScreen.qml`, `RelinkDialog.qml` | **Live**: a `warning`-tinted bar under the top bar naming missing files with Relink…; the dialog lists them (name, former folder, Locate…) with Search a folder…, the outcome, and Use anyway for a file whose content differs; missing clips are `danger`-tinted with a "Missing ·" label and no thumbnails; media tiles show a red Missing badge |
 | Library | `ui/shell/LibraryPanel.qml` | **Media, Titles, Transitions, Effects (category chips, GPU-rendered previews that animate on hover, overlays marked with a badge; the search field filters effects and transitions) Filters (an adjustment-layer tile, then looks with previews) and Stickers (category chips, animated previews that play on hover; click to add at the playhead) tabs are live** (import, drop, drag to timeline, video thumbnails; 40 title templates in categories (chips, search) drawn by the app's text renderer, animated ones playing on hover, click or drag onto a track; transitions (category chips and a Random on every cut button) with GPU-rendered previews that play on hover, click or drag onto a cut; click an effect to add it to the selected clip); other tabs show placeholders naming their phase |
 | Player | `ui/shell/PlayerPanel.qml` | **Live** timeline playback with sound, play/pause, frame step, timecode, stereo level meter, proxy toggle, stats overlay; `MaskOverlay.qml` draws the selected clip's active mask (dashed accent outline, white handles: round to move and rotate, square to size, one per pen point) and turns the player into a crosshair colour picker while a key colour is picked |
 | Inspector | `ui/shell/InspectorPanel.qml` | **Video, Speed (with a speed-ramp section: presets and the `SpeedRampEditor.qml` graph), Audio, Color and Effects tabs are live** for the selected clip (a Keyframes section — add/remove at the playhead, step between, easing, clear — and a ◆ toggle beside every animatable value, a curve editor for the keyframe at the playhead, ◆ on keyframable effect parameters; placement/crop/opacity/blend, masks (shape buttons, numbered mask chips, sliders, invert), chroma key, track matte and split-screen layouts drawn as miniature canvases, a title's Text, Shape (kind, colour, opacity, padding, bubble tail) and Animation (in, out and loop presets with unit, duration and stagger; scroll) sections, speed/reverse/freeze frame, volume/fades/detach, an audio-effect stack (a category · title picker and cards like the picture effects), loudness normalization (target and result), a Keep pitch switch in Speed, effect stack); a selected transition replaces the tabs with its own page (Apply to all cuts, kind, duration, position, settings, remove); the Color tab grades the clip (scopes via the `ScopeView` item, basic sliders, `ColorWheelControl.qml` wheels, `ToneCurveEditor.qml` tone and hue curves, HSL band chips, LUT, copy/paste, presets) |
@@ -339,9 +340,20 @@ The export dialog with the Vertical 9:16 preset on a marker's range, and the ren
 ![Render queue, dark](images/render-queue-dark.png)
 ![Render queue, light](images/render-queue-light.png)
 
+Missing media after a project's footage moved (the bar, red clips, Missing tiles), the relink
+dialog after a folder search found two of three (one renamed, found by content), and the
+keyboard shortcuts dialog asking before it moves ⌘G, dark and light:
+
+![Missing media, dark](images/missing-media-dark.png)
+![Missing media, light](images/missing-media-light.png)
+![Relink, dark](images/relink-dark.png)
+![Relink, light](images/relink-light.png)
+![Keyboard shortcuts, dark](images/shortcuts-dark.png)
+![Keyboard shortcuts, light](images/shortcuts-light.png)
+
 ### Icons
 
-48 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+49 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.

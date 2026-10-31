@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a), curves & effect keyframes (6b) and speed ramping (6c), colour grading (7a), qualifiers & scopes (7b), looks (7c), masks & keying (8a), the effects library (8b), audio DSP (9a), the titles system (9b), transitions to 60 (10a), stickers (10b), structure (11a) and delivery (11b) done, hardening (11c) next — see §9.2
+**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a), curves & effect keyframes (6b) and speed ramping (6c), colour grading (7a), qualifiers & scopes (7b), looks (7c), masks & keying (8a), the effects library (8b), audio DSP (9a), the titles system (9b), transitions to 60 (10a), stickers (10b), structure (11a), delivery (11b) and hardening (11c) done — the Phase 2 slices are complete; before Phase 3 (on-device AI) the §7 P1 gaps noted in §9.2 remain — see §9.2
 **Date:** 2026-10-27
 
 ---
@@ -540,7 +540,11 @@ pulled forward into Phase 1 (5c).
 | 10b. Stickers | Lottie stickers drawn by ThorVG (MIT; Skottie would need all of Skia) into textures per frame, looping for the clip's length; 100 original stickers (25 designs × 4 looping motions, `tools/make_stickers.py`) in a Stickers tab with categories, search and animated previews; Lottie import; video with alpha (ProRes 4444, GIF, APNG, WebP) decoded in software to BGRA and composited with its transparency | **Done** (WebM VP9 alpha needs libvpx; HEVC with alpha later) |
 | 11a. Structure | Markers (colour, note, range, chapter; ruler flags, snapping, M and ⌥←/⌥→) with chapter markers written into exported MP4s; multi-select, groups that select, move and delete together; compound clips holding a sequence of tracks, rendered on a canvas of their own (nested up to 8 deep) and mixed from their sequence's tracks, with break apart | **Done** (compound clips take no speed or transitions yet) |
 | 11b. Delivery | Formats: MP4/MOV with H.264 or HEVC, MOV with ProRes Proxy/LT/422/HQ/4444 (VideoToolbox, `prores_ks` fallback), animated GIF (per-frame median-cut palette, ordered dither), sound-only M4A, WAV 16/24-bit and FLAC; 11 presets in `export_presets.json` (web 1080p/4K, small, vertical, square, ProRes master and proxy, GIF, AAC, WAV, FLAC); frame rate, sound on/off, fill-and-crop for other shapes; ranges (selection, marker, custom) and a file per marker range; a render queue running jobs one after another from snapshots, with pause, resume, cancel, remove; chapters cut to the range; ProRes 4:2:2/4:4:4 decode in preview and thumbnails | **Done** (MP3 needs LAME, not in the LGPL build; transparent-background export later) |
-| 11c. Hardening | Relink missing media, shortcut editor, golden-frame suite of 500 cases | Next |
+| 11c. Hardening | Relink missing media: content fingerprints at import, a missing-media bar and dialog, folder search by name then fingerprint (renamed copies), Locate with a confirmation for different content, one undo step; a shortcut editor over an action registry (19 actions) with a user keymap JSON, recording, conflicts, reset, live tooltips; the golden-frame suite: 531 cases rendered by `StillRenderer` and compared with reference PNGs per GPU backend (`tests/golden/metal`) | **Done** |
+
+Known gaps against the §7 P0+P1 (non-AI) checklist before Phase 3: MP3 export (needs LAME),
+transparent-background export, speed and transitions on compound clips, WebM VP9 alpha and
+HEVC-with-alpha decode.
 
 ---
 

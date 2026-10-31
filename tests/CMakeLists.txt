@@ -17,6 +17,7 @@ add_executable(tve_core_tests
     core/test_stills.cpp
     core/test_masks.cpp
     core/test_structure.cpp
+    core/test_relink.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
@@ -61,6 +62,19 @@ if(TARGET tve_gpu)
     catch_discover_tests(tve_gpu_tests)
 endif()
 
+# Golden frames: fixed projects rendered by the real renderer and compared with reference
+# pictures (tests/golden/metal). TVE_GOLDEN_UPDATE=1 rewrites the references.
+if(TARGET tve_player)
+    qt_add_executable(tve_golden_tests golden/test_golden.cpp)
+    set_target_properties(tve_golden_tests PROPERTIES MACOSX_BUNDLE OFF)
+    target_compile_definitions(tve_golden_tests PRIVATE TVE_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/golden")
+    target_include_directories(tve_golden_tests PRIVATE $<TARGET_PROPERTY:tve_player,INTERFACE_INCLUDE_DIRECTORIES>)
+    target_link_libraries(tve_golden_tests PRIVATE tve_player tve::engine tve::gpu Qt6::Gui Catch2::Catch2)
+    add_test(NAME tve_golden_tests COMMAND tve_golden_tests)
+    # Heavy GPU use: not at the same time as the UI tests, whose timings it would upset.
+    set_tests_properties(tve_golden_tests PROPERTIES RESOURCE_LOCK gpu)
+endif()
+
 if(TARGET tve_shell)
     find_package(Qt6 REQUIRED COMPONENTS QuickTest)
     qt_add_executable(tve_qml_tests qml/main.cpp)
@@ -71,4 +85,5 @@ if(TARGET tve_shell)
     target_link_libraries(tve_qml_tests PRIVATE Qt6::QuickTest Qt6::QuickControls2 tve_shellplugin)
     target_include_directories(tve_qml_tests PRIVATE $<TARGET_PROPERTY:tve_player,INTERFACE_INCLUDE_DIRECTORIES>)
     add_test(NAME tve_qml_tests COMMAND tve_qml_tests)
+    set_tests_properties(tve_qml_tests PROPERTIES RESOURCE_LOCK gpu)
 endif()

@@ -11,10 +11,14 @@ qt_add_qml_module(tve_player
         FrameCompositor.mm
         Exporter.h
         Exporter.mm
+        StillRenderer.h
+        StillRenderer.mm
         ProxyManager.h
         ProxyManager.cpp
         ProjectController.h
         ProjectController.cpp
+        KeyMap.h
+        KeyMap.cpp
         WaveformItem.h
         WaveformItem.cpp
         TrackListModel.h

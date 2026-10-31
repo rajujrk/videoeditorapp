@@ -8,6 +8,7 @@
 #include "decode/AudioDecoder.h"
 #include "decode/VideoDecoder.h"
 #include "io/LutFile.h"
+#include "io/MediaRelink.h"
 #include "io/ProjectSerializer.h"
 #include "model/TimelineQuery.h"
 #include "gpu/ColorGrader.h"
@@ -697,6 +698,9 @@ double ProjectController::duration() const
 QVariantList ProjectController::tracks() const
 {
     const Id main = mainTrackId();
+    std::set<Id> missing;
+    for (const MediaItem* item : tve::missingMedia(m_project))
+        missing.insert(item->id);
     QVariantList list;
     for (auto track = m_project.tracks.rbegin(); track != m_project.tracks.rend(); ++track) {
         QVariantList clips;
@@ -721,6 +725,7 @@ QVariantList ProjectController::tracks() const
                 {QStringLiteral("isTitle"), clip.text.has_value()},
                 {QStringLiteral("isAdjustment"), clip.adjustment},
                 {QStringLiteral("isCompound"), sequence != nullptr},
+                {QStringLiteral("missing"), media && missing.contains(media->id)},
                 {QStringLiteral("groupId"), double(clip.groupId)},
                 {QStringLiteral("isStill"), media && media->still},
                 {QStringLiteral("lookTitle"), clip.look ? QString::fromStdString(clip.look->title) : QString()},
@@ -767,6 +772,9 @@ QVariantList ProjectController::tracks() const
 
 QVariantList ProjectController::media() const
 {
+    std::set<Id> missing;
+    for (const MediaItem* item : tve::missingMedia(m_project))
+        missing.insert(item->id);
     QVariantList list;
     for (const MediaItem& item : m_project.media) {
         list << QVariantMap{
@@ -782,6 +790,7 @@ QVariantList ProjectController::media() const
             {QStringLiteral("still"), item.still},
             {QStringLiteral("sticker"), item.lottie},
             {QStringLiteral("alpha"), item.alpha},
+            {QStringLiteral("missing"), missing.contains(item.id)},
         };
     }
     return list;
@@ -969,6 +978,100 @@ bool ProjectController::save(const QUrl& file)
 
 // --- Media ---
 
+std::optional<MediaItem> ProjectController::describeMedia(const std::string& path, QString* error) const
+{
+    std::optional<MediaItem> item;
+    if (isLottieFile(path)) {
+        // A sticker: plays in a loop for as long as its clips last (5 seconds when placed).
+        const auto animation = stickers::open(QString::fromStdString(path));
+        if (!animation) {
+            *error = QStringLiteral("%1 is not a Lottie animation this app can play").arg(fileName(path));
+            return std::nullopt;
+        }
+        item = MediaItem{.path = path, .duration = kStillDuration, .hasVideo = true, .hasAudio = false,
+                         .width = animation->width(), .height = animation->height(), .still = true, .alpha = true,
+                         .lottie = true};
+    } else if (still::isStillImage(QString::fromStdString(path))) {
+        // A photo or graphic: one picture, 5 seconds when first placed.
+        const auto size = still::size(QString::fromStdString(path));
+        item = MediaItem{.path = path, .duration = kStillDuration, .hasVideo = true, .hasAudio = false,
+                         .width = size ? size->width() : 0, .height = size ? size->height() : 0, .still = true};
+    } else {
+        item = probeMedia(path, error);
+    }
+    if (item)
+        item->fingerprint = fingerprintFile(path).value_or(std::string());
+    return item;
+}
+
+QVariantList ProjectController::missingMedia() const
+{
+    QVariantList list;
+    for (const MediaItem* item : tve::missingMedia(m_project)) {
+        const QFileInfo file(QString::fromStdString(item->path));
+        list << QVariantMap{{QStringLiteral("id"), double(item->id)},
+                            {QStringLiteral("name"), file.fileName()},
+                            {QStringLiteral("path"), file.filePath()},
+                            {QStringLiteral("folder"), file.path()}};
+    }
+    return list;
+}
+
+bool ProjectController::relinkMedia(double mediaId, const QUrl& file, bool force)
+{
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    if (!media) {
+        reportError(QStringLiteral("Media not found"));
+        return false;
+    }
+    const std::string path = (file.isLocalFile() ? file.toLocalFile() : file.toString()).toStdString();
+    QString error;
+    std::optional<MediaItem> item = describeMedia(path, &error);
+    if (!item) {
+        reportError(error);
+        return false;
+    }
+    // The clips need what the old file had: pictures for pictures, sound for sound.
+    if ((media->hasVideo && !item->hasVideo) || (media->still != item->still) || (!media->hasVideo && !item->hasAudio)) {
+        reportError(QStringLiteral("%1 is a different kind of file from %2").arg(fileName(path), fileName(media->path)));
+        return false;
+    }
+    if (!force && !media->fingerprint.empty() && item->fingerprint != media->fingerprint) {
+        reportError(QStringLiteral("%1 is not the same file as the one imported").arg(fileName(path)));
+        return false;
+    }
+    item->id = media->id;
+    if (!apply(std::make_unique<RelinkMediaCommand>(std::vector{std::move(*item)})))
+        return false;
+    requestAutoProxies();
+    return true;
+}
+
+int ProjectController::relinkFromFolder(const QUrl& folder)
+{
+    const QString directory = folder.isLocalFile() ? folder.toLocalFile() : folder.toString();
+    const auto missing = tve::missingMedia(m_project);
+    if (missing.empty())
+        return 0;
+    std::vector<MediaItem> relinked;
+    for (const auto& [id, path] : findMissingMedia(missing, directory.toStdString())) {
+        QString error;
+        if (auto item = describeMedia(path, &error)) {
+            item->id = id;
+            relinked.push_back(std::move(*item));
+        }
+    }
+    if (relinked.empty()) {
+        reportError(QStringLiteral("None of the missing files are in %1").arg(QFileInfo(directory).fileName()));
+        return 0;
+    }
+    const int count = int(relinked.size());
+    if (!apply(std::make_unique<RelinkMediaCommand>(std::move(relinked))))
+        return 0;
+    requestAutoProxies();
+    return count;
+}
+
 int ProjectController::importMedia(const QList<QUrl>& files)
 {
     int imported = 0;
@@ -979,25 +1082,7 @@ int ProjectController::importMedia(const QList<QUrl>& files)
             continue;
         }
         QString error;
-        std::optional<MediaItem> item;
-        if (isLottieFile(path)) {
-            // A sticker: plays in a loop for as long as its clips last (5 seconds when placed).
-            const auto animation = stickers::open(QString::fromStdString(path));
-            if (!animation) {
-                reportError(QStringLiteral("%1 is not a Lottie animation this app can play").arg(fileName(path)));
-                continue;
-            }
-            item = MediaItem{.path = path, .duration = kStillDuration, .hasVideo = true, .hasAudio = false,
-                             .width = animation->width(), .height = animation->height(), .still = true, .alpha = true,
-                             .lottie = true};
-        } else if (still::isStillImage(QString::fromStdString(path))) {
-            // A photo or graphic: one picture, 5 seconds when first placed.
-            const auto size = still::size(QString::fromStdString(path));
-            item = MediaItem{.path = path, .duration = kStillDuration, .hasVideo = true, .hasAudio = false,
-                             .width = size ? size->width() : 0, .height = size ? size->height() : 0, .still = true};
-        } else {
-            item = probeMedia(path, &error);
-        }
+        std::optional<MediaItem> item = describeMedia(path, &error);
         if (!item) {
             reportError(error);
             continue;
@@ -3586,6 +3671,8 @@ bool ProjectController::stopRecording()
     }
     QString probeError;
     auto item = probeMedia(take->path, &probeError);
+    if (item)
+        item->fingerprint = fingerprintFile(take->path).value_or(std::string());
     if (!item) {
         reportError(probeError);
         return false;

@@ -42,6 +42,9 @@ struct MediaItem {
     // A Lottie animation (a sticker): drawn, not decoded, looping; like a still it lasts as
     // long as its clips (`still` is set too), `duration` being one cycle.
     bool lottie = false;
+    // Identifies the file's content (see io/MediaRelink.h) so a moved or renamed copy can be
+    // found again; empty when not known (media imported before it was recorded).
+    std::string fingerprint;
 
     // A lighter copy of the pictures for the preview to decode instead (same frames and
     // times). Set only in the snapshots handed to playback; never saved.

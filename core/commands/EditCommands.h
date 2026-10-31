@@ -39,6 +39,21 @@ private:
     MediaItem m_item;
 };
 
+// Points media at other files (moved or renamed copies): each item, found by its id, takes
+// the new path and what probing the new file found, keeping its id so its clips play it.
+class RelinkMediaCommand final : public Command {
+public:
+    explicit RelinkMediaCommand(std::vector<MediaItem> items) : m_items(std::move(items)) {}
+
+    std::string label() const override { return m_items.size() == 1 ? "Relink Media" : "Relink Media Files"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    std::vector<MediaItem> m_items;
+    std::vector<MediaItem> m_previous;
+};
+
 // Moves one edge of a clip. Trimming the start also moves the source in-point, so the
 // frames under the remaining part of the clip stay where they were.
 class TrimClipCommand final : public Command {
