@@ -2,7 +2,7 @@
 
 **Product:** TechieVideoEditor (TVE), a desktop video editor for macOS (Apple Silicon first, Windows second)
 **Goal:** feature parity with the editor surveyed in the REA static scan, built as an original implementation
-**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a), curves & effect keyframes (6b) and speed ramping (6c), colour grading (7a), qualifiers & scopes (7b), looks (7c), masks & keying (8a), the effects library (8b), audio DSP (9a), the titles system (9b), transitions to 60 (10a), stickers (10b), structure (11a), delivery (11b) and hardening (11c) done — the Phase 2 slices are complete (the §7 P1 gaps are noted in §9.2); Phase 3 under way: analysis (12a) done, speech to text (12b) next — see §9.3 — see §9.2
+**Status:** Phases 0 and 1 complete (Phase 1: timeline, audio, compositing, speed & thumbnails, transitions, titles, MP4 export, autosave & recovery, proxies, voice-over) — see §9.1; Phase 2 under way: keyframes (6a), curves & effect keyframes (6b) and speed ramping (6c), colour grading (7a), qualifiers & scopes (7b), looks (7c), masks & keying (8a), the effects library (8b), audio DSP (9a), the titles system (9b), transitions to 60 (10a), stickers (10b), structure (11a), delivery (11b) and hardening (11c) done — the Phase 2 slices are complete (the §7 P1 gaps are noted in §9.2); Phase 3 under way: analysis (12a) and speech to text (12b) done, captions and text editing (12c) next — see §9.3 — see §9.2
 **Date:** 2026-10-27
 
 ---
@@ -555,8 +555,8 @@ Analysis runs as cancellable background jobs; results are cached per media finge
 | Slice | Scope | Status |
 |---|---|---|
 | 12a. Analysis | Silence detection with a reviewable cut list and ripple removal; scene detection (colour-histogram differences) to split or mark; beat and tempo detection (onset strength, tempo by autocorrelation, beat tracking by dynamic programming) to beat markers; auto ducking of music under speech as volume keyframes; a background analysis queue with progress and a fingerprint-keyed cache | **Done** (energy-based pauses and speech; Silero VAD can replace them in 13a) |
-| 12b. Speech to text | whisper.cpp (MIT) with Whisper models (MIT), downloaded on first use and verified by hash; transcription jobs; auto subtitles on a caption track with word timing; SRT/VTT import and export | Next |
-| 12c. Captions & text editing | Dynamic caption styles (word highlight, pop, karaoke); a transcript editor that cuts the video by deleting words; filler-word and pause removal | Planned |
+| 12b. Speech to text | whisper.cpp 1.8.6 + ggml 0.26 (MIT, Metal) via vcpkg; five Whisper models (Base, Small, Large v3 Turbo; English-only and multilingual) downloaded on first use with size and SHA-256 checks (`SpeechModels`); transcription in the background with cancel, word times from DTW alignment heads refined against the sound's loudness, transcripts cached per media fingerprint, model and language; captions laid out (42 × 2, pauses, sentence ends) as title clips on a Captions track keeping word timing; SRT/WebVTT import and export | **Done** (on the spoken test sample: every word right, word edges within 0.1 s of the pause) |
+| 12c. Captions & text editing | Dynamic caption styles (word highlight, pop, karaoke); a transcript editor that cuts the video by deleting words; filler-word and pause removal | Next |
 | 13a. Audio AI | ONNX Runtime with the Core ML provider; speech enhancement (DeepFilterNet), stem separation (Demucs), noise reduction presets | Planned |
 | 13b. People | Portrait cutout (MediaPipe selfie segmentation), face detection with face mosaic and auto reframe | Planned |
 | 13c. Motion | Stabilization, point and planar tracking (attach titles and stickers), flicker removal, temporal denoise | Planned |

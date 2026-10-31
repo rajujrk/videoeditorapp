@@ -609,6 +609,13 @@ ProjectController::ProjectController(QObject* parent)
 
     m_playheadTimer.setInterval(16);
     connect(&m_playheadTimer, &QTimer::timeout, this, &ProjectController::updatePlayhead);
+    connect(&m_speechModels, &SpeechModels::changed, this, &ProjectController::speechModelsChanged);
+    connect(&m_speechModels, &SpeechModels::finished, this, [this](const QString& id, bool ok, const QString& error) {
+        if (!ok && !error.isEmpty())
+            reportError(error);
+        emit speechModelsChanged();
+        emit modelDownloadFinished(id, ok, error);
+    });
     m_playheadTimer.start();
 
     const QByteArray autosaveOverride = qgetenv("TVE_AUTOSAVE_DIR");
@@ -767,6 +774,7 @@ QVariantList ProjectController::tracks() const
             {QStringLiteral("gainDb"), double(track->gainDb)},
             {QStringLiteral("pan"), double(track->pan)},
             {QStringLiteral("solo"), track->solo},
+            {QStringLiteral("captions"), track->captions},
             {QStringLiteral("clips"), clips},
         };
     }
@@ -4745,4 +4753,250 @@ bool ProjectController::duckUnderSpeech(double clipId, const QVariantMap& option
             emit analysisFinished(false, lastError());
     });
     return true;
+}
+
+// --- Captions ---
+
+QVariantList ProjectController::captionLanguages() const
+{
+    static const std::pair<const char*, const char*> languages[] = {
+        {"auto", "Detect the language"}, {"en", "English"}, {"es", "Spanish"}, {"fr", "French"}, {"de", "German"},
+        {"it", "Italian"}, {"pt", "Portuguese"}, {"nl", "Dutch"}, {"sv", "Swedish"}, {"pl", "Polish"}, {"ru", "Russian"},
+        {"uk", "Ukrainian"}, {"tr", "Turkish"}, {"ar", "Arabic"}, {"hi", "Hindi"}, {"ta", "Tamil"}, {"id", "Indonesian"},
+        {"vi", "Vietnamese"}, {"ja", "Japanese"}, {"ko", "Korean"}, {"zh", "Chinese"}};
+    QVariantList list;
+    for (const auto& [code, name] : languages)
+        list << QVariantMap{{QStringLiteral("code"), QString::fromLatin1(code)}, {QStringLiteral("name"), QString::fromUtf8(name)}};
+    return list;
+}
+
+int ProjectController::captionCount() const
+{
+    const auto track = std::ranges::find_if(m_project.tracks, [](const Track& t) { return t.captions; });
+    return track == m_project.tracks.end() ? 0 : int(track->clips.size());
+}
+
+bool ProjectController::downloadSpeechModel(const QString& modelId)
+{
+    QString error;
+    if (!m_speechModels.download(modelId, &error)) {
+        reportError(error);
+        return false;
+    }
+    return true;
+}
+
+void ProjectController::cancelModelDownload()
+{
+    m_speechModels.cancel();
+}
+
+void ProjectController::runInBackground(const QString& task, std::function<std::string(const tve::AnalysisProgress&)> work,
+                                        std::function<void()> then)
+{
+    m_cancelAnalysis = false;
+    m_analysisProgress = 0;
+    m_analysisTask = task;
+    m_analysisThread = std::thread([this, work = std::move(work), then = std::move(then)]() mutable {
+        double reported = -1;
+        const std::string error = work([&](double done) {
+            if (done - reported >= 0.01) {
+                reported = done;
+                QMetaObject::invokeMethod(this, [this, done] {
+                    m_analysisProgress = done;
+                    emit analysisChanged();
+                }, Qt::QueuedConnection);
+            }
+            return !m_cancelAnalysis.load();
+        });
+        QMetaObject::invokeMethod(this, [this, error, then = std::move(then)]() mutable {
+            if (m_analysisThread.joinable())
+                m_analysisThread.join();
+            m_analysisProgress = 0;
+            m_analysisTask.clear();
+            emit analysisChanged();
+            if (error.empty()) {
+                then();
+                return;
+            }
+            const QString message = error == "cancelled" ? QString() : QString::fromStdString(error);
+            if (!message.isEmpty())
+                reportError(message);
+            emit analysisFinished(false, message);
+        }, Qt::QueuedConnection);
+    });
+    emit analysisChanged();
+}
+
+bool ProjectController::generateCaptions(const QVariantMap& options)
+{
+    if (analyzing()) {
+        reportError(QStringLiteral("An analysis is already running"));
+        return false;
+    }
+    const QString modelId = options.value(QStringLiteral("model"), QStringLiteral("base.en-q5_1")).toString();
+    const SpeechModels::Model* model = SpeechModels::find(modelId);
+    const auto modelPath = m_speechModels.path(modelId);
+    if (!model || !modelPath) {
+        reportError(QStringLiteral("Download the speech model first"));
+        return false;
+    }
+    std::string language = options.value(QStringLiteral("language"), QStringLiteral("auto")).toString().toStdString();
+    if (model->englishOnly)
+        language = "en";
+
+    // Whose speech: the selected clips with sound, or every clip heard.
+    std::set<Id> chosen;
+    for (const QVariant& id : selectedClips())
+        chosen.insert(toId(id.toDouble()));
+    struct Voice {
+        Id clipId;
+        Id mediaId;
+    };
+    std::vector<Voice> voices;
+    for (const Track& track : m_project.tracks) {
+        if (track.kind == TrackKind::Title || (chosen.empty() && track.muted))
+            continue;
+        for (const Clip& clip : track.clips) {
+            const MediaItem* media = m_project.findMedia(clip.mediaId);
+            if ((!chosen.empty() && !chosen.contains(clip.id)) || !media || !media->hasAudio
+                || (track.kind == TrackKind::Video && !clip.audioEnabled) || clip.speed != 1.0 || clip.reversed
+                || clip.freeze || !clip.speedRamp.empty() || !QFileInfo::exists(QString::fromStdString(media->path)))
+                continue;
+            voices.push_back({clip.id, clip.mediaId});
+        }
+    }
+    if (voices.empty()) {
+        reportError(chosen.empty() ? QStringLiteral("Add clips with sound (at normal speed) to make captions from")
+                                   : QStringLiteral("The selected clips have no sound to make captions from"));
+        return false;
+    }
+    // What still needs transcribing (the rest is remembered, here or on disk).
+    const std::string variant = modelId.toStdString() + "." + language;
+    const tve::AnalysisCache cache(analysisDirectory().toStdString());
+    struct Job {
+        std::string path;
+        std::string key;
+        std::string fingerprint;
+    };
+    std::vector<Job> jobs;
+    for (const Voice& voice : voices) {
+        const MediaItem& media = *m_project.findMedia(voice.mediaId);
+        const std::string fingerprint = fingerprintOf(media);
+        const std::string key = fingerprint + "|" + variant;
+        if (m_transcripts.contains(key) || std::ranges::any_of(jobs, [&](const Job& j) { return j.key == key; }))
+            continue;
+        if (auto kept = tve::loadTranscript(cache, fingerprint, variant)) {
+            m_transcripts.emplace(key, std::move(*kept));
+            continue;
+        }
+        jobs.push_back({media.path, key, fingerprint});
+    }
+
+    auto results = std::make_shared<std::vector<std::pair<std::string, tve::Transcript>>>();
+    const auto place = [this, voices, variant] {
+        std::vector<tve::TimedWord> words;
+        for (const Voice& voice : voices) {
+            const Clip* clip = findClip(voice.clipId);
+            const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+            const auto found = media ? m_transcripts.find(fingerprintOf(*media) + "|" + variant) : m_transcripts.end();
+            if (found == m_transcripts.end())
+                continue;
+            const Ticks from = clip->sourceIn;
+            const Ticks to = clip->sourceIn + clip->duration;
+            for (const tve::TranscriptWord& w : found->second.words) {
+                if (w.start < from || w.start >= to)
+                    continue;
+                words.push_back({w.start - from + clip->start, std::min(w.end, to) - from + clip->start, w.text});
+            }
+        }
+        std::ranges::sort(words, {}, &tve::TimedWord::start);
+        const auto captions = tve::layoutCaptions(words);
+        if (captions.empty()) {
+            reportError(QStringLiteral("No speech found"));
+            emit analysisFinished(false, lastError());
+            return;
+        }
+        if (apply(std::make_unique<SetCaptionsCommand>(captions, "Generate Captions")))
+            emit analysisFinished(true, {});
+        else
+            emit analysisFinished(false, lastError());
+    };
+    if (jobs.empty()) {
+        place();
+        return true;
+    }
+    runInBackground(QStringLiteral("Transcribing"),
+                    [jobs, results, modelPath = modelPath->toStdString(), language, variant,
+                     directory = analysisDirectory().toStdString()](const tve::AnalysisProgress& progress) -> std::string {
+                        const tve::AnalysisCache cache(directory);
+                        for (std::size_t i = 0; i < jobs.size(); ++i) {
+                            std::string error;
+                            auto transcript = tve::transcribe(jobs[i].path, modelPath, {.language = language},
+                                                              [&](double part) { return progress((double(i) + part) / double(jobs.size())); },
+                                                              &error);
+                            if (!transcript)
+                                return error.empty() ? std::string("cancelled") : error;
+                            tve::saveTranscript(cache, jobs[i].fingerprint, variant, *transcript);
+                            results->emplace_back(jobs[i].key, std::move(*transcript));
+                        }
+                        return {};
+                    },
+                    [this, results, place] {
+                        for (auto& [key, transcript] : *results)
+                            m_transcripts.insert_or_assign(key, std::move(transcript));
+                        place();
+                    });
+    return true;
+}
+
+std::vector<tve::CaptionBlock> ProjectController::captionBlocks() const
+{
+    std::vector<tve::CaptionBlock> blocks;
+    const auto track = std::ranges::find_if(m_project.tracks, [](const Track& t) { return t.captions; });
+    if (track == m_project.tracks.end())
+        return blocks;
+    for (const Clip& clip : track->clips)
+        if (clip.text)
+            blocks.push_back({clip.start, clip.end(), clip.text->text, {}});
+    return blocks;
+}
+
+bool ProjectController::exportSubtitles(const QUrl& file)
+{
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    const auto blocks = captionBlocks();
+    if (blocks.empty()) {
+        reportError(QStringLiteral("There are no captions to export"));
+        return false;
+    }
+    const bool vtt = path.endsWith(QLatin1String(".vtt"), Qt::CaseInsensitive);
+    QSaveFile out(path);
+    if (!out.open(QIODevice::WriteOnly)) {
+        reportError(QStringLiteral("Cannot write ") + path);
+        return false;
+    }
+    out.write(QByteArray::fromStdString(vtt ? tve::writeVtt(blocks) : tve::writeSrt(blocks)));
+    if (!out.commit()) {
+        reportError(QStringLiteral("Cannot write ") + path);
+        return false;
+    }
+    return true;
+}
+
+bool ProjectController::importSubtitles(const QUrl& file)
+{
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    QFile in(path);
+    if (!in.open(QIODevice::ReadOnly) || in.size() > 20 * 1024 * 1024) {
+        reportError(QStringLiteral("Cannot read ") + QFileInfo(path).fileName());
+        return false;
+    }
+    std::string error;
+    const auto blocks = tve::readSubtitles(in.readAll().toStdString(), &error);
+    if (!blocks) {
+        reportError(QStringLiteral("%1: %2").arg(QFileInfo(path).fileName(), QString::fromStdString(error)));
+        return false;
+    }
+    return apply(std::make_unique<SetCaptionsCommand>(*blocks, "Import Captions"));
 }

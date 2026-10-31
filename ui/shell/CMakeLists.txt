@@ -19,6 +19,7 @@ qt_add_qml_module(tve_shell
         RelinkDialog.qml
         ShortcutsDialog.qml
         AnalyzePage.qml
+        CaptionsPage.qml
         VoiceOverPanel.qml
         KeyframeToggle.qml
         CurveEditor.qml

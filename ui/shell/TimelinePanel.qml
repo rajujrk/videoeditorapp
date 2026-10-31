@@ -907,7 +907,7 @@ Rectangle {
                     width: parent.width - Theme.space.s
                     // Badges first so a short clip still shows them.
                     text: (item.clip.missing ? "Missing · " : "")
-                          + (item.clip.isTitle ? "Title · " : "")
+                          + (item.clip.isTitle && !item.track.captions ? "Title · " : "")
                           + (item.clip.lookTitle ? item.clip.lookTitle + " · " : "")
                           + (item.clip.freeze ? "Still · " : "")
                           + (item.clip.speedRamp && item.clip.speedRamp.length > 0 ? "Ramp · "

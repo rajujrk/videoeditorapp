@@ -1,6 +1,8 @@
 // Runs the tst_*.qml files in this folder against the app's static QML modules.
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QUrl>
 #include <QImage>
 #include <QTemporaryDir>
 #include <QQmlContext>
@@ -202,6 +204,8 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("fixturesDir"), QStringLiteral(TVE_QML_TESTS_DIR "/fixtures"));
         engine->rootContext()->setContextProperty(QStringLiteral("stillsDir"), qEnvironmentVariable("TVE_TEST_STILLS_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("analysisMediaDir"), qEnvironmentVariable("TVE_TEST_ANALYSIS_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("speechModelAvailable"),
+                                                  QFileInfo::exists(QStringLiteral(TVE_SAMPLES_DIR "/models/ggml-base.en-q5_1.bin")));
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
         engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(EffectPreviewProvider::kId), new EffectPreviewProvider);
@@ -232,6 +236,20 @@ int main(int argc, char** argv)
     qputenv("TVE_TEST_STILLS_DIR", stills.path().toLocal8Bit());
     QTemporaryDir analysis; // measured media
     qputenv("TVE_ANALYSIS_DIR", analysis.path().toLocal8Bit());
+    // Speech models: an empty folder to download into, from a local "server" folder holding
+    // the real model (if tools/fetch_models.sh fetched it) and a corrupt one.
+    QTemporaryDir models;
+    QTemporaryDir modelSource;
+    qputenv("TVE_MODEL_DIR", models.path().toLocal8Bit());
+    qputenv("TVE_MODEL_BASE_URL", QUrl::fromLocalFile(modelSource.path() + QLatin1Char('/')).toString().toLocal8Bit());
+    const QString realModel = QStringLiteral(TVE_SAMPLES_DIR "/models/ggml-base.en-q5_1.bin");
+    if (QFileInfo::exists(realModel))
+        QFile::link(realModel, modelSource.path() + QStringLiteral("/ggml-base.en-q5_1.bin"));
+    {
+        QFile corrupt(modelSource.path() + QStringLiteral("/ggml-small.en-q5_1.bin"));
+        if (corrupt.open(QIODevice::WriteOnly))
+            corrupt.write(QByteArray(1000, 'x'));
+    }
     QTemporaryDir analysisMedia; // media to measure
     writeAnalysisMedia(analysisMedia.path());
     qputenv("TVE_TEST_ANALYSIS_DIR", analysisMedia.path().toLocal8Bit());

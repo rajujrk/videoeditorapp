@@ -18,6 +18,14 @@
     "nlohmann-json",
     "catch2",
     "miniaudio",
-    "thorvg"
+    "thorvg",
+    {
+      "name": "ggml",
+      "default-features": false,
+      "features": [
+        "metal"
+      ]
+    },
+    "whisper-cpp"
   ]
 }

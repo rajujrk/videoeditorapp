@@ -76,9 +76,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(TextScroll, {
     {TextScroll::RollUp, "rollUp"},
     {TextScroll::CrawlLeft, "crawlLeft"},
 })
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CaptionWord, start, end, text)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipText, text, fontFamily, size, bold, italic, color, alignment,
                                                 lineSpacing, letterSpacing, outlineColor, outlineWidth, shadow, shape,
-                                                animationIn, animationOut, animationLoop, scroll)
+                                                animationIn, animationOut, animationLoop, scroll, words)
 NLOHMANN_JSON_SERIALIZE_ENUM(Easing, {
     {Easing::Linear, "linear"},
     {Easing::EaseIn, "easeIn"},
@@ -120,7 +121,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, durati
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
                                                 chromaKey, masks, matte, audioEffects, keepPitch, sequenceId, groupId)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, clips)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
+                                                clips)
 NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {
     {MarkerColor::Red, "red"},
     {MarkerColor::Orange, "orange"},

@@ -19,6 +19,8 @@ qt_add_qml_module(tve_player
         ProjectController.cpp
         KeyMap.h
         KeyMap.cpp
+        SpeechModels.h
+        SpeechModels.cpp
         WaveformItem.h
         WaveformItem.cpp
         TrackListModel.h
@@ -69,6 +71,7 @@ target_link_libraries(tve_player
         tve::gpu # VideoView.h exposes tve::EffectInstance
     PRIVATE
         Qt6::GuiPrivate
+        Qt6::Network
         tve::engine
         "-framework Metal"
         "-framework CoreVideo"

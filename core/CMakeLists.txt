@@ -27,6 +27,8 @@ add_library(tve_core STATIC
     io/LutFile.cpp
     io/MediaRelink.h
     io/MediaRelink.cpp
+    model/Captions.h
+    model/Captions.cpp
     content/EffectManifest.h
     content/EffectManifest.cpp
 )

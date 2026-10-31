@@ -130,6 +130,16 @@ struct TitleShape {
     friend bool operator==(const TitleShape&, const TitleShape&) = default;
 };
 
+// One spoken word of a caption: when it is said (from the caption clip's start) and how it
+// is written, for captions that follow the speech word by word.
+struct CaptionWord {
+    Ticks start = 0;
+    Ticks end = 0;
+    std::string text;
+
+    friend bool operator==(const CaptionWord&, const CaptionWord&) = default;
+};
+
 // A title that moves through the frame over the whole clip: credits rolling up, or a news
 // crawl from right to left.
 enum class TextScroll { None, RollUp, CrawlLeft };
@@ -157,6 +167,8 @@ struct ClipText {
     TextAnimation animationOut;
     TextAnimation animationLoop{.preset = {}, .duration = 1.5, .unit = TextUnit::Character, .stagger = 0.0};
     TextScroll scroll = TextScroll::None;
+    // A caption's words with their timing (empty for other titles).
+    std::vector<CaptionWord> words;
 
     // Whether it looks different from one moment to the next.
     bool animated() const
@@ -303,6 +315,8 @@ struct Track {
     float gainDb = 0.0f;
     float pan = 0.0f;
     bool solo = false;
+    // A title track holding captions (subtitles): what SRT/VTT export writes and import fills.
+    bool captions = false;
     std::vector<Clip> clips; // kept sorted by start, never overlapping
 
     const Clip* findClip(Id clipId) const;
