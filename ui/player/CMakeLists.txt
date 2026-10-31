@@ -21,6 +21,10 @@ qt_add_qml_module(tve_player
         KeyMap.cpp
         SpeechModels.h
         SpeechModels.cpp
+        SoundLibrary.h
+        SoundLibrary.cpp
+        MediaImports.h
+        MediaImports.cpp
         WaveformItem.h
         WaveformItem.cpp
         TrackListModel.h

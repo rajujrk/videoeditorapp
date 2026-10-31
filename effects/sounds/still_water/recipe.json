@@ -1,0 +1,35 @@
+{
+  "id": "tve.music.still_water",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "Still Water"
+  },
+  "category": "calm",
+  "tempo": 68,
+  "key": "F",
+  "scale": "major",
+  "bars": 12,
+  "intro": 0,
+  "progression": [
+    "I",
+    "iii",
+    "IV",
+    "I"
+  ],
+  "parts": [
+    {
+      "instrument": "pad",
+      "pattern": "hold",
+      "gain": -13
+    },
+    {
+      "instrument": "keys",
+      "pattern": "melody",
+      "gain": -16,
+      "pan": -0.2
+    }
+  ],
+  "seed": 102,
+  "license": "TVE-Original"
+}

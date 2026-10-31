@@ -1,0 +1,13 @@
+{
+  "id": "tve.sfx.shutter",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Camera Shutter"
+  },
+  "category": "texture",
+  "generator": "shutter",
+  "duration": 0.25,
+  "seed": 214,
+  "license": "TVE-Original"
+}

@@ -1,0 +1,47 @@
+{
+  "id": "tve.music.horizon",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "Horizon"
+  },
+  "category": "cinematic",
+  "tempo": 72,
+  "key": "C",
+  "scale": "minor",
+  "bars": 16,
+  "intro": 4,
+  "progression": [
+    "i",
+    "VI",
+    "III",
+    "VII"
+  ],
+  "parts": [
+    {
+      "instrument": "pad",
+      "pattern": "hold",
+      "gain": -11
+    },
+    {
+      "instrument": "bass",
+      "pattern": "root4",
+      "octave": -1,
+      "gain": -12
+    },
+    {
+      "instrument": "pluck",
+      "pattern": "arp8",
+      "octave": 1,
+      "gain": -20,
+      "pan": -0.4
+    },
+    {
+      "instrument": "kick",
+      "steps": "x.......x.......",
+      "gain": -9
+    }
+  ],
+  "seed": 105,
+  "license": "TVE-Original"
+}

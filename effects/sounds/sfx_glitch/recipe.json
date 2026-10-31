@@ -1,0 +1,15 @@
+{
+  "id": "tve.sfx.glitch",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Glitch"
+  },
+  "category": "texture",
+  "generator": "glitch",
+  "duration": 0.7,
+  "from": 80,
+  "to": 1600,
+  "seed": 212,
+  "license": "TVE-Original"
+}

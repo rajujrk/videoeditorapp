@@ -249,7 +249,11 @@ std::optional<std::string> AddVoiceOverCommand::redo(Project& project)
             return "clip overlaps an existing clip";
     }
 
-    if (m_item.id == kNoId)
+    const auto known = std::ranges::find(project.media, m_item.path, &MediaItem::path);
+    m_importedMedia = known == project.media.end();
+    if (!m_importedMedia)
+        m_item.id = known->id;
+    else if (m_item.id == kNoId)
         m_item.id = project.allocateId();
     if (m_clipId == kNoId)
         m_clipId = project.allocateId();
@@ -258,13 +262,14 @@ std::optional<std::string> AddVoiceOverCommand::redo(Project& project)
         if (m_newTrackId == kNoId)
             m_newTrackId = project.allocateId();
         const auto existing = std::ranges::count_if(
-            project.tracks, [](const Track& t) { return t.name.starts_with("Voice-over"); });
-        std::string name = existing == 0 ? "Voice-over" : "Voice-over " + std::to_string(existing + 1);
+            project.tracks, [&](const Track& t) { return t.name.starts_with(m_trackName); });
+        std::string name = existing == 0 ? m_trackName : m_trackName + " " + std::to_string(existing + 1);
         project.tracks.insert(project.tracks.begin(),
                               Track{.id = m_newTrackId, .kind = TrackKind::Audio, .name = std::move(name)});
         track = &project.tracks.front();
     }
-    project.media.push_back(m_item);
+    if (m_importedMedia)
+        project.media.push_back(m_item);
     track->insertClip(Clip{.id = m_clipId, .mediaId = m_item.id, .start = m_start, .duration = m_item.duration});
     return std::nullopt;
 }
@@ -275,7 +280,8 @@ void AddVoiceOverCommand::undo(Project& project)
         std::erase_if(project.tracks, [&](const Track& t) { return t.id == m_newTrackId; });
     else
         project.findTrack(m_trackId)->removeClip(m_clipId);
-    std::erase_if(project.media, [&](const MediaItem& item) { return item.id == m_item.id; });
+    if (m_importedMedia)
+        std::erase_if(project.media, [&](const MediaItem& item) { return item.id == m_item.id; });
 }
 
 // --- TrimClipCommand ---

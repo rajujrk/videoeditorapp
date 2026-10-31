@@ -558,10 +558,14 @@ private:
 
 class AddVoiceOverCommand final : public Command {
 public:
-    AddVoiceOverCommand(MediaItem item, Id trackId, Ticks start)
-        : m_item(std::move(item)), m_trackId(trackId), m_start(start) {}
+    // `label` names the step and `trackName` a new track (numbered after the first); media
+    // already in the project (by path) is used again rather than imported twice.
+    AddVoiceOverCommand(MediaItem item, Id trackId, Ticks start, std::string label = "Record Voice-over",
+                        std::string trackName = "Voice-over")
+        : m_item(std::move(item)), m_trackId(trackId), m_start(start), m_label(std::move(label)),
+          m_trackName(std::move(trackName)) {}
 
-    std::string label() const override { return "Record Voice-over"; }
+    std::string label() const override { return m_label; }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -573,8 +577,11 @@ private:
     MediaItem m_item;
     Id m_trackId;
     Ticks m_start;
+    std::string m_label;
+    std::string m_trackName;
     Id m_clipId = kNoId;
     Id m_newTrackId = kNoId;
+    bool m_importedMedia = false;
 };
 
 // Replaces the keyframes of some of a clip's properties (an empty list stops animating

@@ -1,0 +1,15 @@
+{
+  "id": "tve.sfx.pop",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Pop"
+  },
+  "category": "hit",
+  "generator": "pop",
+  "duration": 0.15,
+  "from": 900,
+  "to": 280,
+  "seed": 205,
+  "license": "TVE-Original"
+}

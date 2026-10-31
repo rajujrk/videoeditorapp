@@ -1,0 +1,49 @@
+{
+  "id": "tve.music.late_study",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "Late Study"
+  },
+  "category": "lofi",
+  "tempo": 80,
+  "key": "Eb",
+  "scale": "major",
+  "bars": 16,
+  "intro": 0,
+  "progression": [
+    "ii7",
+    "V7",
+    "I7",
+    "vi7"
+  ],
+  "parts": [
+    {
+      "instrument": "keys",
+      "pattern": "hold",
+      "gain": -15
+    },
+    {
+      "instrument": "bass",
+      "pattern": "root4",
+      "gain": -13
+    },
+    {
+      "instrument": "kick",
+      "steps": "x.....x...x.....",
+      "gain": -10
+    },
+    {
+      "instrument": "snare",
+      "steps": "....o.......o...",
+      "gain": -16
+    },
+    {
+      "instrument": "hat",
+      "steps": "x.xox.xox.xox.xo",
+      "gain": -22
+    }
+  ],
+  "seed": 107,
+  "license": "TVE-Original"
+}

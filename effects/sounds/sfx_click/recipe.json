@@ -1,0 +1,13 @@
+{
+  "id": "tve.sfx.click",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Click"
+  },
+  "category": "interface",
+  "generator": "click",
+  "duration": 0.08,
+  "seed": 206,
+  "license": "TVE-Original"
+}

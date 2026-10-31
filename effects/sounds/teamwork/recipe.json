@@ -1,0 +1,49 @@
+{
+  "id": "tve.music.teamwork",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "Teamwork"
+  },
+  "category": "corporate",
+  "tempo": 100,
+  "key": "Bb",
+  "scale": "major",
+  "bars": 16,
+  "intro": 2,
+  "progression": [
+    "I",
+    "IV",
+    "I",
+    "V"
+  ],
+  "parts": [
+    {
+      "instrument": "keys",
+      "pattern": "arp8",
+      "gain": -16
+    },
+    {
+      "instrument": "pad",
+      "pattern": "hold",
+      "gain": -18
+    },
+    {
+      "instrument": "bass",
+      "pattern": "rootfifth",
+      "gain": -13
+    },
+    {
+      "instrument": "kick",
+      "steps": "x...x...x...x...",
+      "gain": -9
+    },
+    {
+      "instrument": "hat",
+      "steps": "..x...x...x...x.",
+      "gain": -19
+    }
+  ],
+  "seed": 110,
+  "license": "TVE-Original"
+}

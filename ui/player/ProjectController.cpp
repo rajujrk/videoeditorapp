@@ -640,6 +640,17 @@ ProjectController::ProjectController(QObject* parent)
                                         : AudioOutput::Backend::System;
     m_audioOutput = std::make_unique<AudioOutput>(backend);
     m_audioOutput->setSource(m_playback->audio(), &m_playback->clock());
+    m_soundLibrary = new SoundLibrary(this);
+    m_imports = new MediaImports(this);
+    connect(m_imports, &MediaImports::fetched, this, [this](const QStringList& paths, const QStringList& errors) {
+        QList<QUrl> files;
+        for (const QString& path : paths)
+            files << QUrl::fromLocalFile(path);
+        if (!files.isEmpty())
+            importMedia(files);
+        if (!errors.isEmpty())
+            reportError(QStringLiteral("Some items could not be imported: %1").arg(errors.join(QStringLiteral("; "))));
+    });
 
     m_playheadTimer.setInterval(16);
     connect(&m_playheadTimer, &QTimer::timeout, this, &ProjectController::updatePlayhead);
@@ -3790,6 +3801,70 @@ bool ProjectController::stopRecording()
     if (!apply(std::move(command)))
         return false;
     setSelectedClip(double(raw->clipId()));
+    return true;
+}
+
+// --- Sound library ---
+
+bool ProjectController::addSound(const QString& soundId)
+{
+    QString error;
+    const auto file = m_soundLibrary->fileFor(soundId, &error);
+    if (!file) {
+        reportError(error);
+        return false;
+    }
+    const std::string path = file->path.toStdString();
+    std::optional<MediaItem> item;
+    if (auto known = std::ranges::find(m_project.media, path, &MediaItem::path); known != m_project.media.end())
+        item = *known;
+    else if ((item = probeMedia(path, &error)))
+        item->fingerprint = fingerprintFile(path).value_or(std::string());
+    if (!item) {
+        reportError(error);
+        return false;
+    }
+    const bool music = file->kind == QLatin1String("music");
+    const Ticks start = ticks(m_playhead);
+    Id target = kNoId;
+    for (auto track = m_project.tracks.rbegin(); track != m_project.tracks.rend(); ++track) {
+        if (track->kind == TrackKind::Audio && !track->locked && !track->muted
+            && !track->overlaps(start, item->duration)) {
+            target = track->id;
+            break;
+        }
+    }
+    auto command = std::make_unique<AddVoiceOverCommand>(std::move(*item), target, start,
+                                                         music ? "Add Music" : "Add Sound Effect",
+                                                         music ? "Music" : "Sound effects");
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return false;
+    setSelectedClip(double(raw->clipId()));
+    return true;
+}
+
+// --- Imports from Photos, Music and devices ---
+
+QString ProjectController::importsDirectory() const
+{
+    const QByteArray override = qgetenv("TVE_IMPORT_DIR");
+    if (!override.isEmpty())
+        return QString::fromLocal8Bit(override);
+    if (!m_filePath.isEmpty()) {
+        const QFileInfo project(m_filePath);
+        return project.absolutePath() + QLatin1Char('/') + project.completeBaseName() + QStringLiteral(" Imports");
+    }
+    return QStandardPaths::writableLocation(QStandardPaths::MoviesLocation) + QStringLiteral("/TechieVideoEditor Imports");
+}
+
+bool ProjectController::importFrom(const QString& source, const QStringList& itemIds)
+{
+    if (!m_imports->fetch(source, itemIds, importsDirectory())) {
+        reportError(m_imports->fetching() ? QStringLiteral("An import is already under way")
+                                          : QStringLiteral("Nothing to import"));
+        return false;
+    }
     return true;
 }
 

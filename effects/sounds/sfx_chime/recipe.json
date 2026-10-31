@@ -1,0 +1,15 @@
+{
+  "id": "tve.sfx.chime",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Chime"
+  },
+  "category": "interface",
+  "generator": "chime",
+  "duration": 2.0,
+  "from": 660,
+  "to": 990,
+  "seed": 209,
+  "license": "TVE-Original"
+}

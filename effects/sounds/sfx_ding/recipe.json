@@ -1,0 +1,14 @@
+{
+  "id": "tve.sfx.ding",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Ding"
+  },
+  "category": "interface",
+  "generator": "ding",
+  "duration": 1.8,
+  "from": 880,
+  "seed": 208,
+  "license": "TVE-Original"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "tve.sfx.impact",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Impact"
+  },
+  "category": "hit",
+  "generator": "impact",
+  "duration": 1.6,
+  "seed": 204,
+  "license": "TVE-Original"
+}

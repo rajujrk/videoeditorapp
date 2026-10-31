@@ -89,6 +89,7 @@ Rectangle {
                     player: playerPanel.player
                     project: editor.project
                     onImportRequested: editor.importMedia()
+                    onImportFromRequested: (source) => importPanel.show(source)
                 }
                 PlayerPanel {
                     id: playerPanel
@@ -121,6 +122,12 @@ Rectangle {
                       "Images (*.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.gif)",
                       "Audio (*.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg)", "All files (*)"]
         onAccepted: editor.project.importMedia(selectedFiles)
+    }
+
+    ImportPanel {
+        id: importPanel
+        objectName: "importPanel"
+        project: editor.project
     }
 
     ShortcutsDialog {

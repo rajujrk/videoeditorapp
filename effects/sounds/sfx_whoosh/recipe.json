@@ -1,0 +1,15 @@
+{
+  "id": "tve.sfx.whoosh",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Whoosh"
+  },
+  "category": "transition",
+  "generator": "whoosh",
+  "duration": 0.9,
+  "from": 250,
+  "to": 4000,
+  "seed": 201,
+  "license": "TVE-Original"
+}

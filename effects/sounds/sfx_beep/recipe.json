@@ -1,0 +1,15 @@
+{
+  "id": "tve.sfx.beep",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Beep"
+  },
+  "category": "interface",
+  "generator": "beep",
+  "duration": 0.25,
+  "from": 1000,
+  "count": 1,
+  "seed": 207,
+  "license": "TVE-Original"
+}

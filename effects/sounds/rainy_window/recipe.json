@@ -1,0 +1,56 @@
+{
+  "id": "tve.music.rainy_window",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "Rainy Window"
+  },
+  "category": "lofi",
+  "tempo": 74,
+  "key": "A",
+  "scale": "minor",
+  "bars": 16,
+  "intro": 0,
+  "progression": [
+    "i7",
+    "iv7",
+    "VII7",
+    "III7"
+  ],
+  "parts": [
+    {
+      "instrument": "keys",
+      "pattern": "stab",
+      "gain": -15
+    },
+    {
+      "instrument": "pluck",
+      "pattern": "melody",
+      "octave": 1,
+      "gain": -19,
+      "pan": 0.3
+    },
+    {
+      "instrument": "bass",
+      "pattern": "root4",
+      "gain": -13
+    },
+    {
+      "instrument": "kick",
+      "steps": "x.......x.x.....",
+      "gain": -10
+    },
+    {
+      "instrument": "snare",
+      "steps": "....x.......x...",
+      "gain": -17
+    },
+    {
+      "instrument": "shaker",
+      "steps": "x.x.x.x.x.x.x.x.",
+      "gain": -24
+    }
+  ],
+  "seed": 108,
+  "license": "TVE-Original"
+}

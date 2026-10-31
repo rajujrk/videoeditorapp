@@ -22,6 +22,8 @@ add_library(tve_engine STATIC
     capture/Capture.mm
     capture/CaptureRecorder.h
     capture/CaptureRecorder.mm
+    imports/ImportSources.h
+    imports/ImportSources.mm
     playback/FrameQueue.h
     playback/FrameSource.h
     playback/PlaybackClock.h
@@ -59,6 +61,12 @@ add_library(tve_engine STATIC
     audio/dsp/Processors.cpp
     audio/dsp/Denoise.h
     audio/dsp/Denoise.cpp
+    audio/Synth.h
+    audio/Synth.cpp
+    audio/SoundPreview.h
+    audio/SoundPreview.cpp
+    audio/SoundPacks.h
+    audio/SoundPacks.cpp
     audio/dsp/TimeStretch.h
     audio/dsp/TimeStretch.cpp
     audio/dsp/Loudness.h
@@ -78,6 +86,18 @@ endforeach()
 configure_file(audio/BuiltinAudioEffects.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuiltinAudioEffects.cpp @ONLY)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${TVE_AUDIO_EFFECT_MANIFESTS})
 target_sources(tve_engine PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/BuiltinAudioEffects.cpp)
+# Likewise the music and sound-effect recipes (effects/sounds/<folder>/recipe.json).
+file(GLOB TVE_SOUND_RECIPES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/effects/sounds/*/recipe.json)
+set(TVE_SOUND_ENTRIES "")
+foreach(recipe ${TVE_SOUND_RECIPES})
+    get_filename_component(folder ${recipe} DIRECTORY)
+    get_filename_component(folder ${folder} NAME)
+    file(READ ${recipe} json)
+    string(APPEND TVE_SOUND_ENTRIES "        {\"${folder}\", R\"tvejson(${json})tvejson\"},\n")
+endforeach()
+configure_file(audio/BuiltinSounds.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuiltinSounds.cpp @ONLY)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${TVE_SOUND_RECIPES})
+target_sources(tve_engine PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/BuiltinSounds.cpp)
 set_source_files_properties(audio/MiniaudioImpl.c PROPERTIES COMPILE_OPTIONS "-w")
 
 # ThorVG (MIT) draws Lottie stickers; vcpkg builds it as a static library with its Lottie loader.
@@ -121,5 +141,10 @@ target_link_libraries(tve_engine
         "-framework CoreMedia"
         "-framework CoreAudio"
         "-framework AudioToolbox"
+        "-framework AppKit"
+        "-framework ImageIO"
+        "-framework Photos"
+        "-framework iTunesLibrary"
+        "-framework ImageCaptureCore"
 )
 tve_set_warnings(tve_engine)

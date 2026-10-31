@@ -1,0 +1,15 @@
+{
+  "id": "tve.sfx.riser",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Riser"
+  },
+  "category": "transition",
+  "generator": "riser",
+  "duration": 2.5,
+  "from": 150,
+  "to": 3500,
+  "seed": 203,
+  "license": "TVE-Original"
+}

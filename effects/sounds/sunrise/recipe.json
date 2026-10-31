@@ -1,0 +1,46 @@
+{
+  "id": "tve.music.sunrise",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "Sunrise"
+  },
+  "category": "calm",
+  "tempo": 76,
+  "key": "D",
+  "scale": "major",
+  "bars": 16,
+  "intro": 4,
+  "progression": [
+    "I",
+    "V",
+    "vi",
+    "IV"
+  ],
+  "parts": [
+    {
+      "instrument": "pad",
+      "pattern": "hold",
+      "gain": -14
+    },
+    {
+      "instrument": "pluck",
+      "pattern": "arp8",
+      "octave": 1,
+      "gain": -17,
+      "pan": 0.3
+    },
+    {
+      "instrument": "bass",
+      "pattern": "root4",
+      "gain": -13
+    },
+    {
+      "instrument": "shaker",
+      "steps": "..x...x...x...x.",
+      "gain": -24
+    }
+  ],
+  "seed": 101,
+  "license": "TVE-Original"
+}

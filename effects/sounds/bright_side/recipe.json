@@ -1,0 +1,55 @@
+{
+  "id": "tve.music.bright_side",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "Bright Side"
+  },
+  "category": "upbeat",
+  "tempo": 124,
+  "key": "A",
+  "scale": "major",
+  "bars": 16,
+  "intro": 2,
+  "progression": [
+    "I",
+    "V",
+    "IV",
+    "V"
+  ],
+  "parts": [
+    {
+      "instrument": "lead",
+      "pattern": "melody",
+      "gain": -18,
+      "pan": 0.2
+    },
+    {
+      "instrument": "pad",
+      "pattern": "hold",
+      "gain": -18
+    },
+    {
+      "instrument": "bass",
+      "pattern": "rootfifth",
+      "gain": -12
+    },
+    {
+      "instrument": "kick",
+      "steps": "x...x...x...x...",
+      "gain": -8
+    },
+    {
+      "instrument": "snare",
+      "steps": "....x.......x...",
+      "gain": -14
+    },
+    {
+      "instrument": "hat",
+      "steps": "x.x.x.x.x.x.x.x.",
+      "gain": -20
+    }
+  ],
+  "seed": 104,
+  "license": "TVE-Original"
+}
