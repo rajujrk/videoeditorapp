@@ -14,6 +14,8 @@ Rectangle {
     property string effectCategory: ""
     property alias searchText: searchField.text
     signal importRequested()
+    // "photos", "music" or "devices"
+    signal importFromRequested(string source)
     onCurrentTabChanged: searchField.text = ""
 
     readonly property var effectCategories: [
@@ -49,7 +51,7 @@ Rectangle {
 
     readonly property var tabs: [
         { icon: "media", label: "Media", phase: "" },
-        { icon: "audio", label: "Audio", phase: "Music and sound library — Phase 4" },
+        { icon: "audio", label: "Audio", phase: "" },
         { icon: "titles", label: "Titles", phase: "" },
         { icon: "transitions", label: "Transitions", phase: "" },
         { icon: "effects", label: "Effects", phase: "" },
@@ -131,6 +133,19 @@ Rectangle {
                     tip: "Import media (⌘I)"
                     visible: library.currentTab === 0
                     onClicked: library.importRequested()
+                }
+                IconButton {
+                    objectName: "importFromButton"
+                    iconName: "chevron-down"
+                    tip: "Import from Photos, Music or a device"
+                    visible: library.currentTab === 0
+                    onClicked: importFromMenu.popup(this, 0, height)
+                    Menu {
+                        id: importFromMenu
+                        MenuItem { objectName: "importFrom:photos"; text: "From Photos…"; onTriggered: library.importFromRequested("photos") }
+                        MenuItem { objectName: "importFrom:music"; text: "From Music…"; onTriggered: library.importFromRequested("music") }
+                        MenuItem { objectName: "importFrom:devices"; text: "From an iPhone, camera or card…"; onTriggered: library.importFromRequested("devices") }
+                    }
                 }
             }
 
@@ -229,6 +244,16 @@ Rectangle {
                 objectName: "transcriptPage"
                 visible: library.tabs[library.currentTab].label === "Transcript"
                 project: library.project
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+
+            AudioPage {
+                id: audioPage
+                objectName: "audioPage"
+                visible: library.tabs[library.currentTab].label === "Audio"
+                project: library.project
+                searchText: searchField.text
                 Layout.fillWidth: true
                 Layout.fillHeight: true
             }
@@ -975,6 +1000,21 @@ Rectangle {
                         variant: "primary"
                         onClicked: library.importRequested()
                     }
+                    Flow {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: Math.min(parent.width, implicitWidth)
+                        spacing: Theme.space.xxs
+                        Repeater {
+                            model: [{ id: "photos", label: "Photos" }, { id: "music", label: "Music" }, { id: "devices", label: "A device" }]
+                            delegate: TextButton {
+                                required property var modelData
+                                objectName: "emptyImportFrom:" + modelData.id
+                                text: "From " + modelData.label
+                                variant: "ghost"
+                                onClicked: library.importFromRequested(modelData.id)
+                            }
+                        }
+                    }
                 }
 
                 DropArea {
@@ -992,6 +1032,7 @@ Rectangle {
             Item {
                 visible: !effectsGrid.visible && !looksGrid.visible && !transitionsGrid.visible && !titlesGrid.visible
                          && !mediaBin.visible && !stickersGrid.visible && !captionsPage.visible && !transcriptPage.visible
+                         && !audioPage.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 

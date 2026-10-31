@@ -1,0 +1,13 @@
+{
+  "id": "tve.sfx.heartbeat",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Heartbeat"
+  },
+  "category": "texture",
+  "generator": "heartbeat",
+  "duration": 3.4,
+  "seed": 215,
+  "license": "TVE-Original"
+}

@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) and the music and sound library with imports from Photos, Music and devices (15b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -209,6 +209,28 @@ draws rings where it clicked, a highlight around it or a spotlight that dims the
 **Zoom on clicks** zooms in on each click as keyframes, and **Click sounds** adds a click at each one
 on a track of its own. `TVE_SCREEN_SOURCE=test` and `TVE_CAMERA_SOURCE=test` record from test
 sources instead (moving bars, a tone, a cursor circling and clicking every second).
+
+**Music and sound effects.** The library's **Audio** tab has our own music — 12 pieces in six
+moods (calm, upbeat, cinematic, lo-fi, corporate, electronic) — and 15 sound effects (transitions,
+hits, interface sounds, textures), all made by the app's own synthesiser from recipes in
+`effects/sounds/`, so they are original and free to use. ▶ plays a preview (the same button stops
+it); **+** or a double-click puts the sound at the playhead on the topmost audio track with room,
+or on a new Music or Sound effects track. A sound is rendered once into
+`~/Library/Application Support/TechieVideoEditor/Sounds` (`TVE_SOUND_CACHE_DIR`). **My music** shows
+the audio files in folders you add (remembered in `music-folders.json`, `TVE_MUSIC_FOLDERS_FILE`).
+**Add a sound pack…** adds a folder holding a pack: a `manifest.json` (format `tve-sound-pack`,
+version 1) listing each sound's WAV file, kind, category, length, SHA-256 and an optional short
+preview; a file that does not match its SHA-256 is left out and said so. Packs are kept in
+`Sound Packs` (`TVE_SOUND_PACK_DIR`).
+
+**Importing from Photos, Music and devices.** The Media tab's ⌄ button (or the links under an
+empty bin) opens **Import from**: your Photos albums, your Music playlists, or a connected iPhone,
+camera or memory card. Choose items and **Import**: photos, videos and device files are copied into
+the project's `Imports` folder (beside the project, or `~/Movies/TechieVideoEditor Imports` before
+it is saved; `TVE_IMPORT_DIR` moves it), named after the original and never overwriting; songs are
+used where they are (songs in the cloud or copy-protected are not listed). macOS asks once to let
+the app read Photos and Music. `TVE_PHOTOS_SOURCE`, `TVE_MUSIC_SOURCE` and `TVE_DEVICE_SOURCE` name
+test folders to use instead (their sub-folders are the albums, playlists and devices).
 
 **Advanced vision.** Select two or more clips of the same event (cameras, a sound recorder)
 and **Line up by sound** in the Analyze tab: they are moved so their sound lines up (to about a

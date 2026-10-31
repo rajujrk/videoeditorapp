@@ -1,0 +1,14 @@
+{
+  "id": "tve.sfx.error",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Error"
+  },
+  "category": "interface",
+  "generator": "error",
+  "duration": 0.4,
+  "from": 330,
+  "seed": 211,
+  "license": "TVE-Original"
+}

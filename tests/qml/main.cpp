@@ -13,12 +13,14 @@
 #include <QtQuickTest/quicktest.h>
 
 #include "ThumbnailProvider.h"
+#include "MediaImports.h"
 #include "TransitionPreviewProvider.h"
 #include "EffectPreviewProvider.h"
 #include "Stickers.h"
 #include "LookLibrary.h"
 #include "TitleRenderer.h"
 #include "decode/AudioDecoder.h"
+#include "audio/SoundPacks.h"
 #include "encode/MediaWriter.h"
 
 #include <cmath>
@@ -187,6 +189,44 @@ void writeAnalysisMedia(const QString& dir)
 }
 
 // Gives tests the sample-media folder and a scratch folder as context properties.
+// For the Audio tab: music/ (two tones, as My music) and packs/good (two sound effects) and
+// packs/tampered (one of its two files changed after the manifest was written).
+void writeSoundFixtures(const QString& dir)
+{
+    using namespace tve;
+    const auto tone = [](double hz, double seconds) {
+        std::vector<float> samples(std::size_t(seconds * 48000) * 2);
+        for (std::size_t f = 0; f < samples.size() / 2; ++f)
+            samples[f * 2] = samples[f * 2 + 1] = 0.2f * float(std::sin(2.0 * std::numbers::pi * hz * double(f) / 48000.0));
+        return samples;
+    };
+    writeSoundFile((dir + QStringLiteral("/music/Evening tune.wav")).toStdString(), tone(330, 3));
+    writeSoundFile((dir + QStringLiteral("/music/albums/Morning tune.wav")).toStdString(), tone(440, 2));
+    std::vector<SoundRecipe> recipes{*findSound("tve.sfx.pop"), *findSound("tve.sfx.ding")};
+    writeSoundPack((dir + QStringLiteral("/packs/good")).toStdString(), "test.good", "Test pack", recipes);
+    writeSoundPack((dir + QStringLiteral("/packs/tampered")).toStdString(), "test.tampered", "Tampered pack", recipes);
+    QFile changed(dir + QStringLiteral("/packs/tampered/sfx/ding.wav"));
+    if (changed.open(QIODevice::Append))
+        changed.write("x");
+}
+
+// Stand-ins for the Photos library, the Music library and a device (their folders are albums,
+// playlists and devices), from the stills and analysis media already written.
+void writeImportFixtures(const QString& dir, const QString& stills, const QString& media)
+{
+    const auto put = [&](const QString& from, const QString& to) {
+        QDir().mkpath(QFileInfo(dir + to).absolutePath());
+        QFile::copy(from, dir + to);
+    };
+    put(stills + QStringLiteral("/halves.png"), QStringLiteral("/photos/Holiday/IMG_0001.png"));
+    put(media + QStringLiteral("/scenes.mov"), QStringLiteral("/photos/Holiday/IMG_0002.mov"));
+    put(stills + QStringLiteral("/disc.png"), QStringLiteral("/photos/Pets/IMG_0003.png"));
+    put(media + QStringLiteral("/hum.wav"), QStringLiteral("/music/Road trip/Hum along.wav"));
+    put(media + QStringLiteral("/beat.wav"), QStringLiteral("/music/Road trip/On the beat.wav"));
+    put(media + QStringLiteral("/scenes.mov"), QStringLiteral("/devices/Test camera/CLIP0001.mov"));
+    put(stills + QStringLiteral("/halves.jpg"), QStringLiteral("/devices/Test camera/DSC0002.jpg"));
+}
+
 class Setup : public QObject {
     Q_OBJECT
 public:
@@ -204,9 +244,15 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("fixturesDir"), QStringLiteral(TVE_QML_TESTS_DIR "/fixtures"));
         engine->rootContext()->setContextProperty(QStringLiteral("stillsDir"), qEnvironmentVariable("TVE_TEST_STILLS_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("analysisMediaDir"), qEnvironmentVariable("TVE_TEST_ANALYSIS_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("importFixturesDir"), qEnvironmentVariable("TVE_TEST_IMPORTS_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("importsDir"), qEnvironmentVariable("TVE_IMPORT_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("soundFixturesDir"), qEnvironmentVariable("TVE_TEST_SOUNDS_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("soundPacksDir"), qEnvironmentVariable("TVE_SOUND_PACK_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("soundCacheDir"), qEnvironmentVariable("TVE_SOUND_CACHE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("speechModelAvailable"),
                                                   QFileInfo::exists(QStringLiteral(TVE_SAMPLES_DIR "/models/ggml-base.en-q5_1.bin")));
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
+        engine->addImageProvider(QString::fromLatin1(ImportThumbnailProvider::kId), new ImportThumbnailProvider);
         engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(EffectPreviewProvider::kId), new EffectPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(StickerPreviewProvider::kId), new StickerPreviewProvider);
@@ -267,6 +313,27 @@ int main(int argc, char** argv)
     qputenv("TVE_KEYMAP_FILE", (keymap.path() + QStringLiteral("/keymap.json")).toLocal8Bit());
     QTemporaryDir colorPresets; // colour presets saved by tests
     qputenv("TVE_COLOR_PRESET_DIR", colorPresets.path().toLocal8Bit());
+    // The sound library: its render cache, installed packs and chosen music folders.
+    QTemporaryDir soundCache;
+    qputenv("TVE_SOUND_CACHE_DIR", soundCache.path().toLocal8Bit());
+    QTemporaryDir soundPacks;
+    qputenv("TVE_SOUND_PACK_DIR", soundPacks.path().toLocal8Bit());
+    QTemporaryDir musicFolders;
+    qputenv("TVE_MUSIC_FOLDERS_FILE", (musicFolders.path() + QStringLiteral("/music-folders.json")).toLocal8Bit());
+    QTemporaryDir soundFixtures;
+    writeSoundFixtures(soundFixtures.path());
+    qputenv("TVE_TEST_SOUNDS_DIR", QDir(soundFixtures.path()).canonicalPath().toLocal8Bit());
+    // Imports from Photos, Music and devices: test folders in their place, fetched into a
+    // scratch folder.
+    QTemporaryDir importFixtures;
+    const QString importRoot = QDir(importFixtures.path()).canonicalPath();
+    writeImportFixtures(importRoot, stills.path(), analysisMedia.path());
+    qputenv("TVE_TEST_IMPORTS_DIR", importRoot.toLocal8Bit());
+    qputenv("TVE_PHOTOS_SOURCE", (importRoot + QStringLiteral("/photos")).toLocal8Bit());
+    qputenv("TVE_MUSIC_SOURCE", (importRoot + QStringLiteral("/music")).toLocal8Bit());
+    qputenv("TVE_DEVICE_SOURCE", (importRoot + QStringLiteral("/devices")).toLocal8Bit());
+    QTemporaryDir importsInto;
+    qputenv("TVE_IMPORT_DIR", QDir(importsInto.path()).canonicalPath().toLocal8Bit());
     Setup setup;
     return quick_test_main_with_setup(argc, argv, "tve_qml_tests", TVE_QML_TESTS_DIR, &setup);
 }

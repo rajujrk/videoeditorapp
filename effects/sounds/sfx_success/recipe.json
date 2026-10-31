@@ -1,0 +1,14 @@
+{
+  "id": "tve.sfx.success",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Success"
+  },
+  "category": "interface",
+  "generator": "success",
+  "duration": 0.45,
+  "from": 660,
+  "seed": 210,
+  "license": "TVE-Original"
+}

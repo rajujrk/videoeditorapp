@@ -1,0 +1,13 @@
+{
+  "id": "tve.sfx.typing",
+  "version": 1,
+  "kind": "sfx",
+  "title": {
+    "en": "Typing"
+  },
+  "category": "texture",
+  "generator": "typing",
+  "duration": 2.0,
+  "seed": 213,
+  "license": "TVE-Original"
+}

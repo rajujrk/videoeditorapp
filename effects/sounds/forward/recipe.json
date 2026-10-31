@@ -1,0 +1,50 @@
+{
+  "id": "tve.music.forward",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "Forward"
+  },
+  "category": "corporate",
+  "tempo": 108,
+  "key": "C",
+  "scale": "major",
+  "bars": 16,
+  "intro": 2,
+  "progression": [
+    "I",
+    "V",
+    "vi",
+    "IV"
+  ],
+  "parts": [
+    {
+      "instrument": "pluck",
+      "pattern": "arp8",
+      "octave": 1,
+      "gain": -17
+    },
+    {
+      "instrument": "pad",
+      "pattern": "hold",
+      "gain": -17
+    },
+    {
+      "instrument": "bass",
+      "pattern": "root8",
+      "gain": -13
+    },
+    {
+      "instrument": "kick",
+      "steps": "x...x...x...x...",
+      "gain": -9
+    },
+    {
+      "instrument": "clap",
+      "steps": "....x.......x...",
+      "gain": -16
+    }
+  ],
+  "seed": 109,
+  "license": "TVE-Original"
+}

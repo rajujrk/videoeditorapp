@@ -1,0 +1,56 @@
+{
+  "id": "tve.music.good_morning",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "Good Morning"
+  },
+  "category": "upbeat",
+  "tempo": 118,
+  "key": "G",
+  "scale": "major",
+  "bars": 16,
+  "intro": 2,
+  "progression": [
+    "I",
+    "IV",
+    "vi",
+    "V"
+  ],
+  "parts": [
+    {
+      "instrument": "keys",
+      "pattern": "stab",
+      "gain": -15
+    },
+    {
+      "instrument": "pluck",
+      "pattern": "arp16",
+      "octave": 1,
+      "gain": -19,
+      "pan": -0.3
+    },
+    {
+      "instrument": "bass",
+      "pattern": "root8",
+      "gain": -13
+    },
+    {
+      "instrument": "kick",
+      "steps": "x...x...x...x...",
+      "gain": -8
+    },
+    {
+      "instrument": "clap",
+      "steps": "....x.......x...",
+      "gain": -14
+    },
+    {
+      "instrument": "hat",
+      "steps": "..x...x...x...x.",
+      "gain": -18
+    }
+  ],
+  "seed": 103,
+  "license": "TVE-Original"
+}

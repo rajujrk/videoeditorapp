@@ -1,0 +1,45 @@
+{
+  "id": "tve.music.the_reveal",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "The Reveal"
+  },
+  "category": "cinematic",
+  "tempo": 64,
+  "key": "E",
+  "scale": "minor",
+  "bars": 12,
+  "intro": 4,
+  "progression": [
+    "i",
+    "iv",
+    "VI",
+    "v"
+  ],
+  "parts": [
+    {
+      "instrument": "pad",
+      "pattern": "hold",
+      "gain": -11
+    },
+    {
+      "instrument": "keys",
+      "pattern": "melody",
+      "gain": -15
+    },
+    {
+      "instrument": "bass",
+      "pattern": "root4",
+      "octave": -1,
+      "gain": -12
+    },
+    {
+      "instrument": "kick",
+      "steps": "x.......x...x...",
+      "gain": -9
+    }
+  ],
+  "seed": 106,
+  "license": "TVE-Original"
+}

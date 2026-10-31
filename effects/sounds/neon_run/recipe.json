@@ -1,0 +1,56 @@
+{
+  "id": "tve.music.neon_run",
+  "version": 1,
+  "kind": "music",
+  "title": {
+    "en": "Neon Run"
+  },
+  "category": "electronic",
+  "tempo": 128,
+  "key": "F#",
+  "scale": "minor",
+  "bars": 16,
+  "intro": 4,
+  "progression": [
+    "i",
+    "VI",
+    "VII",
+    "i"
+  ],
+  "parts": [
+    {
+      "instrument": "lead",
+      "pattern": "arp16",
+      "gain": -19,
+      "pan": -0.2
+    },
+    {
+      "instrument": "pad",
+      "pattern": "hold",
+      "gain": -16
+    },
+    {
+      "instrument": "bass",
+      "pattern": "root8",
+      "octave": -1,
+      "gain": -11
+    },
+    {
+      "instrument": "kick",
+      "steps": "x...x...x...x...",
+      "gain": -7
+    },
+    {
+      "instrument": "clap",
+      "steps": "....x.......x...",
+      "gain": -14
+    },
+    {
+      "instrument": "hat",
+      "steps": "..x...x...x...x.",
+      "gain": -17
+    }
+  ],
+  "seed": 111,
+  "license": "TVE-Original"
+}

@@ -2,6 +2,8 @@
 
 #include "Exporter.h"
 #include "ProxyManager.h"
+#include "MediaImports.h"
+#include "SoundLibrary.h"
 #include "SpeechModels.h"
 #include "TrackListModel.h"
 #include "VideoView.h"
@@ -209,6 +211,11 @@ class ProjectController : public QObject {
     Q_PROPERTY(double screenRecordingTime READ screenRecordingTime NOTIFY screenRecordingTimeChanged)
     Q_PROPERTY(QString screenAccess READ screenAccessName NOTIFY screenRecordingChanged)
     Q_PROPERTY(QString cameraAccess READ cameraAccessName NOTIFY screenRecordingChanged)
+    // The Audio tab's music, sound effects, packs and My music.
+    Q_PROPERTY(SoundLibrary* soundLibrary READ soundLibrary CONSTANT)
+    // Importing from Photos, Music and devices; fetched items go to importsDirectory.
+    Q_PROPERTY(MediaImports* imports READ imports CONSTANT)
+    Q_PROPERTY(QString importsDirectory READ importsDirectory NOTIFY projectChanged)
 
 public:
     explicit ProjectController(QObject* parent = nullptr);
@@ -319,6 +326,9 @@ public:
     bool screenRecording() const { return m_screenRecorder != nullptr || m_cameraRecorder != nullptr; }
     double screenRecordingTime() const { return m_screenRecordingTime; }
     QString screenAccessName() const;
+    SoundLibrary* soundLibrary() const { return m_soundLibrary; }
+    MediaImports* imports() const { return m_imports; }
+    QString importsDirectory() const;
     QString cameraAccessName() const;
 
     // Project lifecycle
@@ -543,6 +553,12 @@ public:
     Q_INVOKABLE bool zoomOnClicks(double clipId, const QVariantMap& options = {});
     // A click sound at each click, on a new audio track.
     Q_INVOKABLE bool addClickSounds(double clipId);
+    // Puts a library sound (a soundLibrary id) at the playhead on the topmost audio track with
+    // room for it, else on a new Music or Sound effects track.
+    Q_INVOKABLE bool addSound(const QString& soundId);
+    // Fetches items from an imports source ("photos", "music", "devices") and imports them
+    // into the media bin when they are all in (imports.fetched says how it went).
+    Q_INVOKABLE bool importFrom(const QString& source, const QStringList& itemIds);
     Q_INVOKABLE bool openVoiceOver();
     Q_INVOKABLE void closeVoiceOver();
     Q_INVOKABLE bool startRecording();
@@ -853,6 +869,8 @@ private:
     double m_screenRecordingTime = 0;
     QTimer* m_screenRecordingClock = nullptr;
     bool m_requestingAccess = false;
+    SoundLibrary* m_soundLibrary = nullptr;
+    MediaImports* m_imports = nullptr;
 
     struct ExportJob {
         tve::Id id = tve::kNoId;
