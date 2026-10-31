@@ -30,6 +30,7 @@
 #include "analysis/MotionAnalysis.h"
 #include "analysis/Tracking.h"
 #include "encode/VideoProcessing.h"
+#include "encode/WavWriter.h"
 
 #include <nlohmann/json.hpp>
 
@@ -1738,6 +1739,13 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("deflicker"), QVariantMap{{QStringLiteral("enabled"), clip->deflicker.enabled},
                                                       {QStringLiteral("strength"), clip->deflicker.strength}}},
             {QStringLiteral("denoise"), clip->denoise},
+            {QStringLiteral("cursor"), clip->cursor.hasLog()
+                 ? QVariant(QVariantMap{{QStringLiteral("rings"), clip->cursor.rings},
+                                        {QStringLiteral("highlight"), clip->cursor.highlight},
+                                        {QStringLiteral("spotlight"), clip->cursor.spotlight},
+                                        {QStringLiteral("size"), clip->cursor.size},
+                                        {QStringLiteral("clicks"), int(clip->cursor.clicks.size())}})
+                 : QVariant()},
             {QStringLiteral("processed"), clip->processedVideo
                  ? QVariant(QVariantMap{{QStringLiteral("steps"), [&] {
                                              QStringList steps;
@@ -3783,6 +3791,392 @@ bool ProjectController::stopRecording()
         return false;
     setSelectedClip(double(raw->clipId()));
     return true;
+}
+
+// --- Screen recording ---
+
+namespace {
+
+bool testScreen()
+{
+    return qgetenv("TVE_SCREEN_SOURCE") == "test";
+}
+
+bool testCamera()
+{
+    return qgetenv("TVE_CAMERA_SOURCE") == "test";
+}
+
+QString accessName(CaptureAccess access)
+{
+    return access == CaptureAccess::Granted ? QStringLiteral("granted")
+         : access == CaptureAccess::Denied  ? QStringLiteral("denied")
+                                            : QStringLiteral("undetermined");
+}
+
+} // namespace
+
+QString ProjectController::screenAccessName() const
+{
+    return testScreen() ? QStringLiteral("granted") : accessName(tve::screenAccess());
+}
+
+QString ProjectController::cameraAccessName() const
+{
+    return testCamera() ? QStringLiteral("granted") : accessName(tve::cameraAccess());
+}
+
+void ProjectController::requestScreenAccess()
+{
+    if (!testScreen())
+        tve::requestScreenAccess();
+    emit screenRecordingChanged();
+}
+
+void ProjectController::requestCameraAccess()
+{
+    if (testCamera())
+        return;
+    QPointer<ProjectController> self(this);
+    tve::requestCameraAccess([self](bool) {
+        QMetaObject::invokeMethod(qApp, [self] {
+            if (self)
+                emit self->screenRecordingChanged();
+        }, Qt::QueuedConnection);
+    });
+}
+
+QVariantList ProjectController::listScreenTargets()
+{
+    QVariantList list;
+    if (testScreen()) {
+        list << QVariantMap{{QStringLiteral("kind"), QStringLiteral("display")}, {QStringLiteral("id"), 1},
+                            {QStringLiteral("title"), QStringLiteral("Test display (1280 × 720)")},
+                            {QStringLiteral("width"), 1280}, {QStringLiteral("height"), 720}};
+        return list;
+    }
+    if (tve::screenAccess() != CaptureAccess::Granted)
+        return list;
+    for (const ScreenTarget& t : tve::screenTargets())
+        list << QVariantMap{{QStringLiteral("kind"), t.kind == ScreenTarget::Kind::Display ? QStringLiteral("display")
+                                                                                         : QStringLiteral("window")},
+                            {QStringLiteral("id"), double(t.id)},
+                            {QStringLiteral("title"), QString::fromStdString(t.title)},
+                            {QStringLiteral("x"), t.x},
+                            {QStringLiteral("y"), t.y},
+                            {QStringLiteral("width"), t.width},
+                            {QStringLiteral("height"), t.height}};
+    return list;
+}
+
+QVariantList ProjectController::listCameras()
+{
+    QVariantList list;
+    if (testCamera()) {
+        list << QVariantMap{{QStringLiteral("id"), QStringLiteral("test")}, {QStringLiteral("name"), QStringLiteral("Test camera")}};
+        return list;
+    }
+    for (const CameraDevice& c : tve::cameras())
+        list << QVariantMap{{QStringLiteral("id"), QString::fromStdString(c.id)}, {QStringLiteral("name"), QString::fromStdString(c.name)}};
+    return list;
+}
+
+bool ProjectController::startScreenRecording(const QVariantMap& options)
+{
+    if (screenRecording() || recording()) {
+        reportError(QStringLiteral("Something is being recorded already"));
+        return false;
+    }
+    const QVariantMap screen = options.value(QStringLiteral("screen")).toMap();
+    const QString cameraId = options.value(QStringLiteral("camera")).toString();
+    if (screen.isEmpty() && cameraId.isEmpty()) {
+        reportError(QStringLiteral("Choose a screen or a camera to record"));
+        return false;
+    }
+    const int rate = std::clamp(options.value(QStringLiteral("frameRate"), 30).toInt(), 10, 60);
+    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH.mm.ss"));
+    const QDir folder(recordingsDirectory());
+    std::string error;
+    if (!screen.isEmpty()) {
+        std::unique_ptr<CaptureSource> source;
+        if (testScreen()) {
+            source = tve::makeTestSource(1280, 720, rate, options.value(QStringLiteral("systemSound")).toBool());
+        } else {
+            if (tve::screenAccess() != CaptureAccess::Granted) {
+                reportError(QStringLiteral("Allow screen recording in System Settings first"));
+                return false;
+            }
+            ScreenTarget target;
+            target.kind = screen.value(QStringLiteral("kind")).toString() == QLatin1String("window") ? ScreenTarget::Kind::Window
+                                                                                                    : ScreenTarget::Kind::Display;
+            target.id = std::uint32_t(screen.value(QStringLiteral("id")).toDouble());
+            target.x = screen.value(QStringLiteral("x")).toDouble();
+            target.y = screen.value(QStringLiteral("y")).toDouble();
+            target.width = screen.value(QStringLiteral("width")).toDouble();
+            target.height = screen.value(QStringLiteral("height")).toDouble();
+            std::optional<std::array<double, 4>> region;
+            if (options.contains(QStringLiteral("region"))) {
+                const QVariantMap r = options.value(QStringLiteral("region")).toMap();
+                region = std::array<double, 4>{r.value(QStringLiteral("x")).toDouble(), r.value(QStringLiteral("y")).toDouble(),
+                                               r.value(QStringLiteral("width")).toDouble(), r.value(QStringLiteral("height")).toDouble()};
+            }
+            source = tve::makeScreenSource(target, region, options.value(QStringLiteral("systemSound")).toBool(), rate);
+        }
+        m_screenRecorder = std::make_unique<CaptureRecorder>(std::move(source), rate);
+        if (!m_screenRecorder->start(folder.filePath(QStringLiteral("Screen %1.mov").arg(stamp)).toStdString(), &error)) {
+            m_screenRecorder.reset();
+            reportError(QStringLiteral("The screen recording could not start: ") + QString::fromStdString(error));
+            return false;
+        }
+        if (const auto area = m_screenRecorder->source().screenArea()) {
+            m_cursorLog = std::make_unique<CursorLog>(*area, testScreen());
+            m_cursorLog->start();
+        }
+    }
+    if (!cameraId.isEmpty()) {
+        if (!testCamera() && tve::cameraAccess() != CaptureAccess::Granted) {
+            stopScreenRecording();
+            reportError(QStringLiteral("Allow the camera in System Settings first"));
+            return false;
+        }
+        auto source = testCamera() ? tve::makeTestSource(640, 360, rate, false) : tve::makeCameraSource(cameraId.toStdString(), rate);
+        m_cameraRecorder = std::make_unique<CaptureRecorder>(std::move(source), rate);
+        if (!m_cameraRecorder->start(folder.filePath(QStringLiteral("Camera %1.mov").arg(stamp)).toStdString(), &error)) {
+            m_cameraRecorder.reset();
+            const QString message = QStringLiteral("The camera recording could not start: ") + QString::fromStdString(error);
+            if (m_screenRecorder)
+                stopScreenRecording();
+            reportError(message);
+            return false;
+        }
+    }
+    if (options.value(QStringLiteral("microphone")).toBool()) {
+        m_screenMicrophone = std::make_unique<AudioRecorder>(inputBackend(), m_inputDevice.toStdString());
+        if (!m_screenMicrophone->isOpen()
+            || !m_screenMicrophone->start(folder.filePath(QStringLiteral("Microphone %1.wav").arg(stamp)).toStdString(), &error))
+            m_screenMicrophone.reset(); // recorded without it
+    }
+    m_screenRecordingStart = ticks(m_playhead);
+    m_screenRecordingTime = 0;
+    if (!m_screenRecordingClock) {
+        m_screenRecordingClock = new QTimer(this);
+        m_screenRecordingClock->setInterval(100);
+        connect(m_screenRecordingClock, &QTimer::timeout, this, [this] {
+            const CaptureRecorder* r = m_screenRecorder ? m_screenRecorder.get() : m_cameraRecorder.get();
+            m_screenRecordingTime = r ? seconds(r->elapsed()) : 0.0;
+            emit screenRecordingTimeChanged();
+        });
+    }
+    m_screenRecordingClock->start();
+    emit screenRecordingChanged();
+    return true;
+}
+
+bool ProjectController::stopScreenRecording()
+{
+    if (!screenRecording())
+        return false;
+    if (m_screenRecordingClock)
+        m_screenRecordingClock->stop();
+    std::vector<RecordedTake> takes;
+    QStringList problems;
+    const auto takeOf = [&](const std::string& path, TrackKind kind, const char* name) -> std::optional<RecordedTake> {
+        QString why;
+        auto item = probeMedia(path, &why);
+        if (!item) {
+            problems << why;
+            return std::nullopt;
+        }
+        item->fingerprint = fingerprintFile(path).value_or(std::string());
+        RecordedTake take;
+        take.item = std::move(*item);
+        take.kind = kind;
+        take.trackName = name;
+        return take;
+    };
+    std::string error;
+    CursorEffects cursor;
+    if (m_cursorLog)
+        cursor = m_cursorLog->stop();
+    if (m_screenRecorder) {
+        if (const auto t = m_screenRecorder->stop(&error)) {
+            if (auto take = takeOf(t->path, TrackKind::Video, "Screen")) {
+                take->cursor = cursor;
+                takes.push_back(std::move(*take));
+            }
+        } else {
+            problems << QString::fromStdString(error);
+        }
+    }
+    if (m_cameraRecorder) {
+        if (const auto t = m_cameraRecorder->stop(&error)) {
+            if (auto take = takeOf(t->path, TrackKind::Video, "Camera")) {
+                // Over a screen: small, in the bottom right corner.
+                if (m_screenRecorder) {
+                    take->visual.transform.scale = 0.3;
+                    take->visual.transform.x = 0.33;
+                    take->visual.transform.y = 0.33;
+                }
+                takes.push_back(std::move(*take));
+            }
+        } else {
+            problems << QString::fromStdString(error);
+        }
+    }
+    if (m_screenMicrophone) {
+        if (const auto t = m_screenMicrophone->stop(&error))
+            if (auto take = takeOf(t->path, TrackKind::Audio, "Microphone"))
+                takes.push_back(std::move(*take));
+    }
+    m_screenRecorder.reset();
+    m_cameraRecorder.reset();
+    m_cursorLog.reset();
+    m_screenMicrophone.reset();
+    emit screenRecordingChanged();
+    if (takes.empty()) {
+        reportError(QStringLiteral("Nothing was recorded: ") + problems.join(QStringLiteral("; ")));
+        return false;
+    }
+    const bool screen = std::ranges::any_of(takes, [](const RecordedTake& t) { return t.trackName == "Screen"; });
+    auto command = std::make_unique<AddRecordingCommand>(std::move(takes), m_screenRecordingStart,
+                                                         screen ? "Record Screen" : "Record Camera");
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return false;
+    setSelectedClip(double(raw->clipIds().front()));
+    return true;
+}
+
+bool ProjectController::setCursorEffects(double clipId, const QVariantMap& effects)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->cursor.hasLog()) {
+        reportError(QStringLiteral("Select a screen recording"));
+        return false;
+    }
+    CursorEffects cursor = clip->cursor;
+    cursor.rings = effects.value(QStringLiteral("rings"), cursor.rings).toBool();
+    cursor.highlight = effects.value(QStringLiteral("highlight"), cursor.highlight).toBool();
+    cursor.spotlight = effects.value(QStringLiteral("spotlight"), cursor.spotlight).toBool();
+    cursor.size = effects.value(QStringLiteral("size"), cursor.size).toDouble();
+    return apply(std::make_unique<SetClipCursorCommand>(clip->id, std::move(cursor)));
+}
+
+bool ProjectController::zoomOnClicks(double clipId, const QVariantMap& options)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->cursor.hasLog() || clip->cursor.clicks.empty()) {
+        reportError(QStringLiteral("Select a screen recording with clicks"));
+        return false;
+    }
+    if (clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
+        reportError(QStringLiteral("Zooming on clicks works on clips playing forwards at a steady speed"));
+        return false;
+    }
+    const double zoom = std::clamp(options.value(QStringLiteral("zoom"), 1.8).toDouble(), 1.2, 3.0);
+    const Ticks hold = ticks(std::clamp(options.value(QStringLiteral("hold"), 1.2).toDouble(), 0.3, 5.0));
+    const Ticks ease = kTicksPerSecond * 3 / 10;
+    const double base = clip->visual.transform.scale;
+    // At each click: zoom in on the cursor over `ease`, stay `hold`, zoom out over `ease`
+    // (clicks close together share one zoom, moving between them).
+    Keyframes xs, ys, scales;
+    const auto clipTime = [&](Ticks media) { return Ticks(std::llround(double(media - clip->sourceIn) / clip->speed)); };
+    const auto centred = [&](double c) { return std::clamp(-(c - 0.5) * zoom, -(zoom - 1) / 2, (zoom - 1) / 2) * base; };
+    Ticks lastOut = std::numeric_limits<Ticks>::min();
+    for (const Ticks click : clip->cursor.clicks) {
+        const Ticks at = clipTime(click);
+        if (at < 0 || at > clip->duration)
+            continue;
+        const auto where = clip->cursor.at(click);
+        const Ticks in = std::max<Ticks>(0, at - ease);
+        if (in > lastOut) {
+            xs.push_back({in, clip->visual.transform.x, Easing::EaseInOut});
+            ys.push_back({in, clip->visual.transform.y, Easing::EaseInOut});
+            scales.push_back({in, base, Easing::EaseInOut});
+        }
+        xs.push_back({at, clip->visual.transform.x + centred(where->x), Easing::Linear});
+        ys.push_back({at, clip->visual.transform.y + centred(where->y), Easing::Linear});
+        scales.push_back({at, base * zoom, Easing::Linear});
+        const Ticks out = std::min(clip->duration, at + hold);
+        lastOut = std::min(clip->duration, out + ease);
+        // Held, then back out (unless the next click comes first: it continues from here).
+        for (Keyframes* k : {&xs, &ys, &scales}) {
+            Keyframe held = k->back();
+            held.time = out;
+            held.easing = Easing::EaseInOut;
+            if (held.time > k->back().time)
+                k->push_back(held);
+        }
+        xs.push_back({lastOut, clip->visual.transform.x, Easing::Linear});
+        ys.push_back({lastOut, clip->visual.transform.y, Easing::Linear});
+        scales.push_back({lastOut, base, Easing::Linear});
+    }
+    // Overlapping zooms: later keyframes win, earlier ones at or after them go.
+    const auto tidy = [](Keyframes& k) {
+        Keyframes out;
+        for (const Keyframe& f : k) {
+            while (!out.empty() && out.back().time >= f.time)
+                out.pop_back();
+            out.push_back(f);
+        }
+        k = std::move(out);
+    };
+    tidy(xs);
+    tidy(ys);
+    tidy(scales);
+    if (xs.empty()) {
+        reportError(QStringLiteral("No clicks within the clip"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipKeyframesCommand>(clip->id,
+                                                           std::map<std::string, Keyframes>{{std::string(tve::property::kX), xs},
+                                                                                            {std::string(tve::property::kY), ys},
+                                                                                            {std::string(tve::property::kScale), scales}},
+                                                           "Zoom on Clicks"));
+}
+
+bool ProjectController::addClickSounds(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || clip->cursor.clicks.empty()) {
+        reportError(QStringLiteral("Select a screen recording with clicks"));
+        return false;
+    }
+    // The click: 40 ms of a short, bright tick (made once, kept with the recordings).
+    const QString path = QDir(recordingsDirectory()).filePath(QStringLiteral("Click.wav"));
+    if (!QFileInfo::exists(path)) {
+        QDir().mkpath(recordingsDirectory());
+        auto writer = WavWriter::open(path.toStdString(), audio::kSampleRate, 1);
+        if (!writer) {
+            reportError(QStringLiteral("The click sound could not be made"));
+            return false;
+        }
+        std::vector<float> tick(std::size_t(audio::kSampleRate) / 25);
+        for (std::size_t i = 0; i < tick.size(); ++i) {
+            const double t = double(i) / audio::kSampleRate;
+            tick[i] = float(0.6 * std::exp(-t * 180.0) * std::sin(2.0 * std::numbers::pi * 2400.0 * t)
+                            + 0.3 * std::exp(-t * 400.0) * std::sin(2.0 * std::numbers::pi * 5200.0 * t));
+        }
+        writer->write(tick.data(), std::int64_t(tick.size()));
+        writer->finish();
+    }
+    QString why;
+    auto item = probeMedia(path.toStdString(), &why);
+    if (!item) {
+        reportError(why);
+        return false;
+    }
+    std::vector<Ticks> times;
+    for (const Ticks click : clip->cursor.clicks) {
+        const Ticks at = clip->start + Ticks(std::llround(double(click - clip->sourceIn) / clip->speed));
+        if (at >= clip->start && at < clip->end())
+            times.push_back(at);
+    }
+    if (times.empty()) {
+        reportError(QStringLiteral("No clicks within the clip"));
+        return false;
+    }
+    return apply(std::make_unique<AddClickSoundsCommand>(std::move(*item), std::move(times)));
 }
 
 void ProjectController::openMicrophoneSettings()

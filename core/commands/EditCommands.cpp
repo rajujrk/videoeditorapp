@@ -141,6 +141,97 @@ void RelinkMediaCommand::undo(Project& project)
 
 // --- AddVoiceOverCommand ---
 
+std::optional<std::string> AddRecordingCommand::redo(Project& project)
+{
+    if (m_takes.empty() || m_start < 0)
+        return "nothing was recorded";
+    for (const RecordedTake& take : m_takes) {
+        if (take.item.path.empty() || take.item.duration <= 0
+            || (take.kind == TrackKind::Audio ? !take.item.hasAudio : !take.item.hasVideo))
+            return "a recording is empty";
+    }
+    if (m_clipIds.empty()) {
+        for (RecordedTake& take : m_takes) {
+            take.item.id = project.allocateId();
+            m_clipIds.push_back(project.allocateId());
+            m_trackIds.push_back(project.allocateId());
+        }
+    }
+    // Tracks are stored bottom to top: pictures go on top (in order, so the camera ends up
+    // above the screen), sound at the bottom.
+    for (std::size_t i = 0; i < m_takes.size(); ++i) {
+        const RecordedTake& take = m_takes[i];
+        project.media.push_back(take.item);
+        Track track{.id = m_trackIds[i], .kind = take.kind, .name = take.trackName};
+        Clip clip{.id = m_clipIds[i], .mediaId = take.item.id, .start = m_start, .duration = take.item.duration};
+        clip.visual = take.visual;
+        clip.cursor = take.cursor;
+        track.insertClip(std::move(clip));
+        if (take.kind == TrackKind::Audio)
+            project.tracks.insert(project.tracks.begin(), std::move(track));
+        else
+            project.tracks.push_back(std::move(track));
+    }
+    return std::nullopt;
+}
+
+void AddRecordingCommand::undo(Project& project)
+{
+    std::erase_if(project.tracks, [&](const Track& t) { return std::ranges::find(m_trackIds, t.id) != m_trackIds.end(); });
+    std::erase_if(project.media, [&](const MediaItem& m) {
+        return std::ranges::any_of(m_takes, [&](const RecordedTake& take) { return take.item.id == m.id; });
+    });
+}
+
+std::optional<std::string> SetClipCursorCommand::redo(Project& project)
+{
+    auto location = project.locateClip(m_clipId);
+    if (!location)
+        return "clip not found";
+    if (auto error = checkEditable(location->track))
+        return error;
+    if (!location->clip->cursor.hasLog())
+        return "this clip has no cursor recorded";
+    if (!std::isfinite(m_cursor.size) || m_cursor.size < 0.01 || m_cursor.size > 0.3)
+        return "cursor effect size out of range";
+    m_previous = location->clip->cursor;
+    location->clip->cursor = m_cursor;
+    return std::nullopt;
+}
+
+void SetClipCursorCommand::undo(Project& project)
+{
+    project.locateClip(m_clipId)->clip->cursor = m_previous;
+}
+
+std::optional<std::string> AddClickSoundsCommand::redo(Project& project)
+{
+    if (m_times.empty() || m_click.duration <= 0)
+        return "no clicks to sound";
+    if (m_trackId == kNoId) {
+        m_trackId = project.allocateId();
+        m_click.id = project.allocateId();
+        for (std::size_t i = 0; i < m_times.size(); ++i)
+            m_clipIds.push_back(project.allocateId());
+    }
+    project.media.push_back(m_click);
+    Track track{.id = m_trackId, .kind = TrackKind::Audio, .name = "Clicks"};
+    Ticks freeFrom = 0;
+    for (std::size_t i = 0; i < m_times.size(); ++i) {
+        const Ticks at = std::max(freeFrom, m_times[i]); // (clicks closer than the sound: one after the other)
+        track.insertClip(Clip{.id = m_clipIds[i], .mediaId = m_click.id, .start = at, .duration = m_click.duration});
+        freeFrom = at + m_click.duration;
+    }
+    project.tracks.insert(project.tracks.begin(), std::move(track));
+    return std::nullopt;
+}
+
+void AddClickSoundsCommand::undo(Project& project)
+{
+    std::erase_if(project.tracks, [&](const Track& t) { return t.id == m_trackId; });
+    std::erase_if(project.media, [&](const MediaItem& m) { return m.id == m_click.id; });
+}
+
 std::optional<std::string> AddVoiceOverCommand::redo(Project& project)
 {
     if (m_item.path.empty() || m_item.duration <= 0 || !m_item.hasAudio)
@@ -400,6 +491,7 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.denoise = clip.denoise;
     right.motionTracks = clip.motionTracks;
     right.processedVideo = clip.processedVideo;
+    right.cursor = clip.cursor;
     right.text = clip.text;
     right.adjustment = clip.adjustment;
     right.sequenceId = clip.sequenceId;

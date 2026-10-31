@@ -9,6 +9,8 @@
 #include "model/Captions.h"
 #include "speech/Transcriber.h"
 #include "model/Motion.h"
+#include "capture/CaptureRecorder.h"
+#include "audio/AudioRecorder.h"
 #include "commands/CommandStack.h"
 #include "encode/MediaWriter.h"
 #include "model/Project.h"
@@ -201,6 +203,12 @@ class ProjectController : public QObject {
     Q_PROPERTY(QString microphoneAccess READ microphoneAccessName NOTIFY voiceOverChanged)
     Q_PROPERTY(bool muteWhileRecording READ muteWhileRecording WRITE setMuteWhileRecording NOTIFY voiceOverChanged)
     Q_PROPERTY(QString recordingsDirectory READ recordingsDirectory NOTIFY projectChanged)
+    // Screen and camera recording: whether a recording runs, for how long (seconds), and the
+    // permissions ("granted", "denied", "undetermined").
+    Q_PROPERTY(bool screenRecording READ screenRecording NOTIFY screenRecordingChanged)
+    Q_PROPERTY(double screenRecordingTime READ screenRecordingTime NOTIFY screenRecordingTimeChanged)
+    Q_PROPERTY(QString screenAccess READ screenAccessName NOTIFY screenRecordingChanged)
+    Q_PROPERTY(QString cameraAccess READ cameraAccessName NOTIFY screenRecordingChanged)
 
 public:
     explicit ProjectController(QObject* parent = nullptr);
@@ -308,6 +316,10 @@ public:
     bool muteWhileRecording() const { return m_muteWhileRecording; }
     void setMuteWhileRecording(bool mute);
     QString recordingsDirectory() const;
+    bool screenRecording() const { return m_screenRecorder != nullptr || m_cameraRecorder != nullptr; }
+    double screenRecordingTime() const { return m_screenRecordingTime; }
+    QString screenAccessName() const;
+    QString cameraAccessName() const;
 
     // Project lifecycle
     Q_INVOKABLE void newProject(int width, int height, const QString& name = {});
@@ -512,6 +524,25 @@ public:
     // Voice-over. openVoiceOver asks for microphone access first if it has not been given
     // (returning false until it is; voiceOverChanged follows the answer). closeVoiceOver
     // ends a take in progress, keeping it.
+    // Screen recording (TVE_SCREEN_SOURCE=test / TVE_CAMERA_SOURCE=test: test sources, no
+    // devices or permissions). What can be recorded: [{kind "display"/"window", id, title,
+    // width, height}] and [{id, name}].
+    Q_INVOKABLE QVariantList listScreenTargets();
+    Q_INVOKABLE QVariantList listCameras();
+    Q_INVOKABLE void requestScreenAccess();
+    Q_INVOKABLE void requestCameraAccess();
+    // options: screen (a listScreenTargets entry, or none), region {x, y, width, height}
+    // (points within a display), systemSound, camera (a camera id, or none), microphone,
+    // frameRate. Starts at the playhead; stopScreenRecording puts the screen, the camera
+    // (small, over it) and the microphone on new tracks there, as one undo step.
+    Q_INVOKABLE bool startScreenRecording(const QVariantMap& options);
+    Q_INVOKABLE bool stopScreenRecording();
+    // A screen recording's cursor effects: rings, highlight, spotlight, size.
+    Q_INVOKABLE bool setCursorEffects(double clipId, const QVariantMap& effects);
+    // Zooms in on each click (zoom 1.2..3, hold seconds) as keyframes; one undo step.
+    Q_INVOKABLE bool zoomOnClicks(double clipId, const QVariantMap& options = {});
+    // A click sound at each click, on a new audio track.
+    Q_INVOKABLE bool addClickSounds(double clipId);
     Q_INVOKABLE bool openVoiceOver();
     Q_INVOKABLE void closeVoiceOver();
     Q_INVOKABLE bool startRecording();
@@ -698,6 +729,8 @@ signals:
     void recoveryChanged();
     void proxiesChanged();
     void voiceOverChanged();
+    void screenRecordingChanged();
+    void screenRecordingTimeChanged();
     void colorClipboardChanged();
     void editingChanged();
     void colorPresetsChanged();
@@ -810,6 +843,15 @@ private:
     double m_recordingTime = 0;
     double m_inputLevel = 0;
     bool m_muteWhileRecording = true;
+    // A screen recording in progress: its recorders, cursor log and microphone, where on the
+    // timeline it began, and its files.
+    std::unique_ptr<tve::CaptureRecorder> m_screenRecorder;
+    std::unique_ptr<tve::CaptureRecorder> m_cameraRecorder;
+    std::unique_ptr<tve::CursorLog> m_cursorLog;
+    std::unique_ptr<tve::AudioRecorder> m_screenMicrophone;
+    tve::Ticks m_screenRecordingStart = 0;
+    double m_screenRecordingTime = 0;
+    QTimer* m_screenRecordingClock = nullptr;
     bool m_requestingAccess = false;
 
     struct ExportJob {

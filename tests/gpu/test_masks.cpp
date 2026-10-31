@@ -406,3 +406,32 @@ TEST_CASE("denoising over time averages still grain and leaves motion alone")
         return t[0];
     });
 }
+
+TEST_CASE("cursor effects ring, highlight and spotlight around the cursor")
+{
+    const QImage picture = filled([](int, int) { return QColor(100, 100, 100); });
+    const auto draw = [&](float ring, bool highlight, bool spotlight) {
+        return run({picture}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+            return m.drawCursor(cb, t[0], 0.5f, 0.5f, 0.2f, ring, highlight, spotlight);
+        });
+    };
+    const float grey = 100.0f / 255.0f;
+    // A spotlight: far away dimmed, at the cursor as it was.
+    const Pixels spot = draw(-1.0f, false, true);
+    CHECK(spot.at(0.05, 0.05)[0] < grey * 0.5f);
+    CHECK(spot.at(0.5, 0.5)[0] == Approx(grey).margin(0.01));
+    // A highlight: yellower at the cursor, untouched far away.
+    const Pixels lit = draw(-1.0f, true, false);
+    CHECK(lit.at(0.5, 0.5)[0] > grey + 0.1f);
+    CHECK(lit.at(0.5, 0.5)[2] < lit.at(0.5, 0.5)[0]);
+    CHECK(lit.at(0.05, 0.05)[0] == Approx(grey).margin(0.01));
+    // A ring half-way: on its circle (radius 0.85 × 0.2 of the height) not at the centre.
+    const Pixels ring = draw(0.5f, false, false);
+    CHECK(ring.at(0.5, 0.5)[0] == Approx(grey).margin(0.01));
+    CHECK(ring.at(0.5, 0.5 + 0.17)[0] > grey + 0.05f);
+    // Nothing on: the picture itself.
+    run({picture}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        CHECK(m.drawCursor(cb, t[0], 0.5f, 0.5f, 0.2f, -1.0f, false, false) == t[0]);
+        return t[0];
+    });
+}

@@ -18,6 +18,10 @@ add_library(tve_engine STATIC
     encode/WavWriter.cpp
     encode/VideoProcessing.h
     encode/VideoProcessing.mm
+    capture/Capture.h
+    capture/Capture.mm
+    capture/CaptureRecorder.h
+    capture/CaptureRecorder.mm
     playback/FrameQueue.h
     playback/FrameSource.h
     playback/PlaybackClock.h
@@ -109,6 +113,9 @@ target_link_libraries(tve_engine
         "-framework Foundation"
         "-framework Vision"
         "-framework CoreGraphics"
+        "-framework ScreenCaptureKit"
+        "-framework AVFoundation"
+        "-framework ApplicationServices"
         nlohmann_json::nlohmann_json
         "-framework VideoToolbox"
         "-framework CoreMedia"

@@ -3,6 +3,7 @@
 #include "model/ColorGrade.h"
 #include "model/Keyframes.h"
 #include "model/Masks.h"
+#include "model/Cursor.h"
 #include "model/Motion.h"
 #include "model/People.h"
 #include "model/SpeedRamp.h"
@@ -290,6 +291,8 @@ struct Clip {
     std::vector<MotionTrack> motionTracks;
     // Played instead of the media's pictures where it covers them (if the file is there).
     std::optional<ProcessedVideo> processedVideo;
+    // A screen recording's mouse, and the effects drawn from it (after the people and motion).
+    CursorEffects cursor;
     std::vector<ClipEffect> effects; // applied in order, before placement on the canvas
 
     // Time. At speed 2 one second of timeline plays two seconds of source; reversed plays

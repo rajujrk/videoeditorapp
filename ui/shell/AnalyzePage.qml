@@ -107,6 +107,64 @@ ScrollView {
             }
         }
 
+        // A screen recording's cursor
+        Section {
+            id: cursorSection
+            objectName: "cursorSection"
+            readonly property var cursor: page.clipInfo.cursor
+            visible: page.hasClip && cursor !== undefined
+            Layout.fillWidth: true
+            title: "Cursor"
+            function change(values) { page.project.setCursorEffects(page.clipInfo.id, values) }
+
+            Finding {
+                text: (cursorSection.cursor ? cursorSection.cursor.clicks : 0) + " clicks recorded with the screen."
+                color: Theme.color.textSecondary
+            }
+            ToggleSwitch {
+                objectName: "cursorRings"
+                text: "Rings where it clicks"
+                checked: cursorSection.cursor !== undefined && cursorSection.cursor.rings
+                onToggled: cursorSection.change({ rings: checked })
+            }
+            ToggleSwitch {
+                objectName: "cursorHighlight"
+                text: "Highlight around it"
+                checked: cursorSection.cursor !== undefined && cursorSection.cursor.highlight
+                onToggled: cursorSection.change({ highlight: checked })
+            }
+            ToggleSwitch {
+                objectName: "cursorSpotlight"
+                text: "Spotlight (dim the rest)"
+                checked: cursorSection.cursor !== undefined && cursorSection.cursor.spotlight
+                onToggled: cursorSection.change({ spotlight: checked })
+            }
+            Setting {
+                objectName: "cursorSize"
+                label: "Size"
+                from: 0.02; to: 0.2; stepSize: 0.01
+                value: cursorSection.cursor ? cursorSection.cursor.size : 0.05
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: cursorSection.change({ size: value })
+            }
+            RowLayout {
+                TextButton {
+                    objectName: "zoomOnClicks"
+                    text: "Zoom on clicks"
+                    variant: "secondary"
+                    enabled: cursorSection.cursor !== undefined && cursorSection.cursor.clicks > 0
+                    onClicked: page.project.zoomOnClicks(page.clipInfo.id)
+                }
+                TextButton {
+                    objectName: "addClickSounds"
+                    text: "Click sounds"
+                    variant: "secondary"
+                    enabled: cursorSection.cursor !== undefined && cursorSection.cursor.clicks > 0
+                    onClicked: page.project.addClickSounds(page.clipInfo.id)
+                }
+            }
+        }
+
         // Multicam
         Section {
             objectName: "syncSection"

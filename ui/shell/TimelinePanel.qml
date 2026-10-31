@@ -137,6 +137,22 @@ Rectangle {
             }
 
             IconButton {
+                objectName: "screenRecordButton"
+                iconName: "screen-record"
+                tip: "Record screen and camera"
+                checkable: true
+                checked: recordPanel.visible
+                onClicked: recordPanel.visible ? recordPanel.close() : recordPanel.open()
+
+                RecordPanel {
+                    id: recordPanel
+                    objectName: "recordPanel"
+                    project: timeline.project
+                    y: -height - Theme.space.s
+                }
+            }
+
+            IconButton {
                 id: mixerButton
                 objectName: "mixerButton"
                 iconName: "mixer"

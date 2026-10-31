@@ -178,6 +178,23 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
             m.gain = clip.deflicker.gainAt(sourceTime);
         return m;
     };
+    const auto cursorOf = [](const Clip& clip, Ticks sourceTime) {
+        LayerCursor c;
+        const CursorEffects& e = clip.cursor;
+        if (!e.shows())
+            return c;
+        const auto at = e.at(sourceTime);
+        c.show = true;
+        c.x = float(at->x);
+        c.y = float(at->y);
+        c.size = float(e.size);
+        c.highlight = e.highlight;
+        c.spotlight = e.spotlight;
+        if (e.rings)
+            if (const auto since = e.sinceClick(sourceTime, kClickRingSeconds))
+                c.ring = float(*since / kClickRingSeconds);
+        return c;
+    };
     const auto peopleOf = [](const Clip& clip, Ticks sourceTime) {
         LayerPeople people{clip.cutout, std::nullopt, clip.faceMosaic.boxesAt(sourceTime), clip.faceMosaic.style,
                            float(clip.faceMosaic.amount)};
@@ -196,14 +213,14 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
         if (top.adjustment) {
             out.push_back(VideoLayer{top.id, DecodedFrame{}, top.visualAt(time), top.effectsAt(time), std::nullopt,
                                      std::nullopt, top.color, lookOf(top), true, {}, ChromaKey{}, {}, MatteMode::None,
-                                     clipSeconds, clipDuration, nullptr, {}, {}});
+                                     clipSeconds, clipDuration, nullptr, {}, {}, {}});
             continue;
         }
         if (top.text) {
             out.push_back(VideoLayer{top.id, DecodedFrame{}, top.visualAt(time), top.effectsAt(time), std::nullopt,
                                      top.text, ColorGrade{}, ColorGrade{}, false, {}, ChromaKey{}, top.masks,
                                      top.matte, // titles are not graded
-                                     clipSeconds, clipDuration, nullptr, {}, {}});
+                                     clipSeconds, clipDuration, nullptr, {}, {}, {}});
             continue;
         }
         if (top.compound()) {
@@ -213,7 +230,7 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                 buildLayers(project, sequence->tracks, layer.sourceTime, nested->layers, depth + 1, live);
             out.push_back(VideoLayer{top.id, DecodedFrame{}, top.visualAt(time), top.effectsAt(time), std::nullopt,
                                      std::nullopt, top.color, lookOf(top), false, {}, top.chromaKey, top.masks,
-                                     top.matte, clipSeconds, clipDuration, std::move(nested), {}, {}});
+                                     top.matte, clipSeconds, clipDuration, std::move(nested), {}, {}, {}});
             continue;
         }
         // Each side is a decoded frame, or a still image's path (nothing to decode).
@@ -242,10 +259,12 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                 LayerTransition{t.spec->transitionId, t.spec->values, float(t.progress), t.to->id, incoming.picture(),
                                 t.to->visualAt(time), t.to->effectsAt(time), t.to->color, lookOf(*t.to),
                                 incoming.stillPath, t.to->chromaKey, t.to->masks, toSeconds(time - t.to->start),
-                                peopleOf(*t.to, t.toSourceTime), motionOf(*t.to, t.toSourceTime)},
+                                peopleOf(*t.to, t.toSourceTime), motionOf(*t.to, t.toSourceTime),
+                                cursorOf(*t.to, t.toSourceTime)},
                 std::nullopt, top.color, lookOf(top), false, outgoing.stillPath, top.chromaKey, top.masks,
                 MatteMode::None, // no matte during a transition
-                clipSeconds, clipDuration, nullptr, peopleOf(top, layer.sourceTime), motionOf(top, layer.sourceTime)});
+                clipSeconds, clipDuration, nullptr, peopleOf(top, layer.sourceTime), motionOf(top, layer.sourceTime),
+                cursorOf(top, layer.sourceTime)});
         } else if (outgoing.shown() || incoming.shown()) {
             // One side unreadable: show the other alone.
             const Side& side = outgoing.shown() ? outgoing : incoming;
@@ -254,7 +273,8 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                                      std::nullopt, clip.color, lookOf(clip), false, side.stillPath, clip.chromaKey,
                                      clip.masks, clip.matte, toSeconds(time - clip.start), toSeconds(clip.duration), nullptr,
                                      peopleOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime),
-                                     motionOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime)});
+                                     motionOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime),
+                                     cursorOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime)});
         }
     }
 }
