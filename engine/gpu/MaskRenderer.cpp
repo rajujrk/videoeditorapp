@@ -86,6 +86,7 @@ MaskRenderer::MaskRenderer(QRhi* rhi) : m_rhi(rhi)
     m_facesFragment = readShader(QStringLiteral(":/gpu/shaders/faces.frag.qsb"));
     m_steadyFragment = readShader(QStringLiteral(":/gpu/shaders/steady.frag.qsb"));
     m_denoiseFragment = readShader(QStringLiteral(":/gpu/shaders/denoise.frag.qsb"));
+    m_cursorFragment = readShader(QStringLiteral(":/gpu/shaders/cursor.frag.qsb"));
     m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
                                       QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
     m_sampler->create();
@@ -347,6 +348,34 @@ QRhiTexture* MaskRenderer::denoise(QRhiCommandBuffer* cb, QRhiTexture* picture, 
     u.params[0] = std::clamp(strength, 0.0f, 1.0f);
     return draw(cb, *slot, m_denoisePipeline, m_denoiseFragment, &u, int(sizeof(DenoiseUniforms))) ? slot->output.get()
                                                                                                 : picture;
+}
+
+QRhiTexture* MaskRenderer::drawCursor(QRhiCommandBuffer* cb, QRhiTexture* picture, float x, float y, float size, float ring,
+                                      bool highlight, bool spotlight)
+{
+    if (!picture || (ring < 0.0f && !highlight && !spotlight) || !m_vertex.isValid() || !m_cursorFragment.isValid())
+        return picture;
+    const QSize pixels = picture->pixelSize();
+    Slot* slot = nextSlot(pixels, int(sizeof(SteadyUniforms)));
+    if (!slot)
+        return picture;
+    slot->bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(
+            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, slot->uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, picture, m_sampler.get()),
+    });
+    SteadyUniforms u{}; // the same layout: two vec4s after the header
+    u.texelSize[0] = 1.0f / float(pixels.width());
+    u.texelSize[1] = 1.0f / float(pixels.height());
+    u.flipY = m_rhi->isYUpInNDC() ? 1.0f : 0.0f;
+    u.move[0] = x;
+    u.move[1] = y;
+    u.move[2] = std::max(0.005f, size);
+    u.move[3] = ring;
+    u.params[0] = highlight ? 1.0f : 0.0f;
+    u.params[1] = spotlight ? 1.0f : 0.0f;
+    return draw(cb, *slot, m_cursorPipeline, m_cursorFragment, &u, int(sizeof(SteadyUniforms))) ? slot->output.get()
+                                                                                              : picture;
 }
 
 } // namespace tve

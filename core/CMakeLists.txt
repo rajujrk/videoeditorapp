@@ -9,6 +9,8 @@ add_library(tve_core STATIC
     model/Masks.h
     model/People.h
     model/Motion.h
+    model/Cursor.h
+    model/Cursor.cpp
     model/Motion.cpp
     model/People.cpp
     model/Masks.cpp

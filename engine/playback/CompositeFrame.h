@@ -40,6 +40,16 @@ struct LayerMotion {
     bool warps() const { return steady || gain != 1.0f; }
 };
 
+// A screen recording's cursor effects at one frame.
+struct LayerCursor {
+    bool show = false;
+    float x = 0.0f, y = 0.0f; // picture fractions
+    float size = 0.05f;
+    float ring = -1.0f; // how far through a click's ring, 0..1 (< 0: none)
+    bool highlight = false;
+    bool spotlight = false;
+};
+
 struct LayerTransition {
     std::string transitionId;
     std::map<std::string, std::vector<float>> values;
@@ -56,6 +66,7 @@ struct LayerTransition {
     double clipSeconds = 0.0; // how far into the incoming clip
     LayerPeople people;
     LayerMotion motion;
+    LayerCursor cursor;
 };
 
 // One clip's picture at a moment of the timeline, with how to show it. During a
@@ -88,6 +99,7 @@ struct VideoLayer {
     // People and motion: first of all, on the decoded picture (see FrameCompositor).
     LayerPeople people;
     LayerMotion motion;
+    LayerCursor cursor;
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.

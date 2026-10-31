@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -198,6 +198,17 @@ rectangle — a screen, a sign — which turns too); Vision follows it from the 
 end. Any clip on screen at the same time — a title, a sticker — can then **Follow** a track from
 where it is at the playhead, with **Grow and shrink with it** and **Turn with it**, as keyframes you
 can still edit.
+
+**Screen and camera recording.** The timeline's screen button opens the recorder: choose a
+display or a window (with its system sound), a camera, and the microphone, then **Record**. It
+records from the playhead; **Stop** puts the screen, the camera (small in the bottom right corner,
+picture in picture) and the microphone on new tracks there, as one undo step. Recordings are kept
+with the voice-overs (`TVE_RECORDING_DIR` moves them). macOS asks once for Screen & System Audio
+Recording and for the camera. The mouse is recorded too: the Analyze tab's **Cursor** section
+draws rings where it clicked, a highlight around it or a spotlight that dims the rest (with a size),
+**Zoom on clicks** zooms in on each click as keyframes, and **Click sounds** adds a click at each one
+on a track of its own. `TVE_SCREEN_SOURCE=test` and `TVE_CAMERA_SOURCE=test` record from test
+sources instead (moving bars, a tone, a cursor circling and clicking every second).
 
 **Advanced vision.** Select two or more clips of the same event (cameras, a sound recorder)
 and **Line up by sound** in the Analyze tab: they are moved so their sound lines up (to about a

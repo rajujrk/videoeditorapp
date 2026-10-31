@@ -229,6 +229,9 @@ int main(int argc, char** argv)
     // Voice-overs record real-time silence (no microphone, no permission prompt) into a
     // scratch folder.
     qputenv("TVE_AUDIO_INPUT", "null");
+    // Screen and camera recordings come from test sources (no devices, no permission prompts).
+    qputenv("TVE_SCREEN_SOURCE", "test");
+    qputenv("TVE_CAMERA_SOURCE", "test");
     QTemporaryDir recordings;
     qputenv("TVE_RECORDING_DIR", recordings.path().toLocal8Bit());
     QTemporaryDir stills;

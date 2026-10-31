@@ -127,6 +127,15 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorGrade, exposure, contrast, 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipLook, id, title, intensity, grade)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EnhancedAudio, path, limitDb)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ProcessedVideo, path, from, to, steps)
+void to_json(nlohmann::json& j, const CursorSample& c)
+{
+    j = nlohmann::json::array({c.time, c.x, c.y});
+}
+void from_json(const nlohmann::json& j, CursorSample& c)
+{
+    c = {j.at(0).get<Ticks>(), j.at(1).get<double>(), j.at(2).get<double>()};
+}
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CursorEffects, path, clicks, rings, highlight, spotlight, size)
 void to_json(nlohmann::json& j, const TrackSample& s)
 {
     j = nlohmann::json::array({s.time, s.x, s.y, s.width, s.height, s.angle});
@@ -171,7 +180,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, durati
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
                                                 chromaKey, masks, matte, cutout, faceMosaic, stabilization, deflicker,
-                                                denoise, motionTracks, processedVideo, audioEffects,
+                                                denoise, motionTracks, processedVideo, cursor, audioEffects,
                                                 enhancedAudio, keepPitch, sequenceId, groupId)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips)

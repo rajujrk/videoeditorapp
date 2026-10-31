@@ -494,6 +494,68 @@ private:
 
 // Adds a recorded voice-over in one step: imports its file and places it at `start` on an
 // audio track — `trackId`, or with kNoId a new "Voice-over" track below the others.
+// A screen, webcam and/or microphone recording put on the timeline at `start`, each take on
+// a new track of its own (pictures above everything, the camera's on top; sound below), as
+// one step ("Record Screen").
+struct RecordedTake {
+    MediaItem item;
+    TrackKind kind = TrackKind::Video;
+    std::string trackName;
+    ClipVisual visual;    // a camera over the screen: small, in a corner
+    CursorEffects cursor; // the screen's mouse
+};
+
+class AddRecordingCommand final : public Command {
+public:
+    AddRecordingCommand(std::vector<RecordedTake> takes, Ticks start, std::string label)
+        : m_takes(std::move(takes)), m_start(start), m_label(std::move(label)) {}
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+    // The clip each take became, in order.
+    const std::vector<Id>& clipIds() const { return m_clipIds; }
+
+private:
+    std::vector<RecordedTake> m_takes;
+    Ticks m_start;
+    std::string m_label;
+    std::vector<Id> m_clipIds;
+    std::vector<Id> m_trackIds;
+};
+
+// Sets a screen recording's cursor effects ("Cursor Effects").
+class SetClipCursorCommand final : public Command {
+public:
+    SetClipCursorCommand(Id clipId, CursorEffects cursor) : m_clipId(clipId), m_cursor(std::move(cursor)) {}
+
+    std::string label() const override { return "Cursor Effects"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    CursorEffects m_cursor;
+    CursorEffects m_previous;
+};
+
+// A click sound at each of `times` (timeline), on a new audio track ("Click Sounds").
+class AddClickSoundsCommand final : public Command {
+public:
+    AddClickSoundsCommand(MediaItem click, std::vector<Ticks> times) : m_click(std::move(click)), m_times(std::move(times)) {}
+
+    std::string label() const override { return "Click Sounds"; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    MediaItem m_click;
+    std::vector<Ticks> m_times;
+    Id m_trackId = kNoId;
+    std::vector<Id> m_clipIds;
+};
+
 class AddVoiceOverCommand final : public Command {
 public:
     AddVoiceOverCommand(MediaItem item, Id trackId, Ticks start)

@@ -238,3 +238,61 @@ TEST_CASE("motion settings and tracks are commands, kept by splits and saved com
     CHECK(stack.push(std::make_unique<SetClipMotionCommand>(clip, std::nullopt, std::nullopt, 1.5, "x")).value()
           == "denoise strength out of range");
 }
+
+TEST_CASE("a recording's takes go on new tracks in one step, with the cursor and click sounds")
+{
+    Project project;
+    CommandStack stack{project};
+    const auto push = [&](std::unique_ptr<Command> c) {
+        const auto error = stack.push(std::move(c));
+        INFO(error.value_or(""));
+        REQUIRE_FALSE(error);
+    };
+    push(std::make_unique<AddTrackCommand>(TrackKind::Video, "V1"));
+    CursorEffects cursor;
+    cursor.path = {{0, 0.1, 0.1}, {kTicksPerSecond * 2, 0.9, 0.5}};
+    cursor.clicks = {kTicksPerSecond / 2, kTicksPerSecond};
+    std::vector<RecordedTake> takes{
+        {MediaItem{.path = "/s.mov", .duration = 3 * kTicksPerSecond, .width = 1280, .height = 720}, TrackKind::Video, "Screen", {}, cursor},
+        {MediaItem{.path = "/c.mov", .duration = 3 * kTicksPerSecond, .width = 640, .height = 360}, TrackKind::Video, "Camera", {}, {}},
+        {MediaItem{.path = "/m.wav", .duration = 3 * kTicksPerSecond, .hasVideo = false, .hasAudio = true}, TrackKind::Audio, "Microphone", {}, {}},
+    };
+    auto add = std::make_unique<AddRecordingCommand>(takes, 2 * kTicksPerSecond, "Record Screen");
+    auto* raw = add.get();
+    push(std::move(add));
+    REQUIRE(project.tracks.size() == 4);
+    CHECK(project.tracks.front().name == "Microphone");                // sound at the bottom
+    CHECK(project.tracks[2].name == "Screen");
+    CHECK(project.tracks.back().name == "Camera");                     // the camera on top
+    const Clip& screen = *project.locateClip(raw->clipIds()[0])->clip;
+    CHECK(screen.start == 2 * kTicksPerSecond);
+    CHECK(screen.cursor == cursor);
+    CHECK(screen.cursor.at(kTicksPerSecond)->x == Approx(0.5));
+    CHECK(screen.cursor.sinceClick(kTicksPerSecond + kTicksPerSecond / 10, kClickRingSeconds).value() == Approx(0.1));
+    stack.undo();
+    CHECK(project.tracks.size() == 1);
+    CHECK(project.media.empty());
+    stack.redo();
+    CHECK(project.locateClip(raw->clipIds()[0])->clip->cursor == cursor); // the same ids again
+
+    CursorEffects spot = cursor;
+    spot.spotlight = true;
+    push(std::make_unique<SetClipCursorCommand>(raw->clipIds()[0], spot));
+    CHECK(project.locateClip(raw->clipIds()[0])->clip->cursor.spotlight);
+    spot.size = 0.5;
+    CHECK(stack.push(std::make_unique<SetClipCursorCommand>(raw->clipIds()[0], spot)).value() == "cursor effect size out of range");
+    CHECK(stack.push(std::make_unique<SetClipCursorCommand>(raw->clipIds()[1], spot)).value() == "this clip has no cursor recorded");
+
+    // Two clicks closer than the sound: one after the other.
+    const Ticks tick = kTicksPerSecond / 25;
+    push(std::make_unique<AddClickSoundsCommand>(MediaItem{.path = "/click.wav", .duration = tick, .hasVideo = false, .hasAudio = true},
+                                                 std::vector<Ticks>{kTicksPerSecond, kTicksPerSecond + tick / 2}));
+    const Track& clicks = project.tracks.front();
+    CHECK(clicks.name == "Clicks");
+    REQUIRE(clicks.clips.size() == 2);
+    CHECK(clicks.clips[1].start == kTicksPerSecond + tick);
+
+    const Project loaded = projectFromJson(projectToJson(project));
+    CHECK(const_cast<Project&>(loaded).locateClip(raw->clipIds()[0])->clip->cursor.spotlight);
+    CHECK(thinCursorPath({{0, 0, 0}, {1, 0.5, 0.5}, {2, 1, 1}}).size() == 2);
+}

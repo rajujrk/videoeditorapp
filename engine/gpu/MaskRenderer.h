@@ -62,6 +62,10 @@ public:
     // Denoised over time against the denoised frame before (denoise.frag); `previous` is
     // the same size.
     QRhiTexture* denoise(QRhiCommandBuffer* cb, QRhiTexture* picture, QRhiTexture* previous, float strength);
+    // Cursor effects (cursor.frag) at `x`, `y` (picture fractions): a click ring `ring` of the
+    // way through (< 0: none), a highlight and/or a spotlight of radius `size` (picture heights).
+    QRhiTexture* drawCursor(QRhiCommandBuffer* cb, QRhiTexture* picture, float x, float y, float size, float ring,
+                            bool highlight, bool spotlight);
 
 private:
     struct Slot {
@@ -83,6 +87,7 @@ private:
     QShader m_facesFragment;
     QShader m_steadyFragment;
     QShader m_denoiseFragment;
+    QShader m_cursorFragment;
     std::unique_ptr<QRhiSampler> m_sampler;
     std::unique_ptr<QRhiRenderPassDescriptor> m_renderPass;
     std::unique_ptr<QRhiGraphicsPipeline> m_maskPipeline;
@@ -91,6 +96,7 @@ private:
     std::unique_ptr<QRhiGraphicsPipeline> m_facesPipeline;
     std::unique_ptr<QRhiGraphicsPipeline> m_steadyPipeline;
     std::unique_ptr<QRhiGraphicsPipeline> m_denoisePipeline;
+    std::unique_ptr<QRhiGraphicsPipeline> m_cursorPipeline;
     std::vector<Slot> m_slots;
     std::size_t m_used = 0;
 };

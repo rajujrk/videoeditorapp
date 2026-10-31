@@ -447,7 +447,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                                  double clipSeconds = 0.0, double clipDuration = 0.0,
                                  tve::CompositeFrame* nested = nullptr,
                                  const tve::LayerPeople* people = nullptr,
-                                 const tve::LayerMotion* motion = nullptr) -> QRhiTexture* {
+                                 const tve::LayerMotion* motion = nullptr,
+                                 const tve::LayerCursor* cursor = nullptr) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
         if (canvasBelow) {
             picture = canvasBelow; // an adjustment layer works on what is under it
@@ -505,6 +506,10 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         }
         if (!canvasBelow)
             picture = m_masks->apply(cb, picture, key, masks);
+        // A screen recording's cursor effects, on the picture as it now is.
+        if (cursor && cursor->show && decoded.pixelBuffer())
+            picture = m_masks->drawCursor(cb, picture, cursor->x, cursor->y, cursor->size, cursor->ring, cursor->highlight,
+                                          cursor->spotlight);
         std::vector<tve::EffectInstance> instances;
         canvasEffects.erase(clipId);
         for (const tve::ClipEffect& effect : effects) {
@@ -585,7 +590,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look,
                                                layer.text, nullptr, layer.stillPath, layer.chromaKey, layer.masks,
                                                layer.clipSeconds, layer.clipDuration, layer.nested.get(), &layer.people,
-                                               &layer.motion);
+                                               &layer.motion, &layer.cursor);
             // Track matte: the layer just above is the matte, placed by itself, and not drawn.
             tve::VideoLayer* matteLayer = index + 1 < layers.size() ? &layers[index + 1] : nullptr;
             if (layer.matte != tve::MatteMode::None && !layer.transition && matteLayer && !matteLayer->transition
@@ -596,7 +601,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                     clipPicture(matteLayer->clipId, matteLayer->frame, matteVisual, matteLayer->effects, matteLayer->grade,
                                 matteLayer->look, matteLayer->text, nullptr, matteLayer->stillPath, matteLayer->chromaKey,
                                 matteLayer->masks, matteLayer->clipSeconds, matteLayer->clipDuration,
-                                matteLayer->nested.get(), &matteLayer->people, &matteLayer->motion);
+                                matteLayer->nested.get(), &matteLayer->people, &matteLayer->motion, &matteLayer->cursor);
                 if (!picture)
                     continue;
                 if (m_matteCanvases.size() <= matteIndex)
@@ -628,7 +633,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                 clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade,
                             transition.look, std::nullopt, nullptr, transition.stillPath, transition.chromaKey,
                             transition.masks, transition.clipSeconds, 0.0, nullptr, &transition.people,
-                            &transition.motion);
+                            &transition.motion, &transition.cursor);
             if (!picture || !incoming) {
                 if (picture || incoming)
                     place(target, picture ? layer.clipId : transition.clipId, picture ? picture : incoming,
