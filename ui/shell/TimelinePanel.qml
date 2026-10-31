@@ -468,6 +468,50 @@ Rectangle {
                         }
                     }
 
+                    // What the Analyze tab found, before it is applied: pauses as bands, scene
+                    // changes as lines, the beat as ticks under the ruler.
+                    Repeater {
+                        model: timeline.project.silences.ranges || []
+                        delegate: Rectangle {
+                            required property var modelData
+                            required property int index
+                            objectName: "pauseBand:" + index
+                            x: modelData.start * timeline.pixelsPerSecond
+                            y: Theme.size.ruler
+                            z: 7
+                            width: Math.max(1, (modelData.end - modelData.start) * timeline.pixelsPerSecond)
+                            height: parent.height - Theme.size.ruler
+                            color: Qt.alpha(Theme.color.danger, 0.22)
+                            border.color: Qt.alpha(Theme.color.danger, 0.6)
+                        }
+                    }
+                    Repeater {
+                        model: timeline.project.scenes.cuts || []
+                        delegate: Rectangle {
+                            required property real modelData
+                            required property int index
+                            objectName: "sceneCut:" + index
+                            x: modelData * timeline.pixelsPerSecond - 1
+                            y: Theme.size.ruler
+                            z: 7
+                            width: 2
+                            height: parent.height - Theme.size.ruler
+                            color: Theme.color.markers.green
+                        }
+                    }
+                    Repeater {
+                        model: timeline.project.beats.times || []
+                        delegate: Rectangle {
+                            required property real modelData
+                            x: modelData * timeline.pixelsPerSecond
+                            y: Theme.size.ruler - 7
+                            z: 7
+                            width: 1
+                            height: 7
+                            color: Theme.color.markers.yellow
+                        }
+                    }
+
                     // Marker lines through the lanes
                     Repeater {
                         model: timeline.project.markers

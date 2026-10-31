@@ -36,10 +36,16 @@ std::optional<RgbaImage> extractThumbnail(VideoDecoder& decoder, Ticks time, int
     if (!decoder.seek(std::max<Ticks>(time, 0)))
         return std::nullopt;
     auto frame = decoder.nextFrame();
-    if (!frame || !frame->pixelBuffer())
+    if (!frame)
         return std::nullopt;
+    return pictureOf(*frame, height);
+}
 
-    CVPixelBufferRef buffer = frame->pixelBuffer();
+std::optional<RgbaImage> pictureOf(const DecodedFrame& frame, int height)
+{
+    if (height <= 0 || !frame.pixelBuffer())
+        return std::nullopt;
+    CVPixelBufferRef buffer = frame.pixelBuffer();
     const OSType format = CVPixelBufferGetPixelFormatType(buffer);
     // Two-plane YUV at 4:2:0, 4:2:2 (ProRes 422) or 4:4:4 (ProRes 4444), 8, 10 or 16 bits.
     const bool tenBit = format == kCVPixelFormatType_422YpCbCr16BiPlanarVideoRange

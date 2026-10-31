@@ -32,6 +32,8 @@ add_library(tve_engine STATIC
     audio/MiniaudioImpl.c
     analysis/Scopes.h
     analysis/Scopes.cpp
+    analysis/MediaAnalysis.h
+    analysis/MediaAnalysis.cpp
     audio/WaveformCache.h
     audio/WaveformCache.cpp
     audio/AudioEffects.h

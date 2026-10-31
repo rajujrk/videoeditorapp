@@ -134,4 +134,30 @@ private:
     Project m_before;
 };
 
+// --- Time ranges ---
+
+// Cuts time ranges out of a track (silences, say): clips inside a range go, clips crossing
+// its edges are split there, and everything after it moves back to close the gap. Ranges
+// may come in any order and overlap. A redo after an undo gives the pieces the same ids.
+class RemoveRangesCommand final : public Command {
+public:
+    RemoveRangesCommand(Id trackId, std::vector<std::pair<Ticks, Ticks>> ranges, std::string label = "Remove Ranges")
+        : m_trackId(trackId), m_ranges(std::move(ranges)), m_label(std::move(label)) {}
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+    // How much time was taken out.
+    Ticks removed() const { return m_removed; }
+
+private:
+    Id m_trackId;
+    std::vector<std::pair<Ticks, Ticks>> m_ranges;
+    std::string m_label;
+    Ticks m_removed = 0;
+    Project m_before;
+    std::optional<Project> m_after; // the result of the first redo
+};
+
 } // namespace tve

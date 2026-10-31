@@ -35,7 +35,7 @@ Rectangle {
 
     color: Theme.color.surface
 
-    readonly property var tabs: ["Video", "Speed", "Audio", "Color", "Effects"]
+    readonly property var tabs: ["Video", "Speed", "Audio", "Color", "Effects", "Analyze"]
 
     ColumnLayout {
         anchors.fill: parent
@@ -1804,6 +1804,12 @@ Rectangle {
                         spec: inspector.player.availableEffects.find((e) => e.id === current.effectId) || ({ title: current.effectId, params: [] })
                     }
                 }
+            }
+
+            AnalyzePage {
+                objectName: "analyzePage"
+                project: inspector.project
+                clipInfo: inspector.clipInfo
             }
         }
     }

@@ -351,4 +351,77 @@ void BreakCompoundCommand::undo(Project& project)
     restore(project, m_before);
 }
 
+// --- Time ranges ---
+
+std::optional<std::string> RemoveRangesCommand::redo(Project& project)
+{
+    if (m_after) {
+        // Again after an undo: the same result, ids and all.
+        const Id next = std::max(project.nextId(), m_after->nextId());
+        m_before = project;
+        project = *m_after;
+        project.setNextId(next);
+        return std::nullopt;
+    }
+    const Track* found = project.findTrack(m_trackId);
+    if (!found)
+        return "track not found";
+    if (found->locked)
+        return "track is locked";
+    // In order, merged where they touch or overlap.
+    std::vector<std::pair<Ticks, Ticks>> ranges;
+    for (auto [from, to] : m_ranges)
+        if (to > from && to > 0)
+            ranges.emplace_back(std::max<Ticks>(from, 0), to);
+    std::ranges::sort(ranges);
+    std::vector<std::pair<Ticks, Ticks>> merged;
+    for (const auto& range : ranges) {
+        if (!merged.empty() && range.first <= merged.back().second)
+            merged.back().second = std::max(merged.back().second, range.second);
+        else
+            merged.push_back(range);
+    }
+    if (merged.empty())
+        return "no time to remove";
+
+    m_before = project;
+    m_removed = 0;
+    // From the last range back, so earlier ranges keep their times.
+    for (auto it = merged.rbegin(); it != merged.rend(); ++it) {
+        const auto [from, to] = *it;
+        for (const Ticks edge : {from, to}) {
+            const Track& track = *project.findTrack(m_trackId);
+            const auto crossing = std::ranges::find_if(track.clips, [&](const Clip& c) { return c.start < edge && edge < c.end(); });
+            if (crossing != track.clips.end()) {
+                if (auto error = SplitClipCommand(crossing->id, edge).redo(project)) {
+                    restore(project, m_before);
+                    return error;
+                }
+            }
+        }
+        Track& track = *project.findTrack(m_trackId);
+        const auto before = track.clips.size();
+        std::erase_if(track.clips, [&](const Clip& c) { return c.start >= from && c.end() <= to; });
+        const bool removedClips = track.clips.size() != before;
+        const Ticks end = track.clips.empty() ? 0 : track.clips.back().end();
+        if (!removedClips && from >= end)
+            continue; // past the track's end: nothing to close
+        for (Clip& clip : track.clips)
+            if (clip.start >= to)
+                clip.start -= to - from;
+        m_removed += to - from;
+    }
+    if (m_removed == 0) {
+        restore(project, m_before);
+        return "no time to remove";
+    }
+    m_after = project;
+    return std::nullopt;
+}
+
+void RemoveRangesCommand::undo(Project& project)
+{
+    restore(project, m_before);
+}
+
 } // namespace tve
