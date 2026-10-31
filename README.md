@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — and people — portrait cutout, covering faces and auto reframe (13b) — done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — and motion — stabilization, flicker removal, temporal denoise and tracking (13c) — done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -185,6 +185,19 @@ step. **Auto reframe** turns a landscape shot into **9:16**, **1:1**, **4:5** (o
 **16:9**): the canvas takes that shape and the clip is scaled to fill it with position
 keyframes that keep the subject — the faces, or what draws the eye when there are none — in
 view, smoothed by **Smoothness**; canvas and clip are one undo step.
+
+**Motion.** The Analyze tab's **Steady and clean** section measures a clip's camera motion and
+brightness once (in the background; kept per file) with block matching of our own.
+**Stabilize** smooths the camera's path by **Smoothness** — or, with **Lock the camera**, holds it
+still like a tripod — and zooms in just enough to hide the edges (at most 30 %). **Remove flicker**
+evens out brightness changes faster than a time you choose. **Denoise over time** averages grain
+away where the picture is still, frame to frame, and leaves moving parts alone. Corrections are
+saved with the project. **Track motion**: **Choose what to follow**, drag a box around it on the
+player, then **Track object** (something that moves and changes shape) or **Track surface** (a flat
+rectangle — a screen, a sign — which turns too); Vision follows it from the playhead to the clip's
+end. Any clip on screen at the same time — a title, a sticker — can then **Follow** a track from
+where it is at the playhead, with **Grow and shrink with it** and **Turn with it**, as keyframes you
+can still edit.
 
 **Analyze.** The inspector's Analyze tab works on the selected clip (at normal speed) without
 any AI model: it measures the media once in the background (with progress and Cancel; the
@@ -473,7 +486,7 @@ Qt comes from Homebrew because building it through vcpkg takes hours.
 export VCPKG_ROOT=~/vcpkg
 cmake --preset macos-release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
 cmake --build --preset macos-release
-tools/make_test_media.sh          # synthetic test videos, a spoken sample (via `say`) and a public-domain NASA portrait (1.1 MB, SHA-256 checked) with a clip made from it, in samples/
+tools/make_test_media.sh          # synthetic test videos, a spoken sample (via `say`) and a public-domain NASA portrait (1.1 MB, SHA-256 checked) with clips made from it, in samples/
 tools/fetch_models.sh             # the models the tests use (Whisper 57 MB, DeepFilterNet3 8 MB, SHA-256 checked) into samples/models/
 ctest --preset macos-release
 ```

@@ -33,6 +33,12 @@ Rectangle {
                 project: panel.project
             }
 
+            TrackOverlay {
+                objectName: "trackOverlay"
+                anchors.fill: video
+                project: panel.project
+            }
+
             DropArea {
                 anchors.fill: parent
                 keys: ["text/uri-list"]

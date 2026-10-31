@@ -18,7 +18,7 @@ add_library(tve_gpu STATIC
 qt_add_shaders(tve_gpu "tve_gpu_shaders"
     PREFIX "/gpu"
     FILES shaders/composite.frag shaders/grade.frag shaders/mask.frag shaders/matte.frag shaders/cutout.frag
-          shaders/faces.frag
+          shaders/faces.frag shaders/steady.frag shaders/denoise.frag
 )
 add_library(tve::gpu ALIAS tve_gpu)
 

@@ -35,6 +35,10 @@ add_library(tve_engine STATIC
     analysis/MediaAnalysis.h
     analysis/MediaAnalysis.cpp
     analysis/PeopleVision.h
+    analysis/MotionAnalysis.h
+    analysis/MotionAnalysis.cpp
+    analysis/Tracking.h
+    analysis/Tracking.mm
     analysis/PeopleVision.mm
     speech/Transcriber.h
     speech/Transcriber.cpp
@@ -102,6 +106,7 @@ target_link_libraries(tve_engine
         "-framework Accelerate"
         "-framework Foundation"
         "-framework Vision"
+        "-framework CoreGraphics"
         nlohmann_json::nlohmann_json
         "-framework VideoToolbox"
         "-framework CoreMedia"

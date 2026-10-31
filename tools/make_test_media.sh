@@ -106,3 +106,19 @@ fi
 make people.mp4 -f lavfi -i color=c=0x808080:size=1920x1080:rate=30:d=3 -i "$photo" \
     -filter_complex "[1:v]scale=-2:1080[p];[0:v][p]overlay=x='100+(1920-864-200)*t/3':y=0" \
     -frames:v 90 -c:v h264_videotoolbox -b:v 8M -pix_fmt yuv420p
+
+# Motion: a 1080p window over the portrait shaking ±40 px across and ±30 px up and down
+# (x = 96 + 40 sin(1.3 n), y = 780 + 30 sin(2.1 n), frame n), 3 s at 30 fps.
+make shaky.mp4 -loop 1 -framerate 30 -i "$photo" \
+    -vf "scale=2112:-2,crop=1920:1080:x='96+40*sin(1.3*n)':y='780+30*sin(2.1*n)'" \
+    -frames:v 90 -c:v h264_videotoolbox -b:v 12M -pix_fmt yuv420p
+# Flicker: the test pattern with its brightness up and down by 0.08 every other frame.
+make flicker.mp4 -f lavfi -i testsrc2=size=1280x720:rate=30 \
+    -vf "eq=brightness='0.08*(2*mod(n,2)-1)':eval=frame" -frames:v 90 -c:v h264_videotoolbox -b:v 8M -pix_fmt yuv420p
+# A flat card for surface tracking: a white 300 × 200 card drawn exactly (per pixel) on the
+# test pattern, its centre moving right from (480, 380) at 120 px a second and turning
+# clockwise 0.1 rad a second, 3 s at 30 fps.
+inside="lte(abs((X-480-120*T)*cos(0.1*T)+(Y-380)*sin(0.1*T)),150)*lte(abs(-(X-480-120*T)*sin(0.1*T)+(Y-380)*cos(0.1*T)),100)"
+make card.mp4 -f lavfi -i testsrc2=size=1280x720:rate=30 \
+    -vf "format=gbrp,geq=r='if($inside,255,r(X,Y))':g='if($inside,255,g(X,Y))':b='if($inside,255,b(X,Y))'" \
+    -frames:v 90 -c:v h264_videotoolbox -b:v 8M -pix_fmt yuv420p

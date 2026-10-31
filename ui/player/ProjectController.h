@@ -8,6 +8,7 @@
 #include "analysis/MediaAnalysis.h"
 #include "model/Captions.h"
 #include "speech/Transcriber.h"
+#include "model/Motion.h"
 #include "commands/CommandStack.h"
 #include "encode/MediaWriter.h"
 #include "model/Project.h"
@@ -136,6 +137,10 @@ class ProjectController : public QObject {
     // {clipId, tracks: [{id, start, end (timeline seconds), x, y (where first seen)}]}: the
     // faces found in a clip, numbered as coverFaces takes them.
     Q_PROPERTY(QVariantMap faces READ faces NOTIFY analysisChanged)
+    // Drawing the box to track on the player (TrackOverlay), and the box drawn: {clipId, x,
+    // y, width, height} (picture fractions, as shown).
+    Q_PROPERTY(bool pickingTrackArea READ pickingTrackArea WRITE setPickingTrackArea NOTIFY editingChanged)
+    Q_PROPERTY(QVariantMap trackArea READ trackArea NOTIFY editingChanged)
 
     // Captions: the speech models ({id, title, size, englishOnly, downloaded}), a download in
     // progress ({id, received, total, progress}), and the languages captions can be made in.
@@ -266,6 +271,9 @@ public:
     QString analysisTask() const { return m_analysisTask; }
     QVariantMap silences() const { return m_silences; }
     QVariantMap faces() const { return m_faces; }
+    bool pickingTrackArea() const { return m_pickingTrackArea; }
+    void setPickingTrackArea(bool picking);
+    QVariantMap trackArea() const { return m_trackArea; }
     QVariantMap scenes() const { return m_scenes; }
     QVariantMap beats() const { return m_beats; }
     QVariantList speechModels() const { return m_speechModels.list(); }
@@ -561,6 +569,28 @@ public:
     // scaled to fill it with position keyframes, as one undo step (at constant speed only).
     Q_INVOKABLE bool autoReframe(double clipId, const QVariantMap& options = {});
 
+    // Motion (clips of video files). Stabilizing and flicker removal measure the file first
+    // (in the background; kept per file). stabilize options: smoothness (0..1), lock,
+    // maxZoom (1..2). removeFlicker options: strength (0..1). Each one undo step.
+    Q_INVOKABLE bool stabilize(double clipId, const QVariantMap& options = {});
+    Q_INVOKABLE bool removeStabilization(double clipId);
+    Q_INVOKABLE bool removeFlicker(double clipId, const QVariantMap& options = {});
+    Q_INVOKABLE bool keepFlicker(double clipId);
+    // Temporal denoise strength, 0 (off) .. 1.
+    Q_INVOKABLE bool setDenoise(double clipId, double strength);
+    // Tracking. The box to follow, drawn on the player (picture fractions, as shown).
+    Q_INVOKABLE bool setTrackArea(double clipId, const QVariantMap& box);
+    // Follows the box from the playhead to the clip's end in the background (options:
+    // surface — a flat rectangle, which turns too); the track is added to the clip.
+    Q_INVOKABLE bool trackMotion(double clipId, const QVariantMap& options = {});
+    Q_INVOKABLE bool deleteTrack(double clipId, int trackId);
+    // The tracks another clip can follow: on video clips on screen at the same time.
+    // [{clipId, trackId, label}].
+    Q_INVOKABLE QVariantList tracksToFollow(double clipId) const;
+    // Makes a clip (a title, a sticker…) follow a track from where it is at the playhead:
+    // position keyframes, and with options scale / rotation (a surface's turn) those too.
+    Q_INVOKABLE bool followTrack(double clipId, double sourceClipId, int trackId, const QVariantMap& options = {});
+
     // Captions. Downloads a speech model (checked by SHA-256); modelDownloadFinished reports.
     Q_INVOKABLE bool downloadSpeechModel(const QString& modelId);
     Q_INVOKABLE void cancelModelDownload();
@@ -810,6 +840,11 @@ private:
     std::vector<tve::FaceTrack> m_faceTracks;                       // of m_faces' clip, by id
     std::map<std::string, std::vector<tve::FaceFrame>> m_faceFrames; // per media fingerprint
     std::map<std::string, std::vector<tve::SubjectSample>> m_subjects;
+    std::map<std::string, tve::MotionAnalysis> m_motion; // per media fingerprint
+    bool m_pickingTrackArea = false;
+    QVariantMap m_trackArea;
+    // The file's motion measured (now, or in the background first), then `then`.
+    void withMotion(tve::Id clipId, const QString& task, std::function<void(const tve::MotionAnalysis&)> then);
     QVariantMap m_scenes;
     QVariantMap m_beats;
 

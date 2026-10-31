@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <functional>
+#include <numbers>
 #include <memory>
 
 using namespace tve;
@@ -337,6 +338,71 @@ TEST_CASE("faces are covered by mosaic, blur or fill inside their ellipses only"
     // No faces: the picture itself.
     run({picture}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
         CHECK(m.coverFaces(cb, t[0], {}, FaceCover::Mosaic, 0.5f) == t[0]);
+        return t[0];
+    });
+}
+
+TEST_CASE("the steady pass moves, turns and zooms the picture and evens its brightness")
+{
+    // A white column at x = 20..23 on grey, a red dot at the top left.
+    const QImage picture = filled([](int x, int y) {
+        if (x < 4 && y < 4)
+            return QColor(255, 0, 0);
+        return x >= 20 && x < 24 ? QColor(255, 255, 255) : QColor(100, 100, 100);
+    });
+    const auto steady = [&](float zoom, std::array<float, 4> c, float gain) {
+        return run({picture}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+            return m.steady(cb, t[0], zoom, c, gain);
+        });
+    };
+    const auto value = [](const Pixels& p, int x, int y) { return p.at((x + 0.5) / kW, (y + 0.5) / kH)[0]; };
+
+    // Moved right by 8 pixels: the column is at 28..31, and the left edge is empty.
+    const Pixels moved = steady(1.0f, {8.0f / kW, 0.0f, 0.0f, 1.0f}, 1.0f);
+    CHECK(value(moved, 29, 18) == Approx(1.0f).margin(0.02));
+    CHECK(value(moved, 21, 18) == Approx(100.0f / 255.0f).margin(0.02));
+    CHECK(moved.alpha(0.02, 0.5) == Approx(0.0f).margin(0.01));
+    // Turned half a turn: the red dot goes to the bottom right.
+    const Pixels turned = steady(1.0f, {0.0f, 0.0f, float(std::numbers::pi), 1.0f}, 1.0f);
+    CHECK(turned.at(0.97, 0.95)[0] == Approx(1.0f).margin(0.02));
+    CHECK(turned.at(0.97, 0.95)[1] == Approx(0.0f).margin(0.02));
+    // Zoomed in twice about the centre: the column (at 0.31..0.37) moves out to 0.13..0.25.
+    const Pixels zoomed = steady(2.0f, {0.0f, 0.0f, 0.0f, 1.0f}, 1.0f);
+    CHECK(value(zoomed, 12, 18) == Approx(1.0f).margin(0.02));
+    CHECK(zoomed.alpha(0.02, 0.5) == Approx(1.0f).margin(0.01)); // no edges show
+    // A gain of 1.5 brightens (and stops at white).
+    const Pixels brighter = steady(1.0f, {0.0f, 0.0f, 0.0f, 1.0f}, 1.5f);
+    CHECK(value(brighter, 40, 18) == Approx(150.0f / 255.0f).margin(0.02));
+    CHECK(value(brighter, 21, 18) == Approx(1.0f).margin(0.01));
+}
+
+TEST_CASE("denoising over time averages still grain and leaves motion alone")
+{
+    // The frame before: flat grey. Now: grey with ±0.04 grain on the left, and a bright square
+    // (something that moved in) on the right.
+    const QImage before = filled([](int, int) { return QColor(128, 128, 128); });
+    const QImage now = filled([](int x, int y) {
+        if (x >= 44 && x < 60 && y >= 10 && y < 26)
+            return QColor(255, 255, 255);
+        const int g = 128 + ((x * 7 + y * 13) % 3 - 1) * 10;
+        return QColor(g, g, g);
+    });
+    const Pixels out = run({now, before}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        return m.denoise(cb, t[0], t[1], 1.0f);
+    });
+    double grainBefore = 0.0, grainAfter = 0.0;
+    for (int y = 4; y < 30; ++y)
+        for (int x = 4; x < 30; ++x) {
+            const float mean = 128.0f / 255.0f;
+            grainBefore += std::abs(now.pixelColor(x, y).redF() - mean);
+            grainAfter += std::abs(out.at((x + 0.5) / kW, (y + 0.5) / kH)[0] - mean);
+        }
+    CHECK(grainAfter < grainBefore * 0.4);
+    CHECK(out.at(52.5 / kW, 18.5 / kH)[0] == Approx(1.0f).margin(0.02)); // the square: as it is now
+    // Strength 0 (or no frame before): the picture itself.
+    run({now, before}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        CHECK(m.denoise(cb, t[0], t[1], 0.0f) == t[0]);
+        CHECK(m.denoise(cb, t[0], nullptr, 1.0f) == t[0]);
         return t[0];
     });
 }

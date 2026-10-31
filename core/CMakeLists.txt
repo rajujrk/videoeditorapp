@@ -8,6 +8,8 @@ add_library(tve_core STATIC
     model/ColorGrade.cpp
     model/Masks.h
     model/People.h
+    model/Motion.h
+    model/Motion.cpp
     model/People.cpp
     model/Masks.cpp
     model/TextAnimation.h

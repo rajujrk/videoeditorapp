@@ -283,6 +283,51 @@ private:
     bool m_previous = true;
 };
 
+// Sets how a video clip's motion is treated: its stabilization, flicker removal and/or
+// temporal denoise ("Stabilize", "Remove Flicker", "Denoise"…). Clips of video files only.
+class SetClipMotionCommand final : public Command {
+public:
+    SetClipMotionCommand(Id clipId, std::optional<Stabilization> stabilization, std::optional<Deflicker> deflicker,
+                         std::optional<double> denoise, std::string label)
+        : m_clipId(clipId), m_stabilization(std::move(stabilization)), m_deflicker(std::move(deflicker)),
+          m_denoise(denoise), m_label(std::move(label))
+    {
+    }
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    std::optional<Stabilization> m_stabilization;
+    std::optional<Deflicker> m_deflicker;
+    std::optional<double> m_denoise;
+    std::string m_label;
+    Stabilization m_previousStabilization;
+    Deflicker m_previousDeflicker;
+    double m_previousDenoise = 0.0;
+};
+
+// Replaces a video clip's motion tracks ("Track Motion", "Delete Track").
+class SetClipTracksCommand final : public Command {
+public:
+    SetClipTracksCommand(Id clipId, std::vector<MotionTrack> tracks, std::string label)
+        : m_clipId(clipId), m_tracks(std::move(tracks)), m_label(std::move(label))
+    {
+    }
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    std::vector<MotionTrack> m_tracks;
+    std::string m_label;
+    std::vector<MotionTrack> m_previous;
+};
+
 // Sets what a video clip does with the people in it: the portrait cutout and/or the faces
 // it covers ("Portrait Cutout", "Cover Faces"…). Only clips of video files (not titles,
 // stills or compound clips): what finds people works on decoded frames.
