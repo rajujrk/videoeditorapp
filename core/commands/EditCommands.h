@@ -309,6 +309,25 @@ private:
     double m_previousDenoise = 0.0;
 };
 
+// Plays a video clip's pictures from a processed copy, or (nullopt) its media's again.
+class SetClipProcessedVideoCommand final : public Command {
+public:
+    SetClipProcessedVideoCommand(Id clipId, std::optional<ProcessedVideo> processed, std::string label)
+        : m_clipId(clipId), m_processed(std::move(processed)), m_label(std::move(label))
+    {
+    }
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_clipId;
+    std::optional<ProcessedVideo> m_processed;
+    std::string m_label;
+    std::optional<ProcessedVideo> m_previous;
+};
+
 // Replaces a video clip's motion tracks ("Track Motion", "Delete Track").
 class SetClipTracksCommand final : public Command {
 public:

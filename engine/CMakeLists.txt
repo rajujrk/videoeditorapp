@@ -16,6 +16,8 @@ add_library(tve_engine STATIC
     encode/Proxy.cpp
     encode/WavWriter.h
     encode/WavWriter.cpp
+    encode/VideoProcessing.h
+    encode/VideoProcessing.mm
     playback/FrameQueue.h
     playback/FrameSource.h
     playback/PlaybackClock.h

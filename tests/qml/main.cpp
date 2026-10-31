@@ -238,6 +238,8 @@ int main(int argc, char** argv)
     qputenv("TVE_ANALYSIS_DIR", analysis.path().toLocal8Bit());
     QTemporaryDir enhanced; // cleaned speech
     qputenv("TVE_ENHANCED_DIR", enhanced.path().toLocal8Bit());
+    QTemporaryDir processed; // processed pictures
+    qputenv("TVE_PROCESSED_DIR", processed.path().toLocal8Bit());
     // Speech models: an empty folder to download into, from a local "server" folder holding
     // the real models (if tools/fetch_models.sh fetched them) and a corrupt one.
     QTemporaryDir models;

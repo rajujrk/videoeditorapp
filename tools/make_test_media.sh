@@ -122,3 +122,13 @@ inside="lte(abs((X-480-120*T)*cos(0.1*T)+(Y-380)*sin(0.1*T)),150)*lte(abs(-(X-48
 make card.mp4 -f lavfi -i testsrc2=size=1280x720:rate=30 \
     -vf "format=gbrp,geq=r='if($inside,255,r(X,Y))':g='if($inside,255,g(X,Y))':b='if($inside,255,b(X,Y))'" \
     -frames:v 90 -c:v h264_videotoolbox -b:v 8M -pix_fmt yuv420p
+
+# Multicam sync: the spoken sample as two cameras heard it — one from 1.0 s with light pink
+# noise, the other from 2.3 s, 6 dB quieter, with white noise and a picture (12 s each).
+make sync_a.wav -i "$out/speech_en.wav" -f lavfi -i anoisesrc=color=pink:amplitude=0.01:duration=12:seed=1 \
+    -filter_complex "[0:a]adelay=1000,apad=whole_dur=12[s];[s][1:a]amix=inputs=2:normalize=0" \
+    -t 12 -ar 48000 -c:a pcm_s16le
+make sync_b.mov -f lavfi -i testsrc2=size=1280x720:rate=30:duration=12 -i "$out/speech_en.wav" \
+    -f lavfi -i anoisesrc=color=white:amplitude=0.008:duration=12:seed=2 \
+    -filter_complex "[1:a]adelay=2300,volume=0.5,apad=whole_dur=12[s];[s][2:a]amix=inputs=2:normalize=0[a]" \
+    -map 0:v -map "[a]" -t 12 -c:v h264_videotoolbox -b:v 4M -pix_fmt yuv420p -c:a aac -ar 48000

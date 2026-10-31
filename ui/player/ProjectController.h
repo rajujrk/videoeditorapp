@@ -147,6 +147,8 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantList speechModels READ speechModels NOTIFY speechModelsChanged)
     // The speech enhancement model: {id, title, size, note, downloaded}.
     Q_PROPERTY(QVariantMap enhanceModel READ enhanceModel NOTIFY speechModelsChanged)
+    // Apple's upscaling model: {status: "unsupported", "download", "downloading" or "ready", progress}.
+    Q_PROPERTY(QVariantMap upscaleModel READ upscaleModel NOTIFY upscaleModelChanged)
     Q_PROPERTY(QVariantMap modelDownload READ modelDownload NOTIFY speechModelsChanged)
     Q_PROPERTY(QVariantList captionLanguages READ captionLanguages CONSTANT)
     // How many captions the caption track holds, and how they follow the speech ("none",
@@ -278,6 +280,7 @@ public:
     QVariantMap beats() const { return m_beats; }
     QVariantList speechModels() const { return m_speechModels.list(); }
     QVariantMap enhanceModel() const;
+    QVariantMap upscaleModel() const;
     QVariantMap modelDownload() const { return m_speechModels.progress(); }
     QVariantList captionLanguages() const;
     int captionCount() const;
@@ -553,10 +556,14 @@ public:
     Q_INVOKABLE void cancelAnalysis();
 
     // People, found with Apple's Vision on this Mac (clips of video files, at any speed).
-    // The portrait cutout: settings enabled, invert, softness (0..1), shift (-1..1).
+    // The portrait cutout: settings enabled, invert, softness (0..1), shift (-1..1), and
+    // subject: false to go back from a smart cutout to people.
     Q_INVOKABLE bool setPortraitCutout(double clipId, const QVariantMap& settings);
     // Finds the faces through the clip's file in the background (kept per file) → `faces`.
     Q_INVOKABLE bool findFaces(double clipId);
+    // Smart cutout: whatever stands out in the box drawn on the player (trackArea), followed
+    // from the playhead to the clip's end in the background; one undo step.
+    Q_INVOKABLE bool cutOutSubject(double clipId);
     // Covers the found faces with these ids (all of them when empty): options style
     // ("mosaic", "blur", "fill"), amount (0..1), expand (0..2). One undo step.
     Q_INVOKABLE bool coverFaces(double clipId, const QVariantList& faceIds = {}, const QVariantMap& options = {});
@@ -590,6 +597,22 @@ public:
     // Makes a clip (a title, a sticker…) follow a track from where it is at the playhead:
     // position keyframes, and with options scale / rotation (a surface's turn) those too.
     Q_INVOKABLE bool followTrack(double clipId, double sourceClipId, int trackId, const QVariantMap& options = {});
+
+    // Multicam: lines the clips up by their sound (measured in the background; kept per file)
+    // — the first stays, the others move on their tracks — as one undo step ("Sync by
+    // Sound"). Clips with sound at normal speed, on different tracks.
+    Q_INVOKABLE bool syncBySound(const QVariantList& clipIds);
+
+    // Processed pictures: a copy of the clip's part of its media made in the background
+    // (after any processing it has, kept in <app data>/Processed) which the clip then plays.
+    // options: kind "upscale" (scale 2 or 4; Apple's model, pictures up to 1080p), "smooth"
+    // (factor 2..8 frames for every one: smooth slow motion) or "remove" (the object in the
+    // box drawn on the player, followed from the playhead; expand). One undo step.
+    Q_INVOKABLE bool processVideo(double clipId, const QVariantMap& options);
+    // The clip plays its media's own pictures again.
+    Q_INVOKABLE bool restoreVideo(double clipId);
+    // Asks macOS for Apple's upscaling model (upscaleModelChanged as it goes).
+    Q_INVOKABLE bool downloadUpscaleModel();
 
     // Captions. Downloads a speech model (checked by SHA-256); modelDownloadFinished reports.
     Q_INVOKABLE bool downloadSpeechModel(const QString& modelId);
@@ -683,6 +706,7 @@ signals:
     void exportFinished(bool ok, const QString& message, double jobId);
     void analysisChanged();
     void speechModelsChanged();
+    void upscaleModelChanged();
     void modelDownloadFinished(const QString& modelId, bool ok, const QString& error);
     void transcriptChanged();
     // An analysis finished (ok) or failed or was cancelled (message, empty when cancelled).
@@ -842,8 +866,11 @@ private:
     std::map<std::string, std::vector<tve::SubjectSample>> m_subjects;
     std::map<std::string, tve::MotionAnalysis> m_motion; // per media fingerprint
     bool m_pickingTrackArea = false;
+    QTimer* m_upscaleWatch = nullptr; // polls the model's download
     QVariantMap m_trackArea;
     // The file's motion measured (now, or in the background first), then `then`.
+    // The box drawn on the player (trackArea), in the clip's own frame at a media time.
+    tve::TrackSample drawnBox(const tve::Clip& clip, tve::Ticks mediaTime) const;
     void withMotion(tve::Id clipId, const QString& task, std::function<void(const tve::MotionAnalysis&)> then);
     QVariantMap m_scenes;
     QVariantMap m_beats;

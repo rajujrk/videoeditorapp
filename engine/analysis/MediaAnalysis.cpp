@@ -276,6 +276,70 @@ std::optional<VideoFeatures> analyzeVideo(const std::string& path, const Analysi
     return features;
 }
 
+// --- Lining up ---
+
+std::optional<AudioOffset> findAudioOffset(const AudioFeatures& reference, const AudioFeatures& other, double maxLag)
+{
+    // Each onset curve with its mean taken off and scaled to one, over at most ten minutes.
+    const auto prepare = [](const std::vector<float>& onset) {
+        std::vector<double> v(onset.begin(), onset.begin() + std::ptrdiff_t(std::min<std::size_t>(onset.size(), 60000)));
+        if (v.empty())
+            return v;
+        const double mean = std::accumulate(v.begin(), v.end(), 0.0) / double(v.size());
+        double spread = 0.0;
+        for (double& x : v) {
+            x -= mean;
+            spread += x * x;
+        }
+        spread = std::sqrt(spread / double(v.size()));
+        if (spread < 1e-9)
+            return std::vector<double>{};
+        for (double& x : v)
+            x /= spread;
+        return v;
+    };
+    const std::vector<double> a = prepare(reference.onset);
+    const std::vector<double> b = prepare(other.onset);
+    if (a.size() < 100 || b.size() < 100)
+        return std::nullopt;
+    const int reach = int(std::lround(maxLag / AudioFeatures::kHop));
+    // corr(lag) = mean over k of a[k + lag] · b[k] (the overlap), for every lag in reach.
+    std::vector<double> corr(std::size_t(2 * reach + 1), -1e9);
+    for (int lag = -reach; lag <= reach; ++lag) {
+        const std::ptrdiff_t from = std::max<std::ptrdiff_t>(0, -lag);
+        const std::ptrdiff_t to = std::min<std::ptrdiff_t>(std::ptrdiff_t(b.size()), std::ptrdiff_t(a.size()) - lag);
+        if (to - from < 200) // at least two seconds in common
+            continue;
+        double sum = 0.0;
+        for (std::ptrdiff_t k = from; k < to; ++k)
+            sum += a[std::size_t(k + lag)] * b[std::size_t(k)];
+        corr[std::size_t(lag + reach)] = sum / double(to - from);
+    }
+    const auto best = std::max_element(corr.begin(), corr.end());
+    if (*best <= 0.0)
+        return std::nullopt;
+    const std::ptrdiff_t at = best - corr.begin();
+    // A parabola through the peak and its neighbours: a fraction of a step.
+    double fraction = 0.0;
+    if (at > 0 && at + 1 < std::ptrdiff_t(corr.size())) {
+        const double l = corr[std::size_t(at - 1)], c = *best, r = corr[std::size_t(at + 1)];
+        const double curve = l - 2.0 * c + r;
+        if (curve < 0.0)
+            fraction = std::clamp(0.5 * (l - r) / curve, -0.5, 0.5);
+    }
+    // How far it stands out from the best match a quarter of a second away or more. At the
+    // edge of the lags searched, the real peak may lie beyond: no confidence.
+    double second = 0.0;
+    for (std::size_t i = 0; i < corr.size(); ++i)
+        if (std::abs(std::ptrdiff_t(i) - at) > 25)
+            second = std::max(second, corr[i]);
+    const bool atEdge = at == 0 || at + 1 == std::ptrdiff_t(corr.size());
+    AudioOffset result;
+    result.offset = (double(at - reach) + fraction) * AudioFeatures::kHop;
+    result.confidence = atEdge ? 0.0 : std::clamp(1.0 - std::max(0.0, second) / *best, 0.0, 1.0);
+    return result;
+}
+
 // --- Detecting ---
 
 std::vector<TimeRange> findSilences(const AudioFeatures& features, const SilenceOptions& options, Ticks from, Ticks to)

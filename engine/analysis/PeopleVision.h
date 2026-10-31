@@ -29,6 +29,11 @@ enum class SegmentationQuality { Fast, Balanced, Accurate };
 // cannot read the frame.
 PersonMatte segmentPeople(CVPixelBufferRef frame, SegmentationQuality quality = SegmentationQuality::Balanced);
 
+// Smart cutout: what stands out in the frame under `box` (picture fractions) as a matte —
+// the foreground instances (Vision's subject lifting) that the box mostly covers, or the one
+// it covers most. Empty when there is none.
+PersonMatte segmentSubject(CVPixelBufferRef frame, const FaceBox& box);
+
 // The faces in a frame (picture fractions, origin top left).
 std::vector<FaceBox> detectFaces(CVPixelBufferRef frame);
 

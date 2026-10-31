@@ -351,12 +351,14 @@ QRhiTexture* FrameCompositor::stickerTexture(QRhiCommandBuffer* cb, tve::Id clip
     return sticker.texture.get();
 }
 
-QRhiTexture* FrameCompositor::personMatte(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame)
+QRhiTexture* FrameCompositor::personMatte(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame,
+                                          const std::optional<tve::FaceBox>& subject)
 {
     PersonMatteTexture& matte = m_personMattes[clipId];
-    if (matte.texture && matte.frame == frame.pixelBuffer() && matte.pts == frame.pts())
+    if (matte.texture && matte.frame == frame.pixelBuffer() && matte.pts == frame.pts() && matte.subject == subject)
         return matte.texture.get();
-    const tve::PersonMatte found = tve::segmentPeople(frame.pixelBuffer());
+    const tve::PersonMatte found =
+        subject ? tve::segmentSubject(frame.pixelBuffer(), *subject) : tve::segmentPeople(frame.pixelBuffer());
     if (!found)
         return nullptr;
     const QSize size(found.width, found.height);
@@ -374,6 +376,7 @@ QRhiTexture* FrameCompositor::personMatte(QRhiCommandBuffer* cb, tve::Id clipId,
     cb->resourceUpdate(upload);
     matte.frame = frame.pixelBuffer();
     matte.pts = frame.pts();
+    matte.subject = subject;
     return matte.texture.get();
 }
 
@@ -475,7 +478,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         if (people && decoded.pixelBuffer()) {
             if (people->cutout.enabled) {
                 liveMattes.insert(clipId);
-                picture = m_masks->cutout(cb, picture, personMatte(cb, clipId, decoded), people->cutout);
+                picture = m_masks->cutout(cb, picture, personMatte(cb, clipId, decoded, people->subject), people->cutout);
             }
             picture = m_masks->coverFaces(cb, picture, people->faces, people->cover, people->amount);
         }

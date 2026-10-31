@@ -19,6 +19,7 @@ struct CompositeFrame;
 // the faces to cover there (with the cover).
 struct LayerPeople {
     PortraitCutout cutout;
+    std::optional<FaceBox> subject; // smart cutout: the subject's box in this frame
     std::vector<FaceBox> faces;
     FaceCover cover = FaceCover::Mosaic;
     float amount = 0.5f;

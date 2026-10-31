@@ -75,6 +75,15 @@ struct Beats {
 // The tempo (searched between 60 and 200 BPM) and a beat grid that follows the music.
 Beats findBeats(const AudioFeatures& features);
 
+// How two recordings of the same sound line up: `other`'s media time t shows the same sound
+// as `reference`'s at t + offset. From their onset strength (what starts when), correlated
+// over lags up to ±maxLag seconds; confidence 0..1 (how far the best match stands out).
+struct AudioOffset {
+    double offset = 0.0; // seconds
+    double confidence = 0.0;
+};
+std::optional<AudioOffset> findAudioOffset(const AudioFeatures& reference, const AudioFeatures& other, double maxLag = 30.0);
+
 struct SceneOptions {
     double threshold = 0.35; // change above this (and well above the shot's own movement) is a cut
     double minScene = 0.5;   // seconds between cuts

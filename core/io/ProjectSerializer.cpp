@@ -126,7 +126,17 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorGrade, exposure, contrast, 
                                                 lumaVsSat, lutPath, lutIntensity)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipLook, id, title, intensity, grade)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EnhancedAudio, path, limitDb)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PortraitCutout, enabled, invert, softness, shift)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ProcessedVideo, path, from, to, steps)
+void to_json(nlohmann::json& j, const TrackSample& s)
+{
+    j = nlohmann::json::array({s.time, s.x, s.y, s.width, s.height, s.angle});
+}
+void from_json(const nlohmann::json& j, TrackSample& s)
+{
+    s = {j.at(0).get<Ticks>(), j.at(1).get<double>(), j.at(2).get<double>(), j.at(3).get<double>(),
+         j.at(4).get<double>(), j.at(5).get<double>()};
+}
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PortraitCutout, enabled, invert, softness, shift, subject)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceBox, x, y, width, height)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceSample, time, box)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceTrack, id, samples)
@@ -155,22 +165,13 @@ void from_json(const nlohmann::json& j, GainSample& g)
     g = {j.at(0).get<Ticks>(), j.at(1).get<float>()};
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Stabilization, enabled, smoothness, lock, maxZoom, zoom, samples)
-void to_json(nlohmann::json& j, const TrackSample& s)
-{
-    j = nlohmann::json::array({s.time, s.x, s.y, s.width, s.height, s.angle});
-}
-void from_json(const nlohmann::json& j, TrackSample& s)
-{
-    s = {j.at(0).get<Ticks>(), j.at(1).get<double>(), j.at(2).get<double>(), j.at(3).get<double>(),
-         j.at(4).get<double>(), j.at(5).get<double>()};
-}
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MotionTrack, id, surface, samples)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Deflicker, enabled, strength, samples)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
                                                 chromaKey, masks, matte, cutout, faceMosaic, stabilization, deflicker,
-                                                denoise, motionTracks, audioEffects,
+                                                denoise, motionTracks, processedVideo, audioEffects,
                                                 enhancedAudio, keepPitch, sequenceId, groupId)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips)

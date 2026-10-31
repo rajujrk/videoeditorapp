@@ -95,6 +95,17 @@ std::optional<FaceBox> FaceTrack::boxAt(Ticks mediaTime) const
     return lerp(a.box, b.box, t);
 }
 
+std::optional<FaceBox> PortraitCutout::subjectAt(Ticks mediaTime) const
+{
+    if (subject.empty())
+        return std::nullopt;
+    const MotionTrack track{0, false, subject};
+    TrackSample s = mediaTime <= subject.front().time ? subject.front()
+                  : mediaTime >= subject.back().time  ? subject.back()
+                                                      : *track.at(mediaTime);
+    return FaceBox{s.x, s.y, s.width, s.height};
+}
+
 std::vector<FaceBox> FaceMosaic::boxesAt(Ticks mediaTime) const
 {
     std::vector<FaceBox> boxes;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "model/Motion.h"
 #include "model/Time.h"
 
 #include <array>
@@ -13,17 +14,6 @@ namespace tve {
 // follow them. What finds them (person segmentation, face detection) is the app's
 // (ui/player/PeopleVision); this is what a project keeps and how it is worked out.
 
-// Portrait cutout: the person (or people) kept, the background made transparent — or,
-// inverted, the person taken out. The matte is found for every frame as it is drawn.
-struct PortraitCutout {
-    bool enabled = false;
-    bool invert = false;
-    double softness = 0.3; // edge softness, 0 (hard) .. 1
-    double shift = 0.0;    // the edge moved out (> 0, more kept) or in (< 0), -1 .. 1
-
-    friend bool operator==(const PortraitCutout&, const PortraitCutout&) = default;
-};
-
 // A rectangle in a picture, as fractions of it (origin top left).
 struct FaceBox {
     double x = 0.0; // centre
@@ -32,6 +22,22 @@ struct FaceBox {
     double height = 0.0;
 
     friend bool operator==(const FaceBox&, const FaceBox&) = default;
+};
+
+// Portrait cutout: the person (or people) kept, the background made transparent — or,
+// inverted, the person taken out. The matte is found for every frame as it is drawn. With a
+// subject (smart cutout), whatever stands out under that box instead: an object, an animal…
+struct PortraitCutout {
+    bool enabled = false;
+    bool invert = false;
+    double softness = 0.3; // edge softness, 0 (hard) .. 1
+    double shift = 0.0;    // the edge moved out (> 0, more kept) or in (< 0), -1 .. 1
+    std::vector<TrackSample> subject; // the subject's box through the clip (media time); empty: people
+
+    // The subject's box at a media time (held before its first sample and after its last).
+    std::optional<FaceBox> subjectAt(Ticks mediaTime) const;
+
+    friend bool operator==(const PortraitCutout&, const PortraitCutout&) = default;
 };
 
 // One face where it was seen, at a media time.
