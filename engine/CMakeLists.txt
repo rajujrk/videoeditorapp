@@ -26,6 +26,11 @@ add_library(tve_engine STATIC
     analysis/Highlights.h
     analysis/Highlights.cpp
     packs/Packs.h
+    audio/plugins/AudioPlugin.h
+    audio/plugins/AudioPlugin.cpp
+    audio/plugins/PluginFormats.h
+    audio/plugins/AudioUnitPlugin.mm
+    audio/plugins/Vst3Plugin.mm
     packs/Packs.mm
     imports/ImportSources.mm
     playback/FrameQueue.h
@@ -148,6 +153,9 @@ target_link_libraries(tve_engine
         "-framework AppKit"
         "-framework ImageIO"
         "-framework Security"
+        "-framework CoreAudioKit"
+        tve_vst3_hosting
+        "-framework AVFAudio"
         "-framework Photos"
         "-framework iTunesLibrary"
         "-framework ImageCaptureCore"

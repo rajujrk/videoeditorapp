@@ -12,6 +12,7 @@ add_executable(tve_core_tests
     core/test_voiceover.cpp
     core/test_templates.cpp
     core/test_paths.cpp
+    core/test_track_effects.cpp
     core/test_keyframes.cpp
     core/test_speed_ramp.cpp
     core/test_color.cpp
@@ -52,10 +53,15 @@ add_executable(tve_engine_tests
     engine/test_imports.cpp
     engine/test_highlights.cpp
     engine/test_packs.cpp
+    engine/test_audio_plugins.cpp
 )
 target_link_libraries(tve_engine_tests PRIVATE tve::engine tve::ffmpeg Catch2::Catch2WithMain)
 target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples"
-                                                   TVE_EFFECTS_DIR="${PROJECT_SOURCE_DIR}/effects")
+                                                   TVE_EFFECTS_DIR="${PROJECT_SOURCE_DIR}/effects"
+                                                   TVE_TEST_VST3_DIR="${CMAKE_CURRENT_BINARY_DIR}/vst3"
+                                                   TVE_PLUGIN_SCANNER_PATH="$<TARGET_FILE:tve_pluginscan>")
+# The VST3 tests host the test plug-in and scan it with the real scanner.
+add_dependencies(tve_engine_tests tve_test_vst3 tve_pluginscan)
 # Tests tagged [apple] work Vision and VideoToolbox hard (GPU, Neural Engine): they share
 # the GPU lock with the UI and golden-frame tests rather than slowing them down.
 catch_discover_tests(tve_engine_tests TEST_SPEC "~[apple]")
@@ -102,9 +108,24 @@ if(TARGET tve_shell)
     set_target_properties(tve_qml_tests PROPERTIES MACOSX_BUNDLE OFF)
     target_compile_definitions(tve_qml_tests PRIVATE
         TVE_QML_TESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
-        TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples")
+        TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples"
+        TVE_TEST_VST3_DIR="${CMAKE_CURRENT_BINARY_DIR}/vst3"
+        TVE_PLUGIN_SCANNER_PATH="$<TARGET_FILE:tve_pluginscan>")
+    add_dependencies(tve_qml_tests tve_test_vst3 tve_pluginscan)
     target_link_libraries(tve_qml_tests PRIVATE Qt6::QuickTest Qt6::QuickControls2 tve_shellplugin)
     target_include_directories(tve_qml_tests PRIVATE $<TARGET_PROPERTY:tve_player,INTERFACE_INCLUDE_DIRECTORIES>)
     add_test(NAME tve_qml_tests COMMAND tve_qml_tests)
     set_tests_properties(tve_qml_tests PROPERTIES RESOURCE_LOCK gpu)
 endif()
+
+# A VST3 effect bundle for the plug-in host tests (TVE Test Gain.vst3).
+add_library(tve_test_vst3 MODULE vst3/TestGain.cpp ${TVE_VST3_PLUGIN_ENTRY})
+set_target_properties(tve_test_vst3 PROPERTIES
+    BUNDLE TRUE
+    BUNDLE_EXTENSION vst3
+    OUTPUT_NAME "TVE Test Gain"
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/vst3
+    MACOSX_BUNDLE_BUNDLE_NAME "TVE Test Gain"
+    MACOSX_BUNDLE_GUI_IDENTIFIER com.techievideoeditor.tests.vst3gain)
+target_link_libraries(tve_test_vst3 PRIVATE tve_vst3_plugin "-framework CoreFoundation")
+target_compile_options(tve_test_vst3 PRIVATE -w)

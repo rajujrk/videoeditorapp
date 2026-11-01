@@ -29,3 +29,10 @@ target_link_libraries(TechieVideoEditor PRIVATE
 )
 target_include_directories(TechieVideoEditor PRIVATE $<TARGET_PROPERTY:tve_player,INTERFACE_INCLUDE_DIRECTORIES>)
 tve_set_warnings(TechieVideoEditor)
+
+# The VST3 scanner runs beside the app (Contents/MacOS), each bundle checked in its own
+# process.
+add_dependencies(TechieVideoEditor tve_pluginscan)
+add_custom_command(TARGET TechieVideoEditor POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:tve_pluginscan> $<TARGET_FILE_DIR:TechieVideoEditor>/tve-pluginscan
+    COMMENT "Copying tve-pluginscan into the app")

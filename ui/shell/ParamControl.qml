@@ -9,6 +9,8 @@ ColumnLayout {
     id: control
     required property var param
     property string keyState // for an animatable parameter: "key", "animated" or "none"; empty otherwise
+    // How a value is shown (a plug-in's own words), or null for the number.
+    property var format: null
     signal keyframeToggled()
     signal valueEdited(var value)    // while dragging (preview)
     signal valueCommitted(var value) // on release / toggle / pick (one undo step)
@@ -33,7 +35,8 @@ ColumnLayout {
         }
         Text {
             visible: slider.visible
-            text: control.param.type === "int" ? slider.value.toFixed(0) : slider.value.toFixed(2)
+            text: control.format ? control.format(slider.value)
+                : control.param.type === "int" ? slider.value.toFixed(0) : slider.value.toFixed(2)
             color: Theme.color.textPrimary
             font: Theme.type.mono
         }
@@ -46,8 +49,9 @@ ColumnLayout {
         from: control.param.min
         to: control.param.max
         value: control.param.default
-        stepSize: control.param.type === "int" ? 1 : 0
-        snapMode: control.param.type === "int" ? Slider.SnapAlways : Slider.NoSnap
+        // (A plug-in's stepped parameter: its values evenly over 0..1.)
+        stepSize: control.param.type === "int" ? 1 : (control.param.steps || 0) > 1 ? 1 / (control.param.steps - 1) : 0
+        snapMode: control.param.type === "int" || (control.param.steps || 0) > 1 ? Slider.SnapAlways : Slider.NoSnap
         onMoved: control.valueEdited(value)
         onPressedChanged: if (!pressed) control.valueCommitted(value)
     }

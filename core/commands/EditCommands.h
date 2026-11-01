@@ -268,6 +268,23 @@ private:
     std::vector<ClipEffect> m_previous;
 };
 
+// Replaces a track's own audio effects (a track that carries sound).
+class SetTrackAudioEffectsCommand final : public Command {
+public:
+    SetTrackAudioEffectsCommand(Id trackId, std::vector<ClipEffect> effects, std::string label)
+        : m_trackId(trackId), m_effects(std::move(effects)), m_label(std::move(label)) {}
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Id m_trackId;
+    std::vector<ClipEffect> m_effects;
+    std::string m_label;
+    std::vector<ClipEffect> m_previous;
+};
+
 // Whether a clip's sound keeps its pitch when the clip plays faster or slower.
 class SetClipKeepPitchCommand final : public Command {
 public:
@@ -597,6 +614,8 @@ public:
 
     // Replaces the effect stack in the same step (e.g. its parameters' keyframes).
     void setEffects(std::vector<ClipEffect> effects) { m_effects = std::move(effects); }
+    // And the audio effect stack.
+    void setAudioEffects(std::vector<ClipEffect> effects) { m_audioEffects = std::move(effects); }
 
     std::string label() const override { return m_label; }
     std::optional<std::string> redo(Project& project) override;
@@ -606,6 +625,7 @@ private:
     Id m_clipId;
     std::map<std::string, Keyframes> m_changes;
     std::optional<std::vector<ClipEffect>> m_effects;
+    std::optional<std::vector<ClipEffect>> m_audioEffects;
     std::string m_label;
     std::optional<ClipVisual> m_visual;
     std::optional<float> m_gainDb;

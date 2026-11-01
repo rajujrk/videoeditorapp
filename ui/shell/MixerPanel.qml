@@ -3,8 +3,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 
-// The mixer: a strip per track that carries sound (volume, balance, mute, solo and a
-// stereo meter of peak over RMS), and the master with its loudness (EBU R128 momentary,
+// The mixer: a strip per track that carries sound (volume, balance, mute, solo, its own
+// effects — built-in or plug-ins — and a stereo meter of peak over RMS), and the master with its loudness (EBU R128 momentary,
 // short-term and integrated since play started) and peak. Meters move while playing.
 Popup {
     id: mixer
@@ -62,7 +62,7 @@ Popup {
                             readonly property var level: (mixer.levels.tracks || {})[String(modelData.id)] || [0, 0, 0, 0]
                             objectName: "mixerStrip:" + modelData.id
                             width: mixer.strip
-                            height: 300
+                            height: 326
                             radius: Theme.radius.m
                             color: Theme.color.surface
                             border.color: Theme.color.borderSubtle
@@ -145,6 +145,15 @@ Popup {
                                         onColour: Theme.color.success
                                         onClicked: mixer.project.setTrackMix(stripItem.modelData.id, { solo: !on })
                                     }
+                                }
+                                StripButton {
+                                    objectName: "trackEffects:" + stripItem.modelData.id
+                                    Layout.fillWidth: true
+                                    text: (stripItem.modelData.audioEffects || []).length > 0
+                                          ? "FX " + stripItem.modelData.audioEffects.length : "FX"
+                                    tip: "The track's own effects and plug-ins, on all of its sound"
+                                    on: (stripItem.modelData.audioEffects || []).length > 0
+                                    onClicked: { trackEffects.trackId = stripItem.modelData.id; trackEffects.open() }
                                 }
                             }
                         }
@@ -247,6 +256,89 @@ Popup {
                     height: 2
                     y: parent.height * (1 - parent.peak)
                     color: Theme.color.textPrimary
+                }
+            }
+        }
+    }
+
+    // A track's own effects: add, switch off, change, remove, open a plug-in's window.
+    Popup {
+        id: trackEffects
+        objectName: "trackEffectsPanel"
+        property double trackId: -1
+        readonly property var track: mixer.project.tracks.find((t) => t.id === trackId) || ({ name: "", audioEffects: [] })
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: 380
+        height: Math.min(implicitHeight, (parent ? parent.height : 700) - Theme.space.xl * 2)
+        padding: Theme.space.m
+        background: Rectangle {
+            radius: Theme.radius.l
+            color: Theme.color.surfaceRaised
+            border.color: Theme.color.borderStrong
+        }
+        contentItem: ColumnLayout {
+            spacing: Theme.space.s
+            Text {
+                text: "Effects on " + trackEffects.track.name
+                font: Theme.type.heading
+                color: Theme.color.textPrimary
+            }
+            Text {
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
+                text: "On the track's whole sound, before its volume and balance."
+                      + (mixer.project.scanningPlugins ? " Looking for plug-ins…" : "")
+                font: Theme.type.caption
+                color: Theme.color.textSecondary
+                wrapMode: Text.WordWrap
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                ComboBox {
+                    id: trackPicker
+                    objectName: "trackEffectPicker"
+                    Layout.fillWidth: true
+                    textRole: "label"
+                    valueRole: "id"
+                    model: mixer.project.audioEffects.map((e) => ({ id: e.id, label: e.title }))
+                        .concat(mixer.project.audioPlugins.filter((p) => p.problem === "").map((p) => ({
+                            id: p.id, label: "Plug-in · " + p.name + " (" + [p.vendor, p.format].filter((x) => x).join(", ") + ")"
+                        })))
+                }
+                TextButton {
+                    objectName: "addTrackEffect"
+                    text: "Add"
+                    iconName: "plus"
+                    onClicked: mixer.project.addTrackAudioEffect(trackEffects.trackId, trackPicker.currentValue)
+                }
+            }
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(trackCards.implicitHeight, 420)
+                contentWidth: availableWidth
+                ColumnLayout {
+                    id: trackCards
+                    width: parent.width
+                    spacing: Theme.space.s
+                    Repeater {
+                        model: (trackEffects.track.audioEffects || []).length
+                        delegate: ClipEffectCard {
+                            required property int index
+                            readonly property var current: (trackEffects.track.audioEffects || [])[index]
+                                                           || ({ effectId: "", enabled: false, values: {} })
+                            Layout.fillWidth: true
+                            audio: true
+                            project: mixer.project
+                            clipId: -1
+                            trackId: trackEffects.trackId
+                            stackIndex: index
+                            entry: current
+                            spec: mixer.project.audioEffects.find((e) => e.id === current.effectId)
+                                  || ({ title: (mixer.project.audioPlugins.find((p) => p.id === current.effectId) || { name: "Plug-in" }).name,
+                                        params: [] })
+                        }
+                    }
                 }
             }
         }

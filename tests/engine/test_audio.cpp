@@ -1,4 +1,5 @@
 #include "audio/AudioOutput.h"
+#include "audio/plugins/AudioPlugin.h"
 #include "commands/CommandStack.h"
 #include "commands/EditCommands.h"
 #include "commands/StructureCommands.h"
@@ -638,4 +639,113 @@ TEST_CASE("a clip with enhanced sound plays the cleaned file, at any speed")
     TimelineAudio fresh;
     fresh.restart(p.project, 0);
     CHECK(zeroCrossings(drainMix(fresh), 4800, 52800) == Catch::Approx(880).margin(6));
+}
+
+// Audio plug-ins in the mix, with Apple's own Audio Units (on every Mac): AUDelay (wet only,
+// 0.1 s, no feedback) and AUPeakLimiter (it delays its output by 96 samples).
+namespace {
+ClipEffect delayEffect()
+{
+    ClipEffect delay{.effectId = "au:aufx/dely/appl"};
+    delay.values = {{"0", {1.0f}}, {"1", {0.05f}}, {"2", {0.5f}}};
+    return delay;
+}
+} // namespace
+
+TEST_CASE("a plug-in on a clip is heard, its latency made up")
+{
+    requireSamples();
+    AudioProject p;
+    const Id clicks = p.importAudio("test_clicks.wav", 3 * kSec);
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, clicks, kSec, 2 * kSec).clipId();
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    const std::int64_t dry = firstLoud(drainMix(mixer)); // the first click: 1.5 s
+    REQUIRE(dry == 72000);
+
+    // Delayed 0.1 s by AUDelay.
+    p.push<SetClipAudioEffectsCommand>(clip, std::vector<ClipEffect>{delayEffect()}, "Add Plug-in");
+    mixer.restart(p.project, 0);
+    CHECK(std::abs(firstLoud(drainMix(mixer)) - (dry + 4800)) <= 8);
+
+    // A limiter's look-ahead doesn't move the click (its pre-gain at 0 dB).
+    ClipEffect limiter{.effectId = "au:aufx/lmtr/appl"};
+    p.push<SetClipAudioEffectsCommand>(clip, std::vector<ClipEffect>{limiter}, "Add Plug-in");
+    mixer.restart(p.project, 0);
+    CHECK(std::abs(firstLoud(drainMix(mixer)) - dry) <= 2);
+    // Also from a restart just before it.
+    mixer.restart(p.project, dry * audio::kTicksPerSample - kSec / 10);
+    CHECK(std::abs(firstLoud(drainMix(mixer)) - 4800) <= 2);
+
+    // One that isn't installed is passed over.
+    p.push<SetClipAudioEffectsCommand>(clip, std::vector<ClipEffect>{{.effectId = "au:aufx/none/nope"}}, "Add Plug-in");
+    mixer.restart(p.project, 0);
+    CHECK(firstLoud(drainMix(mixer)) == dry);
+}
+
+TEST_CASE("a plug-in's state and animated values")
+{
+    requireSamples();
+    AudioProject p;
+    const Id clicks = p.importAudio("test_clicks.wav", 3 * kSec);
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, clicks, 0, 2 * kSec).clipId();
+    // Its state carries the delay time (no values set over it).
+    auto delay = AudioPlugin::open("au:aufx/dely/appl");
+    REQUIRE(delay);
+    delay->setParameter("0", 1.0);
+    delay->setParameter("1", 0.1); // 0.2 s
+    delay->setParameter("2", 0.5);
+    ClipEffect saved{.effectId = "au:aufx/dely/appl", .state = encodeBase64(delay->saveState())};
+    p.push<SetClipAudioEffectsCommand>(clip, std::vector<ClipEffect>{saved}, "Add Plug-in");
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    CHECK(std::abs(firstLoud(drainMix(mixer)) - (24000 + 9600)) <= 8);
+
+    // The mix animated: dry before the first click (0.5 s), wet by the second (1.5 s).
+    ClipEffect animated = delayEffect();
+    animated.keyframes["0"] = {{.time = 0, .value = 0.0}, {.time = kSec, .value = 1.0}};
+    p.push<SetClipAudioEffectsCommand>(clip, std::vector<ClipEffect>{animated}, "Add Plug-in");
+    mixer.restart(p.project, 0);
+    const auto mix = drainMix(mixer);
+    CHECK(peak(mix, 24000, 24480) > 0.5f);   // the first click, mostly dry
+    CHECK(peak(mix, 72000, 72480) < 0.1f);   // the second, all wet: not at its own time…
+    CHECK(peak(mix, 76800, 77300) > 0.5f);   // …but 0.1 s later
+}
+
+TEST_CASE("a track's own effects run on its mix and ring on after it")
+{
+    requireSamples();
+    AudioProject p;
+    const Id clicks = p.importAudio("test_clicks.wav", 3 * kSec);
+    p.push<AddClipCommand>(p.audioTrack, clicks, 0, 2 * kSec);
+    p.push<SetTrackAudioEffectsCommand>(p.audioTrack, std::vector<ClipEffect>{delayEffect()}, "Add Track Plug-in");
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    const auto mix = drainMix(mixer);
+    CHECK(std::abs(firstLoud(mix) - (24000 + 4800)) <= 8);
+    // Animated track effects are refused.
+    ClipEffect animated = delayEffect();
+    animated.keyframes["0"] = {{.time = 0, .value = 0.0}};
+    CHECK(p.stack.push(std::make_unique<SetTrackAudioEffectsCommand>(p.audioTrack, std::vector<ClipEffect>{animated}, "x")));
+}
+
+TEST_CASE("a VST3 plug-in in the mix, its latency made up")
+{
+    requireSamples();
+    setenv("TVE_VST3_PATH", TVE_TEST_VST3_DIR, 1);
+    setenv("TVE_PLUGIN_SCANNER", TVE_PLUGIN_SCANNER_PATH, 1);
+    AudioProject p;
+    const Id clicks = p.importAudio("test_clicks.wav", 3 * kSec);
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, clicks, 0, 2 * kSec).clipId();
+    TimelineAudio mixer;
+    mixer.restart(p.project, 0);
+    const auto dry = drainMix(mixer);
+    // The test gain at ×1.5 (0.75), 64 samples late in itself: on time in the mix.
+    ClipEffect gain{.effectId = "vst3:5A3C1E427B9D4F608E21C3A4D05B6F17"};
+    gain.values["1"] = {0.75f};
+    p.push<SetClipAudioEffectsCommand>(clip, std::vector<ClipEffect>{gain}, "Add Plug-in");
+    mixer.restart(p.project, 0);
+    const auto wet = drainMix(mixer);
+    CHECK(firstLoud(wet) == firstLoud(dry));
+    CHECK(peak(wet, 24000, 24480) == Catch::Approx(peak(dry, 24000, 24480) * 1.5f).margin(0.01));
 }

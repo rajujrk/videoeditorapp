@@ -584,6 +584,12 @@ int main(int argc, char** argv)
     qputenv("TVE_PACKS_DIR", (QDir(store.path()).canonicalPath() + QStringLiteral("/Packs")).toLocal8Bit());
     qputenv("TVE_STORE_SETTINGS_FILE", (store.path() + QStringLiteral("/store.json")).toLocal8Bit());
     qputenv("TVE_STORE_TRUSTED_KEYS", (store.path() + QStringLiteral("/trusted-keys.json")).toLocal8Bit());
+    // Audio plug-ins: the test VST3 effect (TVE Test Gain) found by the real scanner, with a
+    // scratch scan cache; Apple's own Audio Units are on every Mac.
+    qputenv("TVE_VST3_PATH", TVE_TEST_VST3_DIR);
+    qputenv("TVE_PLUGIN_SCANNER", TVE_PLUGIN_SCANNER_PATH);
+    QTemporaryDir pluginCache;
+    qputenv("TVE_PLUGIN_CACHE_FILE", (pluginCache.path() + QStringLiteral("/plugin-cache.json")).toLocal8Bit());
     QTemporaryDir captionFixtures;
     writeCaptionFixtures(captionFixtures.path());
     qputenv("TVE_TEST_CAPTIONS_DIR", captionFixtures.path().toLocal8Bit());

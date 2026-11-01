@@ -105,12 +105,21 @@ private:
         std::unique_ptr<AudioEffectChain> effects;
         std::unique_ptr<dsp::TimeStretcher> stretcher;
         double stretchNext = -1.0; // source sample the stretcher continues from
+        Ticks nextOutput = -1;     // where its effects' output continues from (-1: start afresh)
+    };
+    struct TrackStream {
+        std::unique_ptr<AudioEffectChain> effects;
+        Ticks nextOutput = -1;
     };
 
     void stopProducer();
     void run(std::shared_ptr<const Project> project, Ticks start, std::uint64_t generation);
     // How long the clip's effects ring on after its end (0 without effects).
     Ticks tailOf(const Clip& clip);
+    // Mixes a track's clips and then its own effects over `frames` samples from `start` into
+    // `bus`; whether anything sounded. keepUntil < 0: each clip stays open until its end.
+    bool mixTrack(const Project& project, const Track& track, Ticks start, int frames, Ticks keepUntil, float* bus,
+                  std::vector<float>& scratch, int depth);
     // Mixes `frames` samples of a clip from `chunkStart` (its track's time) into `mix`;
     // `keepUntil` is the timeline time its streams (and those inside it) stay open until.
     void mixClip(const Project& project, const Track& track, const Clip& clip, Ticks chunkStart, int frames,
@@ -133,6 +142,9 @@ private:
     std::map<Id, ClipStream> m_streams;
     std::array<std::vector<float>, kMaxNesting + 2> m_clipBuffers;  // a clip's sound, per nesting depth
     std::array<std::vector<float>, kMaxNesting + 2> m_trackBuffers; // a nested track's mix, per depth
+    std::array<std::vector<float>, kMaxNesting + 2> m_clipPrime;    // plug-in priming, per depth
+    std::array<std::vector<float>, kMaxNesting + 2> m_trackPrime;
+    std::map<Id, TrackStream> m_trackStreams;
     std::map<Id, Ticks> m_clipEnds; // when each stream used this chunk can close
     dsp::LoudnessMeter m_meter;
 

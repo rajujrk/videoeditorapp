@@ -108,7 +108,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(Easing, {
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EasingCurve, x1, y1, x2, y2)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Keyframe, time, value, easing, curve)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipEffect, effectId, enabled, values, keyframes)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipEffect, effectId, enabled, values, keyframes, state)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SpeedPoint, at, speed)
 NLOHMANN_JSON_SERIALIZE_ENUM(MaskShape, {
     {MaskShape::Rectangle, "rectangle"},
@@ -193,7 +193,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, durati
                                                 denoise, motionTracks, processedVideo, cursor, audioEffects,
                                                 enhancedAudio, keepPitch, sequenceId, groupId, drawing)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
-                                                clips)
+                                                clips, audioEffects)
 NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {
     {MarkerColor::Red, "red"},
     {MarkerColor::Orange, "orange"},

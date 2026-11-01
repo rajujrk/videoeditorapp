@@ -1339,8 +1339,12 @@ Rectangle {
                             Layout.fillWidth: true
                             textRole: "label"
                             valueRole: "id"
+                            // Our own effects, then the plug-ins on this Mac (found in the background).
                             model: inspector.project.audioEffects.map((e) => Object.assign(
                                 { label: (audioEffectsSection.categoryNames[e.categories[0]] || e.categories[0]) + " · " + e.title }, e))
+                                .concat(inspector.project.audioPlugins.filter((p) => p.problem === "").map((p) => ({
+                                    id: p.id, label: "Plug-in · " + p.name + " (" + [p.vendor, p.format].filter((x) => x).join(", ") + ")"
+                                })))
                         }
                         TextButton {
                             objectName: "addAudioEffectButton"
@@ -1354,6 +1358,7 @@ Rectangle {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: "Effects run in order, after the volume and fades. Echoes and reverb ring on past the clip's end."
+                              + (inspector.project.scanningPlugins ? " Looking for plug-ins…" : "")
                         font: Theme.type.caption
                         color: Theme.color.textSecondary
                     }
@@ -1369,8 +1374,10 @@ Rectangle {
                             clipId: inspector.clipInfo.id
                             stackIndex: index
                             entry: current
+                            keyStates: inspector.clipInfo.keyframeStates || ({})
                             spec: inspector.project.audioEffects.find((e) => e.id === current.effectId)
-                                  || ({ title: current.effectId, params: [] })
+                                  || ({ title: (inspector.project.audioPlugins.find((p) => p.id === current.effectId) || { name: "Plug-in" }).name,
+                                        params: [] })
                         }
                     }
                 }

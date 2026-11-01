@@ -17,6 +17,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QtQml/qqmlextensionplugin.h>
 
@@ -139,6 +140,10 @@ int main(int argc, char* argv[])
                                  QStringLiteral("[files...]"));
     parser.process(app);
 
+    // VST3 bundles once checked are remembered here (rechecked when they change).
+    if (qEnvironmentVariableIsEmpty("TVE_PLUGIN_CACHE_FILE"))
+        qputenv("TVE_PLUGIN_CACHE_FILE",
+                (QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/plugin-cache.json")).toLocal8Bit());
     // Installed packs' effects and transitions join the built-in ones.
     tve::EffectLibrary::usePackFolders(PackStore::installedFolders());
     QQmlApplicationEngine engine;
