@@ -54,14 +54,16 @@ add_executable(tve_engine_tests
     engine/test_highlights.cpp
     engine/test_packs.cpp
     engine/test_audio_plugins.cpp
+    engine/test_ofx.cpp
 )
 target_link_libraries(tve_engine_tests PRIVATE tve::engine tve::ffmpeg Catch2::Catch2WithMain)
 target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples"
                                                    TVE_EFFECTS_DIR="${PROJECT_SOURCE_DIR}/effects"
                                                    TVE_TEST_VST3_DIR="${CMAKE_CURRENT_BINARY_DIR}/vst3"
+                                                   TVE_TEST_OFX_DIR="${CMAKE_CURRENT_BINARY_DIR}/ofx"
                                                    TVE_PLUGIN_SCANNER_PATH="$<TARGET_FILE:tve_pluginscan>")
 # The VST3 tests host the test plug-in and scan it with the real scanner.
-add_dependencies(tve_engine_tests tve_test_vst3 tve_pluginscan)
+add_dependencies(tve_engine_tests tve_test_vst3 tve_test_ofx tve_pluginscan)
 # Tests tagged [apple] work Vision and VideoToolbox hard (GPU, Neural Engine): they share
 # the GPU lock with the UI and golden-frame tests rather than slowing them down.
 catch_discover_tests(tve_engine_tests TEST_SPEC "~[apple]")
@@ -110,8 +112,9 @@ if(TARGET tve_shell)
         TVE_QML_TESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
         TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples"
         TVE_TEST_VST3_DIR="${CMAKE_CURRENT_BINARY_DIR}/vst3"
+        TVE_TEST_OFX_DIR="${CMAKE_CURRENT_BINARY_DIR}/ofx"
         TVE_PLUGIN_SCANNER_PATH="$<TARGET_FILE:tve_pluginscan>")
-    add_dependencies(tve_qml_tests tve_test_vst3 tve_pluginscan)
+    add_dependencies(tve_qml_tests tve_test_vst3 tve_test_ofx tve_pluginscan)
     target_link_libraries(tve_qml_tests PRIVATE Qt6::QuickTest Qt6::QuickControls2 tve_shellplugin)
     target_include_directories(tve_qml_tests PRIVATE $<TARGET_PROPERTY:tve_player,INTERFACE_INCLUDE_DIRECTORIES>)
     add_test(NAME tve_qml_tests COMMAND tve_qml_tests)
@@ -129,3 +132,15 @@ set_target_properties(tve_test_vst3 PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER com.techievideoeditor.tests.vst3gain)
 target_link_libraries(tve_test_vst3 PRIVATE tve_vst3_plugin "-framework CoreFoundation")
 target_compile_options(tve_test_vst3 PRIVATE -w)
+
+# An OpenFX image effect bundle for the video plug-in host tests (TVE Test Invert.ofx.bundle).
+add_library(tve_test_ofx MODULE ofx/TestInvert.mm)
+set_target_properties(tve_test_ofx PROPERTIES
+    BUNDLE TRUE
+    BUNDLE_EXTENSION ofx.bundle
+    OUTPUT_NAME "TVE Test Invert"
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ofx
+    MACOSX_BUNDLE_BUNDLE_NAME "TVE Test Invert"
+    MACOSX_BUNDLE_GUI_IDENTIFIER com.techievideoeditor.tests.ofxinvert)
+target_compile_options(tve_test_ofx PRIVATE -fobjc-arc -w)
+target_link_libraries(tve_test_ofx PRIVATE tve_openfx_api "-framework Metal" "-framework Foundation")

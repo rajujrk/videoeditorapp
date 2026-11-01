@@ -8,7 +8,9 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <chrono>
+#include <cstdlib>
 #include <cmath>
 #include <filesystem>
 #include <map>
@@ -746,4 +748,75 @@ TEST_CASE("a compound clip plays as one layer holding its sequence's layers")
     CHECK(inside[1].clipId == topCmd->clipId());
     CHECK(inside[1].visual == small);
     CHECK(inside[1].frame.pts() == 22 * kFrame30); // its in-point 0.5 s, 0.25 s in
+}
+
+TEST_CASE("a clip's OpenFX effects run on its picture before it reaches the compositor")
+{
+    requireSamples();
+    setenv("TVE_OFX_PATH", TVE_TEST_OFX_DIR, 1);
+    setenv("TVE_PLUGIN_SCANNER", TVE_PLUGIN_SCANNER_PATH, 1);
+    auto project = std::make_shared<Project>();
+    CommandStack stack(*project);
+    auto v1 = std::make_unique<AddTrackCommand>(TrackKind::Video, "V1");
+    auto* v1Cmd = v1.get();
+    REQUIRE_FALSE(stack.push(std::move(v1)));
+    auto media = std::make_unique<ImportMediaCommand>(sample("test_1080p30_h264.mp4"), 2 * kSec);
+    auto* mediaCmd = media.get();
+    REQUIRE_FALSE(stack.push(std::move(media)));
+    auto clip = std::make_unique<AddClipCommand>(v1Cmd->trackId(), mediaCmd->mediaId(), 0, kSec, 0);
+    auto* clipCmd = clip.get();
+    REQUIRE_FALSE(stack.push(std::move(clip)));
+
+    const auto firstFrame = [&](TimelinePlayback& playback) {
+        playback.setProject(project);
+        playback.seek(0);
+        for (int attempt = 0; attempt < 400 && !playback.queue().frontPts(); ++attempt)
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        int skipped = 0;
+        auto frame = playback.queue().takeLatestDue(0, skipped);
+        REQUIRE(frame);
+        REQUIRE(frame->layers.size() == 1);
+        return std::move(frame->layers[0]);
+    };
+    // A pixel's colour (R, G, B, 0..255) of a BGRA picture.
+    const auto pixel = [](const DecodedFrame& frame, int x, int y) {
+        CVPixelBufferRef buffer = frame.pixelBuffer();
+        CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+        const auto* row = static_cast<const std::uint8_t*>(CVPixelBufferGetBaseAddress(buffer))
+                          + std::size_t(y) * CVPixelBufferGetBytesPerRow(buffer);
+        std::array<int, 3> rgb{row[x * 4 + 2], row[x * 4 + 1], row[x * 4]};
+        CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+        return rgb;
+    };
+
+    // Without: the decoded picture as it is (not BGRA), with our own effect left for the GPU.
+    REQUIRE_FALSE(stack.push(std::make_unique<SetClipEffectsCommand>(
+        clipCmd->clipId(), std::vector<ClipEffect>{{.effectId = "tve.blur.gaussian"}}, "Add Effect")));
+    TimelinePlayback plain;
+    const VideoLayer before = firstFrame(plain);
+    CHECK(CVPixelBufferGetPixelFormatType(before.frame.pixelBuffer()) != kCVPixelFormatType_32BGRA);
+    CHECK(before.effects.size() == 1);
+
+    // With the invert first in the stack: a BGRA picture, inverted; it leaves the stack, ours stays.
+    REQUIRE_FALSE(stack.push(std::make_unique<SetClipEffectsCommand>(
+        clipCmd->clipId(),
+        std::vector<ClipEffect>{{.effectId = "ofx:com.techievideoeditor.tests.Invert"}, {.effectId = "tve.blur.gaussian"}},
+        "Add Effect")));
+    TimelinePlayback inverted;
+    const VideoLayer after = firstFrame(inverted);
+    REQUIRE(CVPixelBufferGetPixelFormatType(after.frame.pixelBuffer()) == kCVPixelFormatType_32BGRA);
+    REQUIRE(after.effects.size() == 1);
+    CHECK(after.effects[0].effectId == "tve.blur.gaussian");
+    // Compare with the decoded picture made BGRA the same way (through a "keep").
+    REQUIRE_FALSE(stack.push(std::make_unique<SetClipEffectsCommand>(
+        clipCmd->clipId(), std::vector<ClipEffect>{{.effectId = "ofx:com.techievideoeditor.tests.Invert", .values = {{"mode", {1.0f}}}}},
+        "Change Effect")));
+    TimelinePlayback kept;
+    const VideoLayer same = firstFrame(kept);
+    for (const auto& [x, y] : {std::pair{100, 100}, std::pair{960, 540}, std::pair{1800, 1000}}) {
+        const auto a = pixel(same.frame, x, y);
+        const auto b = pixel(after.frame, x, y);
+        for (int c = 0; c < 3; ++c)
+            CHECK(std::abs(a[std::size_t(c)] + b[std::size_t(c)] - 255) <= 2);
+    }
 }

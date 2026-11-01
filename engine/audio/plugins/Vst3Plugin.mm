@@ -101,8 +101,10 @@ std::int64_t modified(const std::string& path)
     return stat(path.c_str(), &info) == 0 ? std::int64_t(info.st_mtimespec.tv_sec) : 0;
 }
 
-// Runs the scanner on one bundle: its classes as JSON, or why not.
-std::string runScanner(const std::string& bundle, std::string* problem)
+} // namespace
+
+// Runs the scanner with `args`: what it printed, or why not.
+std::string runPluginScanner(const std::vector<std::string>& args, std::string* problem)
 {
     const std::string scanner = scannerPath();
     if (scanner.empty() || access(scanner.c_str(), X_OK) != 0) {
@@ -118,9 +120,12 @@ std::string runScanner(const std::string& bundle, std::string* problem)
     posix_spawn_file_actions_init(&actions);
     posix_spawn_file_actions_adddup2(&actions, out[1], STDOUT_FILENO);
     posix_spawn_file_actions_addclose(&actions, out[0]);
-    char* argv[] = {const_cast<char*>(scanner.c_str()), const_cast<char*>(bundle.c_str()), nullptr};
+    std::vector<char*> argv{const_cast<char*>(scanner.c_str())};
+    for (const std::string& arg : args)
+        argv.push_back(const_cast<char*>(arg.c_str()));
+    argv.push_back(nullptr);
     pid_t pid = 0;
-    const int spawned = posix_spawn(&pid, scanner.c_str(), &actions, nullptr, argv, environ);
+    const int spawned = posix_spawn(&pid, scanner.c_str(), &actions, nullptr, argv.data(), environ);
     posix_spawn_file_actions_destroy(&actions);
     close(out[1]);
     if (spawned != 0) {
@@ -162,6 +167,8 @@ std::string runScanner(const std::string& bundle, std::string* problem)
     }
     return text;
 }
+
+namespace {
 
 struct ScanEntry {
     std::int64_t modified = 0;
@@ -609,7 +616,7 @@ std::vector<PluginDescription> listVst3()
         if (entry.modified != when || entry.plugins.empty()) {
             entry = {.modified = when};
             std::string problem;
-            const std::string output = runScanner(bundle, &problem);
+            const std::string output = runPluginScanner({bundle}, &problem);
             const auto j = nlohmann::json::parse(output, nullptr, false);
             if (problem.empty() && j.is_object() && j.contains("error"))
                 problem = j.value("error", "it couldn't be loaded");

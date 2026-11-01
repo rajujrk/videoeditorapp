@@ -453,6 +453,11 @@ Audio plug-ins: AUDelay and the test VST3 effect on a clip in the inspector (par
 ![Track effects, dark](images/track-effects-dark.png)
 ![Track effects, light](images/track-effects-light.png)
 
+An OpenFX video plug-in (the test invert) on a clip in the Effects tab — its parameters as our controls, a 2D one as X and Y, the note on where it runs — and its picture in the player, dark and light:
+
+![Video plug-ins, dark](images/video-plugins-dark.png)
+![Video plug-ins, light](images/video-plugins-light.png)
+
 The Generate tab choosing a first and last picture for a video, after a sticker was placed over the picture, dark and light:
 
 ![Generate, dark](images/generate-dark.png)

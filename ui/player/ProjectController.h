@@ -193,6 +193,9 @@ class ProjectController : public QObject {
     // time this is read in the app (shared by every editor; again on rescanAudioPlugins()): [{id, name, vendor, format "AU"/"VST3", version, problem}].
     Q_PROPERTY(QVariantList audioPlugins READ audioPlugins NOTIFY audioPluginsChanged)
     Q_PROPERTY(bool scanningPlugins READ scanningPlugins NOTIFY audioPluginsChanged)
+    // The OpenFX video plug-ins, found with them: [{id, name, group, format "OpenFX", metal,
+    // problem, params (the inspector's controls)}].
+    Q_PROPERTY(QVariantList videoPlugins READ videoPlugins NOTIFY audioPluginsChanged)
     // The mixer's meters while playing: {tracks: {<track id>: [peakL, peakR, rmsL, rmsR]},
     // master: [...], momentary, shortTerm, integrated} (LUFS; null while unknown); empty
     // when stopped.
@@ -339,6 +342,7 @@ public:
     QVariantList exportFormats() const;
     QVariantList audioEffects() const;
     QVariantList audioPlugins();
+    QVariantList videoPlugins();
     bool scanningPlugins() const { return m_scanningPlugins; }
     void updateMixLevels(tve::Ticks now);
     QVariantMap mixLevels() const { return m_mixLevels; }

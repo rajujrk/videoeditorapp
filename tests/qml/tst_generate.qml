@@ -70,7 +70,7 @@ Item {
             return cloud.mockRequests().filter((r) => r.path.indexOf(path) === 0)
         }
         function openTab(f) {
-            click(settled(f.editor, "libraryTab:Generate"))
+            settled(f.editor, "libraryTab:Generate").clicked() // (no click to lose under load)
             return settled(f.editor, "generatePage")
         }
         function generate(f, page) {

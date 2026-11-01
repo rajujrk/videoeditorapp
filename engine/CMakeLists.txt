@@ -31,6 +31,10 @@ add_library(tve_engine STATIC
     audio/plugins/PluginFormats.h
     audio/plugins/AudioUnitPlugin.mm
     audio/plugins/Vst3Plugin.mm
+    video/OfxHost.h
+    video/OfxHost.mm
+    video/OfxFrames.h
+    video/OfxFrames.mm
     packs/Packs.mm
     imports/ImportSources.mm
     playback/FrameQueue.h
@@ -155,6 +159,8 @@ target_link_libraries(tve_engine
         "-framework Security"
         "-framework CoreAudioKit"
         tve_vst3_hosting
+        tve_openfx_api
+        "-framework Metal"
         "-framework AVFAudio"
         "-framework Photos"
         "-framework iTunesLibrary"
