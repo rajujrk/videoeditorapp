@@ -33,6 +33,10 @@ qt_add_qml_module(tve_player
         cloud/CloudVoices.mm
         cloud/CloudFeatures.h
         cloud/CloudFeatures.cpp
+        cloud/CloudMedia.h
+        cloud/CloudMedia.cpp
+        cloud/StickerCutout.h
+        cloud/StickerCutout.mm
         cloud/CloudServices.h
         cloud/CloudServices.cpp
         cloud/MockCloudServer.h

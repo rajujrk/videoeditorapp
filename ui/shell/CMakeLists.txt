@@ -24,6 +24,7 @@ qt_add_qml_module(tve_shell
         CloudSettingsDialog.qml
         WritePanel.qml
         VoicePane.qml
+        GeneratePage.qml
         ImportPanel.qml
         TranscriptPage.qml
         VoiceOverPanel.qml

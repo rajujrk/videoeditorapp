@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), and AI writing, caption translation and voices with your own keys (16a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), and generated pictures, stickers, video, music and sound effects (16b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -246,6 +246,21 @@ playhead** puts it on an audio track with captions timed to its words, as one un
 kept in a `Voices` folder beside the project (`TVE_VOICE_DIR`). Busy or rate-limited services are
 tried again up to three times. `TVE_CLOUD_MOCK=1` runs everything against a local stand-in for both
 services (no keys, nothing sent).
+
+**Generate (your own keys).** The library's **Generate** tab makes media from a description:
+**Picture** and **Sticker** with OpenAI GPT Image 2.5 (square, landscape or portrait; draft, good or
+best; optionally working from pictures in the media bin), **Video** with Google's Gemini Omni Flash
+(from words, from a picture, from a first and a last picture, or extending a video made here), and
+**Music** and **Sound effect** with ElevenLabs (a length; instrumental; looping). Stickers come
+with a transparent background — if one comes back without, its subject is cut out on your Mac —
+and go small over the picture at the playhead; music and sound go at the playhead on an audio
+track; pictures and video go into the media bin (**Made here** lists them, with **Add** and
+**Extend**). Everything generated keeps its prompt and maker in the project and is marked **AI**
+in the media bin. Files are kept in a `Generated` folder beside the project (`TVE_GENERATED_DIR`).
+Add the OpenAI and Google AI (Gemini API) keys in **AI settings**; what you may do with the results
+is set by each provider's terms, summarised under the Generate button (for example, ElevenLabs music
+is not for film, TV, radio or studio games below its Enterprise Music plan, and prompts may not name
+artists, songs or lyrics; Google's videos carry an invisible SynthID watermark).
 
 **Advanced vision.** Select two or more clips of the same event (cameras, a sound recorder)
 and **Line up by sound** in the Analyze tab: they are moved so their sound lines up (to about a

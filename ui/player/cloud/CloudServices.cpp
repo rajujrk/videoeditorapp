@@ -22,6 +22,9 @@ QString settingsFile()
 }
 
 const QStringList kClaudeModels{QStringLiteral("claude-opus-5-5"), QStringLiteral("claude-sonnet-5-5")};
+const QStringList kImageModels{QStringLiteral("gpt-image-2.5-flare"), QStringLiteral("gpt-image-2.5-sunburst")};
+const QStringList kProviders{QStringLiteral("anthropic"), QStringLiteral("elevenlabs"), QStringLiteral("openai"),
+                             QStringLiteral("google")};
 const QStringList kElevenLabsModels{QStringLiteral("eleven_multilingual_v2"), QStringLiteral("eleven_flash_v2_5")};
 
 } // namespace
@@ -35,9 +38,16 @@ CloudServices::CloudServices(QObject* parent)
         const QString url = MockCloudServer::instance()->baseUrl();
         qputenv("TVE_ANTHROPIC_BASE_URL", url.toUtf8());
         qputenv("TVE_ELEVENLABS_BASE_URL", url.toUtf8());
+        qputenv("TVE_OPENAI_BASE_URL", url.toUtf8());
+        qputenv("TVE_GEMINI_BASE_URL", url.toUtf8());
     }
-    for (const char* provider : {"anthropic", "elevenlabs"})
-        m_hasKey.insert(QLatin1String(provider), cloudkeys::has(QLatin1String(provider)));
+    for (const QString& provider : kProviders)
+        m_hasKey.insert(provider, cloudkeys::has(provider));
+    m_clock.setInterval(1000);
+    connect(&m_clock, &QTimer::timeout, this, [this] {
+        ++m_elapsed;
+        emit elapsedChanged();
+    });
     loadSettings();
 }
 
@@ -48,6 +58,51 @@ CloudServices::~CloudServices()
         m_textTask->disconnect(this);
     if (m_speechTask)
         m_speechTask->disconnect(this);
+    if (m_mediaTask)
+        m_mediaTask->disconnect(this);
+}
+
+QVariantList CloudServices::imageModels() const
+{
+    return {QVariantMap{{QStringLiteral("id"), kImageModels[0]}, {QStringLiteral("label"), QStringLiteral("GPT Image 2.5 Flare")},
+                        {QStringLiteral("detail"), QStringLiteral("Fast")}},
+            QVariantMap{{QStringLiteral("id"), kImageModels[1]}, {QStringLiteral("label"), QStringLiteral("GPT Image 2.5 Sunburst")},
+                        {QStringLiteral("detail"), QStringLiteral("More precise, slower")}}};
+}
+
+void CloudServices::setImageModel(const QString& model)
+{
+    if (!kImageModels.contains(model) || model == m_imageModel)
+        return;
+    m_imageModel = model;
+    saveSettings();
+    emit settingsChanged();
+}
+
+bool CloudServices::generateMedia(const QString& job, const QString& status, MediaStart start,
+                                  std::function<void(const MediaResult&)> done)
+{
+    if (busy())
+        return false;
+    beginJob(job, status);
+    MediaTask* task = start(m_network, this);
+    m_mediaTask = task;
+    connect(task, &MediaTask::finished, this, [this, task, job, done = std::move(done)](const MediaResult& result) {
+        task->deleteLater();
+        if (result.ok) {
+            if (job == QLatin1String("image") || job == QLatin1String("sticker")) {
+                ++m_images;
+                m_imageTokens += result.tokens;
+            } else if (job == QLatin1String("video")) {
+                ++m_videos;
+            } else {
+                m_soundSeconds += result.seconds;
+            }
+            emit usageChanged();
+        }
+        done(result);
+    });
+    return true;
 }
 
 QVariantList CloudServices::claudeModels() const
@@ -94,6 +149,8 @@ void CloudServices::loadSettings()
         m_claudeModel = model;
     if (const QString model = settings.value(QStringLiteral("elevenLabsModel")).toString(); kElevenLabsModels.contains(model))
         m_elevenLabs->setModel(model);
+    if (const QString model = settings.value(QStringLiteral("imageModel")).toString(); kImageModels.contains(model))
+        m_imageModel = model;
 }
 
 void CloudServices::saveSettings() const
@@ -103,7 +160,8 @@ void CloudServices::saveSettings() const
     if (!file.open(QIODevice::WriteOnly))
         return;
     file.write(QJsonDocument(QJsonObject{{QStringLiteral("claudeModel"), m_claudeModel},
-                                         {QStringLiteral("elevenLabsModel"), m_elevenLabs->model()}})
+                                         {QStringLiteral("elevenLabsModel"), m_elevenLabs->model()},
+                                         {QStringLiteral("imageModel"), m_imageModel}})
                    .toJson());
     file.commit();
 }
@@ -113,19 +171,23 @@ QVariantMap CloudServices::usage() const
     return {{QStringLiteral("inputTokens"), double(m_inputTokens)},
             {QStringLiteral("outputTokens"), double(m_outputTokens)},
             {QStringLiteral("cost"), m_cost},
-            {QStringLiteral("characters"), double(m_characters)}};
+            {QStringLiteral("characters"), double(m_characters)},
+            {QStringLiteral("images"), double(m_images)},
+            {QStringLiteral("imageTokens"), double(m_imageTokens)},
+            {QStringLiteral("videos"), double(m_videos)},
+            {QStringLiteral("soundSeconds"), m_soundSeconds}};
 }
 
 void CloudServices::resetUsage()
 {
-    m_inputTokens = m_outputTokens = m_characters = 0;
-    m_cost = 0;
+    m_inputTokens = m_outputTokens = m_characters = m_images = m_imageTokens = m_videos = 0;
+    m_cost = m_soundSeconds = 0;
     emit usageChanged();
 }
 
 bool CloudServices::setKey(const QString& provider, const QString& key)
 {
-    if (provider != QLatin1String("anthropic") && provider != QLatin1String("elevenlabs")) {
+    if (!kProviders.contains(provider)) {
         m_error = QStringLiteral("Unknown provider %1").arg(provider);
         return false;
     }
@@ -206,6 +268,9 @@ void CloudServices::beginJob(const QString& job, const QString& status)
     m_status = status;
     m_progress = 0;
     m_draft.clear();
+    m_elapsed = 0;
+    m_clock.start();
+    emit elapsedChanged();
     emit jobChanged();
     emit draftChanged();
 }
@@ -219,6 +284,7 @@ void CloudServices::setProgress(double progress, const QString& status)
 
 void CloudServices::endJob(const QString& status)
 {
+    m_clock.stop();
     m_job.clear();
     m_status = status;
     m_progress = 0;
@@ -282,6 +348,8 @@ void CloudServices::cancel()
         m_textTask->cancel();
     if (m_speechTask)
         m_speechTask->cancel();
+    if (m_mediaTask)
+        m_mediaTask->cancel();
 }
 
 QVariantList CloudServices::mockRequests() const

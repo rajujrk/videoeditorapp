@@ -1,6 +1,14 @@
 #include "cloud/MockCloudServer.h"
 
+#include "encode/MediaWriter.h"
+
+#include <QBuffer>
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QImage>
+#include <QPainter>
+#include <QTemporaryDir>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QPointer>
@@ -58,6 +66,37 @@ QByteArray toneWav(double seconds, int rate = 44100)
          + le32(quint32(rate) * 2) + le16(2) + le16(16) + "data" + le32(quint32(data.size())) + data;
 }
 
+// A few seconds of H.264 whose colour drifts, as MP4 bytes.
+QByteArray movingColourMp4(double seconds)
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("mock.mp4"));
+    tve::MediaSettings settings;
+    settings.container = tve::Container::Mp4;
+    settings.width = 320;
+    settings.height = 180;
+    settings.audio = false;
+    auto writer = tve::MediaWriter::open(path.toStdString(), settings);
+    if (!writer)
+        return {};
+    std::vector<std::uint8_t> luma(320 * 180), chroma(320 * 90);
+    const int frames = int(seconds * 30);
+    for (int f = 0; f < frames; ++f) {
+        for (int y = 0; y < 180; ++y)
+            for (int x = 0; x < 320; ++x)
+                luma[std::size_t(y * 320 + x)] = std::uint8_t(60 + (x + f * 4) % 140);
+        for (std::size_t i = 0; i < chroma.size(); i += 2) {
+            chroma[i] = std::uint8_t(100 + f % 60);
+            chroma[i + 1] = std::uint8_t(160 - f % 60);
+        }
+        writer->writeVideo(luma.data(), 320, chroma.data(), 320);
+    }
+    if (!writer->finish())
+        return {};
+    QFile file(path);
+    return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+}
+
 } // namespace
 
 MockCloudServer* MockCloudServer::instance()
@@ -111,6 +150,12 @@ void MockCloudServer::serve(QTcpSocket* socket, const Request& request)
 {
     if (request.path.startsWith(QLatin1String("/v1/messages")))
         claude(socket, request);
+    else if (request.path.startsWith(QLatin1String("/v1/images/")))
+        openAiImages(socket, request);
+    else if (request.path.startsWith(QLatin1String("/v1beta/interactions")))
+        geminiVideo(socket, request);
+    else if (request.path.startsWith(QLatin1String("/v1/music")) || request.path.startsWith(QLatin1String("/v1/sound-generation")))
+        elevenLabsSound(socket, request);
     else if (request.path.startsWith(QLatin1String("/v1/voices")) || request.path.startsWith(QLatin1String("/v1/text-to-speech/")))
         elevenLabs(socket, request);
     else
@@ -251,4 +296,104 @@ void MockCloudServer::elevenLabs(QTcpSocket* socket, const Request& request)
                              {QStringLiteral("alignment"), alignment},
                              {QStringLiteral("normalized_alignment"), alignment}};
     respond(socket, 200, "application/json", QJsonDocument(answer).toJson(QJsonDocument::Compact));
+}
+
+void MockCloudServer::openAiImages(QTcpSocket* socket, const Request& request)
+{
+    const auto error = [&](int status, const char* message) {
+        respond(socket, status, "application/json",
+                QJsonDocument(QJsonObject{{QStringLiteral("error"), QJsonObject{{QStringLiteral("message"), QLatin1String(message)},
+                                                                                {QStringLiteral("type"), QStringLiteral("invalid_request_error")}}}})
+                    .toJson(QJsonDocument::Compact));
+    };
+    const QString auth = request.headers.value(QStringLiteral("authorization"));
+    if (!auth.startsWith(QLatin1String("Bearer ")) || auth == QLatin1String("Bearer bad-key")) {
+        error(401, "Incorrect API key provided.");
+        return;
+    }
+    const QString prompt = request.body.value(QStringLiteral("prompt")).toString();
+    if (prompt.contains(QLatin1String("#blocked"))) {
+        error(400, "Your request was rejected by the safety system.");
+        return;
+    }
+    const QStringList size = request.body.value(QStringLiteral("size")).toString().split(QLatin1Char('x'));
+    const int width = std::clamp(size.value(0).toInt(), 64, 1024);
+    const int height = std::clamp(size.value(1).toInt(), 64, 1024);
+    const bool transparent = request.body.value(QStringLiteral("background")).toString() == QLatin1String("transparent")
+                          && !prompt.contains(QLatin1String("#opaque"));
+    QImage picture(width, height, QImage::Format_ARGB32_Premultiplied);
+    picture.fill(transparent ? Qt::transparent : QColor(245, 245, 240));
+    {
+        QPainter painter(&picture);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor::fromHsv(int(qHash(prompt) % 360), 200, 230));
+        painter.drawEllipse(QRectF(width * 0.2, height * 0.2, width * 0.6, height * 0.6));
+    }
+    QByteArray png;
+    QBuffer buffer(&png);
+    buffer.open(QIODevice::WriteOnly);
+    picture.save(&buffer, "PNG");
+    const QJsonObject answer{{QStringLiteral("created"), 1},
+                             {QStringLiteral("data"), QJsonArray{QJsonObject{{QStringLiteral("b64_json"), QString::fromLatin1(png.toBase64())}}}},
+                             {QStringLiteral("usage"), QJsonObject{{QStringLiteral("input_tokens"), 50},
+                                                                   {QStringLiteral("output_tokens"), 1000},
+                                                                   {QStringLiteral("total_tokens"), 1050}}}};
+    respond(socket, 200, "application/json", QJsonDocument(answer).toJson(QJsonDocument::Compact));
+}
+
+void MockCloudServer::geminiVideo(QTcpSocket* socket, const Request& request)
+{
+    const auto error = [&](int status, const char* state, const char* message) {
+        respond(socket, status, "application/json",
+                QJsonDocument(QJsonObject{{QStringLiteral("error"), QJsonObject{{QStringLiteral("code"), status},
+                                                                                {QStringLiteral("message"), QLatin1String(message)},
+                                                                                {QStringLiteral("status"), QLatin1String(state)}}}})
+                    .toJson(QJsonDocument::Compact));
+    };
+    const QString key = request.headers.value(QStringLiteral("x-goog-api-key"));
+    if (key.isEmpty() || key == QLatin1String("bad-key")) {
+        error(403, "PERMISSION_DENIED", "API key not valid. Please pass a valid API key.");
+        return;
+    }
+    const QString previous = request.body.value(QStringLiteral("previous_interaction_id")).toString();
+    if (!previous.isEmpty() && !m_interactions.contains(previous)) {
+        error(404, "NOT_FOUND", "Interaction not found.");
+        return;
+    }
+    const QJsonValue input = request.body.value(QStringLiteral("input"));
+    const QString text = input.isString() ? input.toString()
+                                          : input.toArray().last().toObject().value(QStringLiteral("text")).toString();
+    const QString id = QStringLiteral("v1_mock_%1").arg(m_interactions.size() + 1);
+    m_interactions << id;
+    QJsonArray output;
+    if (!text.contains(QLatin1String("#blocked")))
+        output.append(QJsonObject{{QStringLiteral("type"), QStringLiteral("video")},
+                                  {QStringLiteral("mime_type"), QStringLiteral("video/mp4")},
+                                  {QStringLiteral("data"), QString::fromLatin1(movingColourMp4(previous.isEmpty() ? 3.0 : 2.0).toBase64())}});
+    const QJsonObject answer{{QStringLiteral("id"), id},
+                             {QStringLiteral("object"), QStringLiteral("interaction")},
+                             {QStringLiteral("status"), QStringLiteral("completed")},
+                             {QStringLiteral("model"), request.body.value(QStringLiteral("model"))},
+                             {QStringLiteral("steps"), QJsonArray{QJsonObject{{QStringLiteral("type"), QStringLiteral("model_output")},
+                                                                              {QStringLiteral("content"), output}}}}};
+    respond(socket, 200, "application/json", QJsonDocument(answer).toJson(QJsonDocument::Compact));
+}
+
+void MockCloudServer::elevenLabsSound(QTcpSocket* socket, const Request& request)
+{
+    const QString key = request.headers.value(QStringLiteral("xi-api-key"));
+    if (key.isEmpty() || key == QLatin1String("bad-key")) {
+        respond(socket, 401, "application/json", R"({"detail":{"status":"invalid_api_key","message":"Invalid API key"}})");
+        return;
+    }
+    const bool music = request.path.startsWith(QLatin1String("/v1/music"));
+    const QString prompt = request.body.value(music ? QStringLiteral("prompt") : QStringLiteral("text")).toString();
+    if (prompt.contains(QLatin1String("#blocked"))) {
+        respond(socket, 400, "application/json", R"({"detail":{"status":"bad_prompt","message":"The prompt names an artist."}})");
+        return;
+    }
+    const double seconds = music ? request.body.value(QStringLiteral("music_length_ms")).toDouble(10000) / 1000.0
+                                 : request.body.value(QStringLiteral("duration_seconds")).toDouble(2.0);
+    respond(socket, 200, "audio/wav", toneWav(seconds));
 }

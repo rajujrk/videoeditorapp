@@ -86,6 +86,15 @@ Popup {
                 Layout.fillWidth: true
                 enabled: !panel.writing
                 placeholderText: "Anything else: the audience, words to use…"
+                color: Theme.color.textPrimary
+                placeholderTextColor: Theme.color.textDisabled
+                selectByMouse: true
+                background: Rectangle {
+                    implicitHeight: 32
+                    radius: Theme.radius.s
+                    color: Theme.color.surfaceSunken
+                    border.color: parent.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
+                }
                 onAccepted: if (writeButton.enabled) panel.write()
             }
             TextButton {

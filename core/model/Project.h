@@ -25,6 +25,19 @@ inline constexpr Id kNoId = 0;
 
 enum class TrackKind { Video, Audio, Title };
 
+// Where generated media came from (made by a cloud provider from a prompt): kept with it.
+struct GeneratedBy {
+    std::string provider;  // "openai", "google", "elevenlabs"
+    std::string model;
+    std::string kind;      // "image", "sticker", "video", "music", "sfx"
+    std::string prompt;
+    std::string reference; // the provider's own id for it (to extend a video), if any
+    std::string source;    // what it was made from (media names), if anything
+    double created = 0;    // seconds since 1970
+
+    friend bool operator==(const GeneratedBy&, const GeneratedBy&) = default;
+};
+
 struct MediaItem {
     Id id = kNoId;
     std::string path;
@@ -48,6 +61,8 @@ struct MediaItem {
     // Identifies the file's content (see io/MediaRelink.h) so a moved or renamed copy can be
     // found again; empty when not known (media imported before it was recorded).
     std::string fingerprint;
+    // Set when a cloud provider made it.
+    std::optional<GeneratedBy> generated;
 
     // A lighter copy of the pictures for the preview to decode instead (same frames and
     // times). Set only in the snapshots handed to playback; never saved.

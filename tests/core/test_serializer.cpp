@@ -42,3 +42,23 @@ TEST_CASE("loader rejects foreign and newer files")
     CHECK_THROWS_AS(projectFromJson(nlohmann::json{{"schema", kProjectSchemaName}, {"version", kProjectSchemaVersion + 1}}),
                     std::runtime_error);
 }
+
+TEST_CASE("generated media keeps where it came from through a save and load")
+{
+    Project project;
+    MediaItem made{.id = project.allocateId(), .path = "/media/Video 1.mp4", .duration = 4 * kTicksPerSecond};
+    made.generated = GeneratedBy{.provider = "google", .model = "gemini-omni-1.1-flash", .kind = "video",
+                                 .prompt = "Waves at dawn, \"slow\" pan", .reference = "v1_abc", .source = "shore.png",
+                                 .created = 1793400000};
+    project.media.push_back(made);
+    project.media.push_back(MediaItem{.id = project.allocateId(), .path = "/media/plain.mov", .duration = kTicksPerSecond});
+
+    const auto path = std::filesystem::temp_directory_path() / "tve_generated_test.tve.json";
+    saveProject(project, path);
+    const Project loaded = loadProject(path);
+    std::filesystem::remove(path);
+    CHECK(loaded == project);
+    REQUIRE(loaded.media[0].generated);
+    CHECK(loaded.media[0].generated->prompt == "Waves at dawn, \"slow\" pan");
+    CHECK(!loaded.media[1].generated);
+}

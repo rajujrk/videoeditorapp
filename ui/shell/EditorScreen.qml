@@ -91,6 +91,7 @@ Rectangle {
                     project: editor.project
                     onImportRequested: editor.importMedia()
                     onImportFromRequested: (source) => importPanel.show(source)
+                    onCloudSettingsRequested: cloudSettings.open()
                 }
                 PlayerPanel {
                     id: playerPanel

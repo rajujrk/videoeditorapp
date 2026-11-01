@@ -1,10 +1,12 @@
 #pragma once
 
+#include "cloud/CloudMedia.h"
 #include "cloud/CloudText.h"
 #include "cloud/CloudVoices.h"
 
 #include <QObject>
 #include <QPointer>
+#include <QTimer>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
@@ -23,18 +25,26 @@ class CloudServices : public QObject {
     QML_UNCREATABLE("The project's AI services")
     Q_PROPERTY(bool hasClaudeKey READ hasClaudeKey NOTIFY keysChanged)
     Q_PROPERTY(bool hasElevenLabsKey READ hasElevenLabsKey NOTIFY keysChanged)
+    Q_PROPERTY(bool hasOpenAiKey READ hasOpenAiKey NOTIFY keysChanged)
+    Q_PROPERTY(bool hasGoogleKey READ hasGoogleKey NOTIFY keysChanged)
+    Q_PROPERTY(QVariantList imageModels READ imageModels CONSTANT)
+    Q_PROPERTY(QString imageModel READ imageModel WRITE setImageModel NOTIFY settingsChanged)
+    // Seconds the job has been running (generation can take minutes).
+    Q_PROPERTY(int elapsed READ elapsed NOTIFY elapsedChanged)
     // [{id, label, detail}]
     Q_PROPERTY(QVariantList claudeModels READ claudeModels CONSTANT)
     Q_PROPERTY(QString claudeModel READ claudeModel WRITE setClaudeModel NOTIFY settingsChanged)
     Q_PROPERTY(QVariantList elevenLabsModels READ elevenLabsModels CONSTANT)
     Q_PROPERTY(QString elevenLabsModel READ elevenLabsModel WRITE setElevenLabsModel NOTIFY settingsChanged)
-    // The job running: "" (none), "write", "translate" or "speak"; its text so far; what it is
+    // The job running: "" (none), "write", "translate", "speak", "image", "sticker", "video",
+    // "music" or "sfx"; its text so far; what it is
     // doing in words; how far (0..1, translations).
     Q_PROPERTY(QString job READ job NOTIFY jobChanged)
     Q_PROPERTY(QString draft READ draft NOTIFY draftChanged)
     Q_PROPERTY(QString status READ status NOTIFY jobChanged)
     Q_PROPERTY(double progress READ progress NOTIFY jobChanged)
-    // This session: Claude tokens in and out, their estimated cost (US$), ElevenLabs characters.
+    // This session: Claude tokens in and out, their estimated cost (US$), ElevenLabs characters,
+    // pictures made and their tokens, videos, seconds of music and sound effects made.
     Q_PROPERTY(QVariantMap usage READ usage NOTIFY usageChanged)
     // [{id ("system:…" / "elevenlabs:…"), name, language, detail, provider}]
     Q_PROPERTY(QVariantList voices READ voices NOTIFY voicesChanged)
@@ -47,6 +57,12 @@ public:
 
     bool hasClaudeKey() const { return m_hasKey.value(QStringLiteral("anthropic")); }
     bool hasElevenLabsKey() const { return m_hasKey.value(QStringLiteral("elevenlabs")); }
+    bool hasOpenAiKey() const { return m_hasKey.value(QStringLiteral("openai")); }
+    bool hasGoogleKey() const { return m_hasKey.value(QStringLiteral("google")); }
+    QVariantList imageModels() const;
+    QString imageModel() const { return m_imageModel; }
+    void setImageModel(const QString& model);
+    int elapsed() const { return m_elapsed; }
     QVariantList claudeModels() const;
     QString claudeModel() const { return m_claudeModel; }
     void setClaudeModel(const QString& model);
@@ -63,7 +79,7 @@ public:
     QString voicesError() const { return m_voicesError; }
     bool mock() const { return m_mock; }
 
-    // "anthropic" or "elevenlabs". False (with lastError) if it cannot be kept.
+    // "anthropic", "elevenlabs", "openai" or "google". False (with lastError) if it cannot be kept.
     Q_INVOKABLE bool setKey(const QString& provider, const QString& key);
     Q_INVOKABLE void removeKey(const QString& provider);
     Q_INVOKABLE QString lastError() const { return m_error; }
@@ -79,6 +95,10 @@ public:
     bool generate(const QString& job, const TextRequest& request, std::function<void(const TextResult&)> done);
     bool speak(const QString& text, const QString& voiceId, double speed, const QString& basePath,
                std::function<void(const SpeechResult&)> done);
+    // Generates media: `start` makes the task (with this object's network).
+    using MediaStart = std::function<MediaTask*(QNetworkAccessManager*, QObject*)>;
+    bool generateMedia(const QString& job, const QString& status, MediaStart start,
+                       std::function<void(const MediaResult&)> done);
     void setProgress(double progress, const QString& status);
     void endJob(const QString& status = {});
 
@@ -88,6 +108,7 @@ signals:
     void jobChanged();
     void draftChanged();
     void usageChanged();
+    void elapsedChanged();
     void voicesChanged();
     // A job ended: ok, or why not (empty when cancelled).
     void jobFinished(const QString& job, bool ok, const QString& error);
@@ -110,6 +131,14 @@ private:
     double m_progress = 0;
     QPointer<TextTask> m_textTask;
     QPointer<SpeechTask> m_speechTask;
+    QPointer<MediaTask> m_mediaTask;
+    QString m_imageModel = QStringLiteral("gpt-image-2.5-flare");
+    QTimer m_clock;
+    int m_elapsed = 0;
+    qint64 m_images = 0;
+    qint64 m_imageTokens = 0;
+    qint64 m_videos = 0;
+    double m_soundSeconds = 0;
     qint64 m_inputTokens = 0;
     qint64 m_outputTokens = 0;
     double m_cost = 0;

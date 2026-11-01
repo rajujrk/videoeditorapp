@@ -16,6 +16,7 @@ Rectangle {
     signal importRequested()
     // "photos", "music" or "devices"
     signal importFromRequested(string source)
+    signal cloudSettingsRequested()
     onCurrentTabChanged: searchField.text = ""
 
     readonly property var effectCategories: [
@@ -52,6 +53,7 @@ Rectangle {
     readonly property var tabs: [
         { icon: "media", label: "Media", phase: "" },
         { icon: "audio", label: "Audio", phase: "" },
+        { icon: "generate", label: "Generate", phase: "" },
         { icon: "titles", label: "Titles", phase: "" },
         { icon: "transitions", label: "Transitions", phase: "" },
         { icon: "effects", label: "Effects", phase: "" },
@@ -67,12 +69,24 @@ Rectangle {
         spacing: 0
 
         // Tab rail
-        ColumnLayout {
+        // (Scrolls when the window is too short for every tab, rather than stretching the panel.)
+        Flickable {
+            id: rail
+            objectName: "libraryTabRail"
             Layout.preferredWidth: Theme.size.tabRail
             Layout.maximumWidth: Theme.size.tabRail
             Layout.fillWidth: false
             Layout.fillHeight: true
-            Layout.topMargin: Theme.space.s
+            contentWidth: width
+            contentHeight: railColumn.implicitHeight + Theme.space.s * 2
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
+            ScrollIndicator.vertical: ScrollIndicator {}
+
+        ColumnLayout {
+            id: railColumn
+            y: Theme.space.s
+            width: rail.width
             spacing: Theme.space.xxs
 
             Repeater {
@@ -113,7 +127,7 @@ Rectangle {
                     }
                 }
             }
-            Item { Layout.fillHeight: true }
+        }
         }
 
         Divider { Layout.fillHeight: true; implicitWidth: 1 }
@@ -153,6 +167,7 @@ Rectangle {
                 id: searchField
                 objectName: "librarySearch"
                 visible: library.tabs[library.currentTab].label !== "Captions" && library.tabs[library.currentTab].label !== "Transcript"
+                         && library.tabs[library.currentTab].label !== "Generate"
                 Layout.fillWidth: true
                 Layout.margins: Theme.space.m
                 placeholderText: "Search " + library.tabs[library.currentTab].label.toLowerCase()
@@ -246,6 +261,20 @@ Rectangle {
                 project: library.project
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+            }
+
+            // Made the first time the tab is opened.
+            Loader {
+                id: generatePage
+                active: visible || item !== null
+                visible: library.tabs[library.currentTab].label === "Generate"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                sourceComponent: GeneratePage {
+                    objectName: "generatePage"
+                    project: library.project
+                    onSettingsRequested: library.cloudSettingsRequested()
+                }
             }
 
             AudioPage {
@@ -922,7 +951,20 @@ Rectangle {
                         ToolTip {
                             visible: tileMouse.containsMouse && !tileMouse.drag.active
                             delay: 800
-                            text: "Double-click to add to the timeline, or drag onto a track"
+                            text: (mediaTile.modelData.generated
+                                   ? "Made by " + mediaTile.modelData.generated.model + ": “" + mediaTile.modelData.generated.prompt + "”\n" : "")
+                                  + "Double-click to add to the timeline, or drag onto a track"
+                        }
+                        // Generated media: marked, its prompt and maker kept.
+                        Rectangle {
+                            objectName: "generatedBadge:" + mediaTile.modelData.name
+                            visible: !!mediaTile.modelData.generated
+                            anchors { left: parent.left; bottom: parent.bottom; leftMargin: Theme.space.s; bottomMargin: Theme.space.m + 44 }
+                            width: aiLabel.implicitWidth + Theme.space.s
+                            height: aiLabel.implicitHeight + Theme.space.xxs
+                            radius: Theme.radius.s
+                            color: Theme.color.accent
+                            Text { id: aiLabel; anchors.centerIn: parent; text: "AI"; font: Theme.type.caption; color: "#FFFFFF" }
                         }
 
                         // Proxy: its state, and (on hover) making or removing one.
@@ -1032,7 +1074,7 @@ Rectangle {
             Item {
                 visible: !effectsGrid.visible && !looksGrid.visible && !transitionsGrid.visible && !titlesGrid.visible
                          && !mediaBin.visible && !stickersGrid.visible && !captionsPage.visible && !transcriptPage.visible
-                         && !audioPage.visible
+                         && !audioPage.visible && !generatePage.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
