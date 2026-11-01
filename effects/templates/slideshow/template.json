@@ -1,0 +1,76 @@
+{
+  "id": "tve.template.slideshow",
+  "version": 1,
+  "name": "Slideshow",
+  "category": "minimal",
+  "description": "Six photos or clips crossfading, with a quiet opening line.",
+  "shape": "16:9",
+  "music": {
+    "sound": "tve.music.horizon",
+    "gainDb": -4,
+    "fadeOutBeats": 4
+  },
+  "transition": {
+    "id": "tve.transition.dissolve",
+    "beats": 1
+  },
+  "slots": [
+    {
+      "label": "Photo 1",
+      "beats": 4
+    },
+    {
+      "label": "Photo 2",
+      "beats": 4
+    },
+    {
+      "label": "Photo 3",
+      "beats": 4
+    },
+    {
+      "label": "Photo 4",
+      "beats": 4
+    },
+    {
+      "label": "Photo 5",
+      "beats": 4
+    },
+    {
+      "label": "Photo 6",
+      "beats": 4
+    }
+  ],
+  "texts": [
+    {
+      "label": "Opening line",
+      "fromBeat": 0.5,
+      "beats": 3,
+      "style": {
+        "text": "a few favourite moments",
+        "size": 0.06,
+        "fontFamily": "Avenir Next",
+        "letterSpacing": 0.25,
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "shadow": true,
+        "animationIn": {
+          "preset": "fade",
+          "unit": "whole",
+          "duration": 1.0,
+          "stagger": 0
+        },
+        "animationOut": {
+          "preset": "fade",
+          "unit": "whole",
+          "duration": 0.8,
+          "stagger": 0
+        }
+      }
+    }
+  ],
+  "license": "TVE-Original"
+}

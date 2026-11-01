@@ -1,6 +1,7 @@
 #include "ProjectController.h"
 #include "ThumbnailProvider.h"
 #include "MediaImports.h"
+#include "TemplateLibrary.h"
 #include "TransitionPreviewProvider.h"
 #include "EffectPreviewProvider.h"
 #include "Stickers.h"
@@ -139,6 +140,7 @@ int main(int argc, char* argv[])
     QQmlApplicationEngine engine;
     engine.addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
     engine.addImageProvider(QString::fromLatin1(ImportThumbnailProvider::kId), new ImportThumbnailProvider);
+    engine.addImageProvider(QString::fromLatin1(TemplatePreviewProvider::kId), new TemplatePreviewProvider);
     engine.addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
     engine.addImageProvider(QString::fromLatin1(EffectPreviewProvider::kId), new EffectPreviewProvider);
     engine.addImageProvider(QString::fromLatin1(StickerPreviewProvider::kId), new StickerPreviewProvider);

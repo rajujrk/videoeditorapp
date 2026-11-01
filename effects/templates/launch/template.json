@@ -1,0 +1,102 @@
+{
+  "id": "tve.template.launch",
+  "version": 1,
+  "name": "Launch",
+  "category": "business",
+  "description": "Four steady shots to introduce something new, with a name and a call to action.",
+  "shape": "16:9",
+  "music": {
+    "sound": "tve.music.forward",
+    "gainDb": -4,
+    "fadeOutBeats": 4
+  },
+  "transition": {
+    "id": "tve.transition.slide",
+    "beats": 1
+  },
+  "slots": [
+    {
+      "label": "The product",
+      "beats": 8
+    },
+    {
+      "label": "In use",
+      "beats": 8
+    },
+    {
+      "label": "A detail",
+      "beats": 8
+    },
+    {
+      "label": "The team or logo",
+      "beats": 8
+    }
+  ],
+  "texts": [
+    {
+      "label": "Name",
+      "fromBeat": 1,
+      "beats": 6,
+      "style": {
+        "text": "Introducing Nova",
+        "size": 0.07,
+        "fontFamily": "Avenir Next",
+        "letterSpacing": 0.15,
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "shadow": true,
+        "animationIn": {
+          "preset": "rise",
+          "unit": "word",
+          "duration": 0.8,
+          "stagger": 0.4
+        },
+        "animationOut": {
+          "preset": "fade",
+          "unit": "whole",
+          "duration": 0.6,
+          "stagger": 0
+        }
+      }
+    },
+    {
+      "label": "Call to action",
+      "fromBeat": 25,
+      "beats": 6.5,
+      "style": {
+        "text": "Available now",
+        "size": 0.06,
+        "bold": true,
+        "color": [
+          0.08,
+          0.08,
+          0.1,
+          1
+        ],
+        "shape": {
+          "kind": "pill",
+          "color": [
+            1,
+            1,
+            1,
+            0.92
+          ],
+          "padding": 0.5,
+          "tail": 0.25
+        },
+        "y": 0.32,
+        "animationIn": {
+          "preset": "slide_right",
+          "unit": "whole",
+          "duration": 0.6,
+          "stagger": 0
+        }
+      }
+    }
+  ],
+  "license": "TVE-Original"
+}

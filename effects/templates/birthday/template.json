@@ -1,0 +1,99 @@
+{
+  "id": "tve.template.birthday",
+  "version": 1,
+  "name": "Birthday",
+  "category": "celebration",
+  "description": "Six quick moments, bright music and a big greeting.",
+  "shape": "16:9",
+  "music": {
+    "sound": "tve.music.bright_side",
+    "gainDb": -4,
+    "fadeOutBeats": 4
+  },
+  "transition": {
+    "id": "tve.transition.flash",
+    "beats": 0.5
+  },
+  "slots": [
+    {
+      "label": "The star",
+      "beats": 4
+    },
+    {
+      "label": "Friends",
+      "beats": 4
+    },
+    {
+      "label": "The cake",
+      "beats": 4
+    },
+    {
+      "label": "Candles",
+      "beats": 4
+    },
+    {
+      "label": "Presents",
+      "beats": 4
+    },
+    {
+      "label": "Everyone",
+      "beats": 4
+    }
+  ],
+  "texts": [
+    {
+      "label": "Greeting",
+      "fromBeat": 0.25,
+      "beats": 3.5,
+      "style": {
+        "text": "HAPPY BIRTHDAY, SAM!",
+        "size": 0.1,
+        "fontFamily": "Impact",
+        "color": [
+          1,
+          0.85,
+          0.1,
+          1
+        ],
+        "shadow": true,
+        "animationIn": {
+          "preset": "pop",
+          "unit": "word",
+          "duration": 0.7,
+          "stagger": 0.5
+        },
+        "animationOut": {
+          "preset": "zoom",
+          "unit": "whole",
+          "duration": 0.4,
+          "stagger": 0
+        }
+      }
+    },
+    {
+      "label": "Wish",
+      "fromBeat": 20.25,
+      "beats": 3.5,
+      "style": {
+        "text": "Make a wish",
+        "size": 0.08,
+        "bold": true,
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "shadow": true,
+        "y": 0.28,
+        "animationIn": {
+          "preset": "rise",
+          "unit": "word",
+          "duration": 0.6,
+          "stagger": 0.5
+        }
+      }
+    }
+  ],
+  "license": "TVE-Original"
+}

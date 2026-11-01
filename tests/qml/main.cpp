@@ -14,6 +14,7 @@
 
 #include "ThumbnailProvider.h"
 #include "MediaImports.h"
+#include "TemplateLibrary.h"
 #include "TransitionPreviewProvider.h"
 #include "EffectPreviewProvider.h"
 #include "Stickers.h"
@@ -270,6 +271,8 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("stillsDir"), qEnvironmentVariable("TVE_TEST_STILLS_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("analysisMediaDir"), qEnvironmentVariable("TVE_TEST_ANALYSIS_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("captionFixturesDir"), qEnvironmentVariable("TVE_TEST_CAPTIONS_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("templatesDir"), qEnvironmentVariable("TVE_TEMPLATE_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("templateCacheDir"), qEnvironmentVariable("TVE_TEMPLATE_CACHE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("voicesDir"), qEnvironmentVariable("TVE_VOICE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("keyStoreDir"), qEnvironmentVariable("TVE_KEY_STORE"));
         engine->rootContext()->setContextProperty(QStringLiteral("importFixturesDir"), qEnvironmentVariable("TVE_TEST_IMPORTS_DIR"));
@@ -281,6 +284,7 @@ public slots:
                                                   QFileInfo::exists(QStringLiteral(TVE_SAMPLES_DIR "/models/ggml-base.en-q5_1.bin")));
         engine->addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
         engine->addImageProvider(QString::fromLatin1(ImportThumbnailProvider::kId), new ImportThumbnailProvider);
+        engine->addImageProvider(QString::fromLatin1(TemplatePreviewProvider::kId), new TemplatePreviewProvider);
         engine->addImageProvider(QString::fromLatin1(TransitionPreviewProvider::kId), new TransitionPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(EffectPreviewProvider::kId), new EffectPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(StickerPreviewProvider::kId), new StickerPreviewProvider);
@@ -371,6 +375,13 @@ int main(int argc, char** argv)
     qputenv("TVE_CLOUD_SETTINGS_FILE", (cloudSettings.path() + QStringLiteral("/cloud-settings.json")).toLocal8Bit());
     QTemporaryDir voices;
     qputenv("TVE_VOICE_DIR", QDir(voices.path()).canonicalPath().toLocal8Bit());
+    // Templates: the person's own, the cache of placeholders and music, the favourites.
+    QTemporaryDir templates;
+    qputenv("TVE_TEMPLATE_DIR", QDir(templates.path()).canonicalPath().toLocal8Bit());
+    QTemporaryDir templateCache;
+    qputenv("TVE_TEMPLATE_CACHE_DIR", QDir(templateCache.path()).canonicalPath().toLocal8Bit());
+    QTemporaryDir templateFavorites;
+    qputenv("TVE_TEMPLATE_FAVORITES_FILE", (templateFavorites.path() + QStringLiteral("/template-favorites.json")).toLocal8Bit());
     QTemporaryDir generated;
     qputenv("TVE_GENERATED_DIR", QDir(generated.path()).canonicalPath().toLocal8Bit());
     QTemporaryDir captionFixtures;

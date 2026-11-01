@@ -66,6 +66,12 @@ Item {
             mouseMove(item)
             mouseClick(item)
         }
+        // A control's own click (no mouse): for steps whose mouse click can be lost under the
+        // parallel test load.
+        function press(item) {
+            verify(item.enabled, item.objectName + " is disabled")
+            item.clicked()
+        }
         function claudeRequests(cloud) {
             return cloud.mockRequests().filter((r) => r.path.indexOf("/v1/messages") === 0)
         }
@@ -251,10 +257,10 @@ Item {
             withKeys(p)
             compare(p.importSubtitles("file://" + captionFixturesDir + "/talk.srt"), true)
             const times = captionTimes(p)
-            click(settled(f.editor, "libraryTab:Captions"))
+            press(settled(f.editor, "libraryTab:Captions"))
             const language = settled(f.editor, "translateLanguage")
             language.currentIndex = language.model.indexOf("French")
-            click(settled(f.editor, "translateCaptions"))
+            press(settled(f.editor, "translateCaptions"))
             compare(p.cloud.job, "translate")
             tryCompare(p.cloud, "job", "", 5000)
             compare(captionTexts(p), ["[French] We walked along the beach at dawn.",
@@ -329,8 +335,8 @@ Item {
             const english = p.cloud.voices.find((v) => v.provider === "system" && v.language.indexOf("en") === 0)
             if (!english)
                 skip("No English system voice on this Mac")
-            click(settled(f.editor, "libraryTab:Audio"))
-            click(settled(f.editor, "audioSection:voice"))
+            press(settled(f.editor, "libraryTab:Audio"))
+            press(settled(f.editor, "audioSection:voice"))
             const pane = settled(f.editor, "voicePane")
             pane.voice = english.id
             settled(pane, "voiceText").text = "One small step for the edit."

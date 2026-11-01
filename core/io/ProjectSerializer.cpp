@@ -25,7 +25,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GeneratedBy, provider, model, ki
 // Fields added after schema 1 shipped default when absent, so older files still load.
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MediaItem, id, path, duration, hasVideo, hasAudio, width, height,
                                                 frameRate, audioSampleRate, audioChannels, still, alpha, lottie,
-                                                fingerprint, generated)
+                                                fingerprint, generated, placeholder)
 NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
     {BlendMode::Normal, "normal"},
     {BlendMode::Multiply, "multiply"},
@@ -195,10 +195,13 @@ NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Marker, id, time, duration, color, note, chapter)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Sequence, id, name, tracks)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TemplateSlot, clipId, label, kind, filled)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TemplateText, clipId, label)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TemplateInfo, id, name, mediaSlots, texts, musicClipId)
 
 nlohmann::json projectToJson(const Project& project)
 {
-    return {
+    nlohmann::json json{
         {"schema", kProjectSchemaName},
         {"version", kProjectSchemaVersion},
         {"nextId", project.nextId()},
@@ -208,6 +211,9 @@ nlohmann::json projectToJson(const Project& project)
         {"markers", project.markers},
         {"sequences", project.sequences},
     };
+    if (project.templateInfo)
+        json["template"] = *project.templateInfo;
+    return json;
 }
 
 Project projectFromJson(const nlohmann::json& json)
@@ -227,6 +233,8 @@ Project projectFromJson(const nlohmann::json& json)
         json.at("markers").get_to(project.markers);
     if (json.contains("sequences"))
         json.at("sequences").get_to(project.sequences);
+    if (json.contains("template"))
+        project.templateInfo = json.at("template").get<TemplateInfo>();
     project.setNextId(json.at("nextId").get<Id>());
     return project;
 }

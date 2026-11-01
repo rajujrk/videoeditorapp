@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), and generated pictures, stickers, video, music and sound effects (16b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), and templates in six shapes (17a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -246,6 +246,19 @@ playhead** puts it on an audio track with captions timed to its words, as one un
 kept in a `Voices` folder beside the project (`TVE_VOICE_DIR`). Busy or rate-limited services are
 tried again up to three times. `TVE_CLOUD_MOCK=1` runs everything against a local stand-in for both
 services (no keys, nothing sent).
+
+**Templates.** The library's **Templates** tab has eight original templates — Postcard, Birthday,
+Launch, Story drop, Memories, Recipe, Game day and Slideshow — each a few media slots, titles and a
+piece of our own music, with the cuts on the beat. Previews play when you point at them; star the
+ones you like (**Favourites**). Choose one, pick its shape — 16:9, 9:16, 1:1, 4:3, 3:4 or 21:9 — and
+**Use template** starts a new project from it. The tab then shows the storyboard: **Choose** what
+goes in each slot from the media bin (or import a file) — it is cropped to fill the frame, and a
+video that is too short is slowed to fit — move where a video starts, change the words, and pick
+another piece of music or start it later. Every change can be undone. **Save as template…** turns
+your own project into a template: the pictures you mark become slots, the titles you mark stay
+editable, the sound you mark is the music, and everything else is copied in; your templates are kept
+in `~/Library/Application Support/TechieVideoEditor/Templates` (`TVE_TEMPLATE_DIR`) as `.tvet`
+folders and listed under **Mine**.
 
 **Generate (your own keys).** The library's **Generate** tab makes media from a description:
 **Picture** and **Sticker** with OpenAI GPT Image 2.5 (square, landscape or portrait; draft, good or

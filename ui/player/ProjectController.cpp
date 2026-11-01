@@ -33,6 +33,8 @@
 #include "encode/WavWriter.h"
 #include "cloud/CloudFeatures.h"
 #include "cloud/StickerCutout.h"
+#include "commands/TemplateCommands.h"
+#include "model/Template.h"
 
 #include <nlohmann/json.hpp>
 
@@ -644,6 +646,7 @@ ProjectController::ProjectController(QObject* parent)
     m_audioOutput->setSource(m_playback->audio(), &m_playback->clock());
     m_soundLibrary = new SoundLibrary(this);
     m_cloud = new CloudServices(this);
+    m_templates = new TemplateLibrary(this);
     m_imports = new MediaImports(this);
     connect(m_imports, &MediaImports::fetched, this, [this](const QStringList& paths, const QStringList& errors) {
         QList<QUrl> files;
@@ -856,6 +859,7 @@ QVariantList ProjectController::media() const
             {QStringLiteral("sticker"), item.lottie},
             {QStringLiteral("alpha"), item.alpha},
             {QStringLiteral("missing"), missing.contains(item.id)},
+            {QStringLiteral("placeholder"), item.placeholder},
             {QStringLiteral("generated"),
              item.generated ? QVariant(QVariantMap{{QStringLiteral("provider"), QString::fromStdString(item.generated->provider)},
                                                    {QStringLiteral("model"), QString::fromStdString(item.generated->model)},
@@ -4113,6 +4117,192 @@ bool ProjectController::placeVoice(const SpeechResult& speech, bool captions)
         return false;
     setSelectedClip(double(raw->clipId()));
     return true;
+}
+
+// --- Templates ---
+
+QVariantMap ProjectController::templateInfo() const
+{
+    if (!m_project.templateInfo)
+        return {};
+    const TemplateInfo& info = *m_project.templateInfo;
+    const auto clipMedia = [this](Id clipId) -> std::pair<const Clip*, const MediaItem*> {
+        const Clip* clip = findClip(clipId);
+        return {clip, clip ? m_project.findMedia(clip->mediaId) : nullptr};
+    };
+    QVariantList slotList;
+    for (std::size_t i = 0; i < info.mediaSlots.size(); ++i) {
+        const TemplateSlot& slot = info.mediaSlots[i];
+        const auto [clip, media] = clipMedia(slot.clipId);
+        if (!clip)
+            continue;
+        slotList << QVariantMap{{QStringLiteral("index"), int(i)},
+                                {QStringLiteral("label"), QString::fromStdString(slot.label)},
+                                {QStringLiteral("kind"), QString::fromStdString(slot.kind)},
+                                {QStringLiteral("filled"), slot.filled},
+                                {QStringLiteral("clipId"), double(slot.clipId)},
+                                {QStringLiteral("start"), seconds(clip->start)},
+                                {QStringLiteral("duration"), seconds(clip->duration)},
+                                {QStringLiteral("path"), media ? QString::fromStdString(media->path) : QString()},
+                                {QStringLiteral("name"), media ? mediaName(media->path) : QString()},
+                                {QStringLiteral("still"), media && media->still},
+                                {QStringLiteral("sourceIn"), seconds(clip->sourceIn)},
+                                {QStringLiteral("speed"), clip->speed},
+                                {QStringLiteral("mediaDuration"), media ? seconds(media->duration) : 0.0}};
+    }
+    QVariantList textList;
+    for (std::size_t i = 0; i < info.texts.size(); ++i) {
+        const Clip* clip = findClip(info.texts[i].clipId);
+        if (!clip || !clip->text)
+            continue;
+        textList << QVariantMap{{QStringLiteral("index"), int(i)},
+                                {QStringLiteral("label"), QString::fromStdString(info.texts[i].label)},
+                                {QStringLiteral("clipId"), double(info.texts[i].clipId)},
+                                {QStringLiteral("text"), QString::fromStdString(clip->text->text)}};
+    }
+    QVariantMap music;
+    if (const auto [clip, media] = clipMedia(info.musicClipId); clip && media)
+        music = {{QStringLiteral("clipId"), double(clip->id)},
+                 {QStringLiteral("path"), QString::fromStdString(media->path)},
+                 {QStringLiteral("name"), mediaName(media->path)},
+                 {QStringLiteral("sourceIn"), seconds(clip->sourceIn)},
+                 {QStringLiteral("duration"), seconds(clip->duration)},
+                 {QStringLiteral("mediaDuration"), seconds(media->duration)}};
+    return {{QStringLiteral("id"), QString::fromStdString(info.id)},
+            {QStringLiteral("name"), QString::fromStdString(info.name)},
+            {QStringLiteral("slots"), slotList},
+            {QStringLiteral("texts"), textList},
+            {QStringLiteral("music"), music}};
+}
+
+bool ProjectController::newFromTemplate(const QString& templateId, const QString& shape)
+{
+    QString error;
+    auto project = TemplateLibrary::build(templateId, shape, &error);
+    if (!project) {
+        reportError(error);
+        return false;
+    }
+    resetProject(std::move(*project), {});
+    m_canvasChosen = true;
+    return true;
+}
+
+bool ProjectController::fillTemplateSlot(int index, double mediaId, double fromSeconds)
+{
+    if (!m_project.templateInfo || index < 0 || std::size_t(index) >= m_project.templateInfo->mediaSlots.size()) {
+        reportError(QStringLiteral("No such slot"));
+        return false;
+    }
+    const TemplateSlot& slot = m_project.templateInfo->mediaSlots[std::size_t(index)];
+    const Clip* clip = findClip(slot.clipId);
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    if (!clip || !media || !media->hasVideo) {
+        reportError(QStringLiteral("Choose a picture or a video for the slot"));
+        return false;
+    }
+    if ((slot.kind == "video" && media->still) || (slot.kind == "photo" && !media->still)) {
+        reportError(slot.kind == "video" ? QStringLiteral("This slot takes a video") : QStringLiteral("This slot takes a photo"));
+        return false;
+    }
+    // From that far in (as far as leaves the slot full), slowed if it is still too short.
+    Ticks from = 0;
+    double speed = 1.0;
+    if (!media->still) {
+        from = std::clamp(ticks(fromSeconds), Ticks(0), std::max<Ticks>(0, media->duration - clip->duration));
+        speed = fillSpeed(media->duration - from, clip->duration);
+    }
+    const ClipCrop crop = fillCrop(media->width, media->height, m_project.settings.width, m_project.settings.height);
+    return apply(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, from, speed, crop, std::size_t(index), "Fill Slot"));
+}
+
+bool ProjectController::setTemplateSlotStart(int index, double fromSeconds)
+{
+    if (!m_project.templateInfo || index < 0 || std::size_t(index) >= m_project.templateInfo->mediaSlots.size())
+        return false;
+    const Clip* clip = findClip(m_project.templateInfo->mediaSlots[std::size_t(index)].clipId);
+    return clip && fillTemplateSlot(index, double(clip->mediaId), fromSeconds);
+}
+
+bool ProjectController::setTemplateText(int index, const QString& text)
+{
+    if (!m_project.templateInfo || index < 0 || std::size_t(index) >= m_project.templateInfo->texts.size())
+        return false;
+    return setClipText(double(m_project.templateInfo->texts[std::size_t(index)].clipId), {{QStringLiteral("text"), text}});
+}
+
+bool ProjectController::setTemplateMusic(double mediaId)
+{
+    if (!m_project.templateInfo || !findClip(m_project.templateInfo->musicClipId)) {
+        reportError(QStringLiteral("This project has no template music"));
+        return false;
+    }
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    if (!media || !media->hasAudio) {
+        reportError(QStringLiteral("Choose something with sound"));
+        return false;
+    }
+    const Clip* clip = findClip(m_project.templateInfo->musicClipId);
+    if (media->duration < clip->duration) {
+        reportError(QStringLiteral("%1 is shorter than the video").arg(mediaName(media->path)));
+        return false;
+    }
+    return apply(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, 0, 1.0, std::nullopt, std::nullopt, "Replace Music"));
+}
+
+bool ProjectController::setTemplateMusicStart(double fromSeconds)
+{
+    if (!m_project.templateInfo)
+        return false;
+    const Clip* clip = findClip(m_project.templateInfo->musicClipId);
+    const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+    if (!media)
+        return false;
+    const Ticks from = std::clamp(ticks(fromSeconds), Ticks(0), std::max<Ticks>(0, media->duration - clip->duration));
+    return apply(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, from, 1.0, std::nullopt, std::nullopt,
+                                                            "Move Music"));
+}
+
+QVariantList ProjectController::templateCandidates() const
+{
+    QVariantList list;
+    for (auto track = m_project.tracks.rbegin(); track != m_project.tracks.rend(); ++track)
+        for (const Clip& clip : track->clips) {
+            const MediaItem* media = m_project.findMedia(clip.mediaId);
+            QString kind;
+            if (clip.text)
+                kind = QStringLiteral("title");
+            else if (media && media->hasVideo)
+                kind = QStringLiteral("picture");
+            else if (media && media->hasAudio)
+                kind = QStringLiteral("sound");
+            if (kind.isEmpty())
+                continue;
+            list << QVariantMap{{QStringLiteral("clipId"), double(clip.id)},
+                                {QStringLiteral("kind"), kind},
+                                {QStringLiteral("label"), clip.text ? QString::fromStdString(clip.text->text).section(QLatin1Char('\n'), 0, 0)
+                                                                    : mediaName(media->path)},
+                                {QStringLiteral("track"), QString::fromStdString(track->name)},
+                                {QStringLiteral("start"), seconds(clip.start)},
+                                {QStringLiteral("duration"), seconds(clip.duration)}};
+        }
+    return list;
+}
+
+QString ProjectController::saveAsTemplate(const QString& name, const QString& category, const QVariantList& slotClips,
+                                          const QVariantList& textClips, double musicClip)
+{
+    std::vector<Id> slotIds, textIds;
+    for (const QVariant& id : slotClips)
+        slotIds.push_back(toId(id.toDouble()));
+    for (const QVariant& id : textClips)
+        textIds.push_back(toId(id.toDouble()));
+    QString error;
+    const QString id = m_templates->save(m_project, name, category, slotIds, textIds,
+                                         musicClip > 0 ? toId(musicClip) : kNoId, &error);
+    if (id.isEmpty())
+        reportError(error);
+    return id;
 }
 
 // --- AI: generated media ---

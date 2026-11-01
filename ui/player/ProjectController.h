@@ -3,6 +3,7 @@
 #include "Exporter.h"
 #include "ProxyManager.h"
 #include "MediaImports.h"
+#include "TemplateLibrary.h"
 #include "cloud/CloudServices.h"
 #include "SoundLibrary.h"
 #include "SpeechModels.h"
@@ -223,6 +224,12 @@ class ProjectController : public QObject {
     Q_PROPERTY(QStringList translationLanguages READ translationLanguages CONSTANT)
     Q_PROPERTY(QString voicesDirectory READ voicesDirectory NOTIFY projectChanged)
     Q_PROPERTY(QString generatedDirectory READ generatedDirectory NOTIFY projectChanged)
+    // Templates: the library, and the project's template parts when it was made from one —
+    // {id, name, slots [{index, label, kind, filled, clipId, start, duration, path, name,
+    // still, sourceIn, speed, mediaDuration}], texts [{index, label, clipId, text}], music
+    // {clipId, path, name, sourceIn, duration, mediaDuration}} (empty otherwise).
+    Q_PROPERTY(TemplateLibrary* templates READ templates CONSTANT)
+    Q_PROPERTY(QVariantMap templateInfo READ templateInfo NOTIFY projectChanged)
 
 public:
     explicit ProjectController(QObject* parent = nullptr);
@@ -340,6 +347,8 @@ public:
     QStringList translationLanguages() const;
     QString voicesDirectory() const;
     QString generatedDirectory() const;
+    TemplateLibrary* templates() const { return m_templates; }
+    QVariantMap templateInfo() const;
     QString cameraAccessName() const;
 
     // Project lifecycle
@@ -589,6 +598,23 @@ public:
     // media id, aspect "16:9"/"9:16", resolution) and sound (ElevenLabs; options: kind
     // "music"/"sfx", seconds, instrumental, loop; placed at the playhead). cloud.jobFinished
     // says how it ended.
+    // A new project from a template in a shape ("16:9", "9:16", "1:1", "4:3", "3:4", "21:9";
+    // "" for its own), replacing this one.
+    Q_INVOKABLE bool newFromTemplate(const QString& templateId, const QString& shape = {});
+    // Puts media in a slot (cropped to fill the frame; a short video slowed to fill the
+    // slot), from `fromSeconds` into it; the same slot's start moved; a text changed; the
+    // music replaced or started later. Each one undo step.
+    Q_INVOKABLE bool fillTemplateSlot(int index, double mediaId, double fromSeconds = 0);
+    Q_INVOKABLE bool setTemplateSlotStart(int index, double fromSeconds);
+    Q_INVOKABLE bool setTemplateText(int index, const QString& text);
+    Q_INVOKABLE bool setTemplateMusic(double mediaId);
+    Q_INVOKABLE bool setTemplateMusicStart(double fromSeconds);
+    // What could be marked when saving as a template: [{clipId, kind "picture"/"title"/
+    // "sound", label, start, duration}].
+    Q_INVOKABLE QVariantList templateCandidates() const;
+    // Saves this project as one of the person's templates; its id, or "" (with an error).
+    Q_INVOKABLE QString saveAsTemplate(const QString& name, const QString& category, const QVariantList& slotClips,
+                                       const QVariantList& textClips, double musicClip);
     Q_INVOKABLE bool generateImage(const QString& prompt, const QVariantMap& options = {});
     Q_INVOKABLE bool generateVideo(const QString& prompt, const QVariantMap& options = {});
     Q_INVOKABLE bool generateSound(const QString& prompt, const QVariantMap& options = {});
@@ -905,6 +931,7 @@ private:
     SoundLibrary* m_soundLibrary = nullptr;
     MediaImports* m_imports = nullptr;
     CloudServices* m_cloud = nullptr;
+    TemplateLibrary* m_templates = nullptr;
     // The last voice made (to add what was just listened to without speaking it again).
     struct SpokenVoice {
         QString key; // text, voice and speed

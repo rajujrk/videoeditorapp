@@ -61,7 +61,7 @@ Rectangle {
         { icon: "stickers", label: "Stickers", phase: "" },
         { icon: "captions", label: "Captions", phase: "" },
         { icon: "transcript", label: "Transcript", phase: "" },
-        { icon: "templates", label: "Templates", phase: "Template mode — Phase 4" }
+        { icon: "templates", label: "Templates", phase: "" }
     ]
 
     RowLayout {
@@ -167,7 +167,7 @@ Rectangle {
                 id: searchField
                 objectName: "librarySearch"
                 visible: library.tabs[library.currentTab].label !== "Captions" && library.tabs[library.currentTab].label !== "Transcript"
-                         && library.tabs[library.currentTab].label !== "Generate"
+                         && library.tabs[library.currentTab].label !== "Generate" && library.tabs[library.currentTab].label !== "Templates"
                 Layout.fillWidth: true
                 Layout.margins: Theme.space.m
                 placeholderText: "Search " + library.tabs[library.currentTab].label.toLowerCase()
@@ -263,7 +263,18 @@ Rectangle {
                 Layout.fillHeight: true
             }
 
-            // Made the first time the tab is opened.
+            // Made the first time the tab is opened (they read the whole media list).
+            Loader {
+                id: templatesPage
+                active: visible || item !== null
+                visible: library.tabs[library.currentTab].label === "Templates"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                sourceComponent: TemplatesPage {
+                    objectName: "templatesPage"
+                    project: library.project
+                }
+            }
             Loader {
                 id: generatePage
                 active: visible || item !== null
@@ -1074,7 +1085,7 @@ Rectangle {
             Item {
                 visible: !effectsGrid.visible && !looksGrid.visible && !transitionsGrid.visible && !titlesGrid.visible
                          && !mediaBin.visible && !stickersGrid.visible && !captionsPage.visible && !transcriptPage.visible
-                         && !audioPage.visible && !generatePage.visible
+                         && !audioPage.visible && !generatePage.visible && !templatesPage.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 

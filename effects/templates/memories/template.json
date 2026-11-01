@@ -1,0 +1,100 @@
+{
+  "id": "tve.template.memories",
+  "version": 1,
+  "name": "Memories",
+  "category": "memories",
+  "description": "Six gentle moments fading through white, with a soft title.",
+  "shape": "16:9",
+  "music": {
+    "sound": "tve.music.still_water",
+    "gainDb": -4,
+    "fadeOutBeats": 4
+  },
+  "transition": {
+    "id": "tve.transition.dip_to_white",
+    "beats": 1
+  },
+  "slots": [
+    {
+      "label": "Where it began",
+      "beats": 4
+    },
+    {
+      "label": "Together",
+      "beats": 4
+    },
+    {
+      "label": "A good day",
+      "beats": 4
+    },
+    {
+      "label": "A laugh",
+      "beats": 4
+    },
+    {
+      "label": "Quiet moment",
+      "beats": 4
+    },
+    {
+      "label": "Now",
+      "beats": 4
+    }
+  ],
+  "texts": [
+    {
+      "label": "Title",
+      "fromBeat": 0.5,
+      "beats": 3,
+      "style": {
+        "text": "Our Year",
+        "size": 0.12,
+        "fontFamily": "Snell Roundhand",
+        "color": [
+          1,
+          0.93,
+          0.8,
+          1
+        ],
+        "shadow": true,
+        "animationIn": {
+          "preset": "blur",
+          "unit": "whole",
+          "duration": 1.4,
+          "stagger": 0
+        },
+        "animationOut": {
+          "preset": "fade",
+          "unit": "whole",
+          "duration": 1.0,
+          "stagger": 0
+        }
+      }
+    },
+    {
+      "label": "Thank you",
+      "fromBeat": 20.5,
+      "beats": 3.5,
+      "style": {
+        "text": "Thank you for every moment",
+        "size": 0.06,
+        "italic": true,
+        "fontFamily": "Georgia",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "shadow": true,
+        "y": 0.3,
+        "animationIn": {
+          "preset": "fade",
+          "unit": "whole",
+          "duration": 1.0,
+          "stagger": 0
+        }
+      }
+    }
+  ],
+  "license": "TVE-Original"
+}

@@ -1,0 +1,166 @@
+{
+  "id": "tve.template.recipe",
+  "version": 1,
+  "name": "Recipe",
+  "category": "food",
+  "description": "Four steps, each with its own label.",
+  "shape": "16:9",
+  "music": {
+    "sound": "tve.music.good_morning",
+    "gainDb": -4,
+    "fadeOutBeats": 4
+  },
+  "transition": {
+    "id": "tve.transition.wipe",
+    "beats": 1
+  },
+  "slots": [
+    {
+      "label": "Ingredients",
+      "beats": 8
+    },
+    {
+      "label": "Step one",
+      "beats": 8
+    },
+    {
+      "label": "Step two",
+      "beats": 8
+    },
+    {
+      "label": "The dish",
+      "beats": 8
+    }
+  ],
+  "texts": [
+    {
+      "label": "Step 1",
+      "fromBeat": 0.5,
+      "beats": 7,
+      "style": {
+        "text": "1 · Gather everything",
+        "size": 0.05,
+        "bold": true,
+        "color": [
+          0.08,
+          0.08,
+          0.1,
+          1
+        ],
+        "shape": {
+          "kind": "rounded",
+          "color": [
+            1,
+            0.96,
+            0.88,
+            0.95
+          ],
+          "padding": 0.45,
+          "tail": 0.25
+        },
+        "x": -0.22,
+        "y": 0.34,
+        "animationIn": {
+          "preset": "slide_right",
+          "unit": "whole",
+          "duration": 0.5,
+          "stagger": 0
+        }
+      }
+    },
+    {
+      "label": "Step 2",
+      "fromBeat": 8.5,
+      "beats": 7,
+      "style": {
+        "text": "2 · Chop and mix",
+        "size": 0.05,
+        "bold": true,
+        "color": [
+          0.08,
+          0.08,
+          0.1,
+          1
+        ],
+        "shape": {
+          "kind": "rounded",
+          "color": [
+            1,
+            0.96,
+            0.88,
+            0.95
+          ],
+          "padding": 0.45,
+          "tail": 0.25
+        },
+        "x": -0.22,
+        "y": 0.34,
+        "animationIn": {
+          "preset": "slide_right",
+          "unit": "whole",
+          "duration": 0.5,
+          "stagger": 0
+        }
+      }
+    },
+    {
+      "label": "Step 3",
+      "fromBeat": 16.5,
+      "beats": 7,
+      "style": {
+        "text": "3 · Into the oven",
+        "size": 0.05,
+        "bold": true,
+        "color": [
+          0.08,
+          0.08,
+          0.1,
+          1
+        ],
+        "shape": {
+          "kind": "rounded",
+          "color": [
+            1,
+            0.96,
+            0.88,
+            0.95
+          ],
+          "padding": 0.45,
+          "tail": 0.25
+        },
+        "x": -0.22,
+        "y": 0.34,
+        "animationIn": {
+          "preset": "slide_right",
+          "unit": "whole",
+          "duration": 0.5,
+          "stagger": 0
+        }
+      }
+    },
+    {
+      "label": "Finish",
+      "fromBeat": 24.5,
+      "beats": 7,
+      "style": {
+        "text": "Enjoy!",
+        "size": 0.1,
+        "fontFamily": "Snell Roundhand",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "shadow": true,
+        "animationIn": {
+          "preset": "pop",
+          "unit": "word",
+          "duration": 0.6,
+          "stagger": 0
+        }
+      }
+    }
+  ],
+  "license": "TVE-Original"
+}
