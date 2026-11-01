@@ -264,13 +264,16 @@ struct MediaWriter::Impl {
             break;
         }
         // ProRes: VideoToolbox's encoder where the system has one, else FFmpeg's own.
-        for (int attempt = 0; attempt < 2; ++attempt) {
+        // With transparency kept, FFmpeg's own (its 4444 has an alpha channel).
+        const bool withAlpha = s.codec == VideoCodec::ProRes && s.proRes == ProResProfile::P4444 && s.alpha;
+        for (int attempt = withAlpha ? 1 : 0; attempt < 2; ++attempt) {
             if (attempt == 1) {
                 if (s.codec != VideoCodec::ProRes)
                     break;
                 avcodec_free_context(&video);
                 codec = avcodec_find_encoder_by_name("prores_ks");
-                pixels = s.proRes == ProResProfile::P4444 ? AV_PIX_FMT_YUV444P10LE : AV_PIX_FMT_YUV422P10LE;
+                pixels = withAlpha ? AV_PIX_FMT_YUVA444P10LE
+                       : s.proRes == ProResProfile::P4444 ? AV_PIX_FMT_YUV444P10LE : AV_PIX_FMT_YUV422P10LE;
             }
             if (!codec)
                 continue;
@@ -298,6 +301,8 @@ struct MediaWriter::Impl {
             }
             if (s.codec == VideoCodec::ProRes)
                 av_opt_set(video->priv_data, "profile", proResName(s.proRes), 0);
+            if (withAlpha)
+                av_opt_set_int(video->priv_data, "alpha_bits", 16, 0);
             if (avcodec_open2(video, codec, nullptr) >= 0)
                 break;
             avcodec_free_context(&video);
@@ -319,7 +324,8 @@ struct MediaWriter::Impl {
         videoFrame->color_trc = AVCOL_TRC_BT709;
         if (av_frame_get_buffer(videoFrame, 0) < 0)
             return fail("out of memory");
-        if (video->pix_fmt == AV_PIX_FMT_YUV422P10LE || video->pix_fmt == AV_PIX_FMT_YUV444P10LE) {
+        if (video->pix_fmt == AV_PIX_FMT_YUV422P10LE || video->pix_fmt == AV_PIX_FMT_YUV444P10LE
+            || video->pix_fmt == AV_PIX_FMT_YUVA444P10LE) {
             converter = sws_getContext(s.width, s.height, AV_PIX_FMT_RGBA, s.width, s.height, video->pix_fmt,
                                        SWS_BICUBIC, nullptr, nullptr, nullptr);
             if (!converter)

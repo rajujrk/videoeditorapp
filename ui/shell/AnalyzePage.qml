@@ -737,6 +737,43 @@ ScrollView {
             }
         }
 
+        // Following a drawn path (any clip with a picture, while a drawing is on screen)
+        Section {
+            id: followPath
+            objectName: "followPathSection"
+            readonly property var choices: {
+                page.project.undoText // new paths
+                return page.hasClip && page.clipInfo.isAdjustment !== true && page.clipInfo.trackKind === "video"
+                        && page.clipInfo.isDrawing !== true ? page.project.pathsToFollow(page.clipInfo.id) : []
+            }
+            visible: choices.length > 0
+            Layout.fillWidth: true
+            title: "Follow a drawn path"
+
+            ComboBox {
+                id: pathChoice
+                objectName: "pathChoice"
+                Layout.fillWidth: true
+                model: followPath.choices
+                textRole: "label"
+            }
+            ToggleSwitch {
+                id: pathTurn
+                objectName: "pathTurn"
+                text: "Turn along it"
+            }
+            TextButton {
+                objectName: "followPath"
+                text: "Follow"
+                variant: "primary"
+                tip: "Moves this clip along the path from its start to its end over the clip's length, as keyframes"
+                onClicked: {
+                    const c = followPath.choices[pathChoice.currentIndex]
+                    page.project.followPath(page.clipInfo.id, c.clipId, c.index, { turn: pathTurn.checked })
+                }
+            }
+        }
+
         // Pauses
         Section {
             id: pauses

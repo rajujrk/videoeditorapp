@@ -1,5 +1,7 @@
 #include "TitleRenderer.h"
 
+#include "model/Paths.h"
+
 #include <QFontDatabase>
 #include <QJsonDocument>
 #include <QUrl>
@@ -51,9 +53,47 @@ struct TitleLayout {
 
 // The text laid out on the canvas, character by character: wrapped at 90 % of the width
 // (not at all for a crawl), aligned, the block centred vertically.
+// Text on a path: the one line of characters moved along the path (by the alignment: from
+// its start, centred on it, or ending at its end), each turned to the path's direction.
+void bendAlong(TitleLayout& layout, const tve::ClipText& text, QSize canvas, double baseline)
+{
+    const double w = canvas.width(), h = canvas.height();
+    const double aspect = w / h;
+    const double length = tve::lineLength(text.path, aspect) * h; // pixels
+    if (layout.glyphs.empty() || length <= 0)
+        return;
+    const double first = layout.glyphs.front().box.left();
+    const double width = layout.glyphs.back().box.right() - first;
+    const double start = text.alignment == tve::TextAlignment::Left    ? 0.0
+                       : text.alignment == tve::TextAlignment::Right ? length - width
+                                                                     : (length - width) / 2.0;
+    layout.bounds = QRectF();
+    for (QRectF& word : layout.words)
+        word = QRectF();
+    for (QRectF& line : layout.lines)
+        line = QRectF();
+    for (Glyph& glyph : layout.glyphs) {
+        const double centre = glyph.box.center().x();
+        const tve::PathPoint at = tve::pointAlong(text.path, (start + centre - first) / length, aspect);
+        QTransform move;
+        move.translate(at.x * w, at.y * h);
+        move.rotate(at.angle);
+        move.translate(-centre, -baseline);
+        glyph.path = move.map(glyph.path);
+        glyph.box = move.mapRect(glyph.box);
+        layout.bounds = layout.bounds.united(glyph.box);
+        if (glyph.word >= 0 && std::size_t(glyph.word) < layout.words.size())
+            layout.words[std::size_t(glyph.word)] = layout.words[std::size_t(glyph.word)].united(glyph.box);
+        if (std::size_t(glyph.line) < layout.lines.size())
+            layout.lines[std::size_t(glyph.line)] = layout.lines[std::size_t(glyph.line)].united(glyph.box);
+    }
+}
+
 TitleLayout layoutText(const tve::ClipText& text, const QFont& font, QSize canvas)
 {
-    const bool wrap = text.scroll != tve::TextScroll::CrawlLeft;
+    // On a path: one line, unwrapped, bent along it afterwards.
+    const bool onPath = text.path.size() >= 2;
+    const bool wrap = text.scroll != tve::TextScroll::CrawlLeft && !onPath;
     const double wrapWidth = wrap ? canvas.width() * 0.9 : 1e7;
     const double left = canvas.width() * 0.05;
     const QFontMetricsF metrics(font);
@@ -64,7 +104,10 @@ TitleLayout layoutText(const tve::ClipText& text, const QFont& font, QSize canva
         double width;
     };
     std::vector<Line> lines;
-    for (const QString& paragraph : QString::fromStdString(text.text).split(QLatin1Char('\n'))) {
+    QString all = QString::fromStdString(text.text);
+    if (onPath)
+        all.replace(QLatin1Char('\n'), QLatin1Char(' '));
+    for (const QString& paragraph : all.split(QLatin1Char('\n'))) {
         QTextLayout layout(paragraph, font);
         QTextOption option;
         option.setWrapMode(wrap ? QTextOption::WordWrap : QTextOption::NoWrap);
@@ -130,6 +173,10 @@ TitleLayout layoutText(const tve::ClipText& text, const QFont& font, QSize canva
             result.bounds = result.bounds.united(glyph.box);
             result.glyphs.push_back(std::move(glyph));
             i += length - 1;
+        }
+        if (onPath) {
+            bendAlong(result, text, canvas, baseline);
+            return result;
         }
         baseline += lineHeight;
     }
@@ -574,6 +621,12 @@ QVariantMap textMap(const tve::ClipText& text)
         {QStringLiteral("captionMotion"), QString::fromLatin1(kCaptionMotions[int(text.captionMotion)])},
         {QStringLiteral("highlightColor"), colorList(text.highlightColor)},
         {QStringLiteral("wordCount"), int(text.words.size())},
+        {QStringLiteral("path"), [&] {
+             QVariantList points;
+             for (const auto& [x, y] : text.path)
+                 points << QVariant(QVariantList{x, y});
+             return points;
+         }()}
     };
 }
 
@@ -633,6 +686,20 @@ tve::ClipText textFrom(const QVariantMap& changes, tve::ClipText text)
         text.captionMotion = tve::CaptionMotion(indexOf(kCaptionMotions, get("captionMotion").toString(), int(text.captionMotion)));
     if (has("highlightColor"))
         text.highlightColor = colorFrom(get("highlightColor"), text.highlightColor);
+    // Text on a path: points ([x, y] canvas fractions), or a preset ("arc", "dip", "wave",
+    // "circle"; anything else straightens it).
+    if (has("path")) {
+        text.path.clear();
+        for (const QVariant& point : get("path").toList()) {
+            const QVariantList xy = point.toList();
+            if (xy.size() == 2 && text.path.size() < tve::kMaxPathPoints)
+                text.path.push_back({std::clamp(xy[0].toDouble(), -1.0, 2.0), std::clamp(xy[1].toDouble(), -1.0, 2.0)});
+        }
+        if (text.path.size() < 2)
+            text.path.clear();
+    }
+    if (has("pathPreset"))
+        text.path = tve::presetPath(get("pathPreset").toString().toStdString());
     return text;
 }
 

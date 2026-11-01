@@ -434,6 +434,13 @@ Make it for me: an instant video being set up (style cards show their look), and
 ![Shorts, dark](images/shorts-dark.png)
 ![Shorts, light](images/shorts-light.png)
 
+Drawing on the player — the tool strip over the picture, a brush stroke, an arrow and a ring, a title along an arc and the Drawing section of the inspector — and a warm light leak laid over a cut from the Transitions tab's Overlays, dark and light:
+
+![Drawing, dark](images/drawing-dark.png)
+![Drawing, light](images/drawing-light.png)
+![Overlays, dark](images/overlays-dark.png)
+![Overlays, light](images/overlays-light.png)
+
 The Generate tab choosing a first and last picture for a video, after a sticker was placed over the picture, dark and light:
 
 ![Generate, dark](images/generate-dark.png)
@@ -446,7 +453,7 @@ A voice added at the playhead with captions timed to its words, dark and light:
 
 ### Icons
 
-54 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+55 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.

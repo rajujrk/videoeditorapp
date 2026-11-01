@@ -216,6 +216,9 @@ struct ClipText {
     std::vector<CaptionWord> words;
     CaptionMotion captionMotion = CaptionMotion::None;
     ColorRgba highlightColor{1.0, 0.82, 0.2, 1.0};
+    // Text on a path: the characters follow this line (canvas fractions, origin top left)
+    // instead of being laid out in lines; empty for ordinary text.
+    std::vector<std::array<double, 2>> path;
 
     // Whether it looks different from one moment to the next.
     bool animated() const
@@ -226,6 +229,36 @@ struct ClipText {
 
     friend bool operator==(const ClipText&, const ClipText&) = default;
 };
+
+// --- Drawing ---
+
+// What a drawn path is: a freehand brush stroke, or a shape from two points.
+enum class PathKind { Brush, Line, Arrow, Rectangle, Ellipse };
+
+// One drawn path. Points are fractions of the canvas (origin top left): what the brush
+// went through, or the two ends (line, arrow) or opposite corners (rectangle, ellipse).
+struct DrawnPath {
+    PathKind kind = PathKind::Brush;
+    std::vector<std::array<double, 2>> points;
+    ColorRgba stroke;                  // white
+    double width = 0.01;               // a fraction of the canvas's shorter side
+    ColorRgba fill{1.0, 1.0, 1.0, 0.0}; // rectangles and ellipses; transparent: none
+
+    friend bool operator==(const DrawnPath&, const DrawnPath&) = default;
+};
+
+// A drawing clip (no media): its paths, drawn on over `drawIn` seconds at the start and
+// taken off over `drawOut` at the end (0: there at once), one after another or together.
+struct ClipDrawing {
+    std::vector<DrawnPath> paths;
+    double drawIn = 0.0;
+    double drawOut = 0.0;
+    bool oneByOne = true;
+
+    friend bool operator==(const ClipDrawing&, const ClipDrawing&) = default;
+};
+inline constexpr std::size_t kMaxDrawnPaths = 64;
+inline constexpr std::size_t kMaxPathPoints = 2000;
 
 inline constexpr double kMinTextSize = 0.01;
 inline constexpr double kMaxTextSize = 0.5;
@@ -329,6 +362,8 @@ struct Clip {
 
     // A title: drawn text instead of media (mediaId is kNoId).
     std::optional<ClipText> text;
+    // A drawing: drawn paths instead of media (mediaId is kNoId).
+    std::optional<ClipDrawing> drawing;
     // An adjustment layer (no media either): its look, grade and effects apply to
     // everything below it on screen while it lasts.
     bool adjustment = false;
@@ -338,8 +373,8 @@ struct Clip {
     // Clips sharing a group move and are deleted together (kNoId: not grouped).
     Id groupId = kNoId;
 
-    // A clip with no media to play: a title or an adjustment layer.
-    bool generated() const { return text.has_value() || adjustment; }
+    // A clip with no media to play: a title, a drawing or an adjustment layer.
+    bool generated() const { return text.has_value() || drawing.has_value() || adjustment; }
     bool compound() const { return sequenceId != kNoId; }
 
     // Animated properties (see animatableProperties()), by property id. A property with

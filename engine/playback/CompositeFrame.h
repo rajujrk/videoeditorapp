@@ -100,6 +100,8 @@ struct VideoLayer {
     LayerPeople people;
     LayerMotion motion;
     LayerCursor cursor;
+    // A drawing: drawn from this, with no frame.
+    std::optional<ClipDrawing> drawing;
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.

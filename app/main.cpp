@@ -4,6 +4,7 @@
 #include "TemplateLibrary.h"
 #include "TransitionPreviewProvider.h"
 #include "EffectPreviewProvider.h"
+#include "OverlayTransitions.h"
 #include "Stickers.h"
 #include "LookLibrary.h"
 #include "TitleRenderer.h"
@@ -146,6 +147,7 @@ int main(int argc, char* argv[])
     engine.addImageProvider(QString::fromLatin1(StickerPreviewProvider::kId), new StickerPreviewProvider);
     engine.addImageProvider(QString::fromLatin1(TitlePreviewProvider::kId), new TitlePreviewProvider);
     engine.addImageProvider(QString::fromLatin1(LookPreviewProvider::kId), new LookPreviewProvider);
+    engine.addImageProvider(QString::fromLatin1(OverlayPreviewProvider::kId), new OverlayPreviewProvider);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     if (auto* theme = engine.singletonInstance<QObject*>("TechieVideoEditor.Theme", "Theme"))

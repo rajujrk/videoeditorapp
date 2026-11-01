@@ -85,6 +85,12 @@ private:
         double seconds = -1.0;
         std::unique_ptr<QRhiTexture> texture;
     };
+    struct DrawingTexture {
+        tve::ClipDrawing drawing;
+        QSize canvas;
+        double seconds = -1.0;
+        std::unique_ptr<QRhiTexture> texture;
+    };
 
     LayerSlot& slot(std::size_t index);
     // YUV → RGB of one layer into its slot's texture; nullptr if the buffer is unusable.
@@ -92,6 +98,9 @@ private:
                               std::vector<CVMetalTextureRef>& retained);
     QRhiTexture* titleTexture(QRhiCommandBuffer* cb, tve::Id clipId, const tve::ClipText& text, double seconds,
                               double duration);
+    // A drawing's picture at a moment (redrawn while it is being drawn on or taken off).
+    QRhiTexture* drawingTexture(QRhiCommandBuffer* cb, tve::Id clipId, const tve::ClipDrawing& drawing, double seconds,
+                                double duration);
     // A still image's picture, read once and kept while it is in use (and a few after).
     QRhiTexture* stillTexture(QRhiCommandBuffer* cb, const std::string& path);
     // A sticker's (Lottie) frame `seconds` into its clip, drawn when the frame changes.
@@ -124,6 +133,7 @@ private:
     // Per matted layer within a frame: the layer's and its matte's own canvases.
     std::vector<std::array<std::unique_ptr<tve::Compositor>, 2>> m_matteCanvases;
     std::map<tve::Id, TitleTexture> m_titles;
+    std::map<tve::Id, DrawingTexture> m_drawings;
     struct StillTexture {
         std::unique_ptr<QRhiTexture> texture;
         std::uint64_t lastUsed = 0; // render count

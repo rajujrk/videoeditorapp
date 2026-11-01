@@ -88,6 +88,8 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantMap selectedTransitionInfo READ selectedTransitionInfo NOTIFY selectedClipInfoChanged)
     // The transition library: [{id, title, categories, params}].
     Q_PROPERTY(QVariantList availableTransitions READ availableTransitions CONSTANT)
+    // Overlay transitions (light leaks, film burns, paint strokes): [{id, title, blend}].
+    Q_PROPERTY(QVariantList overlayTransitions READ overlayTransitions CONSTANT)
     // Colour: a copied grade waiting to be pasted, and saved colour presets (by name, in
     // colorPresetDirectory: Application Support/…/Color Presets; TVE_COLOR_PRESET_DIR overrides).
     Q_PROPERTY(bool hasCopiedGrade READ hasCopiedGrade NOTIFY colorClipboardChanged)
@@ -148,6 +150,8 @@ class ProjectController : public QObject {
     // Drawing the box to track on the player (TrackOverlay), and the box drawn: {clipId, x,
     // y, width, height} (picture fractions, as shown).
     Q_PROPERTY(bool pickingTrackArea READ pickingTrackArea WRITE setPickingTrackArea NOTIFY editingChanged)
+    // Drawing over the player (brush, line, arrow, rectangle, ellipse).
+    Q_PROPERTY(bool drawingMode READ drawingMode WRITE setDrawingMode NOTIFY editingChanged)
     Q_PROPERTY(QVariantMap trackArea READ trackArea NOTIFY editingChanged)
 
     // Captions: the speech models ({id, title, size, englishOnly, downloaded}), a download in
@@ -272,6 +276,7 @@ public:
     void setSelectedTransition(double clipId);
     QVariantMap selectedTransitionInfo() const;
     QVariantList availableTransitions() const;
+    QVariantList overlayTransitions() const;
     QStringList titleFonts() const;
     QVariantList textAnimations() const;
     QVariantList stickers() const;
@@ -307,6 +312,8 @@ public:
     QVariantMap silences() const { return m_silences; }
     QVariantMap faces() const { return m_faces; }
     bool pickingTrackArea() const { return m_pickingTrackArea; }
+    bool drawingMode() const { return m_drawingMode; }
+    void setDrawingMode(bool drawing);
     void setPickingTrackArea(bool picking);
     QVariantMap trackArea() const { return m_trackArea; }
     QVariantMap scenes() const { return m_scenes; }
@@ -520,6 +527,11 @@ public:
     // on `trackId` nearest `seconds`, within `tolerance`. Selects the new transition.
     Q_INVOKABLE bool addTransition(const QString& transitionId, double clipId = -1);
     Q_INVOKABLE bool addTransitionAt(const QString& transitionId, double trackId, double seconds, double tolerance);
+    // An overlay transition centred on the cut nearest `seconds` (the playhead when negative)
+    // on the main track — on the playhead itself when there is no cut — on the lowest free
+    // picture track above the main one or a new "Overlays" track, blended to suit it. Its
+    // movie is made the first time it is used. One step.
+    Q_INVOKABLE bool addOverlayTransition(const QString& overlayId, double seconds = -1);
     // `changes` keys: duration (seconds), alignment ("center", "endsAtCut", "startsAtCut"),
     // values ({paramId: value}, merged). One undo step.
     Q_INVOKABLE bool setTransition(double clipId, const QVariantMap& changes);
@@ -720,6 +732,24 @@ public:
     // Makes a clip (a title, a sticker…) follow a track from where it is at the playhead:
     // position keyframes, and with options scale / rotation (a surface's turn) those too.
     Q_INVOKABLE bool followTrack(double clipId, double sourceClipId, int trackId, const QVariantMap& options = {});
+
+    // Drawings: a drawing clip at the playhead (5 s, on the lowest free picture track above
+    // the main one) with a first path; paths added to, changed in or removed from a drawing;
+    // how it comes and goes. A path: {kind "brush"/"line"/"arrow"/"rectangle"/"ellipse",
+    // points [[x, y]…] (canvas fractions), stroke [r,g,b,a], width (of the shorter side),
+    // fill [r,g,b,a]}. Each one undo step. selectedClipInfo.drawing shows a drawing clip's.
+    Q_INVOKABLE double addDrawing(const QVariantMap& path);
+    Q_INVOKABLE bool addDrawnPath(double clipId, const QVariantMap& path);
+    Q_INVOKABLE bool setDrawnPath(double clipId, int index, const QVariantMap& changes);
+    Q_INVOKABLE bool removeDrawnPath(double clipId, int index);
+    // options: drawIn, drawOut (seconds), oneByOne.
+    Q_INVOKABLE bool setDrawing(double clipId, const QVariantMap& options);
+    // The drawn paths a clip can follow (or a title's text can run along): in drawing clips
+    // on screen while it plays. [{clipId, index, label, line [[x, y]…]}].
+    Q_INVOKABLE QVariantList pathsToFollow(double clipId) const;
+    // Makes a clip move along a drawn path over its whole length (position keyframes; with
+    // options turn, rotation too), as one undo step.
+    Q_INVOKABLE bool followPath(double clipId, double drawingClipId, int pathIndex, const QVariantMap& options = {});
 
     // Multicam: lines the clips up by their sound (measured in the background; kept per file)
     // — the first stays, the others move on their tracks — as one undo step ("Sync by
@@ -1035,6 +1065,7 @@ private:
     std::map<std::string, std::vector<tve::SubjectSample>> m_subjects;
     std::map<std::string, tve::MotionAnalysis> m_motion; // per media fingerprint
     bool m_pickingTrackArea = false;
+    bool m_drawingMode = false;
     QTimer* m_upscaleWatch = nullptr; // polls the model's download
     QVariantMap m_trackArea;
     // The file's motion measured (now, or in the background first), then `then`.

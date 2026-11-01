@@ -63,6 +63,10 @@ qt_add_qml_module(tve_player
         PreviewImages.cpp
         TitleRenderer.h
         TitleRenderer.cpp
+        DrawingRenderer.h
+        DrawingRenderer.cpp
+        OverlayTransitions.h
+        OverlayTransitions.cpp
         StillImage.h
         StillImage.cpp
         LookLibrary.h

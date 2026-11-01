@@ -26,6 +26,9 @@ struct MediaSettings {
     FrameRate frameRate{30, 1};
     VideoCodec codec = VideoCodec::H264;
     ProResProfile proRes = ProResProfile::Hq;
+    // ProRes 4444 only: keep the pictures' transparency (straight-alpha RGBA in, an alpha
+    // channel in the file).
+    bool alpha = false;
     std::int64_t videoBitrate = 0; // bits per second (H.264, HEVC); 0 picks one from size and frame rate
     std::int64_t audioBitrate = 192'000; // AAC
     bool audio = true; // false: no sound track (GIF never has one)
@@ -70,7 +73,8 @@ public:
     // One frame in NV12 (pictureInput Nv12): a full-size luma plane and a half-size
     // interleaved CbCr plane (BT.709, video range).
     bool writeVideo(const std::uint8_t* luma, int lumaStride, const std::uint8_t* chroma, int chromaStride);
-    // One frame as 8-bit RGBA rows (pictureInput Rgba), BT.709 primaries, opaque.
+    // One frame as 8-bit RGBA rows (pictureInput Rgba), BT.709 primaries; opaque unless the
+    // settings keep transparency.
     bool writeVideoRgba(const std::uint8_t* rgba, int stride);
     // Interleaved stereo float samples at 48 kHz.
     bool writeAudio(const float* samples, int frames);

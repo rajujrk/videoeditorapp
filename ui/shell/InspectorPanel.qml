@@ -341,6 +341,79 @@ Rectangle {
                         }
                     }
 
+                    // A drawing: how it draws on and off, and its paths (more with the Draw button).
+                    Section {
+                        id: drawingSection
+                        objectName: "drawingSection"
+                        visible: inspector.clipInfo.isDrawing === true
+                        title: "Drawing"
+                        readonly property var drawing: inspector.clipInfo.isDrawing === true ? inspector.clipInfo.drawing
+                                                                                             : ({ paths: [], drawIn: 0, drawOut: 0, oneByOne: true })
+
+                        AudioSlider {
+                            objectName: "drawIn"
+                            label: "Draw on over"
+                            from: 0
+                            to: 5
+                            value: drawingSection.drawing.drawIn
+                            format: (v) => v < 0.05 ? "At once" : v.toFixed(1) + " s"
+                            onCommitted: (v) => inspector.project.setDrawing(inspector.clipInfo.id, { drawIn: v < 0.05 ? 0 : v })
+                        }
+                        AudioSlider {
+                            objectName: "drawOut"
+                            label: "Take off over"
+                            from: 0
+                            to: 5
+                            value: drawingSection.drawing.drawOut
+                            format: (v) => v < 0.05 ? "Not at all" : v.toFixed(1) + " s"
+                            onCommitted: (v) => inspector.project.setDrawing(inspector.clipInfo.id, { drawOut: v < 0.05 ? 0 : v })
+                        }
+                        ToggleSwitch {
+                            objectName: "drawOneByOne"
+                            text: "One path after another"
+                            checked: drawingSection.drawing.oneByOne
+                            onToggled: inspector.project.setDrawing(inspector.clipInfo.id, { oneByOne: checked })
+                        }
+                        Text { text: "Paths"; font: Theme.type.label; color: Theme.color.textSecondary }
+                        Repeater {
+                            model: drawingSection.drawing.paths
+                            delegate: RowLayout {
+                                required property var modelData
+                                required property int index
+                                Layout.fillWidth: true
+                                spacing: Theme.space.s
+                                Rectangle {
+                                    width: 14
+                                    height: 14
+                                    radius: 7
+                                    color: Qt.rgba(modelData.stroke[0], modelData.stroke[1], modelData.stroke[2], 1)
+                                    border.color: Theme.color.borderStrong
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: (index + 1) + ". " + modelData.kind.charAt(0).toUpperCase() + modelData.kind.slice(1)
+                                    font: Theme.type.body
+                                    color: Theme.color.textPrimary
+                                }
+                                IconButton {
+                                    objectName: "removePath:" + index
+                                    iconName: "delete"
+                                    tip: "Remove this path"
+                                    // A drawing keeps at least one path; delete the clip to remove it all.
+                                    enabled: drawingSection.drawing.paths.length > 1
+                                    onClicked: inspector.project.removeDrawnPath(inspector.clipInfo.id, index)
+                                }
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: "Draw more with the Draw button under the player, while this drawing is selected."
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+
                     // A title's text and style. Text commits when typing pauses; the rest on each change.
                     Section {
                         id: textSection
@@ -529,6 +602,59 @@ Rectangle {
                             value: shapeSection.shape.tail
                             format: (v) => v < 0.5 ? "Left" : "Right"
                             onCommitted: (v) => shapeSection.change({ tail: v })
+                        }
+                    }
+
+                    // Text along a path: a shape of ours, or a path drawn in a drawing on screen with it.
+                    Section {
+                        id: pathSection
+                        objectName: "titlePathSection"
+                        visible: inspector.clipInfo.isTitle === true
+                        Layout.fillWidth: true
+                        expanded: (textSection.text.path || []).length > 0
+                        title: "On a path"
+                        readonly property var drawn: {
+                            inspector.project.undoText // new paths
+                            return inspector.clipInfo.isTitle === true ? inspector.project.pathsToFollow(inspector.clipInfo.id) : []
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            TextButton {
+                                objectName: "titlePath:none"
+                                text: "None"
+                                variant: (textSection.text.path || []).length === 0 ? "primary" : "secondary"
+                                onClicked: textSection.change({ path: [] })
+                            }
+                            Repeater {
+                                model: [{ id: "arc", label: "Arc" }, { id: "dip", label: "Dip" }, { id: "wave", label: "Wave" },
+                                        { id: "circle", label: "Circle" }]
+                                delegate: TextButton {
+                                    required property var modelData
+                                    objectName: "titlePath:" + modelData.id
+                                    text: modelData.label
+                                    variant: "secondary"
+                                    onClicked: textSection.change({ pathPreset: modelData.id })
+                                }
+                            }
+                            Repeater {
+                                model: pathSection.drawn
+                                delegate: TextButton {
+                                    required property var modelData
+                                    required property int index
+                                    objectName: "titlePath:drawn:" + index
+                                    text: modelData.label
+                                    variant: "secondary"
+                                    onClicked: textSection.change({ path: modelData.line })
+                                }
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: "The text runs along the path on one line; draw your own with the Draw button."
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                            wrapMode: Text.WordWrap
                         }
                     }
 

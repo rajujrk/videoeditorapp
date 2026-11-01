@@ -92,6 +92,16 @@ Rectangle {
                 onClicked: keyHere ? timeline.project.removeKeyframes(info.id)
                                    : timeline.project.addKeyframes(info.id)
             }
+            IconButton {
+                objectName: "drawButton"
+                iconName: "draw"
+                tip: timeline.project.selectedClipInfo.isDrawing === true
+                     ? "Draw more on the selected drawing — brush, lines, arrows and shapes"
+                     : "Draw on the picture — brush, lines, arrows and shapes, as a drawing at the playhead"
+                checkable: true
+                checked: timeline.project.drawingMode
+                onClicked: timeline.project.drawingMode = !timeline.project.drawingMode
+            }
             Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
             IconButton {
                 objectName: "markerButton"
@@ -816,7 +826,7 @@ Rectangle {
             id: body
             anchors.fill: parent
             radius: Theme.radius.s
-            readonly property color kindColor: item.clip.isTitle ? Theme.color.trackTitle
+            readonly property color kindColor: item.clip.isTitle || item.clip.isDrawing ? Theme.color.trackTitle
                                              : item.clip.isAdjustment ? Theme.color.trackEffect
                                              : timeline.trackColor(item.track.kind)
             color: item.clip.missing ? Qt.alpha(Theme.color.danger, 0.35) : Qt.alpha(kindColor, Theme.dark ? 0.55 : 0.45)
@@ -831,6 +841,7 @@ Rectangle {
             Row {
                 id: strip
                 visible: item.track.kind === "video" && !item.clip.isTitle && !item.clip.isAdjustment && !item.clip.isCompound
+                         && !item.clip.isDrawing
                          && !item.clip.missing
                 anchors { left: parent.left; right: parent.right; top: parent.top; margins: 3; topMargin: 19 }
                 height: parent.height - 22 - (body.showsSound ? 14 : 0)
@@ -1067,7 +1078,7 @@ Rectangle {
                     const c = item.clip
                     const before = c.sourceIn / c.speed
                     const after = (c.mediaDuration - c.sourceIn) / c.speed - c.duration
-                    const unlimited = c.freeze || c.isTitle || c.isAdjustment || c.isStill
+                    const unlimited = c.freeze || c.isTitle || c.isAdjustment || c.isStill || c.isDrawing
                     const roomBefore = unlimited ? Infinity : c.reversed ? after : before
                     const roomAfter = unlimited ? Infinity : c.reversed ? before : after
                     if (isStart) {
