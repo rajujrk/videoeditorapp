@@ -192,7 +192,18 @@ void MockCloudServer::claude(QTcpSocket* socket, const Request& request)
     // What to say.
     QString answer;
     const bool structured = request.body.value(QStringLiteral("output_config")).toObject().contains(QStringLiteral("format"));
-    if (structured) {
+    if (structured && prompt.contains(QLatin1String("<moments>"))) {
+        // Ranked: the other way round, titled by number.
+        const QRegularExpressionMatch moments =
+            QRegularExpression(QStringLiteral("<moments>(.*)</moments>"), QRegularExpression::DotMatchesEverythingOption).match(prompt);
+        const QJsonArray given = QJsonDocument::fromJson(moments.captured(1).toUtf8()).array();
+        QJsonArray ranked;
+        for (qsizetype i = given.size() - 1; i >= 0; --i) {
+            const int index = given[i].toObject().value(QStringLiteral("index")).toInt();
+            ranked.append(QJsonObject{{QStringLiteral("index"), index}, {QStringLiteral("title"), QStringLiteral("Moment %1").arg(index + 1)}});
+        }
+        answer = QString::fromUtf8(QJsonDocument(QJsonObject{{QStringLiteral("moments"), ranked}}).toJson(QJsonDocument::Compact));
+    } else if (structured) {
         const QString language = QRegularExpression(QStringLiteral("Target language: ([^\\n]+)")).match(prompt).captured(1).trimmed();
         const QRegularExpressionMatch captions =
             QRegularExpression(QStringLiteral("<captions>(.*)</captions>"), QRegularExpression::DotMatchesEverythingOption).match(prompt);

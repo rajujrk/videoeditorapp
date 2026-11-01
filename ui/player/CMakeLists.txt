@@ -27,6 +27,8 @@ qt_add_qml_module(tve_player
         MediaImports.cpp
         TemplateLibrary.h
         TemplateLibrary.cpp
+        AutoEdit.h
+        AutoEdit.cpp
         cloud/CloudKeys.h
         cloud/CloudKeys.mm
         cloud/CloudText.h

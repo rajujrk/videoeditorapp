@@ -3,7 +3,9 @@
 #include "Exporter.h"
 #include "ProxyManager.h"
 #include "MediaImports.h"
+#include "AutoEdit.h"
 #include "TemplateLibrary.h"
+#include "cloud/CloudFeatures.h"
 #include "cloud/CloudServices.h"
 #include "SoundLibrary.h"
 #include "SpeechModels.h"
@@ -230,6 +232,8 @@ class ProjectController : public QObject {
     // {clipId, path, name, sourceIn, duration, mediaDuration}} (empty otherwise).
     Q_PROPERTY(TemplateLibrary* templates READ templates CONSTANT)
     Q_PROPERTY(QVariantMap templateInfo READ templateInfo NOTIFY projectChanged)
+    // Made for you: the styles of instant videos and montages [{id, name, description, look}].
+    Q_PROPERTY(QVariantList autoEditStyles READ autoEditStyles CONSTANT)
 
 public:
     explicit ProjectController(QObject* parent = nullptr);
@@ -349,6 +353,7 @@ public:
     QString generatedDirectory() const;
     TemplateLibrary* templates() const { return m_templates; }
     QVariantMap templateInfo() const;
+    QVariantList autoEditStyles() const { return autoEditStyleList(); }
     QString cameraAccessName() const;
 
     // Project lifecycle
@@ -615,6 +620,18 @@ public:
     // Saves this project as one of the person's templates; its id, or "" (with an error).
     Q_INVOKABLE QString saveAsTemplate(const QString& name, const QString& category, const QVariantList& slotClips,
                                        const QVariantList& textClips, double musicClip);
+    // An instant video ("instant": pictures and videos) or a highlight montage ("montage":
+    // videos) as a new project, replacing this one: options kind, media (media ids, in
+    // order), style, shape, seconds, title, rank (Claude orders the moments, when there is a
+    // key). The media is measured first (in the background; kept per file).
+    Q_INVOKABLE bool makeAutoEdit(const QVariantMap& options);
+    // Shorts from one long video as a new tall project, replacing this one: options media,
+    // count (1..5), seconds (each, about), captions (from its transcript, if there is one),
+    // rank (Claude orders and titles them). Each short is a range marker (export them with
+    // exportMarkerRanges) and follows the subject.
+    Q_INVOKABLE bool makeShorts(const QVariantMap& options);
+    // Whether a media has a transcript (for captions and ranking).
+    Q_INVOKABLE bool hasTranscript(double mediaId) const;
     Q_INVOKABLE bool generateImage(const QString& prompt, const QVariantMap& options = {});
     Q_INVOKABLE bool generateVideo(const QString& prompt, const QVariantMap& options = {});
     Q_INVOKABLE bool generateSound(const QString& prompt, const QVariantMap& options = {});
@@ -819,6 +836,9 @@ signals:
     void transcriptChanged();
     // An analysis finished (ok) or failed or was cancelled (message, empty when cancelled).
     void analysisFinished(bool ok, const QString& message);
+    // An auto edit ("instant", "montage", "shorts") ended: ok, and what to tell (why not, or
+    // what was left out).
+    void autoEditFinished(const QString& kind, bool ok, const QString& message);
 
 private:
     bool apply(std::unique_ptr<tve::Command> command);
@@ -939,6 +959,18 @@ private:
     };
     std::optional<SpokenVoice> m_lastVoice;
     bool placeVoice(const SpeechResult& speech, bool captions);
+    // A media's transcript words (media time), from whichever transcript of it there is, and
+    // that transcript's variant.
+    std::vector<tve::TimedWord> mediaWords(const tve::MediaItem& media, std::string* variant = nullptr) const;
+    // Sound (where there is any) then pictures measured for these media; then `then`.
+    void withAllFeatures(const std::vector<tve::Id>& mediaIds, const QString& task, std::function<void()> then);
+    // Where the subject is through a media, found once (in the background); then `then`.
+    void withSubject(const tve::MediaItem& media, std::function<void()> then);
+    // Claude's order (and titles) for moments, when asked and there is a key; `then` gets
+    // the indices best first with titles (empty when not ranked).
+    void rankMoments(bool rank, const QString& purpose, const QList<cloudfeatures::RankItem>& items,
+                     std::function<void(QList<QPair<int, QString>>)> then);
+    void autoEditFailed(const QString& kind, const QString& message);
     // A free "<base> N" path (without extension) in the generated folder.
     QString generatedBase(const QString& base) const;
     // Imports a generated file into the media bin; its media id, or kNoId.

@@ -56,6 +56,9 @@ public:
     QString save(const tve::Project& project, const QString& name, const QString& category, const std::vector<tve::Id>& slotClips,
                  const std::vector<tve::Id>& texts, tve::Id music, QString* error);
 
+    // One of our own pieces of music (a built-in sound id) rendered into the cache: its file
+    // and tempo (beats per minute); empty (with `error`) if there is no such piece.
+    static QString builtInMusic(const QString& soundId, double* tempo, QString* error);
     static QString userDirectory();
     static QString cacheDirectory();
 

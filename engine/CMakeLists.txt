@@ -23,6 +23,8 @@ add_library(tve_engine STATIC
     capture/CaptureRecorder.h
     capture/CaptureRecorder.mm
     imports/ImportSources.h
+    analysis/Highlights.h
+    analysis/Highlights.cpp
     imports/ImportSources.mm
     playback/FrameQueue.h
     playback/FrameSource.h
