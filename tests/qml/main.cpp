@@ -116,6 +116,7 @@ private:
 //   beat.wav             8 s of noise clicks at 120 BPM from 0.25 s
 //   hum.wav              7 s of a quiet 220 Hz tone (music to duck)
 //   scenes.mov           three one-second shots at 30 fps, each moving
+//   long.mov             40 s in four 10 s shots, a disc moving across; loud from 22 to 30 s
 void writeAnalysisMedia(const QString& dir)
 {
     using namespace tve;
@@ -143,7 +144,9 @@ void writeAnalysisMedia(const QString& dir)
     });
     writeSound(QStringLiteral("hum.wav"), 7.0, [](double t) { return 0.1f * float(std::sin(2.0 * std::numbers::pi * 220.0 * t)); });
 
-    const auto writeMovie = [&](const QString& name, int frames, bool sound, const std::function<void(int, std::vector<std::uint8_t>&)>& draw) {
+    const auto writeMovie = [&](const QString& name, int frames, const std::function<float(double)>& soundAt,
+                                const std::function<void(int, std::vector<std::uint8_t>&)>& draw) {
+        const bool sound = bool(soundAt);
         MediaSettings settings;
         settings.container = Container::Mov;
         settings.codec = VideoCodec::ProRes;
@@ -160,17 +163,17 @@ void writeAnalysisMedia(const QString& dir)
             writer->writeVideoRgba(rgba.data(), 160 * 4);
             if (sound) {
                 for (std::size_t i = 0; i < samples.size() / 2; ++i)
-                    samples[i * 2] = samples[i * 2 + 1] = talkAt(f / 30.0 + double(i) / audio::kSampleRate);
+                    samples[i * 2] = samples[i * 2 + 1] = soundAt(f / 30.0 + double(i) / audio::kSampleRate);
                 writer->writeAudio(samples.data(), int(samples.size() / 2));
             }
         }
         writer->finish();
     };
-    writeMovie(QStringLiteral("talk.mov"), 195, true, [](int, std::vector<std::uint8_t>& rgba) {
+    writeMovie(QStringLiteral("talk.mov"), 195, talkAt, [](int, std::vector<std::uint8_t>& rgba) {
         for (std::size_t i = 0; i < rgba.size(); i += 4)
             rgba[i] = rgba[i + 1] = rgba[i + 2] = 128, rgba[i + 3] = 255;
     });
-    writeMovie(QStringLiteral("scenes.mov"), 90, false, [](int f, std::vector<std::uint8_t>& rgba) {
+    writeMovie(QStringLiteral("scenes.mov"), 90, {}, [](int f, std::vector<std::uint8_t>& rgba) {
         for (int y = 0; y < 90; ++y)
             for (int x = 0; x < 160; ++x) {
                 std::uint8_t* p = &rgba[std::size_t((y * 160 + x) * 4)];
@@ -184,6 +187,27 @@ void writeAnalysisMedia(const QString& dir)
                     const bool disc = std::hypot(x - 80, y - 45) < 10 + t;
                     p[0] = disc ? 240 : 30; p[1] = disc ? 240 : 170; p[2] = disc ? 240 : 60;
                 }
+                p[3] = 255;
+            }
+    });
+    // long.mov: 40 s in four shots (a new colour every 10 s) with a disc moving across; a
+    // quiet hum, loud from 22 to 30 s.
+    std::mt19937 hiss(7);
+    std::uniform_real_distribution<float> spread(-1.0f, 1.0f);
+    writeMovie(QStringLiteral("long.mov"), 1200, [&](double t) {
+        const float hum = 0.02f * float(std::sin(2.0 * std::numbers::pi * 110.0 * t));
+        return t >= 22.0 && t < 30.0 ? 0.5f * spread(hiss) : hum;
+    }, [](int f, std::vector<std::uint8_t>& rgba) {
+        const int shot = f / 300;
+        const double cx = 20 + (f % 300) * 0.4;
+        for (int y = 0; y < 90; ++y)
+            for (int x = 0; x < 160; ++x) {
+                std::uint8_t* p = &rgba[std::size_t((y * 160 + x) * 4)];
+                const bool disc = std::hypot(x - cx, y - 45) < 12;
+                const std::uint8_t base[4][3] = {{40, 90, 160}, {150, 60, 40}, {50, 140, 70}, {120, 110, 40}};
+                p[0] = disc ? 245 : base[shot][0];
+                p[1] = disc ? 245 : base[shot][1];
+                p[2] = disc ? 245 : base[shot][2];
                 p[3] = 255;
             }
     });

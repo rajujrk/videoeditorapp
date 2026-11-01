@@ -46,6 +46,7 @@ ScrollView {
         }
     }
     SaveTemplateDialog { id: saveDialog; objectName: "saveTemplateDialog"; project: page.project }
+    AutoEditPanel { id: autoEdit; objectName: "autoEditPanel"; project: page.project }
     ShapePicker { id: shapePicker; objectName: "shapePicker"; project: page.project }
 
     component Chip: AbstractButton {
@@ -72,6 +73,43 @@ ScrollView {
         width: page.availableWidth - Theme.space.m * 2
         x: Theme.space.m
         spacing: Theme.space.s
+
+        // --- Made for you ---
+        Text { text: "Make it for me"; font: Theme.type.heading; color: Theme.color.textPrimary }
+        GridLayout {
+            Layout.fillWidth: true
+            columns: 3
+            columnSpacing: Theme.space.xs
+            Repeater {
+                model: [{ id: "instant", label: "Instant video", icon: "generate" }, { id: "montage", label: "Highlights", icon: "effects" },
+                        { id: "shorts", label: "Shorts", icon: "screen-record" }]
+                delegate: AbstractButton {
+                    id: makeButton
+                    required property var modelData
+                    objectName: "makeFor:" + modelData.id
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
+                    implicitHeight: 56
+                    hoverEnabled: true
+                    onClicked: autoEdit.show(modelData.id)
+                    background: Rectangle {
+                        radius: Theme.radius.m
+                        color: makeButton.hovered ? Theme.color.surfaceHover : Theme.color.surfaceRaised
+                        border.color: Theme.color.borderSubtle
+                    }
+                    contentItem: ColumnLayout {
+                        spacing: 2
+                        Icon { Layout.alignment: Qt.AlignHCenter; name: makeButton.modelData.icon; size: Theme.size.iconSmall; color: Theme.color.accent }
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: makeButton.modelData.label
+                            font: Theme.type.caption
+                            color: Theme.color.textPrimary
+                        }
+                    }
+                }
+            }
+        }
 
         // --- The storyboard ---
         ColumnLayout {

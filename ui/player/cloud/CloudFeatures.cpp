@@ -99,6 +99,59 @@ std::optional<QMap<int, QString>> readTranslation(const QString& answer, const Q
     return texts;
 }
 
+TextRequest rankRequest(const QList<RankItem>& items, const QString& purpose, const QString& model)
+{
+    QJsonArray list;
+    for (const RankItem& item : items)
+        list.append(QJsonObject{{QStringLiteral("index"), item.index},
+                                {QStringLiteral("start"), std::round(item.start * 10) / 10},
+                                {QStringLiteral("end"), std::round(item.end * 10) / 10},
+                                {QStringLiteral("said"), item.text},
+                                {QStringLiteral("feel"), item.why}});
+    const QJsonObject entry{{QStringLiteral("type"), QStringLiteral("object")},
+                            {QStringLiteral("properties"),
+                             QJsonObject{{QStringLiteral("index"), QJsonObject{{QStringLiteral("type"), QStringLiteral("integer")}}},
+                                         {QStringLiteral("title"), QJsonObject{{QStringLiteral("type"), QStringLiteral("string")}}}}},
+                            {QStringLiteral("required"), QJsonArray{QStringLiteral("index"), QStringLiteral("title")}},
+                            {QStringLiteral("additionalProperties"), false}};
+    TextRequest request;
+    request.system = QStringLiteral("You are a video editor choosing the strongest moments of a recording.");
+    const QString goal = purpose == QLatin1String("shorts")
+                             ? QStringLiteral("stand-alone vertical shorts: each must make sense on its own and open with a hook")
+                             : QStringLiteral("a short highlight montage: the most engaging, lively or meaningful moments");
+    request.prompt = QStringLiteral(
+        "These are moments of a video, with their times in seconds, what is said in them (if anything) and how they "
+        "feel from the sound and picture (loud, lively, talk or calm). Rank all of them, best first, for %1. Give each a "
+        "title of at most six words in the language that is spoken (English if nothing is said); do not invent "
+        "details that are not in what is said.\n\n<moments>%2</moments>")
+                         .arg(goal, QString::fromUtf8(QJsonDocument(list).toJson(QJsonDocument::Compact)));
+    request.model = model;
+    request.effort = QStringLiteral("medium");
+    request.schema = {{QStringLiteral("type"), QStringLiteral("object")},
+                      {QStringLiteral("properties"),
+                       QJsonObject{{QStringLiteral("moments"), QJsonObject{{QStringLiteral("type"), QStringLiteral("array")},
+                                                                           {QStringLiteral("items"), entry}}}}},
+                      {QStringLiteral("required"), QJsonArray{QStringLiteral("moments")}},
+                      {QStringLiteral("additionalProperties"), false}};
+    return request;
+}
+
+std::optional<QList<QPair<int, QString>>> readRanking(const QString& answer, const QList<int>& indices)
+{
+    QList<QPair<int, QString>> order;
+    QList<int> seen;
+    for (const QJsonValue& value : QJsonDocument::fromJson(answer.toUtf8()).object().value(QStringLiteral("moments")).toArray()) {
+        const int index = value.toObject().value(QStringLiteral("index")).toInt(-1);
+        if (!indices.contains(index) || seen.contains(index))
+            continue;
+        seen << index;
+        order.push_back({index, value.toObject().value(QStringLiteral("title")).toString().trimmed()});
+    }
+    if (seen.size() != indices.size())
+        return std::nullopt;
+    return order;
+}
+
 QStringList languages()
 {
     return {QStringLiteral("Arabic"),     QStringLiteral("Chinese (Simplified)"), QStringLiteral("Chinese (Traditional)"),

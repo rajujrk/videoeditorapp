@@ -4213,6 +4213,25 @@ bool ProjectController::fillTemplateSlot(int index, double mediaId, double fromS
         speed = fillSpeed(media->duration - from, clip->duration);
     }
     const ClipCrop crop = fillCrop(media->width, media->height, m_project.settings.width, m_project.settings.height);
+    // A short follows its subject: the path again from the new start, where it is known.
+    if (m_project.templateInfo->id == "auto.shorts" && !media->still) {
+        const auto subject = m_subjects.find(fingerprintOf(*media));
+        Clip moved = *clip;
+        moved.mediaId = media->id;
+        moved.sourceIn = from;
+        moved.speed = speed;
+        moved.keyframes.clear();
+        if (subject != m_subjects.end()
+            && followSubject(moved, *media, subject->second, m_project.settings.width, m_project.settings.height, 0.6)) {
+            std::vector<std::unique_ptr<Command>> commands;
+            commands.push_back(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, from, speed, std::nullopt,
+                                                                          std::size_t(index), "Fill Slot"));
+            std::map<std::string, Keyframes> changes{{std::string(tve::property::kX), moved.keyframes[std::string(tve::property::kX)]},
+                                                     {std::string(tve::property::kY), moved.keyframes[std::string(tve::property::kY)]}};
+            commands.push_back(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Fill Slot", moved.visual));
+            return apply(std::make_unique<CompositeCommand>(std::move(commands), "Fill Slot"));
+        }
+    }
     return apply(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, from, speed, crop, std::size_t(index), "Fill Slot"));
 }
 
@@ -4303,6 +4322,283 @@ QString ProjectController::saveAsTemplate(const QString& name, const QString& ca
     if (id.isEmpty())
         reportError(error);
     return id;
+}
+
+// --- Made for you: instant videos, highlight montages, shorts ---
+
+namespace {
+QString analysisDirectory(); // (below, with the rest of the analysis)
+} // namespace
+
+std::vector<TimedWord> ProjectController::mediaWords(const MediaItem& media, std::string* variant) const
+{
+    std::vector<TimedWord> words;
+    const std::string prefix = fingerprintOf(media) + "|";
+    // The variant shown in the Transcript tab first, else any.
+    auto found = m_transcripts.find(prefix + m_transcriptVariant);
+    if (found == m_transcripts.end())
+        found = std::ranges::find_if(m_transcripts, [&](const auto& entry) { return entry.first.starts_with(prefix); });
+    if (found == m_transcripts.end())
+        return words;
+    if (variant)
+        *variant = found->first.substr(prefix.size());
+    for (const tve::TranscriptWord& word : found->second.words)
+        words.push_back({word.start, word.end, word.text});
+    return words;
+}
+
+bool ProjectController::hasTranscript(double mediaId) const
+{
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    return media && !mediaWords(*media).empty();
+}
+
+void ProjectController::withAllFeatures(const std::vector<Id>& mediaIds, const QString& task, std::function<void()> then)
+{
+    std::vector<Id> heard;
+    for (Id id : mediaIds)
+        if (const MediaItem* media = m_project.findMedia(id); media && media->hasAudio)
+            heard.push_back(id);
+    withFeatures(heard, false, task, [this, mediaIds, task, then = std::move(then)] {
+        withFeatures(mediaIds, true, task, then);
+    });
+}
+
+void ProjectController::withSubject(const MediaItem& media, std::function<void()> then)
+{
+    const std::string key = fingerprintOf(media);
+    if (!m_subjects.contains(key))
+        if (auto kept = tve::loadSubject(tve::AnalysisCache(analysisDirectory().toStdString()), key))
+            m_subjects.emplace(key, std::move(*kept));
+    if (m_subjects.contains(key)) {
+        then();
+        return;
+    }
+    auto found = std::make_shared<std::vector<SubjectSample>>();
+    runInBackground(QStringLiteral("Following the subject"),
+                    [path = media.path, key, found, directory = analysisDirectory().toStdString()](
+                        const tve::AnalysisProgress& progress) -> std::string {
+                        std::string error;
+                        auto samples = tve::findSubject(path, progress, &error);
+                        if (!samples)
+                            return error.empty() ? std::string("cancelled") : error;
+                        tve::saveSubject(tve::AnalysisCache(directory), key, *samples);
+                        *found = std::move(*samples);
+                        return {};
+                    },
+                    [this, key, found, then = std::move(then)] {
+                        m_subjects.insert_or_assign(key, std::move(*found));
+                        then();
+                    });
+}
+
+void ProjectController::rankMoments(bool rank, const QString& purpose, const QList<cloudfeatures::RankItem>& items,
+                                    std::function<void(QList<QPair<int, QString>>)> then)
+{
+    if (!rank || items.size() < 2 || !m_cloud->hasClaudeKey()) {
+        then({});
+        return;
+    }
+    QList<int> indices;
+    for (const cloudfeatures::RankItem& item : items)
+        indices << item.index;
+    QPointer<ProjectController> self(this);
+    const bool started = m_cloud->generate(
+        QStringLiteral("rank"), cloudfeatures::rankRequest(items, purpose, m_cloud->claudeModel()),
+        [self, indices, then](const TextResult& result) {
+            if (!self)
+                return;
+            self->m_cloud->endJob(result.ok ? QStringLiteral("Ranked by Claude") : result.error);
+            // Without Claude's order the edit still goes ahead, in the measured order.
+            const auto order = result.ok ? cloudfeatures::readRanking(result.text, indices) : std::nullopt;
+            if (!result.ok && !result.cancelled)
+                self->reportError(QStringLiteral("Claude could not rank the moments (%1); using the measured order").arg(result.error));
+            then(order.value_or(QList<QPair<int, QString>>{}));
+        });
+    if (!started)
+        then({});
+}
+
+void ProjectController::autoEditFailed(const QString& kind, const QString& message)
+{
+    if (!message.isEmpty())
+        reportError(message);
+    emit autoEditFinished(kind, false, message);
+}
+
+bool ProjectController::makeAutoEdit(const QVariantMap& options)
+{
+    const QString kind = options.value(QStringLiteral("kind"), QStringLiteral("instant")).toString();
+    if (analyzing() || m_cloud->busy()) {
+        reportError(QStringLiteral("Something is already being worked on"));
+        return false;
+    }
+    const AutoEditStyle* style = findAutoEditStyle(options.value(QStringLiteral("style"), QStringLiteral("upbeat")).toString());
+    const auto shape = templateShape(options.value(QStringLiteral("shape"), QStringLiteral("16:9")).toString().toStdString());
+    if (!style || !shape) {
+        reportError(QStringLiteral("Unknown style or shape"));
+        return false;
+    }
+    std::vector<Id> ids, videos;
+    for (const QVariant& value : options.value(QStringLiteral("media")).toList()) {
+        const MediaItem* media = m_project.findMedia(toId(value.toDouble()));
+        if (!media || !media->hasVideo || media->lottie || media->placeholder)
+            continue;
+        if (kind == QLatin1String("montage") && media->still)
+            continue;
+        ids.push_back(media->id);
+        if (!media->still)
+            videos.push_back(media->id);
+    }
+    if (ids.empty() || (kind == QLatin1String("montage") && videos.empty())) {
+        reportError(kind == QLatin1String("montage") ? QStringLiteral("Choose one or more videos") : QStringLiteral("Choose some pictures or videos"));
+        return false;
+    }
+    const double seconds = std::clamp(options.value(QStringLiteral("seconds"), 30.0).toDouble(), 5.0, 300.0);
+    const QString title = options.value(QStringLiteral("title")).toString();
+    const bool rank = options.value(QStringLiteral("rank")).toBool();
+    const TemplateShape canvas = *shape;
+    const AutoEditStyle chosenStyle = *style;
+    withAllFeatures(videos, QStringLiteral("Finding the best moments"), [this, kind, ids, chosenStyle, canvas, seconds, title, rank] {
+        // Each video's moments, from its sound, pictures and words.
+        auto sources = std::make_shared<std::vector<AutoEditSource>>();
+        for (Id id : ids) {
+            const MediaItem* media = m_project.findMedia(id);
+            if (!media)
+                continue;
+            AutoEditSource source{*media, {}};
+            if (!media->still) {
+                const std::string key = fingerprintOf(*media);
+                const auto audio = m_audioFeatures.find(key);
+                const auto video = m_videoFeatures.find(key);
+                source.moments = tve::findMoments(audio != m_audioFeatures.end() ? &audio->second : nullptr,
+                                                  video != m_videoFeatures.end() ? &video->second : nullptr,
+                                                  mediaWords(*media), media->duration, {.minLength = 2.0, .maxLength = 8.0});
+            }
+            sources->push_back(std::move(source));
+        }
+        // The strongest moments, for Claude to order.
+        QList<cloudfeatures::RankItem> items;
+        std::vector<std::pair<std::size_t, std::size_t>> where; // (source, moment)
+        for (std::size_t s = 0; s < sources->size(); ++s)
+            for (std::size_t m = 0; m < (*sources)[s].moments.size(); ++m)
+                where.push_back({s, m});
+        std::ranges::stable_sort(where, [&](const auto& a, const auto& b) {
+            return (*sources)[a.first].moments[a.second].score > (*sources)[b.first].moments[b.second].score;
+        });
+        where.resize(std::min<std::size_t>(where.size(), 30));
+        for (std::size_t i = 0; i < where.size(); ++i) {
+            const Moment& moment = (*sources)[where[i].first].moments[where[i].second];
+            items.push_back({int(i), double(moment.start) / kTicksPerSecond, double(moment.end) / kTicksPerSecond,
+                             QString::fromStdString(moment.text), QString::fromStdString(moment.why)});
+        }
+        rankMoments(rank, QStringLiteral("montage"), items, [this, kind, sources, where, chosenStyle, canvas, seconds, title](QList<QPair<int, QString>> order) {
+            // Claude's order becomes the scores (the best near 1).
+            for (qsizetype r = 0; r < order.size(); ++r) {
+                const auto [s, m] = where[std::size_t(order[r].first)];
+                (*sources)[s].moments[m].score = 1.0 - double(r) / double(order.size() + 1);
+            }
+            for (AutoEditSource& source : *sources)
+                std::ranges::stable_sort(source.moments, [](const Moment& a, const Moment& b) { return a.score > b.score; });
+            QString error;
+            const QString name = (kind == QLatin1String("montage") ? QStringLiteral("%1 montage") : QStringLiteral("%1 video")).arg(chosenStyle.name);
+            auto project = buildAutoEdit(*sources, chosenStyle, canvas, seconds, title, name, &error);
+            if (!project) {
+                autoEditFailed(kind, error);
+                emit analysisFinished(false, error);
+                return;
+            }
+            resetProject(std::move(*project), {});
+            m_canvasChosen = true;
+            emit autoEditFinished(kind, true, order.isEmpty() ? QString() : QStringLiteral("Moments ranked by Claude"));
+            emit analysisFinished(true, {});
+        });
+    });
+    return true;
+}
+
+bool ProjectController::makeShorts(const QVariantMap& options)
+{
+    if (analyzing() || m_cloud->busy()) {
+        reportError(QStringLiteral("Something is already being worked on"));
+        return false;
+    }
+    const MediaItem* media = m_project.findMedia(toId(options.value(QStringLiteral("media")).toDouble()));
+    const double seconds = std::clamp(options.value(QStringLiteral("seconds"), 30.0).toDouble(), 10.0, 90.0);
+    if (!media || !media->hasVideo || media->still || media->lottie) {
+        reportError(QStringLiteral("Choose a video to make shorts from"));
+        return false;
+    }
+    if (double(media->duration) / kTicksPerSecond < seconds * 0.6) {
+        reportError(QStringLiteral("%1 is too short for shorts of %2 s").arg(mediaName(media->path)).arg(seconds));
+        return false;
+    }
+    const int count = std::clamp(options.value(QStringLiteral("count"), 3).toInt(), 1, 5);
+    const bool captions = options.value(QStringLiteral("captions"), true).toBool();
+    const bool rank = options.value(QStringLiteral("rank")).toBool();
+    const MediaItem source = *media;
+    withAllFeatures({source.id}, QStringLiteral("Finding the best moments"), [this, source, seconds, count, captions, rank] {
+        withSubject(source, [this, source, seconds, count, captions, rank] {
+            const std::string key = fingerprintOf(source);
+            const auto audio = m_audioFeatures.find(key);
+            const auto video = m_videoFeatures.find(key);
+            std::string variant;
+            const std::vector<TimedWord> words = mediaWords(source, &variant);
+            auto moments = std::make_shared<std::vector<Moment>>(
+                tve::findMoments(audio != m_audioFeatures.end() ? &audio->second : nullptr,
+                                 video != m_videoFeatures.end() ? &video->second : nullptr, words, source.duration,
+                                 {.minLength = std::max(5.0, seconds * 0.6), .maxLength = seconds * 1.4}));
+            moments->resize(std::min<std::size_t>(moments->size(), std::size_t(count) * 3));
+            QList<cloudfeatures::RankItem> items;
+            for (std::size_t i = 0; i < moments->size(); ++i)
+                items.push_back({int(i), double((*moments)[i].start) / kTicksPerSecond, double((*moments)[i].end) / kTicksPerSecond,
+                                 QString::fromStdString((*moments)[i].text), QString::fromStdString((*moments)[i].why)});
+            rankMoments(rank, QStringLiteral("shorts"), items, [this, source, moments, count, captions, words](QList<QPair<int, QString>> order) {
+                std::vector<ShortPlan> plans;
+                if (!order.isEmpty())
+                    for (const auto& [index, title] : order)
+                        plans.push_back({(*moments)[std::size_t(index)], title});
+                else
+                    for (const Moment& moment : *moments)
+                        plans.push_back({moment, {}});
+                plans.resize(std::min<std::size_t>(plans.size(), std::size_t(count)));
+                const auto found = m_subjects.find(fingerprintOf(source));
+                QString error;
+                auto project = buildShorts(source, plans, found != m_subjects.end() ? found->second : std::vector<SubjectSample>{}, &error);
+                if (!project) {
+                    autoEditFailed(QStringLiteral("shorts"), error);
+                    emit analysisFinished(false, error);
+                    return;
+                }
+                // Captions from what is said in each short.
+                QString note;
+                if (captions && !words.empty()) {
+                    std::vector<TimedWord> placed;
+                    for (const Track& track : project->tracks)
+                        for (const Clip& clip : track.clips)
+                            if (clip.mediaId != kNoId && !track.clips.empty() && track.kind == TrackKind::Video)
+                                for (const TimedWord& word : words)
+                                    if (word.start >= clip.sourceIn && word.start < clip.sourceIn + clip.duration)
+                                        placed.push_back({word.start - clip.sourceIn + clip.start,
+                                                          std::min(word.end, clip.sourceIn + clip.duration) - clip.sourceIn + clip.start,
+                                                          word.text});
+                    std::ranges::sort(placed, {}, &TimedWord::start);
+                    SetCaptionsCommand(tve::layoutCaptions(placed), "Captions").redo(*project);
+                } else if (captions) {
+                    note = QStringLiteral("No captions: transcribe the video first (Transcript tab)");
+                }
+                const int made = int(plans.size());
+                resetProject(std::move(*project), {});
+                m_canvasChosen = true;
+                if (!order.isEmpty())
+                    note = note.isEmpty() ? QStringLiteral("Ranked and titled by Claude") : note;
+                emit autoEditFinished(QStringLiteral("shorts"), true,
+                                      QStringLiteral("%1 short%2").arg(made).arg(made == 1 ? "" : "s") + (note.isEmpty() ? QString() : QStringLiteral(" · ") + note));
+                emit analysisFinished(true, {});
+            });
+        });
+    });
+    return true;
 }
 
 // --- AI: generated media ---
@@ -6166,30 +6462,7 @@ bool ProjectController::autoReframe(double clipId, const QVariantMap& options)
             emit analysisFinished(false, lastError());
         }
     };
-    if (!m_subjects.contains(key)) {
-        if (auto kept = tve::loadSubject(tve::AnalysisCache(analysisDirectory().toStdString()), key))
-            m_subjects.emplace(key, std::move(*kept));
-    }
-    if (m_subjects.contains(key)) {
-        place();
-        return true;
-    }
-    auto found = std::make_shared<std::vector<SubjectSample>>();
-    runInBackground(QStringLiteral("Following the subject"),
-                    [path = media.path, key, found, directory = analysisDirectory().toStdString()](
-                        const tve::AnalysisProgress& progress) -> std::string {
-                        std::string error;
-                        auto samples = tve::findSubject(path, progress, &error);
-                        if (!samples)
-                            return error.empty() ? std::string("cancelled") : error;
-                        tve::saveSubject(tve::AnalysisCache(directory), key, *samples);
-                        *found = std::move(*samples);
-                        return {};
-                    },
-                    [this, key, found, place] {
-                        m_subjects.insert_or_assign(key, std::move(*found));
-                        place();
-                    });
+    withSubject(media, place);
     return true;
 }
 

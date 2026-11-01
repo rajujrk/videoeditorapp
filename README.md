@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), and templates in six shapes (17a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), templates in six shapes (17a), and instant videos, highlight montages and smart shorts (17b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -259,6 +259,17 @@ your own project into a template: the pictures you mark become slots, the titles
 editable, the sound you mark is the music, and everything else is copied in; your templates are kept
 in `~/Library/Application Support/TechieVideoEditor/Templates` (`TVE_TEMPLATE_DIR`) as `.tvet`
 folders and listed under **Mine**.
+
+**Make it for me.** At the top of the Templates tab: **Instant video** takes pictures and videos
+and a style — Cinematic, Upbeat, Calm, Energetic, Vintage or Clean, each with its own music,
+transitions and look — and makes an edit of about the length you choose (15 s to 2 min) in any of
+the six shapes, the best moments of each video cut to the beat, with an opening title if you type
+one. **Highlights** does the same from videos only: their loudest, liveliest and most spoken moments.
+**Shorts** takes one long video and makes up to five tall shorts of its best moments, each
+following the subject and marked as a range, with captions when the video has a transcript;
+**Export each short…** writes each to its own file. With a Claude key, **Let Claude choose** orders
+the moments (and titles the shorts). Each makes a new project you can keep editing — the storyboard
+can swap any shot.
 
 **Generate (your own keys).** The library's **Generate** tab makes media from a description:
 **Picture** and **Sticker** with OpenAI GPT Image 2.5 (square, landscape or portrait; draft, good or

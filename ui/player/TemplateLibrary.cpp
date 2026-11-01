@@ -147,7 +147,8 @@ std::optional<Project> buildRecipe(const QJsonObject& recipe, const TemplateShap
 {
     const QString id = recipe.value(QStringLiteral("id")).toString();
     const QJsonObject music = recipe.value(QStringLiteral("music")).toObject();
-    const SoundRecipe* sound = findSound(music.value(QStringLiteral("sound")).toString().toStdString());
+    const QString soundId = music.value(QStringLiteral("sound")).toString();
+    const SoundRecipe* sound = findSound(soundId.toStdString());
     if (!sound) {
         if (error)
             *error = QStringLiteral("The template's music is missing.");
@@ -207,21 +208,9 @@ std::optional<Project> buildRecipe(const QJsonObject& recipe, const TemplateShap
             project.tracks[titleTrack].insertClip(std::move(clip));
     }
     if (withMusic) {
-        // The piece, rendered once into the cache.
-        // "<cache>/music/<id>-<recipe hash>/<Title>.wav" (the name its clip shows).
-        const QString path = TemplateLibrary::cacheDirectory() + QStringLiteral("/music/") + QString::fromStdString(sound->id)
-                           + QLatin1Char('-')
-                           + QString::fromLatin1(QCryptographicHash::hash(QByteArray::fromStdString(sound->json), QCryptographicHash::Sha256).toHex().left(12))
-                           + QLatin1Char('/') + QString::fromStdString(sound->title) + QStringLiteral(".wav");
-        if (!QFileInfo::exists(path)) {
-            std::string why;
-            auto samples = renderSound(*sound, &why);
-            if (!samples || !writeSoundFile(path.toStdString(), *samples, &why)) {
-                if (error)
-                    *error = QString::fromStdString(why);
-                return std::nullopt;
-            }
-        }
+        const QString path = TemplateLibrary::builtInMusic(soundId, nullptr, error);
+        if (path.isEmpty())
+            return std::nullopt;
         auto item = soundItem(project, path);
         if (item) {
             Clip clip{.id = project.allocateId(), .mediaId = item->id, .start = 0, .duration = std::min(length, item->duration)};
@@ -301,6 +290,32 @@ QVariantList TemplateLibrary::templates() const
     if (!m_listed)
         const_cast<TemplateLibrary*>(this)->list();
     return m_list;
+}
+
+QString TemplateLibrary::builtInMusic(const QString& soundId, double* tempo, QString* error)
+{
+    const SoundRecipe* sound = findSound(soundId.toStdString());
+    if (!sound) {
+        if (error)
+            *error = QStringLiteral("Unknown music %1").arg(soundId);
+        return {};
+    }
+    if (tempo)
+        *tempo = QJsonDocument::fromJson(QByteArray::fromStdString(sound->json)).object().value(QStringLiteral("tempo")).toDouble(120);
+    // Rendered once: "<cache>/music/<id>-<recipe hash>/<Title>.wav" (the name its clip shows).
+    const QString path = cacheDirectory() + QStringLiteral("/music/") + QString::fromStdString(sound->id) + QLatin1Char('-')
+                       + QString::fromLatin1(QCryptographicHash::hash(QByteArray::fromStdString(sound->json), QCryptographicHash::Sha256).toHex().left(12))
+                       + QLatin1Char('/') + QString::fromStdString(sound->title) + QStringLiteral(".wav");
+    if (!QFileInfo::exists(path)) {
+        std::string why;
+        auto samples = renderSound(*sound, &why);
+        if (!samples || !writeSoundFile(path.toStdString(), *samples, &why)) {
+            if (error)
+                *error = QString::fromStdString(why);
+            return {};
+        }
+    }
+    return path;
 }
 
 QString TemplateLibrary::userDirectory()
