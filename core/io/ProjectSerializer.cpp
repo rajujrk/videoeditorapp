@@ -21,10 +21,11 @@ void from_json(const nlohmann::json& j, FrameRate& r)
 }
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ProjectSettings, width, height, frameRate, sampleRate)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GeneratedBy, provider, model, kind, prompt, reference, source, created)
 // Fields added after schema 1 shipped default when absent, so older files still load.
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MediaItem, id, path, duration, hasVideo, hasAudio, width, height,
                                                 frameRate, audioSampleRate, audioChannels, still, alpha, lottie,
-                                                fingerprint)
+                                                fingerprint, generated)
 NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
     {BlendMode::Normal, "normal"},
     {BlendMode::Multiply, "multiply"},

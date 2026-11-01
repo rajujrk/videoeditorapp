@@ -32,6 +32,7 @@
 #include "encode/VideoProcessing.h"
 #include "encode/WavWriter.h"
 #include "cloud/CloudFeatures.h"
+#include "cloud/StickerCutout.h"
 
 #include <nlohmann/json.hpp>
 
@@ -855,6 +856,15 @@ QVariantList ProjectController::media() const
             {QStringLiteral("sticker"), item.lottie},
             {QStringLiteral("alpha"), item.alpha},
             {QStringLiteral("missing"), missing.contains(item.id)},
+            {QStringLiteral("generated"),
+             item.generated ? QVariant(QVariantMap{{QStringLiteral("provider"), QString::fromStdString(item.generated->provider)},
+                                                   {QStringLiteral("model"), QString::fromStdString(item.generated->model)},
+                                                   {QStringLiteral("kind"), QString::fromStdString(item.generated->kind)},
+                                                   {QStringLiteral("prompt"), QString::fromStdString(item.generated->prompt)},
+                                                   {QStringLiteral("reference"), QString::fromStdString(item.generated->reference)},
+                                                   {QStringLiteral("source"), QString::fromStdString(item.generated->source)},
+                                                   {QStringLiteral("created"), item.generated->created * 1000.0}})
+                            : QVariant()},
         };
     }
     return list;
@@ -4105,6 +4115,246 @@ bool ProjectController::placeVoice(const SpeechResult& speech, bool captions)
     return true;
 }
 
+// --- AI: generated media ---
+
+QString ProjectController::generatedDirectory() const
+{
+    const QByteArray override = qgetenv("TVE_GENERATED_DIR");
+    if (!override.isEmpty())
+        return QString::fromLocal8Bit(override);
+    if (!m_filePath.isEmpty()) {
+        const QFileInfo project(m_filePath);
+        return project.absolutePath() + QLatin1Char('/') + project.completeBaseName() + QStringLiteral(" Generated");
+    }
+    return QStandardPaths::writableLocation(QStandardPaths::MoviesLocation) + QStringLiteral("/TechieVideoEditor Generated");
+}
+
+QString ProjectController::generatedBase(const QString& base) const
+{
+    const QDir folder(generatedDirectory());
+    for (int n = 1;; ++n) {
+        const QString candidate = folder.filePath(QStringLiteral("%1 %2").arg(base).arg(n));
+        bool taken = false;
+        for (const char* extension : {".png", ".mp4", ".mp3", ".wav"})
+            taken = taken || QFileInfo::exists(candidate + QLatin1String(extension));
+        if (!taken)
+            return candidate;
+    }
+}
+
+Id ProjectController::importGenerated(const MediaResult& result, GeneratedBy by, bool alpha)
+{
+    QString error;
+    auto item = describeMedia(result.path.toStdString(), &error);
+    if (!item) {
+        reportError(error);
+        return kNoId;
+    }
+    by.model = result.model.toStdString();
+    by.reference = result.reference.toStdString();
+    by.created = double(QDateTime::currentSecsSinceEpoch());
+    item->generated = std::move(by);
+    item->alpha = item->alpha || alpha;
+    auto command = std::make_unique<ImportMediaCommand>(std::move(*item));
+    if (!apply(std::move(command)))
+        return kNoId;
+    const auto found = std::ranges::find(m_project.media, result.path.toStdString(), &MediaItem::path);
+    return found != m_project.media.end() ? found->id : kNoId;
+}
+
+void ProjectController::endGeneration(const QString& job, const MediaResult& result, bool ok)
+{
+    m_cloud->endJob(ok ? QString() : result.error);
+    if (!ok && !result.cancelled && !result.error.isEmpty())
+        reportError(result.error);
+    emit m_cloud->jobFinished(job, ok, result.cancelled ? QString() : result.error);
+}
+
+namespace {
+
+// Where each still media to work from is, and their names; empty if one is not a picture.
+std::optional<std::pair<QStringList, QStringList>> stillInputs(const Project& project, const QVariantList& ids)
+{
+    QStringList paths, names;
+    for (const QVariant& id : ids) {
+        const MediaItem* media = project.findMedia(Id(id.toDouble()));
+        if (!media || !media->still || media->lottie)
+            return std::nullopt;
+        paths << QString::fromStdString(media->path);
+        names << QFileInfo(paths.back()).fileName();
+    }
+    return std::pair{paths, names};
+}
+
+} // namespace
+
+bool ProjectController::generateImage(const QString& prompt, const QVariantMap& options)
+{
+    if (prompt.trimmed().isEmpty()) {
+        reportError(QStringLiteral("Describe the picture first"));
+        return false;
+    }
+    const bool sticker = options.value(QStringLiteral("sticker")).toBool();
+    const auto inputs = stillInputs(m_project, options.value(QStringLiteral("inputs")).toList());
+    if (!inputs) {
+        reportError(QStringLiteral("Only pictures in the media bin can be worked from"));
+        return false;
+    }
+    ImageOptions image;
+    image.model = m_cloud->imageModel();
+    const QString shape = options.value(QStringLiteral("size"), QStringLiteral("square")).toString();
+    image.size = shape == QLatin1String("landscape") ? QStringLiteral("1536x1024")
+               : shape == QLatin1String("portrait")  ? QStringLiteral("1024x1536")
+                                                     : QStringLiteral("1024x1024");
+    image.quality = options.value(QStringLiteral("quality"), QStringLiteral("medium")).toString();
+    image.transparent = sticker;
+    image.inputs = inputs->first;
+    const QString job = sticker ? QStringLiteral("sticker") : QStringLiteral("image");
+    const QString base = generatedBase(sticker ? QStringLiteral("Sticker") : QStringLiteral("Picture"));
+    QPointer<ProjectController> self(this);
+    const QString sources = inputs->second.join(QStringLiteral(", "));
+    const bool started = m_cloud->generateMedia(
+        job, sticker ? QStringLiteral("OpenAI is drawing the sticker…") : QStringLiteral("OpenAI is drawing…"),
+        [prompt, image, base](QNetworkAccessManager* network, QObject* parent) {
+            return cloudmedia::image(network, prompt, image, base, parent);
+        },
+        [self, job, sticker, prompt, sources](const MediaResult& result) {
+            if (!self)
+                return;
+            if (!result.ok) {
+                self->endGeneration(job, result, false);
+                return;
+            }
+            QString cutError;
+            if (sticker && !cutOutSticker(result.path, &cutError))
+                self->reportError(cutError);
+            const Id media = self->importGenerated(
+                result, GeneratedBy{.provider = "openai", .kind = sticker ? "sticker" : "image",
+                                    .prompt = prompt.toStdString(), .source = sources.toStdString()},
+                sticker);
+            const bool ok = media != kNoId && (!sticker || self->placeOverlay(media, 0.4, "Stickers", "Add AI Sticker"));
+            self->endGeneration(job, result, ok);
+        });
+    if (!started)
+        reportError(QStringLiteral("Another AI job is running"));
+    return started;
+}
+
+bool ProjectController::generateVideo(const QString& prompt, const QVariantMap& options)
+{
+    VideoOptions video;
+    video.mode = options.value(QStringLiteral("mode"), QStringLiteral("text")).toString();
+    video.aspect = options.value(QStringLiteral("aspect"), QStringLiteral("16:9")).toString();
+    video.resolution = options.value(QStringLiteral("resolution"), QStringLiteral("720p")).toString();
+    QString sources;
+    if (video.mode == QLatin1String("extend")) {
+        const MediaItem* media = m_project.findMedia(Id(options.value(QStringLiteral("extend")).toDouble()));
+        if (!media || !media->generated || media->generated->kind != "video" || media->generated->reference.empty()) {
+            reportError(QStringLiteral("Choose a video made here to extend"));
+            return false;
+        }
+        video.previous = QString::fromStdString(media->generated->reference);
+        sources = mediaName(media->path);
+    } else {
+        const auto inputs = stillInputs(m_project, options.value(QStringLiteral("images")).toList());
+        const qsizetype wanted = video.mode == QLatin1String("image") ? 1 : video.mode == QLatin1String("frames") ? 2 : 0;
+        if (!inputs || inputs->first.size() != wanted) {
+            reportError(wanted == 2 ? QStringLiteral("Choose a first and a last picture")
+                                    : QStringLiteral("Choose a picture to start from"));
+            return false;
+        }
+        if (prompt.trimmed().isEmpty() && wanted == 0) {
+            reportError(QStringLiteral("Describe the video first"));
+            return false;
+        }
+        video.images = inputs->first;
+        sources = inputs->second.join(QStringLiteral(", "));
+    }
+    const QString base = generatedBase(QStringLiteral("Video"));
+    QPointer<ProjectController> self(this);
+    const bool started = m_cloud->generateMedia(
+        QStringLiteral("video"), QStringLiteral("Google is making the video; this can take a few minutes…"),
+        [prompt, video, base](QNetworkAccessManager* network, QObject* parent) {
+            return cloudmedia::video(network, prompt, video, base, parent);
+        },
+        [self, prompt, sources, mode = video.mode](const MediaResult& result) {
+            if (!self)
+                return;
+            const QString job = QStringLiteral("video");
+            if (!result.ok) {
+                self->endGeneration(job, result, false);
+                return;
+            }
+            const Id media = self->importGenerated(result, GeneratedBy{.provider = "google", .kind = "video",
+                                                                       .prompt = prompt.toStdString(),
+                                                                       .source = (mode == QLatin1String("extend") ? "extends " : "")
+                                                                                 + sources.toStdString()});
+            self->endGeneration(job, result, media != kNoId);
+        });
+    if (!started)
+        reportError(QStringLiteral("Another AI job is running"));
+    return started;
+}
+
+bool ProjectController::generateSound(const QString& prompt, const QVariantMap& options)
+{
+    if (prompt.trimmed().isEmpty()) {
+        reportError(QStringLiteral("Describe the sound first"));
+        return false;
+    }
+    const bool music = options.value(QStringLiteral("kind"), QStringLiteral("music")).toString() == QLatin1String("music");
+    const double length = options.value(QStringLiteral("seconds"), music ? 30.0 : 3.0).toDouble();
+    const bool instrumental = options.value(QStringLiteral("instrumental"), true).toBool();
+    const bool loop = options.value(QStringLiteral("loop")).toBool();
+    const QString job = music ? QStringLiteral("music") : QStringLiteral("sfx");
+    const QString base = generatedBase(music ? QStringLiteral("Music") : QStringLiteral("Sound"));
+    QPointer<ProjectController> self(this);
+    const bool started = m_cloud->generateMedia(
+        job, music ? QStringLiteral("ElevenLabs is composing…") : QStringLiteral("ElevenLabs is making the sound…"),
+        [prompt, music, length, instrumental, loop, base](QNetworkAccessManager* network, QObject* parent) {
+            return music ? cloudmedia::music(network, prompt, length, instrumental, base, parent)
+                         : cloudmedia::soundEffect(network, prompt, length, loop, base, parent);
+        },
+        [self, job, music, prompt](const MediaResult& result) {
+            if (!self)
+                return;
+            if (!result.ok) {
+                self->endGeneration(job, result, false);
+                return;
+            }
+            // At the playhead, on an audio track with room, like the library's sounds.
+            QString error;
+            auto item = probeMedia(result.path.toStdString(), &error);
+            if (!item) {
+                self->reportError(error);
+                self->endGeneration(job, result, false);
+                return;
+            }
+            item->fingerprint = fingerprintFile(result.path.toStdString()).value_or(std::string());
+            item->generated = GeneratedBy{.provider = "elevenlabs", .model = result.model.toStdString(),
+                                          .kind = music ? "music" : "sfx", .prompt = prompt.toStdString(),
+                                          .created = double(QDateTime::currentSecsSinceEpoch())};
+            const Ticks start = ticks(self->m_playhead);
+            Id target = kNoId;
+            for (auto track = self->m_project.tracks.rbegin(); track != self->m_project.tracks.rend(); ++track)
+                if (track->kind == TrackKind::Audio && !track->locked && !track->muted && !track->overlaps(start, item->duration)) {
+                    target = track->id;
+                    break;
+                }
+            auto command = std::make_unique<AddVoiceOverCommand>(std::move(*item), target, start,
+                                                                 music ? "Add AI Music" : "Add AI Sound Effect",
+                                                                 music ? "Music" : "Sound effects");
+            auto* raw = command.get();
+            const bool ok = self->apply(std::move(command));
+            if (ok)
+                self->setSelectedClip(double(raw->clipId()));
+            self->endGeneration(job, result, ok);
+        });
+    if (!started)
+        reportError(QStringLiteral("Another AI job is running"));
+    return started;
+}
+
 // --- Screen recording ---
 
 namespace {
@@ -4878,6 +5128,14 @@ bool ProjectController::addSticker(const QString& stickerId)
             return false;
         media = std::ranges::find(m_project.media, path.toStdString(), &MediaItem::path);
     }
+    return placeOverlay(media->id, 0.4, "Stickers", "Add Sticker");
+}
+
+bool ProjectController::placeOverlay(Id mediaId, double scale, const std::string& trackName, const std::string& label)
+{
+    const MediaItem* media = m_project.findMedia(mediaId);
+    if (!media)
+        return false;
     const Ticks at = ticks(m_playhead);
     Id track = kNoId;
     const auto main = m_project.trackIndex(mainTrackId());
@@ -4888,15 +5146,15 @@ bool ProjectController::addSticker(const QString& stickerId)
             track = candidate.id;
     }
     if (track == kNoId) {
-        auto added = std::make_unique<AddTrackCommand>(TrackKind::Video, "Stickers");
+        auto added = std::make_unique<AddTrackCommand>(TrackKind::Video, trackName);
         auto* raw = added.get();
         if (!apply(std::move(added)))
             return false;
         track = raw->trackId();
     }
     ClipVisual visual;
-    visual.transform.scale = 0.4;
-    auto clip = std::make_unique<AddClipCommand>(track, media->id, at, media->duration, 0, visual, "Add Sticker");
+    visual.transform.scale = scale;
+    auto clip = std::make_unique<AddClipCommand>(track, mediaId, at, media->duration, 0, visual, label);
     auto* raw = clip.get();
     if (!apply(std::move(clip)))
         return false;

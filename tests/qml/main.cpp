@@ -371,6 +371,8 @@ int main(int argc, char** argv)
     qputenv("TVE_CLOUD_SETTINGS_FILE", (cloudSettings.path() + QStringLiteral("/cloud-settings.json")).toLocal8Bit());
     QTemporaryDir voices;
     qputenv("TVE_VOICE_DIR", QDir(voices.path()).canonicalPath().toLocal8Bit());
+    QTemporaryDir generated;
+    qputenv("TVE_GENERATED_DIR", QDir(generated.path()).canonicalPath().toLocal8Bit());
     QTemporaryDir captionFixtures;
     writeCaptionFixtures(captionFixtures.path());
     qputenv("TVE_TEST_CAPTIONS_DIR", captionFixtures.path().toLocal8Bit());

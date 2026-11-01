@@ -222,6 +222,7 @@ class ProjectController : public QObject {
     Q_PROPERTY(CloudServices* cloud READ cloud CONSTANT)
     Q_PROPERTY(QStringList translationLanguages READ translationLanguages CONSTANT)
     Q_PROPERTY(QString voicesDirectory READ voicesDirectory NOTIFY projectChanged)
+    Q_PROPERTY(QString generatedDirectory READ generatedDirectory NOTIFY projectChanged)
 
 public:
     explicit ProjectController(QObject* parent = nullptr);
@@ -338,6 +339,7 @@ public:
     CloudServices* cloud() const { return m_cloud; }
     QStringList translationLanguages() const;
     QString voicesDirectory() const;
+    QString generatedDirectory() const;
     QString cameraAccessName() const;
 
     // Project lifecycle
@@ -579,6 +581,17 @@ public:
     // the playhead on an audio track with room (a new Voice track if none), with its captions,
     // as one undo step. The same text, voice and speed again uses the sound already made.
     Q_INVOKABLE bool speakText(const QString& text, const QString& voiceId, const QVariantMap& options = {});
+    // Generated media, into the media bin with where it came from (media's "generated"):
+    // pictures (OpenAI; options: size "square"/"landscape"/"portrait", quality, inputs — still
+    // media ids to work from), stickers (the same, with a transparent background, cut out on
+    // this Mac if need be, and placed small at the playhead), video (Google; options: mode
+    // "text"/"image"/"frames"/"extend", images — still media ids, extend — a generated video's
+    // media id, aspect "16:9"/"9:16", resolution) and sound (ElevenLabs; options: kind
+    // "music"/"sfx", seconds, instrumental, loop; placed at the playhead). cloud.jobFinished
+    // says how it ended.
+    Q_INVOKABLE bool generateImage(const QString& prompt, const QVariantMap& options = {});
+    Q_INVOKABLE bool generateVideo(const QString& prompt, const QVariantMap& options = {});
+    Q_INVOKABLE bool generateSound(const QString& prompt, const QVariantMap& options = {});
     Q_INVOKABLE bool openVoiceOver();
     Q_INVOKABLE void closeVoiceOver();
     Q_INVOKABLE bool startRecording();
@@ -899,6 +912,15 @@ private:
     };
     std::optional<SpokenVoice> m_lastVoice;
     bool placeVoice(const SpeechResult& speech, bool captions);
+    // A free "<base> N" path (without extension) in the generated folder.
+    QString generatedBase(const QString& base) const;
+    // Imports a generated file into the media bin; its media id, or kNoId.
+    tve::Id importGenerated(const MediaResult& result, tve::GeneratedBy by, bool alpha = false);
+    // A clip of `mediaId` at the playhead on the lowest free picture track above the main one
+    // (a new one named `trackName` on top if none is free), small and centred.
+    bool placeOverlay(tve::Id mediaId, double scale, const std::string& trackName, const std::string& label);
+    // Ends a generation job, reporting what went wrong.
+    void endGeneration(const QString& job, const MediaResult& result, bool ok);
 
     struct ExportJob {
         tve::Id id = tve::kNoId;

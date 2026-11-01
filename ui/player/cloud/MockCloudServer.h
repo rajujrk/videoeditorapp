@@ -15,7 +15,11 @@ class QTcpSocket;
 // for structured requests (translations: "[<language>] " before each caption), a voice
 // list, and speech as a WAV with each character's time. A key "bad-key" is refused. Words in
 // a prompt steer it: "#overload" (busy once, then fine), "#refuse" (declined), "#fallback"
-// (a decline mid-answer, then another model's answer), "#slow" (streams slowly).
+// (a decline mid-answer, then another model's answer), "#slow" (streams slowly). It also
+// makes pictures (OpenAI Images: a disc, on transparency when asked, unless "#opaque"),
+// video (Gemini interactions: a few seconds of moving colour; an extension needs the id of
+// one it made) and sound (ElevenLabs music and effects: a tone as long as asked); "#blocked"
+// is refused.
 class MockCloudServer : public QObject {
     Q_OBJECT
 public:
@@ -38,8 +42,12 @@ private:
     void serve(QTcpSocket* socket, const Request& request);
     void claude(QTcpSocket* socket, const Request& request);
     void elevenLabs(QTcpSocket* socket, const Request& request);
+    void openAiImages(QTcpSocket* socket, const Request& request);
+    void geminiVideo(QTcpSocket* socket, const Request& request);
+    void elevenLabsSound(QTcpSocket* socket, const Request& request);
 
     QTcpServer* m_server = nullptr;
     QList<Request> m_requests;
     QMap<QString, int> m_overloads; // prompt → times refused as busy
+    QStringList m_interactions;     // video interactions made
 };
