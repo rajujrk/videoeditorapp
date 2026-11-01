@@ -25,6 +25,9 @@ qt_add_qml_module(tve_shell
         WritePanel.qml
         VoicePane.qml
         GeneratePage.qml
+        TemplatesPage.qml
+        ShapePicker.qml
+        SaveTemplateDialog.qml
         ImportPanel.qml
         TranscriptPage.qml
         VoiceOverPanel.qml

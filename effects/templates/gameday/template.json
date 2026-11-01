@@ -1,0 +1,115 @@
+{
+  "id": "tve.template.gameday",
+  "version": 1,
+  "name": "Game day",
+  "category": "sports",
+  "description": "Six punchy cuts with zooms and a scoreline.",
+  "shape": "16:9",
+  "music": {
+    "sound": "tve.music.pulse",
+    "gainDb": -4,
+    "fadeOutBeats": 4
+  },
+  "transition": {
+    "id": "tve.transition.zoom_in",
+    "beats": 0.5
+  },
+  "slots": [
+    {
+      "label": "Warm-up",
+      "beats": 4
+    },
+    {
+      "label": "Kick-off",
+      "beats": 4
+    },
+    {
+      "label": "Action",
+      "beats": 4
+    },
+    {
+      "label": "The goal",
+      "beats": 4
+    },
+    {
+      "label": "Celebration",
+      "beats": 4
+    },
+    {
+      "label": "Full time",
+      "beats": 4
+    }
+  ],
+  "texts": [
+    {
+      "label": "Headline",
+      "fromBeat": 0.25,
+      "beats": 3.5,
+      "style": {
+        "text": "GAME DAY",
+        "size": 0.14,
+        "fontFamily": "Impact",
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "outlineWidth": 0.05,
+        "outlineColor": [
+          0.1,
+          0.1,
+          0.1,
+          1
+        ],
+        "animationIn": {
+          "preset": "drop",
+          "unit": "character",
+          "duration": 0.6,
+          "stagger": 0.4
+        },
+        "animationOut": {
+          "preset": "zoom",
+          "unit": "whole",
+          "duration": 0.4,
+          "stagger": 0
+        }
+      }
+    },
+    {
+      "label": "Score",
+      "fromBeat": 20.25,
+      "beats": 3.5,
+      "style": {
+        "text": "FINAL  3 – 1",
+        "size": 0.09,
+        "fontFamily": "Impact",
+        "color": [
+          0.08,
+          0.08,
+          0.1,
+          1
+        ],
+        "shape": {
+          "kind": "banner",
+          "color": [
+            1,
+            0.84,
+            0.2,
+            1
+          ],
+          "padding": 0.4,
+          "tail": 0.25
+        },
+        "y": 0.3,
+        "animationIn": {
+          "preset": "slide_right",
+          "unit": "whole",
+          "duration": 0.5,
+          "stagger": 0
+        }
+      }
+    }
+  ],
+  "license": "TVE-Original"
+}

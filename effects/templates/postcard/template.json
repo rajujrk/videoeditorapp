@@ -1,0 +1,92 @@
+{
+  "id": "tve.template.postcard",
+  "version": 1,
+  "name": "Postcard",
+  "category": "travel",
+  "description": "Five places, a calm tune and a title over the first shot.",
+  "shape": "16:9",
+  "music": {
+    "sound": "tve.music.sunrise",
+    "gainDb": -4,
+    "fadeOutBeats": 4
+  },
+  "transition": {
+    "id": "tve.transition.dissolve",
+    "beats": 1
+  },
+  "slots": [
+    {
+      "label": "Arrival",
+      "beats": 4
+    },
+    {
+      "label": "The streets",
+      "beats": 4
+    },
+    {
+      "label": "Something to eat",
+      "beats": 4
+    },
+    {
+      "label": "The view",
+      "beats": 4
+    },
+    {
+      "label": "Sunset",
+      "beats": 4
+    }
+  ],
+  "texts": [
+    {
+      "label": "Place",
+      "fromBeat": 0.5,
+      "beats": 3,
+      "style": {
+        "text": "SUMMER IN LISBON",
+        "size": 0.08,
+        "fontFamily": "Didot",
+        "letterSpacing": 0.3,
+        "shadow": true,
+        "y": -0.05,
+        "animationIn": {
+          "preset": "tracking",
+          "unit": "character",
+          "duration": 1.6,
+          "stagger": 0
+        },
+        "animationOut": {
+          "preset": "fade",
+          "unit": "whole",
+          "duration": 0.8,
+          "stagger": 0
+        }
+      }
+    },
+    {
+      "label": "Sign-off",
+      "fromBeat": 16.5,
+      "beats": 3.5,
+      "style": {
+        "text": "Wish you were here",
+        "size": 0.07,
+        "italic": true,
+        "fontFamily": "Georgia",
+        "color": [
+          1,
+          0.95,
+          0.85,
+          1
+        ],
+        "shadow": true,
+        "y": 0.3,
+        "animationIn": {
+          "preset": "fade",
+          "unit": "whole",
+          "duration": 0.8,
+          "stagger": 0
+        }
+      }
+    }
+  ],
+  "license": "TVE-Original"
+}

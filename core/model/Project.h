@@ -63,6 +63,8 @@ struct MediaItem {
     std::string fingerprint;
     // Set when a cloud provider made it.
     std::optional<GeneratedBy> generated;
+    // A template slot's stand-in picture (until media is put in the slot).
+    bool placeholder = false;
 
     // A lighter copy of the pictures for the preview to decode instead (same frames and
     // times). Set only in the snapshots handed to playback; never saved.
@@ -448,6 +450,34 @@ struct ClipLocation {
     Clip* clip = nullptr;
 };
 
+// A project made from a template: its replaceable media slots, editable texts and music, by
+// the clips that hold them (see core/model/Template.h).
+struct TemplateSlot {
+    Id clipId = kNoId;
+    std::string label;
+    std::string kind = "any"; // "video", "photo" or "any"
+    bool filled = false;
+
+    friend bool operator==(const TemplateSlot&, const TemplateSlot&) = default;
+};
+
+struct TemplateText {
+    Id clipId = kNoId;
+    std::string label;
+
+    friend bool operator==(const TemplateText&, const TemplateText&) = default;
+};
+
+struct TemplateInfo {
+    std::string id;   // the template it came from
+    std::string name;
+    std::vector<TemplateSlot> mediaSlots; // in order on the timeline ("slots" is a Qt macro)
+    std::vector<TemplateText> texts;
+    Id musicClipId = kNoId;
+
+    friend bool operator==(const TemplateInfo&, const TemplateInfo&) = default;
+};
+
 class Project {
 public:
     ProjectSettings settings;
@@ -455,6 +485,7 @@ public:
     std::vector<Track> tracks;
     std::vector<Marker> markers;     // sorted by time
     std::vector<Sequence> sequences; // the insides of compound clips
+    std::optional<TemplateInfo> templateInfo; // when made from a template
 
     Id allocateId() { return m_nextId++; }
     Id nextId() const { return m_nextId; }

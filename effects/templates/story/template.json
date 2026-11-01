@@ -1,0 +1,112 @@
+{
+  "id": "tve.template.story",
+  "version": 1,
+  "name": "Story drop",
+  "category": "social",
+  "description": "Five fast cuts with glitches, made for a tall phone screen.",
+  "shape": "9:16",
+  "music": {
+    "sound": "tve.music.neon_run",
+    "gainDb": -4,
+    "fadeOutBeats": 4
+  },
+  "transition": {
+    "id": "tve.transition.glitch",
+    "beats": 0.5
+  },
+  "slots": [
+    {
+      "label": "Hook",
+      "beats": 4
+    },
+    {
+      "label": "Look one",
+      "beats": 4
+    },
+    {
+      "label": "Look two",
+      "beats": 4
+    },
+    {
+      "label": "Close-up",
+      "beats": 4
+    },
+    {
+      "label": "Finale",
+      "beats": 4
+    }
+  ],
+  "texts": [
+    {
+      "label": "Headline",
+      "fromBeat": 0,
+      "beats": 4,
+      "style": {
+        "text": "NEW DROP",
+        "size": 0.09,
+        "bold": true,
+        "fontFamily": "Futura",
+        "color": [
+          0.55,
+          1,
+          1,
+          1
+        ],
+        "outlineWidth": 0.04,
+        "outlineColor": [
+          1,
+          0.2,
+          0.75,
+          1
+        ],
+        "animationIn": {
+          "preset": "fade",
+          "unit": "whole",
+          "duration": 0.4,
+          "stagger": 0
+        },
+        "animationLoop": {
+          "preset": "flicker",
+          "unit": "character",
+          "duration": 2.0,
+          "stagger": 0
+        }
+      }
+    },
+    {
+      "label": "Out now",
+      "fromBeat": 16,
+      "beats": 4,
+      "style": {
+        "text": "OUT NOW",
+        "size": 0.08,
+        "bold": true,
+        "color": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "shape": {
+          "kind": "box",
+          "color": [
+            1,
+            0.2,
+            0.75,
+            1
+          ],
+          "padding": 0.35,
+          "tail": 0.25
+        },
+        "y": 0.3,
+        "animationIn": {
+          "preset": "pop",
+          "unit": "whole",
+          "duration": 0.5,
+          "stagger": 0
+        }
+      }
+    }
+  ],
+  "license": "TVE-Original"
+}

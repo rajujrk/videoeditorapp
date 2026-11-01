@@ -25,6 +25,8 @@ qt_add_qml_module(tve_player
         SoundLibrary.cpp
         MediaImports.h
         MediaImports.cpp
+        TemplateLibrary.h
+        TemplateLibrary.cpp
         cloud/CloudKeys.h
         cloud/CloudKeys.mm
         cloud/CloudText.h
@@ -68,6 +70,15 @@ qt_add_qml_module(tve_player
         MicrophoneAccess.h
         MicrophoneAccess.mm
 )
+
+# The built-in template recipes (effects/templates/<name>/template.json) as :/templates/<name>/template.json.
+file(GLOB TVE_TEMPLATE_RECIPES CONFIGURE_DEPENDS RELATIVE ${CMAKE_SOURCE_DIR}/effects/templates
+     ${CMAKE_SOURCE_DIR}/effects/templates/*/template.json)
+foreach(recipe IN LISTS TVE_TEMPLATE_RECIPES)
+    set_source_files_properties(${CMAKE_SOURCE_DIR}/effects/templates/${recipe} PROPERTIES QT_RESOURCE_ALIAS ${recipe})
+endforeach()
+list(TRANSFORM TVE_TEMPLATE_RECIPES PREPEND ${CMAKE_SOURCE_DIR}/effects/templates/)
+qt_add_resources(tve_player "tve_templates" PREFIX "/templates" FILES ${TVE_TEMPLATE_RECIPES})
 
 qt_add_shaders(tve_player "tve_player_shaders"
     PREFIX "/"
