@@ -446,6 +446,13 @@ The Store tab with the catalogue checked — a pack to get, and an installed pac
 ![Store, dark](images/store-dark.png)
 ![Store, light](images/store-light.png)
 
+Audio plug-ins: AUDelay and the test VST3 effect on a clip in the inspector (parameters in the plug-in's own words, a Window button for its own window), and a track's own effects from the mixer's FX button, dark and light:
+
+![Plug-ins, dark](images/plugins-dark.png)
+![Plug-ins, light](images/plugins-light.png)
+![Track effects, dark](images/track-effects-dark.png)
+![Track effects, light](images/track-effects-light.png)
+
 The Generate tab choosing a first and last picture for a video, after a sticker was placed over the picture, dark and light:
 
 ![Generate, dark](images/generate-dark.png)

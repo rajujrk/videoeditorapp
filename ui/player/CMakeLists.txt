@@ -68,6 +68,8 @@ qt_add_qml_module(tve_player
         OverlayTransitions.h
         OverlayTransitions.cpp
         PackStore.h
+        AudioPluginHost.h
+        AudioPluginHost.mm
         PackStore.cpp
         StillImage.h
         StillImage.cpp

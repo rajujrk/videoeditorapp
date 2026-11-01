@@ -57,6 +57,14 @@ AudioEffectChain::AudioEffectChain(const AudioEffectLibrary& library) : m_librar
 
 void AudioEffectChain::configure(Running& effect)
 {
+    if (!effect.manifest) {
+        // A plug-in: each value set (0..1) over its state.
+        if (effect.plugin)
+            for (const auto& [param, value] : effect.values)
+                if (!value.empty())
+                    effect.plugin->setParameter(param, value.front());
+        return;
+    }
     // Each stage: its processor's defaults, the package's fixed settings, then the clip's
     // values (or the package defaults) for the params of the same name.
     const EffectManifest& m = *effect.manifest;
@@ -82,15 +90,34 @@ void AudioEffectChain::setEffects(const std::vector<ClipEffect>& effects)
     std::vector<const ClipEffect*> enabled;
     std::vector<std::string> structure;
     for (const ClipEffect& e : effects) {
-        if (e.enabled && m_library.find(e.effectId)) {
+        if (!e.enabled)
+            continue;
+        if (isPluginEffect(e.effectId)) {
+            enabled.push_back(&e);
+            structure.push_back(e.effectId + "#" + std::to_string(std::hash<std::string>{}(e.state)));
+        } else if (m_library.find(e.effectId)) {
             enabled.push_back(&e);
             structure.push_back(e.effectId);
         }
     }
     if (structure != m_structure) {
         m_effects.clear();
+        m_problems.clear();
         for (const ClipEffect* e : enabled) {
             Running running;
+            if (isPluginEffect(e->effectId)) {
+                // Opened here, its state loaded, then its values set over it.
+                std::string why;
+                running.plugin = AudioPlugin::open(e->effectId, &why);
+                if (!running.plugin)
+                    m_problems.push_back(e->effectId + ": " + why);
+                else if (!e->state.empty() && !running.plugin->loadState(decodeBase64(e->state)))
+                    m_problems.push_back(e->effectId + ": its saved settings couldn't be loaded");
+                running.values = e->values;
+                configure(running);
+                m_effects.push_back(std::move(running));
+                continue;
+            }
             running.manifest = m_library.find(e->effectId);
             for (const AudioStageSpec& spec : running.manifest->chain) {
                 const dsp::ProcessorInfo* info = dsp::findProcessor(spec.processor);
@@ -114,6 +141,11 @@ void AudioEffectChain::setEffects(const std::vector<ClipEffect>& effects)
 void AudioEffectChain::process(float* stereo, int frames)
 {
     for (Running& effect : m_effects) {
+        if (!effect.manifest) {
+            if (effect.plugin)
+                effect.plugin->process(stereo, frames);
+            continue;
+        }
         const bool blend = effect.mix >= 0.0f && effect.mix < 1.0f;
         if (blend)
             m_dry.assign(stereo, stereo + std::size_t(frames) * 2);
@@ -131,7 +163,17 @@ void AudioEffectChain::reset()
     for (Running& effect : m_effects) {
         for (Stage& stage : effect.stages)
             stage.processor->reset();
+        if (effect.plugin)
+            effect.plugin->reset();
     }
+}
+
+int AudioEffectChain::latency() const
+{
+    int total = 0;
+    for (const Running& effect : m_effects)
+        total += effect.plugin ? effect.plugin->latency() : 0;
+    return total;
 }
 
 double AudioEffectChain::tail() const
@@ -141,6 +183,8 @@ double AudioEffectChain::tail() const
     for (const Running& effect : m_effects) {
         for (const Stage& stage : effect.stages)
             total += stage.processor->tail();
+        if (effect.plugin)
+            total += effect.plugin->tail();
     }
     return std::min(total, 15.0);
 }

@@ -33,6 +33,19 @@ std::vector<ClipEffect> Clip::effectsAt(Ticks time) const
     return evaluated;
 }
 
+std::vector<ClipEffect> Clip::audioEffectsAt(Ticks time) const
+{
+    std::vector<ClipEffect> evaluated = audioEffects;
+    for (ClipEffect& effect : evaluated) {
+        for (const auto& [param, keys] : effect.keyframes) {
+            if (!keys.empty())
+                effect.values[param] = {float(evaluate(keys, time - start, 0.0))};
+        }
+        effect.keyframes.clear();
+    }
+    return evaluated;
+}
+
 ClipVisual Clip::visualAt(Ticks time) const
 {
     if (keyframes.empty())

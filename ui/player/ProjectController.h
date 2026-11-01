@@ -4,6 +4,7 @@
 #include "ProxyManager.h"
 #include "MediaImports.h"
 #include "AutoEdit.h"
+#include "AudioPluginHost.h"
 #include "PackStore.h"
 #include "TemplateLibrary.h"
 #include "cloud/CloudFeatures.h"
@@ -188,6 +189,10 @@ class ProjectController : public QObject {
     // Output meters (0..1 peak per channel) and the audio device.
     // Audio effect packages for the Audio tab, by category: {id, title, categories, params}.
     Q_PROPERTY(QVariantList audioEffects READ audioEffects CONSTANT)
+    // The audio plug-ins on this Mac (Audio Units and VST3), found in the background the first
+    // time this is read in the app (shared by every editor; again on rescanAudioPlugins()): [{id, name, vendor, format "AU"/"VST3", version, problem}].
+    Q_PROPERTY(QVariantList audioPlugins READ audioPlugins NOTIFY audioPluginsChanged)
+    Q_PROPERTY(bool scanningPlugins READ scanningPlugins NOTIFY audioPluginsChanged)
     // The mixer's meters while playing: {tracks: {<track id>: [peakL, peakR, rmsL, rmsR]},
     // master: [...], momentary, shortTerm, integrated} (LUFS; null while unknown); empty
     // when stopped.
@@ -333,6 +338,8 @@ public:
     QVariantList exportPresets() const;
     QVariantList exportFormats() const;
     QVariantList audioEffects() const;
+    QVariantList audioPlugins();
+    bool scanningPlugins() const { return m_scanningPlugins; }
     void updateMixLevels(tve::Ticks now);
     QVariantMap mixLevels() const { return m_mixLevels; }
     bool measuringLoudness() const { return m_measuringLoudness; }
@@ -410,6 +417,25 @@ public:
     Q_INVOKABLE bool removeAudioEffect(double clipId, int index);
     Q_INVOKABLE bool setAudioEffectEnabled(double clipId, int index, bool enabled);
     Q_INVOKABLE bool setAudioEffectParam(double clipId, int index, const QString& paramId, const QVariant& value);
+
+    // A track's own audio effects (built-in or plug-ins), on its mix: the same as a clip's.
+    Q_INVOKABLE bool addTrackAudioEffect(double trackId, const QString& effectId);
+    Q_INVOKABLE bool removeTrackAudioEffect(double trackId, int index);
+    Q_INVOKABLE bool setTrackAudioEffectEnabled(double trackId, int index, bool enabled);
+    Q_INVOKABLE bool setTrackAudioEffectParam(double trackId, int index, const QString& paramId, const QVariant& value);
+
+    // Audio plug-ins in a stack: a clip's (clipId > 0) or a track's (trackId > 0). Their
+    // parameters (0..1; [{id, title, type, min, max, default, steps, unit, keyframable}]),
+    // how a value is shown, and their own window (changes made there are one undo step,
+    // "Adjust Plug-in", once they pause or it closes).
+    Q_INVOKABLE void rescanAudioPlugins();
+    Q_INVOKABLE QVariantList pluginParameters(double clipId, double trackId, int index);
+    Q_INVOKABLE QString pluginValueText(double clipId, double trackId, int index, const QString& paramId, double value);
+    Q_INVOKABLE bool openPluginWindow(double clipId, double trackId, int index);
+    Q_INVOKABLE bool isPluginWindowOpen(double clipId, double trackId, int index) const;
+    Q_INVOKABLE void closePluginWindow(double clipId, double trackId, int index);
+    // As if its own window had set a parameter (for tests and scripting).
+    Q_INVOKABLE bool editPluginLive(double clipId, double trackId, int index, const QString& paramId, double value);
     // Whether the clip's sound keeps its pitch when it plays faster or slower.
     Q_INVOKABLE bool setKeepPitch(double clipId, bool keep);
     // Measures the clip's loudness (after its effects, before its volume) in the background,
@@ -842,6 +868,7 @@ public:
 signals:
     void viewChanged();
     void projectChanged();
+    void audioPluginsChanged();
     void stickersChanged();
     void playheadChanged();
     void playingChanged();
@@ -876,6 +903,14 @@ signals:
     void autoEditFinished(const QString& kind, bool ok, const QString& message);
 
 private:
+    // An audio effect stack (a clip's or a track's) and its effect at a plug-in key
+    // ("clip:<id>/<index>", "track:<id>/<index>").
+    static QString pluginKey(double clipId, double trackId, int index);
+    const tve::ClipEffect* audioEffectAt(const QString& key) const;
+    const std::vector<tve::ClipEffect>* audioStack(double clipId, double trackId) const;
+    bool setAudioStack(double clipId, double trackId, std::vector<tve::ClipEffect> effects, const char* label);
+    void pluginEdited(const QString& key, const QString& state);
+
     bool apply(std::unique_ptr<tve::Command> command);
     void publish();
     void reportError(const QString& message);
@@ -988,6 +1023,8 @@ private:
     CloudServices* m_cloud = nullptr;
     TemplateLibrary* m_templates = nullptr;
     PackStore* m_store = nullptr;
+    AudioPluginHost* m_pluginHost = nullptr;
+    bool m_scanningPlugins = false;
     // The last voice made (to add what was just listened to without speaking it again).
     struct SpokenVoice {
         QString key; // text, voice and speed

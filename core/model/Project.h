@@ -14,6 +14,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace tve {
@@ -116,15 +117,25 @@ struct ClipVisual {
 // One effect in a clip's stack, by effect id (validated against the effect library by
 // the app, not the core). Missing values use the effect's defaults.
 struct ClipEffect {
-    std::string effectId;
+    std::string effectId; // a built-in effect's id, or an audio plug-in's ("au:…", "vst3:…")
     bool enabled = true;
     std::map<std::string, std::vector<float>> values;
     // Animated scalar parameters, by parameter id; they override `values` (the app checks
-    // their range against the effect's manifest).
+    // their range against the effect's manifest; a plug-in's parameters are 0..1).
     std::map<std::string, Keyframes> keyframes;
+    // An audio plug-in's own saved state (base64; set from its window), loaded before
+    // `values`, which set single parameters over it. Empty for built-in effects.
+    std::string state;
 
     friend bool operator==(const ClipEffect&, const ClipEffect&) = default;
 };
+
+// Whether an effect id names an audio plug-in: "au:<type>/<subtype>/<manufacturer>" (an
+// Audio Unit) or "vst3:<class id>".
+inline bool isPluginEffect(std::string_view id)
+{
+    return id.starts_with("au:") || id.starts_with("vst3:");
+}
 
 // A clip's sound cleaned by speech enhancement: a copy of its media's whole sound with the
 // same timing (engine/speech/SpeechEnhancer), played instead of the media's own.
@@ -399,6 +410,8 @@ struct Clip {
     // The effect stack at a timeline time: animated parameters evaluated into `values`,
     // keyframes left out.
     std::vector<ClipEffect> effectsAt(Ticks time) const;
+    // The same for its audio effects.
+    std::vector<ClipEffect> audioEffectsAt(Ticks time) const;
     const Keyframes* keyframesOf(std::string_view propertyId) const;
 
     friend bool operator==(const Clip&, const Clip&) = default;
@@ -419,6 +432,9 @@ struct Track {
     // A title track holding captions (subtitles): what SRT/VTT export writes and import fills.
     bool captions = false;
     std::vector<Clip> clips; // kept sorted by start, never overlapping
+    // The track's own audio effects (built-in or plug-ins), on its mix of clips, before its
+    // volume and balance.
+    std::vector<ClipEffect> audioEffects;
 
     const Clip* findClip(Id clipId) const;
     Clip* findClip(Id clipId);

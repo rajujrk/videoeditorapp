@@ -221,6 +221,7 @@ QVariantList effectsList(const std::vector<ClipEffect>& effects)
             {QStringLiteral("effectId"), QString::fromStdString(effect.effectId)},
             {QStringLiteral("enabled"), effect.enabled},
             {QStringLiteral("values"), values},
+            {QStringLiteral("plugin"), isPluginEffect(effect.effectId)},
         };
     }
     return list;
@@ -388,19 +389,23 @@ Project emptyProject(int width, int height)
 
 // --- Animated channels ---
 // A channel is one value a clip can animate: a property ("x", "volume", …) or a parameter
-// of an effect in its stack, named "effect:<stack index>:<parameter id>".
+// of an effect in its stack, named "effect:<stack index>:<parameter id>", or of one in its
+// audio stack, "audioEffect:<stack index>:<parameter id>".
 
 struct EffectChannel {
     std::size_t index = 0;
     std::string param;
+    bool audio = false;
 };
 
 std::optional<EffectChannel> effectChannel(std::string_view id)
 {
     constexpr std::string_view prefix = "effect:";
-    if (!id.starts_with(prefix))
+    constexpr std::string_view audioPrefix = "audioEffect:";
+    const bool audio = id.starts_with(audioPrefix);
+    if (!audio && !id.starts_with(prefix))
         return std::nullopt;
-    const std::string_view rest = id.substr(prefix.size());
+    const std::string_view rest = id.substr(audio ? audioPrefix.size() : prefix.size());
     const auto colon = rest.find(':');
     if (colon == std::string_view::npos || colon == 0 || colon + 1 == rest.size())
         return std::nullopt;
@@ -410,21 +415,45 @@ std::optional<EffectChannel> effectChannel(std::string_view id)
             return std::nullopt;
         index = index * 10 + std::size_t(c - '0');
     }
-    return EffectChannel{index, std::string(rest.substr(colon + 1))};
+    return EffectChannel{index, std::string(rest.substr(colon + 1)), audio};
 }
 
-std::string effectChannelId(std::size_t index, const std::string& param)
+std::string effectChannelId(std::size_t index, const std::string& param, bool audio = false)
 {
-    return "effect:" + std::to_string(index) + ":" + param;
+    return (audio ? "audioEffect:" : "effect:") + std::to_string(index) + ":" + param;
 }
 
-// The manifest entry of an effect channel's parameter, if it can be animated.
+// The stack a channel's effect is in.
+template <typename C>
+auto& stackOf(C& clip, const EffectChannel& channel)
+{
+    return channel.audio ? clip.audioEffects : clip.effects;
+}
+
+// The manifest entry of an effect channel's parameter, if it can be animated (any of a
+// plug-in's: 0..1).
 const EffectParamSpec* animatableParam(const Clip& clip, const EffectChannel& channel)
 {
-    if (channel.index >= clip.effects.size())
+    const auto& stack = stackOf(clip, channel);
+    if (channel.index >= stack.size())
         return nullptr;
-    const LoadedEffect* effect = EffectLibrary::builtIn().find(clip.effects[channel.index].effectId);
-    const EffectParamSpec* spec = effect ? effect->manifest.findParam(channel.param) : nullptr;
+    const std::string& effectId = stack[channel.index].effectId;
+    if (channel.audio && isPluginEffect(effectId)) {
+        static const EffectParamSpec plugin = [] {
+            EffectParamSpec spec;
+            spec.type = ParamType::Float;
+            spec.min = 0.0;
+            spec.max = 1.0;
+            spec.keyframable = true;
+            return spec;
+        }();
+        return &plugin;
+    }
+    const EffectManifest* manifest = channel.audio ? AudioEffectLibrary::builtIn().find(effectId) : nullptr;
+    if (!channel.audio)
+        if (const LoadedEffect* effect = EffectLibrary::builtIn().find(effectId))
+            manifest = &effect->manifest;
+    const EffectParamSpec* spec = manifest ? manifest->findParam(channel.param) : nullptr;
     if (!spec || !spec->keyframable || (spec->type != ParamType::Float && spec->type != ParamType::Int))
         return nullptr;
     return spec;
@@ -445,9 +474,10 @@ std::optional<std::pair<double, double>> channelRange(const Clip& clip, const st
 const Keyframes* channelKeys(const Clip& clip, const std::string& id)
 {
     if (const auto channel = effectChannel(id)) {
-        if (channel->index >= clip.effects.size())
+        const auto& stack = stackOf(clip, *channel);
+        if (channel->index >= stack.size())
             return nullptr;
-        const auto& keys = clip.effects[channel->index].keyframes;
+        const auto& keys = stack[channel->index].keyframes;
         const auto it = keys.find(channel->param);
         return it != keys.end() && !it->second.empty() ? &it->second : nullptr;
     }
@@ -457,7 +487,7 @@ const Keyframes* channelKeys(const Clip& clip, const std::string& id)
 Keyframes& ensureChannel(Clip& clip, const std::string& id)
 {
     if (const auto channel = effectChannel(id))
-        return clip.effects[channel->index].keyframes[channel->param];
+        return stackOf(clip, *channel)[channel->index].keyframes[channel->param];
     return clip.keyframes[id];
 }
 
@@ -475,6 +505,12 @@ void forEachChannel(C& clip, F f)
                 f(effectChannelId(i, param), keys);
         }
     }
+    for (std::size_t i = 0; i < clip.audioEffects.size(); ++i) {
+        for (auto& [param, keys] : clip.audioEffects[i].keyframes) {
+            if (!keys.empty())
+                f(effectChannelId(i, param, true), keys);
+        }
+    }
 }
 
 bool isAnimated(const Clip& clip)
@@ -489,6 +525,8 @@ void pruneChannels(Clip& clip)
 {
     std::erase_if(clip.keyframes, [](const auto& entry) { return entry.second.empty(); });
     for (ClipEffect& effect : clip.effects)
+        std::erase_if(effect.keyframes, [](const auto& entry) { return entry.second.empty(); });
+    for (ClipEffect& effect : clip.audioEffects)
         std::erase_if(effect.keyframes, [](const auto& entry) { return entry.second.empty(); });
 }
 
@@ -512,9 +550,9 @@ double channelValue(const Clip& clip, const std::string& id, Ticks time)
     if (id == property::kVolume)
         return clip.gainDbAt(time);
     if (const auto channel = effectChannel(id)) {
-        if (channel->index >= clip.effects.size())
+        if (channel->index >= stackOf(clip, *channel).size())
             return 0.0;
-        const ClipEffect effect = clip.effectsAt(time)[channel->index];
+        const ClipEffect effect = (channel->audio ? clip.audioEffectsAt(time) : clip.effectsAt(time))[channel->index];
         if (const auto it = effect.values.find(channel->param); it != effect.values.end() && !it->second.empty())
             return it->second.front();
         const EffectParamSpec* spec = animatableParam(clip, *channel);
@@ -531,8 +569,8 @@ void setChannelStatic(Clip& clip, const std::string& id, double value)
     if (id == property::kVolume) {
         clip.gainDb = float(value);
     } else if (const auto channel = effectChannel(id)) {
-        if (channel->index < clip.effects.size())
-            clip.effects[channel->index].values[channel->param] = {float(value)};
+        if (channel->index < stackOf(clip, *channel).size())
+            stackOf(clip, *channel)[channel->index].values[channel->param] = {float(value)};
     } else if (double* field = visualField(clip.visual, id)) {
         *field = value;
     }
@@ -718,6 +756,11 @@ ProjectController::ProjectController(QObject* parent)
     m_cloud = new CloudServices(this);
     m_templates = new TemplateLibrary(this);
     m_store = new PackStore(this);
+    m_pluginHost = new AudioPluginHost(this);
+    connect(m_pluginHost, &AudioPluginHost::edited, this, &ProjectController::pluginEdited);
+    // Plug-ins being looked at follow the project (undo, removal).
+    connect(this, &ProjectController::projectChanged, this,
+            [this] { m_pluginHost->sync([this](const QString& key) { return audioEffectAt(key); }); });
     connect(m_store, &PackStore::contentChanged, this, [this](const QStringList& kinds) {
         if (kinds.contains(QLatin1String("sounds")))
             m_soundLibrary->refresh();
@@ -915,6 +958,7 @@ QVariantList ProjectController::tracks() const
             {QStringLiteral("pan"), double(track->pan)},
             {QStringLiteral("solo"), track->solo},
             {QStringLiteral("captions"), track->captions},
+            {QStringLiteral("audioEffects"), effectsList(track->audioEffects)},
             {QStringLiteral("clips"), clips},
         };
     }
@@ -2681,11 +2725,14 @@ bool ProjectController::commitAnimation(const Clip& before, Clip after, const ch
     if (after.gainDb != before.gainDb)
         gain = std::clamp(after.gainDb, kMinGainDb, kMaxGainDb);
     const bool effectsChanged = after.effects != before.effects;
-    if (changes.empty() && !visual && !gain && !effectsChanged)
+    const bool audioEffectsChanged = after.audioEffects != before.audioEffects;
+    if (changes.empty() && !visual && !gain && !effectsChanged && !audioEffectsChanged)
         return false;
     auto command = std::make_unique<SetClipKeyframesCommand>(before.id, std::move(changes), label, visual, gain);
     if (effectsChanged)
         command->setEffects(std::move(after.effects));
+    if (audioEffectsChanged)
+        command->setAudioEffects(std::move(after.audioEffects));
     return apply(std::move(command));
 }
 
@@ -5640,13 +5687,14 @@ bool ProjectController::addAudioEffect(double clipId, const QString& effectId)
         reportError(QStringLiteral("Select a clip with sound"));
         return false;
     }
-    if (!AudioEffectLibrary::builtIn().find(effectId.toStdString())) {
+    const bool plugin = isPluginEffect(effectId.toStdString());
+    if (!plugin && !AudioEffectLibrary::builtIn().find(effectId.toStdString())) {
         reportError(QStringLiteral("Unknown audio effect %1").arg(effectId));
         return false;
     }
     auto effects = clip->audioEffects;
-    effects.push_back(ClipEffect{effectId.toStdString(), true, {}, {}});
-    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects), "Add Audio Effect"));
+    effects.push_back(ClipEffect{.effectId = effectId.toStdString()});
+    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects), plugin ? "Add Plug-in" : "Add Audio Effect"));
 }
 
 bool ProjectController::removeAudioEffect(double clipId, int index)
@@ -5675,16 +5723,261 @@ bool ProjectController::setAudioEffectParam(double clipId, int index, const QStr
     const Clip* clip = findClip(toId(clipId));
     if (!clip || index < 0 || index >= int(clip->audioEffects.size()))
         return false;
-    const EffectManifest* manifest = AudioEffectLibrary::builtIn().find(clip->audioEffects[std::size_t(index)].effectId);
+    const std::string& effectId = clip->audioEffects[std::size_t(index)].effectId;
+    const bool plugin = isPluginEffect(effectId);
+    const EffectManifest* manifest = plugin ? nullptr : AudioEffectLibrary::builtIn().find(effectId);
     const EffectParamSpec* param = manifest ? manifest->findParam(paramId.toStdString()) : nullptr;
     const auto components = componentsOf(value);
-    if (!param || components.empty()) {
+    if ((!plugin && !param) || components.empty()) {
         reportError(QStringLiteral("Unknown setting %1").arg(paramId));
         return false;
     }
+    const float clamped = plugin ? std::clamp(components.front(), 0.0f, 1.0f)
+                                 : std::clamp(components.front(), float(param->min), float(param->max));
+    // An animated one takes the value as a keyframe at the playhead.
+    const std::string channel = effectChannelId(std::size_t(index), paramId.toStdString(), true);
+    if (channelKeys(*clip, channel)) {
+        Clip after = *clip;
+        setKey(after, channel, clamped);
+        return commitAnimation(*clip, after, plugin ? "Change Plug-in" : "Change Audio Effect");
+    }
     auto effects = clip->audioEffects;
-    effects[std::size_t(index)].values[param->id] = {std::clamp(components.front(), float(param->min), float(param->max))};
-    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects), "Change Audio Effect"));
+    effects[std::size_t(index)].values[paramId.toStdString()] = {clamped};
+    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects),
+                                                              plugin ? "Change Plug-in" : "Change Audio Effect"));
+}
+
+// --- Track audio effects and plug-ins ---
+
+const std::vector<ClipEffect>* ProjectController::audioStack(double clipId, double trackId) const
+{
+    if (clipId > 0) {
+        const Clip* clip = const_cast<ProjectController*>(this)->findClip(toId(clipId));
+        return clip ? &clip->audioEffects : nullptr;
+    }
+    const Track* track = m_project.findTrack(toId(trackId));
+    return track ? &track->audioEffects : nullptr;
+}
+
+bool ProjectController::setAudioStack(double clipId, double trackId, std::vector<ClipEffect> effects, const char* label)
+{
+    if (clipId > 0)
+        return apply(std::make_unique<SetClipAudioEffectsCommand>(toId(clipId), std::move(effects), label));
+    return apply(std::make_unique<SetTrackAudioEffectsCommand>(toId(trackId), std::move(effects), label));
+}
+
+bool ProjectController::addTrackAudioEffect(double trackId, const QString& effectId)
+{
+    const auto* stack = audioStack(-1, trackId);
+    const bool plugin = isPluginEffect(effectId.toStdString());
+    if (!stack || (!plugin && !AudioEffectLibrary::builtIn().find(effectId.toStdString()))) {
+        reportError(QStringLiteral("Unknown audio effect %1").arg(effectId));
+        return false;
+    }
+    auto effects = *stack;
+    effects.push_back(ClipEffect{.effectId = effectId.toStdString()});
+    return setAudioStack(-1, trackId, std::move(effects), plugin ? "Add Track Plug-in" : "Add Track Effect");
+}
+
+bool ProjectController::removeTrackAudioEffect(double trackId, int index)
+{
+    const auto* stack = audioStack(-1, trackId);
+    if (!stack || index < 0 || index >= int(stack->size()))
+        return false;
+    auto effects = *stack;
+    effects.erase(effects.begin() + index);
+    return setAudioStack(-1, trackId, std::move(effects), "Remove Track Effect");
+}
+
+bool ProjectController::setTrackAudioEffectEnabled(double trackId, int index, bool enabled)
+{
+    const auto* stack = audioStack(-1, trackId);
+    if (!stack || index < 0 || index >= int(stack->size()))
+        return false;
+    auto effects = *stack;
+    effects[std::size_t(index)].enabled = enabled;
+    return setAudioStack(-1, trackId, std::move(effects), enabled ? "Enable Track Effect" : "Disable Track Effect");
+}
+
+bool ProjectController::setTrackAudioEffectParam(double trackId, int index, const QString& paramId, const QVariant& value)
+{
+    const auto* stack = audioStack(-1, trackId);
+    if (!stack || index < 0 || index >= int(stack->size()))
+        return false;
+    const std::string& effectId = (*stack)[std::size_t(index)].effectId;
+    const bool plugin = isPluginEffect(effectId);
+    const EffectManifest* manifest = plugin ? nullptr : AudioEffectLibrary::builtIn().find(effectId);
+    const EffectParamSpec* param = manifest ? manifest->findParam(paramId.toStdString()) : nullptr;
+    const auto components = componentsOf(value);
+    if ((!plugin && !param) || components.empty()) {
+        reportError(QStringLiteral("Unknown setting %1").arg(paramId));
+        return false;
+    }
+    auto effects = *stack;
+    effects[std::size_t(index)].values[paramId.toStdString()] = {
+        plugin ? std::clamp(components.front(), 0.0f, 1.0f) : std::clamp(components.front(), float(param->min), float(param->max))};
+    return setAudioStack(-1, trackId, std::move(effects), plugin ? "Change Plug-in" : "Change Track Effect");
+}
+
+QString ProjectController::pluginKey(double clipId, double trackId, int index)
+{
+    return clipId > 0 ? QStringLiteral("clip:%1/%2").arg(qint64(clipId)).arg(index)
+                      : QStringLiteral("track:%1/%2").arg(qint64(trackId)).arg(index);
+}
+
+const ClipEffect* ProjectController::audioEffectAt(const QString& key) const
+{
+    // "clip:<id>/<index>" or "track:<id>/<index>"
+    const qsizetype colon = key.indexOf(QLatin1Char(':'));
+    const qsizetype slash = key.indexOf(QLatin1Char('/'));
+    if (colon < 0 || slash < colon)
+        return nullptr;
+    const double id = key.mid(colon + 1, slash - colon - 1).toDouble();
+    const int index = key.mid(slash + 1).toInt();
+    const bool clip = key.startsWith(QLatin1String("clip:"));
+    const auto* stack = audioStack(clip ? id : -1, clip ? -1 : id);
+    if (!stack || index < 0 || index >= int(stack->size()) || !isPluginEffect((*stack)[std::size_t(index)].effectId))
+        return nullptr;
+    return &(*stack)[std::size_t(index)];
+}
+
+namespace {
+
+// The plug-ins found, shared by every editor in the app: looked for once (in the background),
+// again only when asked.
+struct PluginList {
+    QVariantList plugins;
+    bool scanned = false;
+    bool scanning = false;
+    std::vector<QPointer<ProjectController>> waiting;
+};
+PluginList& pluginList()
+{
+    static PluginList list;
+    return list;
+}
+
+} // namespace
+
+QVariantList ProjectController::audioPlugins()
+{
+    // The first read starts the look (after this read, not during it).
+    if (!pluginList().scanned && !pluginList().scanning && !m_scanningPlugins)
+        QTimer::singleShot(0, this, [this] {
+            if (!pluginList().scanned)
+                rescanAudioPlugins();
+        });
+    return pluginList().plugins;
+}
+
+void ProjectController::rescanAudioPlugins()
+{
+    PluginList& shared = pluginList();
+    shared.waiting.push_back(this);
+    m_scanningPlugins = true;
+    emit audioPluginsChanged();
+    if (shared.scanning)
+        return;
+    shared.scanning = true;
+    // In the background: checking a new VST3 bundle runs it in a process of its own.
+    std::thread([] {
+        const std::vector<PluginDescription> found = listPlugins();
+        QVariantList list;
+        for (const PluginDescription& p : found)
+            list << QVariantMap{{QStringLiteral("id"), QString::fromStdString(p.id)},
+                                {QStringLiteral("name"), QString::fromStdString(p.name)},
+                                {QStringLiteral("vendor"), QString::fromStdString(p.vendor)},
+                                {QStringLiteral("format"), QString::fromStdString(p.format)},
+                                {QStringLiteral("version"), QString::fromStdString(p.version)},
+                                {QStringLiteral("problem"), QString::fromStdString(p.problem)}};
+        QMetaObject::invokeMethod(qApp, [list] {
+            PluginList& shared = pluginList();
+            shared.plugins = list;
+            shared.scanned = true;
+            shared.scanning = false;
+            const auto waiting = std::exchange(shared.waiting, {});
+            for (const QPointer<ProjectController>& controller : waiting) {
+                if (!controller)
+                    continue;
+                controller->m_scanningPlugins = false;
+                emit controller->audioPluginsChanged();
+                emit controller->selectedClipInfoChanged();
+            }
+        });
+    }).detach();
+}
+
+QVariantList ProjectController::pluginParameters(double clipId, double trackId, int index)
+{
+    const QString key = pluginKey(clipId, trackId, index);
+    const ClipEffect* effect = audioEffectAt(key);
+    return effect ? m_pluginHost->parameters(key, *effect) : QVariantList();
+}
+
+QString ProjectController::pluginValueText(double clipId, double trackId, int index, const QString& paramId, double value)
+{
+    const QString key = pluginKey(clipId, trackId, index);
+    const ClipEffect* effect = audioEffectAt(key);
+    return effect ? m_pluginHost->valueText(key, *effect, paramId, value) : QString();
+}
+
+bool ProjectController::openPluginWindow(double clipId, double trackId, int index)
+{
+    const QString key = pluginKey(clipId, trackId, index);
+    const ClipEffect* effect = audioEffectAt(key);
+    if (!effect) {
+        reportError(QStringLiteral("That isn't a plug-in"));
+        return false;
+    }
+    QString name = QString::fromStdString(effect->effectId);
+    for (const QVariant& p : pluginList().plugins)
+        if (p.toMap().value(QStringLiteral("id")).toString() == name)
+            name = p.toMap().value(QStringLiteral("name")).toString();
+    QString where;
+    if (clipId > 0) {
+        const QVariantMap info = selectedClipInfo();
+        where = info.value(QStringLiteral("id")).toDouble() == clipId ? info.value(QStringLiteral("label")).toString() : QString();
+    } else if (const Track* track = m_project.findTrack(toId(trackId))) {
+        where = QString::fromStdString(track->name);
+    }
+    QString error;
+    const bool opened = m_pluginHost->openWindow(key, *effect, where.isEmpty() ? name : name + QStringLiteral(" — ") + where, &error);
+    if (!opened && !error.isEmpty())
+        reportError(error);
+    return opened;
+}
+
+bool ProjectController::isPluginWindowOpen(double clipId, double trackId, int index) const
+{
+    return m_pluginHost->isWindowOpen(pluginKey(clipId, trackId, index));
+}
+
+void ProjectController::closePluginWindow(double clipId, double trackId, int index)
+{
+    m_pluginHost->closeWindow(pluginKey(clipId, trackId, index));
+}
+
+bool ProjectController::editPluginLive(double clipId, double trackId, int index, const QString& paramId, double value)
+{
+    const QString key = pluginKey(clipId, trackId, index);
+    const ClipEffect* effect = audioEffectAt(key);
+    return effect && m_pluginHost->editLive(key, *effect, paramId, value);
+}
+
+void ProjectController::pluginEdited(const QString& key, const QString& state)
+{
+    // Its whole state, in place of single values (its animated ones stay animated).
+    const ClipEffect* effect = audioEffectAt(key);
+    if (!effect)
+        return;
+    const bool clip = key.startsWith(QLatin1String("clip:"));
+    const double id = key.mid(key.indexOf(QLatin1Char(':')) + 1, key.indexOf(QLatin1Char('/')) - key.indexOf(QLatin1Char(':')) - 1).toDouble();
+    const int index = key.mid(key.indexOf(QLatin1Char('/')) + 1).toInt();
+    auto effects = *audioStack(clip ? id : -1, clip ? -1 : id);
+    ClipEffect& changed = effects[std::size_t(index)];
+    changed.state = state.toStdString();
+    std::erase_if(changed.values, [&](const auto& entry) { return !changed.keyframes.contains(entry.first); });
+    setAudioStack(clip ? id : -1, clip ? -1 : id, std::move(effects), "Adjust Plug-in");
 }
 
 bool ProjectController::setKeepPitch(double clipId, bool keep)

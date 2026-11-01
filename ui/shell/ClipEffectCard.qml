@@ -3,19 +3,45 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 
-// One effect in the selected clip's stack: on/off, remove, and its manifest-driven
-// controls. Dragging previews live; releasing commits one undo step. With `audio`, an
-// effect in the clip's audio stack (heard on the next play; not keyframed).
+// One effect in a stack: on/off, remove, and its controls. Dragging previews live; releasing
+// commits one undo step. With `audio`, an effect in the clip's audio stack — or, with
+// `trackId`, a track's — heard on the next play. An audio plug-in shows its own parameters
+// (0..1, as the plug-in words them) and a button for its own window; a clip's can be keyframed.
 Rectangle {
     id: card
     required property var project
     required property double clipId
     required property int stackIndex
-    required property var entry // {effectId, enabled, values}
+    required property var entry // {effectId, enabled, values, plugin}
     required property var spec  // the effect's manifest summary from availableEffects
     property var keyStates: ({}) // channel → "key" / "animated" (selectedClipInfo.keyframeStates)
     property bool audio: false
-    readonly property string prefix: audio ? "audioEffect" : "clipEffect"
+    property double trackId: -1 // a track's audio stack
+    readonly property bool onTrack: trackId > 0
+    readonly property bool plugin: entry.plugin === true
+    readonly property string prefix: onTrack ? "trackEffect" : audio ? "audioEffect" : "clipEffect"
+    // A plug-in's parameters (read again when the stack changes).
+    readonly property var pluginParams: {
+        card.entry // (dependency)
+        return plugin ? project.pluginParameters(onTrack ? -1 : clipId, onTrack ? trackId : -1, stackIndex) : []
+    }
+    readonly property var params: plugin ? pluginParams : spec.params
+
+    function setEnabled(on) {
+        if (onTrack) project.setTrackAudioEffectEnabled(trackId, stackIndex, on)
+        else if (audio) project.setAudioEffectEnabled(clipId, stackIndex, on)
+        else project.setClipEffectEnabled(clipId, stackIndex, on)
+    }
+    function remove() {
+        if (onTrack) project.removeTrackAudioEffect(trackId, stackIndex)
+        else if (audio) project.removeAudioEffect(clipId, stackIndex)
+        else project.removeClipEffect(clipId, stackIndex)
+    }
+    function commit(param, value) {
+        if (onTrack) project.setTrackAudioEffectParam(trackId, stackIndex, param, value)
+        else if (audio) project.setAudioEffectParam(clipId, stackIndex, param, value)
+        else project.setClipEffectParam(clipId, stackIndex, param, value)
+    }
 
     implicitHeight: column.implicitHeight + Theme.space.m
     radius: Theme.radius.m
@@ -29,7 +55,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Icon { name: card.audio ? "audio" : "effects"; size: Theme.size.iconSmall; color: card.entry.enabled ? Theme.color.accentText : Theme.color.textSecondary }
+            Icon { name: card.audio || card.onTrack ? "audio" : "effects"; size: Theme.size.iconSmall; color: card.entry.enabled ? Theme.color.accentText : Theme.color.textSecondary }
             Text {
                 text: card.spec.title
                 font: Theme.type.heading
@@ -37,41 +63,61 @@ Rectangle {
                 Layout.fillWidth: true
                 elide: Text.ElideRight
             }
+            TextButton {
+                objectName: card.prefix + "Window:" + card.stackIndex
+                visible: card.plugin && card.pluginParams.length >= 0
+                text: "Window"
+                variant: "ghost"
+                tip: "Open the plug-in's own window; what you change there is one undo step"
+                onClicked: card.project.openPluginWindow(card.onTrack ? -1 : card.clipId, card.onTrack ? card.trackId : -1, card.stackIndex)
+            }
             ToggleSwitch {
                 objectName: card.prefix + ":" + card.stackIndex
                 checked: card.entry.enabled
-                onToggled: card.audio ? card.project.setAudioEffectEnabled(card.clipId, card.stackIndex, checked)
-                                      : card.project.setClipEffectEnabled(card.clipId, card.stackIndex, checked)
+                onToggled: card.setEnabled(checked)
             }
             IconButton {
-                objectName: (card.audio ? "removeAudioEffect:" : "removeEffect:") + card.stackIndex
+                objectName: (card.onTrack ? "removeTrackEffect:" : card.audio ? "removeAudioEffect:" : "removeEffect:") + card.stackIndex
                 iconName: "delete"
                 tip: "Remove effect"
                 buttonSize: 24
-                onClicked: card.audio ? card.project.removeAudioEffect(card.clipId, card.stackIndex)
-                                      : card.project.removeClipEffect(card.clipId, card.stackIndex)
+                onClicked: card.remove()
             }
+        }
+        Text {
+            visible: card.plugin && card.pluginParams.length === 0
+            Layout.fillWidth: true
+            text: "Not available on this Mac: it's passed over until it's installed."
+            font: Theme.type.caption
+            color: Theme.color.warning
+            wrapMode: Text.WordWrap
         }
 
         Repeater {
-            model: card.entry.enabled ? card.spec.params : []
+            model: card.entry.enabled ? card.params : []
             delegate: ParamControl {
                 required property var modelData
-                readonly property string channel: "effect:" + card.stackIndex + ":" + modelData.id
+                readonly property string channel: (card.audio ? "audioEffect:" : "effect:") + card.stackIndex + ":" + modelData.id
                 Layout.fillWidth: true
-                objectName: (card.audio ? "audioEffectParam:" : "effectParam:") + card.stackIndex + ":" + modelData.id
-                keyState: modelData.keyframable && !card.audio ? (card.keyStates[channel] || "none") : ""
+                objectName: (card.onTrack ? "trackEffectParam:" : card.audio ? "audioEffectParam:" : "effectParam:")
+                            + card.stackIndex + ":" + modelData.id
+                // Keyframes: video effects, and a clip's audio plug-ins.
+                keyState: modelData.keyframable && !card.onTrack && (!card.audio || card.plugin)
+                          ? (card.keyStates[channel] || "none") : ""
                 onKeyframeToggled: keyState === "key" ? card.project.removeKeyframes(card.clipId, [channel])
                                                       : card.project.addKeyframes(card.clipId, [channel])
-                // Show the clip's value when set, else the manifest default.
+                // Show the stack's value when set, else the manifest default (a plug-in's own now).
                 param: Object.assign({}, modelData, card.entry.values[modelData.id] !== undefined
                                                     ? { default: card.entry.values[modelData.id] } : {})
+                format: card.plugin ? (v) => card.project.pluginValueText(card.onTrack ? -1 : card.clipId,
+                                                                           card.onTrack ? card.trackId : -1,
+                                                                           card.stackIndex, modelData.id, v)
+                                    : null
                 onValueEdited: (value) => {
-                    if (!card.audio)
+                    if (!card.audio && !card.onTrack)
                         card.project.previewClipEffectParam(card.clipId, card.stackIndex, modelData.id, value)
                 }
-                onValueCommitted: (value) => card.audio ? card.project.setAudioEffectParam(card.clipId, card.stackIndex, modelData.id, value)
-                                                        : card.project.setClipEffectParam(card.clipId, card.stackIndex, modelData.id, value)
+                onValueCommitted: (value) => card.commit(modelData.id, value)
             }
         }
     }

@@ -834,6 +834,10 @@ std::optional<std::string> validateEffects(const std::vector<ClipEffect>& effect
     return std::nullopt;
 }
 
+namespace {
+std::optional<std::string> soundError(const Project& project, const Track& track, const Clip& clip);
+} // namespace
+
 std::optional<std::string> SetClipKeyframesCommand::redo(Project& project)
 {
     auto location = project.locateClip(m_clipId);
@@ -868,6 +872,12 @@ std::optional<std::string> SetClipKeyframesCommand::redo(Project& project)
         if (auto error = validateEffects(*m_effects))
             return error;
     }
+    if (m_audioEffects) {
+        if (auto error = soundError(project, *location->track, clip))
+            return error;
+        if (auto error = validateEffects(*m_audioEffects))
+            return error;
+    }
 
     m_previous = clip;
     for (const auto& [id, keys] : m_changes) {
@@ -882,6 +892,8 @@ std::optional<std::string> SetClipKeyframesCommand::redo(Project& project)
         clip.gainDb = *m_gainDb;
     if (m_effects)
         clip.effects = *m_effects;
+    if (m_audioEffects)
+        clip.audioEffects = *m_audioEffects;
     return std::nullopt;
 }
 
@@ -892,6 +904,7 @@ void SetClipKeyframesCommand::undo(Project& project)
     clip.visual = m_previous.visual;
     clip.gainDb = m_previous.gainDb;
     clip.effects = m_previous.effects;
+    clip.audioEffects = m_previous.audioEffects;
 }
 
 // --- SetClipEffectsCommand ---
@@ -955,6 +968,32 @@ std::optional<std::string> SetClipAudioEffectsCommand::redo(Project& project)
 void SetClipAudioEffectsCommand::undo(Project& project)
 {
     project.locateClip(m_clipId)->clip->audioEffects = m_previous;
+}
+
+// --- SetTrackAudioEffectsCommand ---
+
+std::optional<std::string> SetTrackAudioEffectsCommand::redo(Project& project)
+{
+    Track* track = project.findTrack(m_trackId);
+    if (!track)
+        return "track not found";
+    if (track->locked)
+        return "track is locked";
+    if (track->kind == TrackKind::Title)
+        return "title tracks have no sound";
+    if (auto error = validateEffects(m_effects))
+        return error;
+    for (const ClipEffect& effect : m_effects)
+        if (!effect.keyframes.empty())
+            return "track effects aren't animated";
+    m_previous = track->audioEffects;
+    track->audioEffects = m_effects;
+    return std::nullopt;
+}
+
+void SetTrackAudioEffectsCommand::undo(Project& project)
+{
+    project.findTrack(m_trackId)->audioEffects = m_previous;
 }
 
 // --- SetClipKeepPitchCommand ---

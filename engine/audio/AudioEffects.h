@@ -1,6 +1,7 @@
 #pragma once
 
 #include "audio/dsp/Processors.h"
+#include "audio/plugins/AudioPlugin.h"
 #include "content/EffectManifest.h"
 #include "model/Project.h"
 
@@ -35,8 +36,10 @@ private:
 // (folder, JSON) of every built-in package; generated at build time.
 const std::vector<std::pair<std::string, std::string>>& builtInAudioEffectManifests();
 
-// A clip's audio effects, running: one processor per stage. setEffects() rebuilds only
-// when the stack's effects change; new values just reconfigure the processors.
+// A clip's (or a track's) audio effects, running: one processor per stage, or the plug-in.
+// setEffects() rebuilds only when the stack's effects (or a plug-in's state) change; new
+// values just reconfigure them. A plug-in that can't be opened is left out (bypassed) and
+// said in problems().
 class AudioEffectChain {
 public:
     explicit AudioEffectChain(const AudioEffectLibrary& library = AudioEffectLibrary::builtIn());
@@ -47,6 +50,9 @@ public:
     void reset();
     // How long the chain may keep sounding after its input stops, in seconds.
     double tail() const;
+    // Samples the chain's output lags its input by (its plug-ins' latency).
+    int latency() const;
+    const std::vector<std::string>& problems() const { return m_problems; }
 
 private:
     struct Stage {
@@ -55,7 +61,8 @@ private:
         const AudioStageSpec* spec = nullptr;
     };
     struct Running {
-        const EffectManifest* manifest = nullptr;
+        const EffectManifest* manifest = nullptr; // or a plug-in:
+        std::unique_ptr<AudioPlugin> plugin;
         std::vector<Stage> stages;
         float mix = 1.0f; // < 0: the effect has no mix param
         std::map<std::string, std::vector<float>> values;
@@ -64,7 +71,8 @@ private:
 
     const AudioEffectLibrary& m_library;
     std::vector<Running> m_effects;
-    std::vector<std::string> m_structure; // effect ids of the running stack
+    std::vector<std::string> m_structure; // effect ids of the running stack (plug-ins: with their state)
+    std::vector<std::string> m_problems;
     std::vector<float> m_dry;
 };
 
