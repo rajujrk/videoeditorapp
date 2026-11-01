@@ -55,6 +55,10 @@ class EffectLibrary {
 public:
     // The effects and transitions compiled into the app (effects/CMakeLists.txt). Loaded once.
     static const EffectLibrary& builtIn();
+    // Installed content packs whose effects/ and transitions/ folders join the built-in ones
+    // (after them; an id already taken is left out). Takes effect only before builtIn() is
+    // first used, so packs installed later are there the next time the app starts.
+    static void usePackFolders(const QStringList& folders);
 
     // Loads every <root>/<folder>/manifest.json with its .frag.qsb shaders: video effects
     // from `videoEffectsRoot`, transitions from `transitionsRoot` (if given).

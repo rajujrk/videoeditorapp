@@ -51,6 +51,7 @@ add_executable(tve_engine_tests
     engine/test_synth.cpp
     engine/test_imports.cpp
     engine/test_highlights.cpp
+    engine/test_packs.cpp
 )
 target_link_libraries(tve_engine_tests PRIVATE tve::engine tve::ffmpeg Catch2::Catch2WithMain)
 target_compile_definitions(tve_engine_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples"

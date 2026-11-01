@@ -24,6 +24,11 @@
 #include "decode/AudioDecoder.h"
 #include "audio/SoundPacks.h"
 #include "encode/MediaWriter.h"
+#include "packs/Packs.h"
+
+#include <QDirIterator>
+#include <QTcpServer>
+#include <QTcpSocket>
 
 #include <cmath>
 #include <functional>
@@ -278,17 +283,179 @@ void writeCaptionFixtures(const QString& dir)
     write(QStringLiteral("long.srt"), many);
 }
 
+// A pack store's site for the tests: a static web server on this machine serving a folder,
+// packs published into it with the real publishing code, and the catalogue signed with a key
+// made for this run (in memory only; its public key is the one the store trusts).
+// TVE_STORE_URL points the store at it; TVE_PACKS_DIR and TVE_STORE_SETTINGS_FILE are scratch.
+class PackSite : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QString url READ url CONSTANT)
+    Q_PROPERTY(QString packsDir READ packsDir CONSTANT)
+    Q_PROPERTY(int requests READ requests)
+    // The folder the tests run in (a failed install must leave it alone).
+    Q_PROPERTY(QString currentDir READ currentDir CONSTANT)
+public:
+    QTemporaryDir root;
+    QTemporaryDir staging;
+    tve::SigningKey key;
+    tve::SigningKey otherKey;
+    QTcpServer server;
+    int served = 0;
+    qint64 sequence = 0;
+
+    PackSite()
+    {
+        key = tve::makeSigningKey().value_or(tve::SigningKey{});
+        otherKey = tve::makeSigningKey().value_or(tve::SigningKey{});
+    }
+    // The keys file the store trusts (the site's key only).
+    void writeTrustedKeys(const QString& path) const
+    {
+        QFile file(path);
+        if (file.open(QIODevice::WriteOnly))
+            file.write(QStringLiteral("{\"keys\": [{\"id\": \"test\", \"publicKey\": \"%1\"}]}")
+                           .arg(QString::fromLatin1(QByteArray::fromStdString(key.publicKey).toBase64())).toUtf8());
+    }
+    void start()
+    {
+        server.listen(QHostAddress::LocalHost);
+        connect(&server, &QTcpServer::newConnection, this, [this] {
+            while (QTcpSocket* socket = server.nextPendingConnection()) {
+                connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
+                connect(socket, &QTcpSocket::readyRead, this, [this, socket] {
+                    const QByteArray request = socket->peek(8192);
+                    if (!request.contains("\r\n\r\n"))
+                        return;
+                    socket->readAll();
+                    ++served;
+                    const QList<QByteArray> line = request.left(request.indexOf("\r\n")).split(' ');
+                    const QString path = line.size() > 1 ? QUrl::fromPercentEncoding(line[1]) : QString();
+                    QFile file(root.path() + path);
+                    QByteArray response;
+                    if (!path.contains(QStringLiteral("..")) && file.open(QIODevice::ReadOnly)) {
+                        const QByteArray body = file.readAll();
+                        response = "HTTP/1.1 200 OK\r\nContent-Length: " + QByteArray::number(body.size())
+                                   + "\r\nConnection: close\r\n\r\n" + body;
+                    } else {
+                        response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                    }
+                    socket->write(response);
+                    socket->disconnectFromHost();
+                });
+            }
+        });
+    }
+    QString url() const { return QStringLiteral("http://127.0.0.1:%1/catalogue.json").arg(server.serverPort()); }
+    QString packsDir() const { return qEnvironmentVariable("TVE_PACKS_DIR"); }
+    int requests() const { return served; }
+    QString currentDir() const { return QDir::currentPath(); }
+
+    // Copies a file or folder (also from resources) to `target`.
+    static bool copy(const QString& source, const QString& target)
+    {
+        if (QFileInfo(source).isDir()) {
+            QDirIterator it(source, QDir::Files, QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                const QString file = it.next();
+                const QString to = target + file.mid(source.size());
+                QDir().mkpath(QFileInfo(to).absolutePath());
+                if (!QFile::copy(file, to))
+                    return false;
+            }
+            return true;
+        }
+        QDir().mkpath(QFileInfo(target).absolutePath());
+        return QFile::copy(source, target);
+    }
+
+public slots:
+    // Publishes a pack: files maps a path in the pack to a file or folder to copy there.
+    // "" if it went, or why not.
+    QString publish(const QVariantMap& files, const QString& id, int version, const QString& title,
+                    const QString& description = {}, const QString& preview = {})
+    {
+        if (id.isEmpty() || id.contains(QLatin1Char('/')) || !staging.isValid())
+            return QStringLiteral("not a pack id");
+        const QString source = staging.path() + QStringLiteral("/%1-%2").arg(id).arg(version);
+        QDir(source).removeRecursively();
+        for (auto it = files.begin(); it != files.end(); ++it)
+            if (!copy(it.value().toString(), source + QLatin1Char('/') + it.key()))
+                return QStringLiteral("can't copy ") + it.value().toString();
+        tve::PackManifest meta{.id = id.toStdString(), .version = version, .title = title.toStdString(),
+                               .description = description.toStdString(), .author = "Test author", .license = "Test licence"};
+        const auto error = tve::publishPack(source.toStdString(), root.path().toStdString(), meta, preview.toStdString());
+        return error ? QString::fromStdString(*error) : QString();
+    }
+    // A file with this text to publish, its path.
+    QString text(const QString& name, const QString& content)
+    {
+        const QString path = staging.path() + QStringLiteral("/files/") + name;
+        QDir().mkpath(QFileInfo(path).absolutePath());
+        QFile file(path);
+        if (file.open(QIODevice::WriteOnly))
+            file.write(content.toUtf8());
+        return path;
+    }
+    // Writes and signs the catalogue (with the trusted key, or another one); sequence < 0: the next.
+    void sign(int nextSequence = -1, bool trustedKey = true)
+    {
+        sequence = nextSequence >= 0 ? nextSequence : sequence + 1;
+        const std::string json = tve::catalogueJson(tve::siteCatalogue(root.path().toStdString(), sequence, "2026-11-01"));
+        QFile catalogue(root.path() + QStringLiteral("/catalogue.json"));
+        catalogue.open(QIODevice::WriteOnly);
+        catalogue.write(QByteArray::fromStdString(json));
+        catalogue.close();
+        QFile signature(root.path() + QStringLiteral("/catalogue.json.sig"));
+        signature.open(QIODevice::WriteOnly);
+        signature.write(QByteArray::fromStdString(tve::signData(json, trustedKey ? key.privateKey : otherKey.privateKey)));
+    }
+    // Changes a published file (the catalogue still says what it should be).
+    void tamper(const QString& path)
+    {
+        QFile file(root.path() + QLatin1Char('/') + path);
+        // (Files copied from resources are read-only.)
+        file.setPermissions(file.permissions() | QFileDevice::WriteOwner);
+        if (file.open(QIODevice::Append))
+            file.write("changed");
+    }
+    // An empty site, nothing installed, nothing seen.
+    void reset()
+    {
+        if (!root.isValid())
+            return;
+        for (const QString& name : QDir(root.path()).entryList(QDir::AllEntries | QDir::NoDotAndDotDot)) {
+            QFileInfo entry(root.path() + QLatin1Char('/') + name);
+            entry.isDir() ? (void)QDir(entry.filePath()).removeRecursively() : (void)QFile::remove(entry.filePath());
+        }
+        // (Only the scratch packs folder: never an empty path, the current folder.)
+        if (packsDir().endsWith(QLatin1String("/Packs")) && QDir::isAbsolutePath(packsDir()))
+            QDir(packsDir()).removeRecursively();
+        QFile::remove(qEnvironmentVariable("TVE_STORE_SETTINGS_FILE"));
+        sequence = 0;
+    }
+};
+
 class Setup : public QObject {
     Q_OBJECT
 public:
     QTemporaryDir scratch;
     TestFiles files{scratch.path()};
+    PackSite* packSite = nullptr;
 
 public slots:
+    void applicationAvailable()
+    {
+        packSite = new PackSite;
+        packSite->start();
+        qputenv("TVE_STORE_URL", packSite->url().toLocal8Bit());
+        packSite->writeTrustedKeys(qEnvironmentVariable("TVE_STORE_TRUSTED_KEYS"));
+    }
+
     void qmlEngineAvailable(QQmlEngine* engine)
     {
         engine->rootContext()->setContextProperty(QStringLiteral("scratchDir"), QDir(scratch.path()).canonicalPath());
         engine->rootContext()->setContextProperty(QStringLiteral("testFiles"), &files);
+        engine->rootContext()->setContextProperty(QStringLiteral("packSite"), packSite);
         engine->rootContext()->setContextProperty(QStringLiteral("samplesDir"), QStringLiteral(TVE_SAMPLES_DIR));
         engine->rootContext()->setContextProperty(QStringLiteral("tempDir"), QDir::tempPath());
         engine->rootContext()->setContextProperty(QStringLiteral("recordingsDir"), qEnvironmentVariable("TVE_RECORDING_DIR"));
@@ -412,6 +579,11 @@ int main(int argc, char** argv)
     qputenv("TVE_OVERLAY_CACHE_DIR", QDir(overlayCache.path()).canonicalPath().toLocal8Bit());
     QTemporaryDir generated;
     qputenv("TVE_GENERATED_DIR", QDir(generated.path()).canonicalPath().toLocal8Bit());
+    // The pack store: its site (started with the app), installed packs, settings, trusted keys.
+    QTemporaryDir store;
+    qputenv("TVE_PACKS_DIR", (QDir(store.path()).canonicalPath() + QStringLiteral("/Packs")).toLocal8Bit());
+    qputenv("TVE_STORE_SETTINGS_FILE", (store.path() + QStringLiteral("/store.json")).toLocal8Bit());
+    qputenv("TVE_STORE_TRUSTED_KEYS", (store.path() + QStringLiteral("/trusted-keys.json")).toLocal8Bit());
     QTemporaryDir captionFixtures;
     writeCaptionFixtures(captionFixtures.path());
     qputenv("TVE_TEST_CAPTIONS_DIR", captionFixtures.path().toLocal8Bit());

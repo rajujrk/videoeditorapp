@@ -717,6 +717,17 @@ ProjectController::ProjectController(QObject* parent)
     m_soundLibrary = new SoundLibrary(this);
     m_cloud = new CloudServices(this);
     m_templates = new TemplateLibrary(this);
+    m_store = new PackStore(this);
+    connect(m_store, &PackStore::contentChanged, this, [this](const QStringList& kinds) {
+        if (kinds.contains(QLatin1String("sounds")))
+            m_soundLibrary->refresh();
+        if (kinds.contains(QLatin1String("templates")))
+            m_templates->refresh();
+        if (kinds.contains(QLatin1String("stickers"))) {
+            stickers::reload();
+            emit stickersChanged();
+        }
+    });
     m_imports = new MediaImports(this);
     connect(m_imports, &MediaImports::fetched, this, [this](const QStringList& paths, const QStringList& errors) {
         QList<QUrl> files;

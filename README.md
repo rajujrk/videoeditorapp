@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), templates in six shapes (17a), instant videos, highlight montages and smart shorts (17b), and drawing, paths and overlay transitions (18a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), templates in six shapes (17a), instant videos, highlight montages and smart shorts (17b), drawing, paths and overlay transitions (18a), and the pack store (18b) done — the Phase 4 slices are complete.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -284,6 +284,18 @@ burn, white and black paint strokes, all made by the app — go over the cut nea
 a track above, blended to suit (light leaks and the burn brighten the picture; paint covers the
 cut). Each is a short movie with transparency, made the first time it is used and kept in
 `~/Library/Application Support/TechieVideoEditor/Overlay cache` (`TVE_OVERLAY_CACHE_DIR`).
+
+**Store.** The library's **Store** tab lists packs of templates, music and sounds, stickers,
+effects and transitions from the pack catalogue (by default on this repository's GitHub Pages;
+the address is under **Catalogue address**). **Get** installs a pack, **Update** brings a newer
+version (downloading only what changed) and **Remove** takes it away. A pack is installed only
+if the catalogue is signed by a key the app trusts and every file is exactly the one published
+(SHA-256); otherwise nothing changes. Installed sounds, templates and stickers appear in their
+tabs at once; effects and transitions the next time the app opens. Packs are kept in
+`~/Library/Application Support/TechieVideoEditor/Packs` (`TVE_PACKS_DIR`). Publishing packs —
+the signing key, `tve-packtool` and signing — is described in
+[tools/packs/README.md](tools/packs/README.md); no catalogue is published yet, and the app
+trusts no key until the publisher adds theirs to `effects/store/trusted-keys.json`.
 
 **Generate (your own keys).** The library's **Generate** tab makes media from a description:
 **Picture** and **Sticker** with OpenAI GPT Image 2.5 (square, landscape or portrait; draft, good or

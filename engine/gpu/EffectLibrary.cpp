@@ -213,11 +213,28 @@ void writeEffectUniforms(const LoadedEffect& effect, std::size_t passIndex,
     }
 }
 
+namespace {
+QStringList& packFolders()
+{
+    static QStringList folders;
+    return folders;
+}
+} // namespace
+
+void EffectLibrary::usePackFolders(const QStringList& folders)
+{
+    packFolders() = folders;
+}
+
 const EffectLibrary& EffectLibrary::builtIn()
 {
     static const EffectLibrary library = [] {
         EffectLibrary lib = load(QStringLiteral(":/effects/video"), QStringLiteral(":/effects/common/fullscreen.vert.qsb"),
                                  QStringLiteral(":/effects/transitions"));
+        for (const QString& pack : packFolders()) {
+            lib.loadFolder(pack + QStringLiteral("/effects"), kVideoEffectKind, lib.m_effects);
+            lib.loadFolder(pack + QStringLiteral("/transitions"), kTransitionKind, lib.m_transitions);
+        }
         for (const QString& error : lib.errors())
             qWarning("Effect library: %s", qPrintable(error));
         return lib;

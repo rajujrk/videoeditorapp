@@ -1,4 +1,5 @@
 #include "SoundLibrary.h"
+#include "PackStore.h"
 
 #include "audio/AudioOutput.h"
 #include "audio/SoundPreview.h"
@@ -122,6 +123,10 @@ void SoundLibrary::refresh()
                                 {QStringLiteral("duration"), soundDuration(recipe)},
                                 {QStringLiteral("pack"), QString()}};
     m_packs = loadSoundPacks(packsDirectory().toStdString());
+    // Installed content packs' sounds.
+    for (const QString& pack : PackStore::installedFolders())
+        if (auto sounds = loadSoundPack((pack + QStringLiteral("/sounds")).toStdString()))
+            m_packs.push_back(std::move(*sounds));
     m_packProblems.clear();
     for (const SoundPack& pack : m_packs) {
         const QString packTitle = QString::fromStdString(pack.title.empty() ? pack.id : pack.title);

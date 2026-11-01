@@ -441,6 +441,11 @@ Drawing on the player — the tool strip over the picture, a brush stroke, an ar
 ![Overlays, dark](images/overlays-dark.png)
 ![Overlays, light](images/overlays-light.png)
 
+The Store tab with the catalogue checked — a pack to get, and an installed pack with a newer version to update or remove — dark and light:
+
+![Store, dark](images/store-dark.png)
+![Store, light](images/store-light.png)
+
 The Generate tab choosing a first and last picture for a video, after a sticker was placed over the picture, dark and light:
 
 ![Generate, dark](images/generate-dark.png)
@@ -453,7 +458,7 @@ A voice added at the playhead with captions timed to its words, dark and light:
 
 ### Icons
 
-55 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+56 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.

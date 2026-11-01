@@ -62,7 +62,8 @@ Rectangle {
         { icon: "stickers", label: "Stickers", phase: "" },
         { icon: "captions", label: "Captions", phase: "" },
         { icon: "transcript", label: "Transcript", phase: "" },
-        { icon: "templates", label: "Templates", phase: "" }
+        { icon: "templates", label: "Templates", phase: "" },
+        { icon: "store", label: "Store", phase: "" }
     ]
 
     RowLayout {
@@ -169,6 +170,7 @@ Rectangle {
                 objectName: "librarySearch"
                 visible: library.tabs[library.currentTab].label !== "Captions" && library.tabs[library.currentTab].label !== "Transcript"
                          && library.tabs[library.currentTab].label !== "Generate" && library.tabs[library.currentTab].label !== "Templates"
+                         && library.tabs[library.currentTab].label !== "Store"
                 Layout.fillWidth: true
                 Layout.margins: Theme.space.m
                 placeholderText: "Search " + library.tabs[library.currentTab].label.toLowerCase()
@@ -273,6 +275,17 @@ Rectangle {
                 Layout.fillHeight: true
                 sourceComponent: TemplatesPage {
                     objectName: "templatesPage"
+                    project: library.project
+                }
+            }
+            Loader {
+                id: storePage
+                active: visible || item !== null
+                visible: library.tabs[library.currentTab].label === "Store"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                sourceComponent: StorePage {
+                    objectName: "storePage"
                     project: library.project
                 }
             }

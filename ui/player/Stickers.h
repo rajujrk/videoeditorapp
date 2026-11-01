@@ -10,12 +10,15 @@
 #include <memory>
 
 // Stickers: Lottie animations, built in (effects/stickers, made by tools/make_stickers.py,
-// at ":/effects/stickers/…") or imported.
+// at ":/effects/stickers/…"), from installed content packs, or imported.
 namespace stickers {
 
-// The built-in stickers: [{id, title, category, path}], path being their resource.
+// The library's stickers: [{id, title, category, path, pack}], path being their resource or
+// file. Pack stickers' ids are "pack.<pack id>/<id>".
 const QVariantList& catalog();
-// The resource path of a built-in sticker, empty if there is none by that id.
+// Reads the installed packs' stickers again.
+void reload();
+// The path of a library sticker, empty if there is none by that id.
 QString pathOf(const QString& id);
 // A built-in sticker's title ("Star · Spin") from its path; empty for other files.
 QString titleOf(const QString& path);
