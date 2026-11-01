@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), templates in six shapes (17a), and instant videos, highlight montages and smart shorts (17b) done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), templates in six shapes (17a), instant videos, highlight montages and smart shorts (17b), and drawing, paths and overlay transitions (18a) done.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -270,6 +270,20 @@ following the subject and marked as a range, with captions when the video has a 
 **Export each short…** writes each to its own file. With a Claude key, **Let Claude choose** orders
 the moments (and titles the shorts). Each makes a new project you can keep editing — the storyboard
 can swap any shot.
+
+**Drawing and paths.** The **Draw** button (the brush under the player) puts tools over the
+picture: **Brush**, **Line**, **Arrow**, **Rectangle** and **Ellipse**, a colour, a width and a fill
+for shapes. What you draw becomes a drawing clip at the playhead — more strokes go into it while it
+is selected — and its inspector sets how long it takes to **draw on** and to **take off** (one path
+after another, or all together) and lists its paths. Any clip with a picture can **follow a drawn
+path** (Analyze tab): it moves from one end to the other over its length, and can turn along it. A
+title can run **on a path** (its inspector): Arc, Dip, Wave, Circle, or a path you drew.
+
+**Overlay transitions.** The Transitions tab's **Overlays** — warm and cool light leaks, a film
+burn, white and black paint strokes, all made by the app — go over the cut nearest the playhead on
+a track above, blended to suit (light leaks and the burn brighten the picture; paint covers the
+cut). Each is a short movie with transparency, made the first time it is used and kept in
+`~/Library/Application Support/TechieVideoEditor/Overlay cache` (`TVE_OVERLAY_CACHE_DIR`).
 
 **Generate (your own keys).** The library's **Generate** tab makes media from a description:
 **Picture** and **Sticker** with OpenAI GPT Image 2.5 (square, landscape or portrait; draft, good or

@@ -2,6 +2,7 @@
 
 #include "StillImage.h"
 #include "Stickers.h"
+#include "DrawingRenderer.h"
 #include "TitleRenderer.h"
 #include "VideoView.h"
 
@@ -160,6 +161,7 @@ void FrameCompositor::reset()
     m_clipChains.clear();
     m_canvasChains.clear();
     m_titles.clear();
+    m_drawings.clear();
     m_stickers.clear();
     m_stills.clear();
     m_personMattes.clear();
@@ -301,6 +303,34 @@ QRhiTexture* FrameCompositor::titleTexture(QRhiCommandBuffer* cb, tve::Id clipId
     return title.texture.get();
 }
 
+QRhiTexture* FrameCompositor::drawingTexture(QRhiCommandBuffer* cb, tve::Id clipId, const tve::ClipDrawing& drawing,
+                                             double seconds, double duration)
+{
+    DrawingTexture& drawn = m_drawings[clipId];
+    // At rest (all drawn) it looks the same at every moment.
+    const bool moving = drawing.drawIn > 0 || drawing.drawOut > 0;
+    const bool settled = !moving || (seconds >= drawing.drawIn && seconds <= duration - drawing.drawOut);
+    if (settled)
+        seconds = -1.0;
+    if (drawn.texture && drawn.drawing == drawing && drawn.canvas == m_canvasSize && drawn.seconds == seconds)
+        return drawn.texture.get();
+    const QImage image = renderDrawing(drawing, m_canvasSize, seconds, duration);
+    if (!drawn.texture || drawn.texture->pixelSize() != image.size()) {
+        drawn.texture.reset(m_rhi->newTexture(QRhiTexture::RGBA8, image.size()));
+        if (!drawn.texture->create()) {
+            drawn.texture.reset();
+            return nullptr;
+        }
+    }
+    QRhiResourceUpdateBatch* upload = m_rhi->nextResourceUpdateBatch();
+    upload->uploadTexture(drawn.texture.get(), image);
+    cb->resourceUpdate(upload);
+    drawn.drawing = drawing;
+    drawn.canvas = m_canvasSize;
+    drawn.seconds = seconds;
+    return drawn.texture.get();
+}
+
 QRhiTexture* FrameCompositor::stillTexture(QRhiCommandBuffer* cb, const std::string& path)
 {
     StillTexture& still = m_stills[path];
@@ -426,6 +456,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::size_t transitionIndex = 0;
 
     std::set<tve::Id> liveTitles;
+    std::set<tve::Id> liveDrawings;
     std::set<tve::Id> liveStickers;
     std::set<tve::Id> liveMattes;
     std::set<tve::Id> liveDenoise;
@@ -448,7 +479,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                                  tve::CompositeFrame* nested = nullptr,
                                  const tve::LayerPeople* people = nullptr,
                                  const tve::LayerMotion* motion = nullptr,
-                                 const tve::LayerCursor* cursor = nullptr) -> QRhiTexture* {
+                                 const tve::LayerCursor* cursor = nullptr,
+                                 const std::optional<tve::ClipDrawing>* drawing = nullptr) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
         if (canvasBelow) {
             picture = canvasBelow; // an adjustment layer works on what is under it
@@ -462,6 +494,9 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         } else if (text) {
             picture = titleTexture(cb, clipId, *text, clipSeconds, clipDuration);
             liveTitles.insert(clipId);
+        } else if (drawing && *drawing) {
+            picture = drawingTexture(cb, clipId, **drawing, clipSeconds, clipDuration);
+            liveDrawings.insert(clipId);
         } else if (!stillPath.empty()) {
             if (tve::isLottieFile(stillPath)) {
                 picture = stickerTexture(cb, clipId, stillPath, clipSeconds);
@@ -590,7 +625,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look,
                                                layer.text, nullptr, layer.stillPath, layer.chromaKey, layer.masks,
                                                layer.clipSeconds, layer.clipDuration, layer.nested.get(), &layer.people,
-                                               &layer.motion, &layer.cursor);
+                                               &layer.motion, &layer.cursor, &layer.drawing);
             // Track matte: the layer just above is the matte, placed by itself, and not drawn.
             tve::VideoLayer* matteLayer = index + 1 < layers.size() ? &layers[index + 1] : nullptr;
             if (layer.matte != tve::MatteMode::None && !layer.transition && matteLayer && !matteLayer->transition
@@ -601,7 +636,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                     clipPicture(matteLayer->clipId, matteLayer->frame, matteVisual, matteLayer->effects, matteLayer->grade,
                                 matteLayer->look, matteLayer->text, nullptr, matteLayer->stillPath, matteLayer->chromaKey,
                                 matteLayer->masks, matteLayer->clipSeconds, matteLayer->clipDuration,
-                                matteLayer->nested.get(), &matteLayer->people, &matteLayer->motion, &matteLayer->cursor);
+                                matteLayer->nested.get(), &matteLayer->people, &matteLayer->motion, &matteLayer->cursor,
+                                &matteLayer->drawing);
                 if (!picture)
                     continue;
                 if (m_matteCanvases.size() <= matteIndex)
@@ -669,6 +705,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::erase_if(m_clipChains, [&](const auto& entry) { return !liveClips.contains(entry.first); });
     std::erase_if(m_canvasChains, [&](const auto& entry) { return !liveCanvasClips.contains(entry.first); });
     std::erase_if(m_titles, [&](const auto& entry) { return !liveTitles.contains(entry.first); });
+    std::erase_if(m_drawings, [&](const auto& entry) { return !liveDrawings.contains(entry.first); });
     std::erase_if(m_stickers, [&](const auto& entry) { return !liveStickers.contains(entry.first); });
     std::erase_if(m_personMattes, [&](const auto& entry) { return !liveMattes.contains(entry.first); });
     std::erase_if(m_denoise, [&](const auto& entry) { return !liveDenoise.contains(entry.first); });

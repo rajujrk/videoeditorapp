@@ -433,3 +433,46 @@ TEST_CASE("formats that do not go together are refused")
     CHECK(pictureInput(wav) == PictureInput::None);
     CHECK(audioBitrate(wav) == 2'304'000);
 }
+
+TEST_CASE("ProRes 4444 with transparency kept reads back with it")
+{
+    const std::string path = (std::filesystem::temp_directory_path() / "tve_writer_alpha.mov").string();
+    MediaSettings settings;
+    settings.container = Container::Mov;
+    settings.codec = VideoCodec::ProRes;
+    settings.proRes = ProResProfile::P4444;
+    settings.alpha = true;
+    settings.audio = false;
+    settings.width = 160;
+    settings.height = 90;
+    auto writer = MediaWriter::open(path, settings);
+    REQUIRE(writer);
+    // Clear all round, an opaque green square in the middle.
+    std::vector<std::uint8_t> rgba(160 * 90 * 4, 0);
+    for (int y = 30; y < 60; ++y)
+        for (int x = 60; x < 100; ++x) {
+            std::uint8_t* p = &rgba[std::size_t((y * 160 + x) * 4)];
+            p[1] = 220;
+            p[3] = 255;
+        }
+    for (int f = 0; f < 10; ++f)
+        REQUIRE(writer->writeVideoRgba(rgba.data(), 160 * 4));
+    REQUIRE(writer->finish());
+
+    auto decoder = VideoDecoder::open(path);
+    REQUIRE(decoder);
+    CHECK(decoder->info().hasAlpha);
+    auto frame = decoder->nextFrame();
+    REQUIRE(frame);
+    CVPixelBufferRef buffer = frame->pixelBuffer();
+    REQUIRE(CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA);
+    CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+    const auto* bytes = static_cast<const std::uint8_t*>(CVPixelBufferGetBaseAddress(buffer));
+    const std::size_t row = CVPixelBufferGetBytesPerRow(buffer);
+    const auto pixel = [&](int x, int y) { return bytes + std::size_t(y) * row + std::size_t(x) * 4; };
+    CHECK(pixel(80, 45)[3] > 250);
+    CHECK(pixel(80, 45)[1] > 180);
+    CHECK(pixel(5, 5)[3] < 5);
+    CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+    std::filesystem::remove(path);
+}

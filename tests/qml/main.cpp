@@ -17,6 +17,7 @@
 #include "TemplateLibrary.h"
 #include "TransitionPreviewProvider.h"
 #include "EffectPreviewProvider.h"
+#include "OverlayTransitions.h"
 #include "Stickers.h"
 #include "LookLibrary.h"
 #include "TitleRenderer.h"
@@ -314,6 +315,7 @@ public slots:
         engine->addImageProvider(QString::fromLatin1(StickerPreviewProvider::kId), new StickerPreviewProvider);
         engine->addImageProvider(QString::fromLatin1(TitlePreviewProvider::kId), new TitlePreviewProvider);
         engine->addImageProvider(QString::fromLatin1(LookPreviewProvider::kId), new LookPreviewProvider);
+        engine->addImageProvider(QString::fromLatin1(OverlayPreviewProvider::kId), new OverlayPreviewProvider);
     }
 };
 
@@ -406,6 +408,8 @@ int main(int argc, char** argv)
     qputenv("TVE_TEMPLATE_CACHE_DIR", QDir(templateCache.path()).canonicalPath().toLocal8Bit());
     QTemporaryDir templateFavorites;
     qputenv("TVE_TEMPLATE_FAVORITES_FILE", (templateFavorites.path() + QStringLiteral("/template-favorites.json")).toLocal8Bit());
+    QTemporaryDir overlayCache;
+    qputenv("TVE_OVERLAY_CACHE_DIR", QDir(overlayCache.path()).canonicalPath().toLocal8Bit());
     QTemporaryDir generated;
     qputenv("TVE_GENERATED_DIR", QDir(generated.path()).canonicalPath().toLocal8Bit());
     QTemporaryDir captionFixtures;

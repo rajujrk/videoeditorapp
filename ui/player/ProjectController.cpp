@@ -13,6 +13,7 @@
 #include "model/TimelineQuery.h"
 #include "gpu/ColorGrader.h"
 #include "gpu/EffectLibrary.h"
+#include "OverlayTransitions.h"
 #include "Stickers.h"
 #include "audio/AudioEffects.h"
 #include "decode/LottieAnimation.h"
@@ -34,6 +35,8 @@
 #include "cloud/CloudFeatures.h"
 #include "cloud/StickerCutout.h"
 #include "commands/TemplateCommands.h"
+#include "commands/DrawingCommands.h"
+#include "model/Paths.h"
 #include "model/Template.h"
 
 #include <nlohmann/json.hpp>
@@ -302,6 +305,73 @@ constexpr int kAutosaveDelayMs = 2000;       // after edits settle
 constexpr qint64 kAutosaveMaxDelayMs = 30000; // even while edits keep coming
 
 // Default track layout for a new project, bottom to top: audio, main video, overlay.
+// --- Drawings, as QML sees them ---
+
+const char* const kPathKinds[] = {"brush", "line", "arrow", "rectangle", "ellipse"};
+
+QVariantList colorValue(const ColorRgba& c)
+{
+    return {c.r, c.g, c.b, c.a};
+}
+
+ColorRgba colorOf(const QVariant& value, ColorRgba fallback)
+{
+    const QVariantList list = value.toList();
+    if (list.size() < 3)
+        return fallback;
+    return {std::clamp(list[0].toDouble(), 0.0, 1.0), std::clamp(list[1].toDouble(), 0.0, 1.0),
+            std::clamp(list[2].toDouble(), 0.0, 1.0), list.size() > 3 ? std::clamp(list[3].toDouble(), 0.0, 1.0) : 1.0};
+}
+
+QVariantMap pathMap(const DrawnPath& path)
+{
+    QVariantList points;
+    for (const auto& [x, y] : path.points)
+        points << QVariant(QVariantList{x, y});
+    return {{QStringLiteral("kind"), QLatin1String(kPathKinds[int(path.kind)])},
+            {QStringLiteral("points"), points},
+            {QStringLiteral("stroke"), colorValue(path.stroke)},
+            {QStringLiteral("width"), path.width},
+            {QStringLiteral("fill"), colorValue(path.fill)}};
+}
+
+// `base` with the keys present in `changes` applied.
+DrawnPath pathFrom(const QVariantMap& changes, DrawnPath path = {})
+{
+    if (changes.contains(QStringLiteral("kind"))) {
+        const QString kind = changes.value(QStringLiteral("kind")).toString();
+        for (int i = 0; i < 5; ++i)
+            if (kind == QLatin1String(kPathKinds[i]))
+                path.kind = PathKind(i);
+    }
+    if (changes.contains(QStringLiteral("points"))) {
+        path.points.clear();
+        for (const QVariant& point : changes.value(QStringLiteral("points")).toList()) {
+            const QVariantList xy = point.toList();
+            if (xy.size() == 2)
+                path.points.push_back({xy[0].toDouble(), xy[1].toDouble()});
+        }
+    }
+    if (changes.contains(QStringLiteral("stroke")))
+        path.stroke = colorOf(changes.value(QStringLiteral("stroke")), path.stroke);
+    if (changes.contains(QStringLiteral("width")))
+        path.width = changes.value(QStringLiteral("width")).toDouble();
+    if (changes.contains(QStringLiteral("fill")))
+        path.fill = colorOf(changes.value(QStringLiteral("fill")), path.fill);
+    return path;
+}
+
+QVariantMap drawingMap(const ClipDrawing& drawing)
+{
+    QVariantList paths;
+    for (const DrawnPath& path : drawing.paths)
+        paths << pathMap(path);
+    return {{QStringLiteral("paths"), paths},
+            {QStringLiteral("drawIn"), drawing.drawIn},
+            {QStringLiteral("drawOut"), drawing.drawOut},
+            {QStringLiteral("oneByOne"), drawing.oneByOne}};
+}
+
 Project emptyProject(int width, int height)
 {
     Project project;
@@ -770,6 +840,7 @@ QVariantList ProjectController::tracks() const
             const Sequence* sequence = clip.compound() ? m_project.findSequence(clip.sequenceId) : nullptr;
             const QString label = clip.text      ? QString::fromStdString(clip.text->text).section(QLatin1Char('\n'), 0, 0)
                                   : clip.adjustment ? QStringLiteral("Adjustment layer")
+                                  : clip.drawing ? QStringLiteral("Drawing")
                                   : sequence       ? QString::fromStdString(sequence->name)
                                   : media          ? mediaName(media->path)
                                                    : QStringLiteral("Missing media");
@@ -784,6 +855,7 @@ QVariantList ProjectController::tracks() const
                 {QStringLiteral("mediaId"), double(clip.mediaId)},
                 {QStringLiteral("label"), label},
                 {QStringLiteral("isTitle"), clip.text.has_value()},
+                {QStringLiteral("isDrawing"), clip.drawing.has_value()},
                 {QStringLiteral("isAdjustment"), clip.adjustment},
                 {QStringLiteral("isCompound"), sequence != nullptr},
                 {QStringLiteral("missing"), media && missing.contains(media->id)},
@@ -964,6 +1036,16 @@ QVariantList ProjectController::availableTransitions() const
     QVariantList list;
     for (const LoadedEffect* transition : sorted)
         list << describeEffect(*transition);
+    return list;
+}
+
+QVariantList ProjectController::overlayTransitions() const
+{
+    QVariantList list;
+    for (const overlays::Kind& kind : overlays::kinds())
+        list << QVariantMap{{QStringLiteral("id"), QString::fromStdString(kind.id)},
+                            {QStringLiteral("title"), QString::fromStdString(kind.title)},
+                            {QStringLiteral("blend"), QString::fromLatin1(kBlendNames[int(kind.blend)])}};
     return list;
 }
 
@@ -1709,6 +1791,7 @@ QVariantMap ProjectController::selectedClipInfo() const
         return {
             {QStringLiteral("id"), double(clip->id)},
             {QStringLiteral("label"), clip->text         ? QStringLiteral("Title")
+                                      : clip->drawing    ? QStringLiteral("Drawing")
                                       : clip->adjustment ? QStringLiteral("Adjustment layer")
                                       : sequence         ? QString::fromStdString(sequence->name)
                                       : media            ? mediaName(media->path)
@@ -1717,6 +1800,8 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("isCompound"), sequence != nullptr},
             {QStringLiteral("groupId"), double(clip->groupId)},
             {QStringLiteral("text"), clip->text ? textMap(*clip->text) : QVariantMap()},
+            {QStringLiteral("isDrawing"), clip->drawing.has_value()},
+            {QStringLiteral("drawing"), clip->drawing ? drawingMap(*clip->drawing) : QVariantMap()},
             {QStringLiteral("trackKind"), track.kind == TrackKind::Audio ? QStringLiteral("audio") : QStringLiteral("video")},
             {QStringLiteral("locked"), track.locked},
             {QStringLiteral("start"), seconds(clip->start)},
@@ -2988,6 +3073,49 @@ bool ProjectController::addTransitionAt(const QString& transitionId, double trac
     return addTransition(transitionId, double(*cut));
 }
 
+bool ProjectController::addOverlayTransition(const QString& overlayId, double seconds)
+{
+    const overlays::Kind* kind = overlays::find(overlayId.toStdString());
+    if (!kind) {
+        reportError(QStringLiteral("Unknown overlay %1").arg(overlayId));
+        return false;
+    }
+    QString error;
+    const QString path = overlays::movie(kind->id, &error);
+    if (path.isEmpty()) {
+        reportError(error);
+        return false;
+    }
+    auto item = probeMedia(path.toStdString(), &error);
+    if (!item) {
+        reportError(error);
+        return false;
+    }
+    item->fingerprint = fingerprintFile(path.toStdString()).value_or(std::string());
+    // Centred on the cut (or the playhead).
+    Ticks at = seconds < 0 ? ticks(m_playhead) : ticks(seconds);
+    if (const Track* main = m_project.findTrack(mainTrackId()))
+        if (const auto cut = cutNear(*main, at, std::numeric_limits<Ticks>::max()))
+            at = findClip(*cut)->start;
+    const Ticks length = item->duration;
+    const Ticks start = std::max<Ticks>(0, at - length / 2);
+    Id track = kNoId;
+    const auto main = m_project.trackIndex(mainTrackId());
+    for (std::size_t i = main ? *main + 1 : 0; i < m_project.tracks.size() && track == kNoId; ++i) {
+        const Track& candidate = m_project.tracks[i];
+        if (candidate.kind == TrackKind::Video && !candidate.locked && !candidate.hidden && !candidate.overlaps(start, length))
+            track = candidate.id;
+    }
+    ClipVisual visual;
+    visual.blend = kind->blend;
+    auto add = std::make_unique<AddOverlayClipCommand>(std::move(*item), track, start, length, visual, "Overlays", "Add Overlay");
+    auto* raw = add.get();
+    if (!apply(std::move(add)))
+        return false;
+    setSelectedClip(double(raw->clipId()));
+    return true;
+}
+
 bool ProjectController::setTransition(double clipId, const QVariantMap& changes)
 {
     const Clip* clip = findClip(toId(clipId));
@@ -4117,6 +4245,125 @@ bool ProjectController::placeVoice(const SpeechResult& speech, bool captions)
         return false;
     setSelectedClip(double(raw->clipId()));
     return true;
+}
+
+// --- Drawings ---
+
+double ProjectController::addDrawing(const QVariantMap& path)
+{
+    const Ticks at = ticks(m_playhead);
+    const Ticks length = 5 * kTicksPerSecond;
+    // The lowest free picture track above the main one; else a new one on top.
+    Id track = kNoId;
+    const auto main = m_project.trackIndex(mainTrackId());
+    for (std::size_t i = main ? *main + 1 : 0; i < m_project.tracks.size() && track == kNoId; ++i) {
+        const Track& candidate = m_project.tracks[i];
+        if (candidate.kind == TrackKind::Video && !candidate.locked && !candidate.hidden && !candidate.overlaps(at, length))
+            track = candidate.id;
+    }
+    ClipDrawing drawing;
+    drawing.paths.push_back(pathFrom(path));
+    auto command = std::make_unique<AddDrawingCommand>(track, at, length, std::move(drawing));
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return 0;
+    setSelectedClip(double(raw->clipId()));
+    return double(raw->clipId());
+}
+
+bool ProjectController::addDrawnPath(double clipId, const QVariantMap& path)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->drawing) {
+        reportError(QStringLiteral("Select a drawing"));
+        return false;
+    }
+    ClipDrawing drawing = *clip->drawing;
+    drawing.paths.push_back(pathFrom(path));
+    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), "Draw"));
+}
+
+bool ProjectController::setDrawnPath(double clipId, int index, const QVariantMap& changes)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->drawing || index < 0 || std::size_t(index) >= clip->drawing->paths.size())
+        return false;
+    ClipDrawing drawing = *clip->drawing;
+    drawing.paths[std::size_t(index)] = pathFrom(changes, drawing.paths[std::size_t(index)]);
+    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), "Change Path"));
+}
+
+bool ProjectController::removeDrawnPath(double clipId, int index)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->drawing || index < 0 || std::size_t(index) >= clip->drawing->paths.size())
+        return false;
+    ClipDrawing drawing = *clip->drawing;
+    drawing.paths.erase(drawing.paths.begin() + index);
+    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), "Remove Path"));
+}
+
+bool ProjectController::setDrawing(double clipId, const QVariantMap& options)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->drawing)
+        return false;
+    ClipDrawing drawing = *clip->drawing;
+    drawing.drawIn = options.value(QStringLiteral("drawIn"), drawing.drawIn).toDouble();
+    drawing.drawOut = options.value(QStringLiteral("drawOut"), drawing.drawOut).toDouble();
+    drawing.oneByOne = options.value(QStringLiteral("oneByOne"), drawing.oneByOne).toBool();
+    // Never longer than the clip together.
+    const double seconds = toSeconds(clip->duration);
+    if (drawing.drawIn + drawing.drawOut > seconds) {
+        reportError(QStringLiteral("Drawing on and off take longer than the clip"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), "Animate Drawing"));
+}
+
+QVariantList ProjectController::pathsToFollow(double clipId) const
+{
+    QVariantList list;
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return list;
+    for (const Track& track : m_project.tracks)
+        for (const Clip& other : track.clips) {
+            if (!other.drawing || other.id == clip->id || other.end() <= clip->start || other.start >= clip->end())
+                continue;
+            for (std::size_t i = 0; i < other.drawing->paths.size(); ++i) {
+                QVariantList line;
+                for (const auto& [x, y] : pathLine(other.drawing->paths[i]))
+                    line << QVariant(QVariantList{x, y});
+                list << QVariantMap{{QStringLiteral("clipId"), double(other.id)},
+                                    {QStringLiteral("index"), int(i)},
+                                    {QStringLiteral("label"), QStringLiteral("Path %1 (%2)").arg(i + 1)
+                                                                  .arg(QLatin1String(kPathKinds[int(other.drawing->paths[i].kind)]))},
+                                    {QStringLiteral("line"), line}};
+            }
+        }
+    return list;
+}
+
+bool ProjectController::followPath(double clipId, double drawingClipId, int pathIndex, const QVariantMap& options)
+{
+    const Clip* clip = findClip(toId(clipId));
+    const Clip* drawing = findClip(toId(drawingClipId));
+    if (!clip || !drawing || !drawing->drawing || pathIndex < 0 || std::size_t(pathIndex) >= drawing->drawing->paths.size()) {
+        reportError(QStringLiteral("Choose a drawn path to follow"));
+        return false;
+    }
+    const bool turn = options.value(QStringLiteral("turn")).toBool();
+    const double aspect = double(m_project.settings.width) / std::max(1, m_project.settings.height);
+    const FollowKeyframes keys = followLine(pathLine(drawing->drawing->paths[std::size_t(pathIndex)]), aspect, clip->duration, turn);
+    if (keys.x.empty()) {
+        reportError(QStringLiteral("That path is too short to follow"));
+        return false;
+    }
+    std::map<std::string, Keyframes> changes{{std::string(tve::property::kX), keys.x}, {std::string(tve::property::kY), keys.y}};
+    if (turn)
+        changes.emplace(std::string(tve::property::kRotation), keys.rotation);
+    return apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Follow Path"));
 }
 
 // --- Templates ---
@@ -6609,6 +6856,14 @@ bool ProjectController::setDenoise(double clipId, double strength)
                                                         clip->denoise > 0.0 && strength > 0.0 ? "Change Denoise"
                                                         : strength > 0.0                      ? "Denoise"
                                                                                               : "Remove Denoise"));
+}
+
+void ProjectController::setDrawingMode(bool drawing)
+{
+    if (drawing == m_drawingMode)
+        return;
+    m_drawingMode = drawing;
+    emit editingChanged();
 }
 
 void ProjectController::setPickingTrackArea(bool picking)

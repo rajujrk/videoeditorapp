@@ -13,6 +13,8 @@ add_library(tve_core STATIC
     model/Cursor.cpp
     model/Template.h
     model/Template.cpp
+    model/Paths.h
+    model/Paths.cpp
     model/Motion.cpp
     model/People.cpp
     model/Masks.cpp
@@ -31,6 +33,8 @@ add_library(tve_core STATIC
     commands/StructureCommands.cpp
     commands/TemplateCommands.h
     commands/TemplateCommands.cpp
+    commands/DrawingCommands.h
+    commands/DrawingCommands.cpp
     io/ProjectSerializer.h
     io/ProjectSerializer.cpp
     io/LutFile.h

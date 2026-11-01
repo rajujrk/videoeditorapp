@@ -11,6 +11,7 @@ add_executable(tve_core_tests
     core/test_titles.cpp
     core/test_voiceover.cpp
     core/test_templates.cpp
+    core/test_paths.cpp
     core/test_keyframes.cpp
     core/test_speed_ramp.cpp
     core/test_color.cpp

@@ -47,7 +47,8 @@ Rectangle {
         { id: "", label: "All" }, { id: "basic", label: "Basic" }, { id: "slide", label: "Slide" },
         { id: "wipe", label: "Wipe" }, { id: "shape", label: "Shape" }, { id: "zoom", label: "Zoom" },
         { id: "3d", label: "3D" }, { id: "distort", label: "Distort" }, { id: "luma", label: "Luma" },
-        { id: "stylize", label: "Stylize" }, { id: "blur", label: "Blur" }, { id: "light", label: "Light" }
+        { id: "stylize", label: "Stylize" }, { id: "blur", label: "Blur" }, { id: "light", label: "Light" },
+        { id: "overlays", label: "Overlays" }
     ]
 
     readonly property var tabs: [
@@ -744,7 +745,11 @@ Rectangle {
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: library.project.availableTransitions.filter(
+                // Overlay transitions (laid over a cut on a track above) have a category of their own.
+                model: library.transitionCategory === "overlays"
+                       ? library.project.overlayTransitions.filter((t) => library.matchesSearch(t.title))
+                                 .map((t) => Object.assign({ overlay: true }, t))
+                       : library.project.availableTransitions.filter(
                            (t) => (library.transitionCategory === "" || t.categories.indexOf(library.transitionCategory) >= 0)
                                   && library.matchesSearch(t.title))
 
@@ -754,9 +759,10 @@ Rectangle {
                     readonly property string transitionId: modelData.id // read by the timeline's drop area
                     width: transitionsGrid.cellWidth
                     height: transitionsGrid.cellHeight
-                    readonly property bool active: library.project.selectedTransitionInfo.transitionId === modelData.id
+                    readonly property bool overlay: modelData.overlay === true
+                    readonly property bool active: !overlay && library.project.selectedTransitionInfo.transitionId === modelData.id
 
-                    Drag.active: transitionMouse.drag.active
+                    Drag.active: !overlay && transitionMouse.drag.active
                     Drag.dragType: Drag.Automatic
                     Drag.supportedActions: Qt.CopyAction
                     Drag.keys: ["application/x-tve-transition"]
@@ -792,7 +798,8 @@ Rectangle {
                                     asynchronous: true
                                     fillMode: Image.PreserveAspectCrop
                                     property real transitionProgress: 0.3
-                                    source: "image://tvetransition/" + transitionTile.modelData.id + "@" + transitionProgress.toFixed(1)
+                                    source: (transitionTile.overlay ? "image://tveoverlay/" : "image://tvetransition/")
+                                            + transitionTile.modelData.id + "@" + transitionProgress.toFixed(1)
                                     Timer {
                                         running: transitionMouse.containsMouse
                                         repeat: true
@@ -816,20 +823,22 @@ Rectangle {
 
                     MouseArea {
                         id: transitionMouse
-                        objectName: "libraryTransition:" + transitionTile.modelData.id
+                        objectName: (transitionTile.overlay ? "libraryOverlay:" : "libraryTransition:") + transitionTile.modelData.id
                         anchors.fill: parent
                         anchors.rightMargin: Theme.space.m
                         anchors.bottomMargin: Theme.space.m
                         hoverEnabled: true
-                        drag.target: transitionDragProxy
-                        onClicked: library.project.addTransition(transitionTile.modelData.id)
+                        drag.target: transitionTile.overlay ? null : transitionDragProxy
+                        onClicked: transitionTile.overlay ? library.project.addOverlayTransition(transitionTile.modelData.id)
+                                                          : library.project.addTransition(transitionTile.modelData.id)
                     }
                     Item { id: transitionDragProxy }
 
                     ToolTip {
                         visible: transitionMouse.containsMouse && !transitionMouse.drag.active
                         delay: 800
-                        text: "Click to add at the cut nearest the playhead, or drag onto a cut"
+                        text: transitionTile.overlay ? "Click to lay it over the cut nearest the playhead, on a track above"
+                                                     : "Click to add at the cut nearest the playhead, or drag onto a cut"
                     }
                 }
             }

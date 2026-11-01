@@ -88,7 +88,16 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CaptionWord, start, end, text)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipText, text, fontFamily, size, bold, italic, color, alignment,
                                                 lineSpacing, letterSpacing, outlineColor, outlineWidth, shadow, shape,
                                                 animationIn, animationOut, animationLoop, scroll, words,
-                                                captionMotion, highlightColor)
+                                                captionMotion, highlightColor, path)
+NLOHMANN_JSON_SERIALIZE_ENUM(PathKind, {
+    {PathKind::Brush, "brush"},
+    {PathKind::Line, "line"},
+    {PathKind::Arrow, "arrow"},
+    {PathKind::Rectangle, "rectangle"},
+    {PathKind::Ellipse, "ellipse"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(DrawnPath, kind, points, stroke, width, fill)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipDrawing, paths, drawIn, drawOut, oneByOne)
 NLOHMANN_JSON_SERIALIZE_ENUM(Easing, {
     {Easing::Linear, "linear"},
     {Easing::EaseIn, "easeIn"},
@@ -182,7 +191,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, durati
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
                                                 chromaKey, masks, matte, cutout, faceMosaic, stabilization, deflicker,
                                                 denoise, motionTracks, processedVideo, cursor, audioEffects,
-                                                enhancedAudio, keepPitch, sequenceId, groupId)
+                                                enhancedAudio, keepPitch, sequenceId, groupId, drawing)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips)
 NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {
