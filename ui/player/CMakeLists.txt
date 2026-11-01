@@ -67,6 +67,8 @@ qt_add_qml_module(tve_player
         DrawingRenderer.cpp
         OverlayTransitions.h
         OverlayTransitions.cpp
+        PackStore.h
+        PackStore.cpp
         StillImage.h
         StillImage.cpp
         LookLibrary.h

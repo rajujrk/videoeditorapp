@@ -9,6 +9,7 @@
 #include "LookLibrary.h"
 #include "TitleRenderer.h"
 #include "VideoView.h"
+#include "gpu/EffectLibrary.h"
 
 #include <QCommandLineParser>
 #include <QFileInfo>
@@ -138,6 +139,8 @@ int main(int argc, char* argv[])
                                  QStringLiteral("[files...]"));
     parser.process(app);
 
+    // Installed packs' effects and transitions join the built-in ones.
+    tve::EffectLibrary::usePackFolders(PackStore::installedFolders());
     QQmlApplicationEngine engine;
     engine.addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
     engine.addImageProvider(QString::fromLatin1(ImportThumbnailProvider::kId), new ImportThumbnailProvider);

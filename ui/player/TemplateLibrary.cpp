@@ -1,5 +1,6 @@
 #include "TemplateLibrary.h"
 
+#include "PackStore.h"
 #include "StillRenderer.h"
 #include "TitleRenderer.h"
 #include "audio/SoundPacks.h"
@@ -37,6 +38,13 @@ using namespace tve;
 namespace {
 
 constexpr const char* kUserPrefix = "user.";
+// "pack.<pack id>/<name>": a template from an installed content pack.
+constexpr const char* kPackPrefix = "pack.";
+
+bool fromFolder(const QString& id)
+{
+    return id.startsWith(QLatin1String(kUserPrefix)) || id.startsWith(QLatin1String(kPackPrefix));
+}
 
 QString dataPath(const char* variable, const QString& name)
 {
@@ -77,9 +85,17 @@ const QMap<QString, QJsonObject>& recipes()
     return all;
 }
 
-// A user template's folder from its id.
+// A user's or a pack's template's folder from its id.
 QString userFolder(const QString& id)
 {
+    if (id.startsWith(QLatin1String(kPackPrefix))) {
+        const QString rest = id.mid(int(qstrlen(kPackPrefix)));
+        const qsizetype slash = rest.indexOf(QLatin1Char('/'));
+        if (slash <= 0 || rest.indexOf(QLatin1Char('/'), slash + 1) >= 0 || rest.contains(QStringLiteral("..")))
+            return {};
+        return PackStore::packsDirectory() + QLatin1Char('/') + rest.left(slash) + QStringLiteral("/templates/")
+               + rest.mid(slash + 1) + QStringLiteral(".tvet");
+    }
     return TemplateLibrary::userDirectory() + QLatin1Char('/') + id.mid(int(qstrlen(kUserPrefix))) + QStringLiteral(".tvet");
 }
 
@@ -375,6 +391,25 @@ void TemplateLibrary::list()
         entry.insert(QStringLiteral("favorite"), m_favorites.contains(it.key()));
         m_list << entry;
     }
+    // Installed packs' templates.
+    for (const QString& pack : PackStore::installedFolders()) {
+        const QString packTitle = readJson(pack + QStringLiteral("/pack.json")).value(QStringLiteral("title")).toString();
+        const QDir templates(pack + QStringLiteral("/templates"));
+        for (const QFileInfo& entry : templates.entryInfoList({QStringLiteral("*.tvet")}, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
+            const QString id = QLatin1String(kPackPrefix) + QFileInfo(pack).fileName() + QLatin1Char('/') + entry.completeBaseName();
+            const QJsonObject file = readJson(entry.absoluteFilePath() + QStringLiteral("/template.json"));
+            const auto project = buildUser(id, nullptr, nullptr);
+            if (!project)
+                continue;
+            QVariantMap item = summary(*project, id, file.value(QStringLiteral("name")).toString(),
+                                       file.value(QStringLiteral("category")).toString(),
+                                       file.value(QStringLiteral("description")).toString(),
+                                       QString::fromStdString(nearestShape(project->settings.width, project->settings.height).id), false);
+            item.insert(QStringLiteral("pack"), packTitle);
+            item.insert(QStringLiteral("favorite"), m_favorites.contains(id));
+            m_list << item;
+        }
+    }
     const QDir folder(userDirectory());
     for (const QFileInfo& entry : folder.entryInfoList({QStringLiteral("*.tvet")}, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
         const QString id = QLatin1String(kUserPrefix) + entry.completeBaseName();
@@ -413,6 +448,10 @@ void TemplateLibrary::toggleFavorite(const QString& id)
 
 bool TemplateLibrary::remove(const QString& id)
 {
+    if (id.startsWith(QLatin1String(kPackPrefix))) {
+        m_error = QStringLiteral("This template came with a pack; remove the pack in the Store.");
+        return false;
+    }
     if (!id.startsWith(QLatin1String(kUserPrefix))) {
         m_error = QStringLiteral("Built-in templates cannot be deleted.");
         return false;
@@ -437,7 +476,7 @@ std::optional<Project> TemplateLibrary::build(const QString& id, const QString& 
             return std::nullopt;
         }
     }
-    if (id.startsWith(QLatin1String(kUserPrefix)))
+    if (fromFolder(id))
         return buildUser(id, shape ? &*shape : nullptr, error);
     const auto recipe = recipes().find(id);
     if (recipe == recipes().end()) {
@@ -454,7 +493,7 @@ std::shared_ptr<const Project> TemplateLibrary::previewProject(const QString& id
 {
     static QMap<QString, std::shared_ptr<const Project>> cache;
     QMutexLocker lock(&previewMutex());
-    if (const auto found = cache.value(id); found && !id.startsWith(QLatin1String(kUserPrefix)))
+    if (const auto found = cache.value(id); found && !fromFolder(id))
         return found;
     auto project = build(id, {}, nullptr, false);
     if (!project)

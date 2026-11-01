@@ -4,6 +4,7 @@
 #include "ProxyManager.h"
 #include "MediaImports.h"
 #include "AutoEdit.h"
+#include "PackStore.h"
 #include "TemplateLibrary.h"
 #include "cloud/CloudFeatures.h"
 #include "cloud/CloudServices.h"
@@ -111,7 +112,7 @@ class ProjectController : public QObject {
     // Font families offered for titles.
     Q_PROPERTY(QStringList titleFonts READ titleFonts CONSTANT)
     // Built-in stickers: [{id, title, category, path}].
-    Q_PROPERTY(QVariantList stickers READ stickers CONSTANT)
+    Q_PROPERTY(QVariantList stickers READ stickers NOTIFY stickersChanged)
     // Title text animations: [{id, title, loop}] (loops keep moving; the others arrive or leave).
     Q_PROPERTY(QVariantList textAnimations READ textAnimations CONSTANT)
 
@@ -235,6 +236,8 @@ class ProjectController : public QObject {
     // still, sourceIn, speed, mediaDuration}], texts [{index, label, clipId, text}], music
     // {clipId, path, name, sourceIn, duration, mediaDuration}} (empty otherwise).
     Q_PROPERTY(TemplateLibrary* templates READ templates CONSTANT)
+    // Content packs: the store, and what installing one brings to the libraries.
+    Q_PROPERTY(PackStore* store READ store CONSTANT)
     Q_PROPERTY(QVariantMap templateInfo READ templateInfo NOTIFY projectChanged)
     // Made for you: the styles of instant videos and montages [{id, name, description, look}].
     Q_PROPERTY(QVariantList autoEditStyles READ autoEditStyles CONSTANT)
@@ -359,6 +362,7 @@ public:
     QString voicesDirectory() const;
     QString generatedDirectory() const;
     TemplateLibrary* templates() const { return m_templates; }
+    PackStore* store() const { return m_store; }
     QVariantMap templateInfo() const;
     QVariantList autoEditStyles() const { return autoEditStyleList(); }
     QString cameraAccessName() const;
@@ -838,6 +842,7 @@ public:
 signals:
     void viewChanged();
     void projectChanged();
+    void stickersChanged();
     void playheadChanged();
     void playingChanged();
     void selectionChanged();
@@ -982,6 +987,7 @@ private:
     MediaImports* m_imports = nullptr;
     CloudServices* m_cloud = nullptr;
     TemplateLibrary* m_templates = nullptr;
+    PackStore* m_store = nullptr;
     // The last voice made (to add what was just listened to without speaking it again).
     struct SpokenVoice {
         QString key; // text, voice and speed

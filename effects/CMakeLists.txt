@@ -6,6 +6,7 @@
 #   :/effects/transitions/<folder>/<pass>.frag.qsb
 #   :/effects/looks/looks.json and :/effects/looks/luts/<look>.cube (tools/make_looks.py)
 #   :/effects/stickers/stickers.json and :/effects/stickers/<sticker>.json (tools/make_stickers.py)
+#   :/effects/store/trusted-keys.json (the keys the pack store trusts; tools/packs/)
 # Shaders that fail to compile fail the build.
 
 file(GLOB TVE_EFFECT_MANIFESTS CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -25,7 +26,7 @@ qt_add_shaders(tve_effects "tve_effect_shaders"
 
 qt_add_resources(tve_effects "tve_effect_manifests"
     PREFIX "/effects"
-    FILES ${TVE_EFFECT_MANIFESTS} ${TVE_LOOK_FILES} ${TVE_STICKER_FILES}
+    FILES ${TVE_EFFECT_MANIFESTS} ${TVE_LOOK_FILES} ${TVE_STICKER_FILES} store/trusted-keys.json
 )
 
 target_link_libraries(tve_effects PRIVATE Qt6::Core)

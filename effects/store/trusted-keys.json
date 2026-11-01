@@ -1,0 +1,4 @@
+{
+  "about": "Public keys the pack store trusts to sign catalogues (ECDSA P-256, DER SubjectPublicKeyInfo in base64). Make a key pair with tools/packs/make_signing_key.sh, keep the private key outside this repository, and add the public key here.",
+  "keys": []
+}

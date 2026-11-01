@@ -25,6 +25,8 @@ add_library(tve_engine STATIC
     imports/ImportSources.h
     analysis/Highlights.h
     analysis/Highlights.cpp
+    packs/Packs.h
+    packs/Packs.mm
     imports/ImportSources.mm
     playback/FrameQueue.h
     playback/FrameSource.h
@@ -145,6 +147,7 @@ target_link_libraries(tve_engine
         "-framework AudioToolbox"
         "-framework AppKit"
         "-framework ImageIO"
+        "-framework Security"
         "-framework Photos"
         "-framework iTunesLibrary"
         "-framework ImageCaptureCore"

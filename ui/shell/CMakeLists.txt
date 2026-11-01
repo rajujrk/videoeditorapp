@@ -39,6 +39,7 @@ qt_add_qml_module(tve_shell
         ToneCurveEditor.qml
         MaskOverlay.qml
         DrawingOverlay.qml
+        StorePage.qml
         TrackOverlay.qml
         RecordPanel.qml
         MixerPanel.qml

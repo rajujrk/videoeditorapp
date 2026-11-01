@@ -1,7 +1,10 @@
 #include "Stickers.h"
 
+#include "PackStore.h"
+
 #include <QCache>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -12,25 +15,57 @@
 
 namespace stickers {
 
+namespace {
+
+// The stickers listed in a stickers.json in `folder` ("…/stickers/"), ids prefixed.
+void readStickers(const QString& folder, const QString& prefix, const QString& pack, QVariantList& into)
+{
+    QFile file(folder + QStringLiteral("stickers.json"));
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+    const QJsonArray entries = QJsonDocument::fromJson(file.readAll()).object().value(QStringLiteral("stickers")).toArray();
+    for (const QJsonValue& entry : entries) {
+        const QJsonObject o = entry.toObject();
+        const QString name = o.value(QStringLiteral("file")).toString();
+        // Only a file in that folder.
+        if (name.isEmpty() || name.contains(QLatin1Char('/')) || name.contains(QLatin1Char('\\')) || name.startsWith(QLatin1Char('.')))
+            continue;
+        into << QVariantMap{{QStringLiteral("id"), prefix + o.value(QStringLiteral("id")).toString()},
+                            {QStringLiteral("title"), o.value(QStringLiteral("title")).toString()},
+                            {QStringLiteral("category"), o.value(QStringLiteral("category")).toString()},
+                            {QStringLiteral("path"), folder + name},
+                            {QStringLiteral("pack"), pack}};
+    }
+}
+
+QVariantList& list()
+{
+    static QVariantList stickers;
+    return stickers;
+}
+
+} // namespace
+
 const QVariantList& catalog()
 {
-    static const QVariantList list = [] {
-        QVariantList result;
-        QFile file(QStringLiteral(":/effects/stickers/stickers.json"));
-        if (!file.open(QIODevice::ReadOnly))
-            return result;
-        const QJsonArray entries = QJsonDocument::fromJson(file.readAll()).object().value(QStringLiteral("stickers")).toArray();
-        for (const QJsonValue& entry : entries) {
-            const QJsonObject o = entry.toObject();
-            result << QVariantMap{{QStringLiteral("id"), o.value(QStringLiteral("id")).toString()},
-                                  {QStringLiteral("title"), o.value(QStringLiteral("title")).toString()},
-                                  {QStringLiteral("category"), o.value(QStringLiteral("category")).toString()},
-                                  {QStringLiteral("path"),
-                                   QStringLiteral(":/effects/stickers/") + o.value(QStringLiteral("file")).toString()}};
-        }
-        return result;
-    }();
-    return list;
+    if (list().isEmpty())
+        reload();
+    return list();
+}
+
+void reload()
+{
+    QVariantList result;
+    readStickers(QStringLiteral(":/effects/stickers/"), {}, {}, result);
+    for (const QString& pack : PackStore::installedFolders()) {
+        QFile manifest(pack + QStringLiteral("/pack.json"));
+        const QString title = manifest.open(QIODevice::ReadOnly)
+                                  ? QJsonDocument::fromJson(manifest.readAll()).object().value(QStringLiteral("title")).toString()
+                                  : QString();
+        readStickers(pack + QStringLiteral("/stickers/"), QStringLiteral("pack.") + QFileInfo(pack).fileName() + QLatin1Char('/'),
+                     title, result);
+    }
+    list() = result;
 }
 
 QString pathOf(const QString& id)

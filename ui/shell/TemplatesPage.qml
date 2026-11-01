@@ -26,7 +26,7 @@ ScrollView {
     function shown() {
         return library.templates.filter((t) => category === "" ? true
                                               : category === "favorites" ? t.favorite
-                                              : category === "mine" ? !t.builtIn
+                                              : category === "mine" ? !t.builtIn && !t.pack
                                               : t.category === category)
     }
     function clock(seconds) { return seconds < 60 ? seconds.toFixed(0) + " s" : Math.floor(seconds / 60) + ":" + String(Math.round(seconds % 60)).padStart(2, "0") }
