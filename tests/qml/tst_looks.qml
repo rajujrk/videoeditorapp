@@ -86,7 +86,7 @@ Item {
             const p = f.project
             compare(p.looks.length, 12)
             compare(p.lutLibrary.length, 10)
-            click(f.editor, "libraryTab:Filters")
+            settled(f.editor, "libraryTab:Filters").clicked() // (a tab: no click to lose under load)
             verify(settled(f.editor, "libraryAdjustmentLayer"))
             scrollIntoView(settled(f.editor, "lookPreview:sepia"))
             const preview = settled(f.editor, "lookPreview:sepia")
@@ -107,7 +107,7 @@ Item {
         function test_apply_a_look_and_set_its_intensity() {
             const f = withClip()
             const p = f.project
-            click(f.editor, "libraryTab:Filters")
+            settled(f.editor, "libraryTab:Filters").clicked() // (a tab: no click to lose under load)
             click(f.editor, "libraryLook:teal_orange")
             compare(p.undoText, "Apply Look")
             compare(p.selectedClipInfo.look.id, "teal_orange")
@@ -143,7 +143,7 @@ Item {
         function test_overlays_are_effects() {
             const f = withClip()
             const p = f.project
-            click(f.editor, "libraryTab:Effects")
+            settled(f.editor, "libraryTab:Effects").clicked() // (a tab: no click to lose under load)
             click(f.editor, "effectCategory:overlay") // overlays come last in a long list
             click(f.editor, "libraryEffect:tve.overlay.light_leak")
             compare(p.undoText, "Add Effect")
@@ -155,7 +155,7 @@ Item {
             const p = f.project
             const player = settled(f.editor, "player")
             p.seek(0.5)
-            click(f.editor, "libraryTab:Filters")
+            settled(f.editor, "libraryTab:Filters").clicked() // (a tab: no click to lose under load)
             click(f.editor, "libraryAdjustmentLayer")
             compare(p.undoText, "Add Adjustment Layer")
             const info = p.selectedClipInfo

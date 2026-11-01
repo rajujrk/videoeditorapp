@@ -1901,14 +1901,19 @@ Rectangle {
                         id: effectPicker
                         objectName: "effectPicker"
                         Layout.fillWidth: true
-                        model: inspector.player.availableEffects.map((e) => e.title)
+                        textRole: "label"
+                        valueRole: "id"
+                        // Our own effects, then the OpenFX plug-ins on this Mac (found in the background).
+                        model: inspector.player.availableEffects.map((e) => ({ id: e.id, label: e.title }))
+                            .concat(inspector.project.videoPlugins.filter((p) => p.problem === "").map((p) => ({
+                                id: p.id, label: "Plug-in · " + p.name + (p.group ? " (" + p.group + ")" : "")
+                            })))
                     }
                     TextButton {
                         objectName: "addEffectButton"
                         text: "Add"
                         iconName: "plus"
-                        onClicked: inspector.project.addClipEffect(inspector.clipInfo.id,
-                                                                   inspector.player.availableEffects[effectPicker.currentIndex].id)
+                        onClicked: inspector.project.addClipEffect(inspector.clipInfo.id, effectPicker.currentValue)
                     }
                 }
 
@@ -1934,7 +1939,11 @@ Rectangle {
                         stackIndex: index
                         entry: current
                         keyStates: inspector.keyStates
-                        spec: inspector.player.availableEffects.find((e) => e.id === current.effectId) || ({ title: current.effectId, params: [] })
+                        spec: inspector.player.availableEffects.find((e) => e.id === current.effectId)
+                              || inspector.project.videoPlugins.find((p) => p.id === current.effectId)
+                              && Object.assign({ title: inspector.project.videoPlugins.find((p) => p.id === current.effectId).name },
+                                               inspector.project.videoPlugins.find((p) => p.id === current.effectId))
+                              || ({ title: current.effectId, params: [] })
                     }
                 }
             }

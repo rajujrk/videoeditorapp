@@ -14,6 +14,7 @@
 #include "gpu/ColorGrader.h"
 #include "gpu/EffectLibrary.h"
 #include "OverlayTransitions.h"
+#include "video/OfxHost.h"
 #include "Stickers.h"
 #include "audio/AudioEffects.h"
 #include "decode/LottieAnimation.h"
@@ -430,6 +431,9 @@ auto& stackOf(C& clip, const EffectChannel& channel)
     return channel.audio ? clip.audioEffects : clip.effects;
 }
 
+// The OpenFX plug-ins' descriptions, by id (filled when they're found).
+std::map<std::string, OfxPluginInfo>& videoPluginInfos();
+
 // The manifest entry of an effect channel's parameter, if it can be animated (any of a
 // plug-in's: 0..1).
 const EffectParamSpec* animatableParam(const Clip& clip, const EffectChannel& channel)
@@ -448,6 +452,26 @@ const EffectParamSpec* animatableParam(const Clip& clip, const EffectChannel& ch
             return spec;
         }();
         return &plugin;
+    }
+    if (!channel.audio && isOfxEffect(effectId)) {
+        // An OpenFX plug-in's number (or one number of a 2D/3D one), in its shown range.
+        static std::map<std::string, EffectParamSpec> specs;
+        const auto info = videoPluginInfos().find(effectId);
+        if (info == videoPluginInfos().end())
+            return nullptr;
+        const std::string name = channel.param.substr(0, channel.param.find('#'));
+        for (const OfxParameterInfo& p : info->second.parameters) {
+            if (p.name != name || !p.animates || !(p.type.starts_with("double") || p.type.starts_with("int")))
+                continue;
+            EffectParamSpec& spec = specs[effectId + "/" + channel.param];
+            spec.type = p.type.starts_with("int") ? ParamType::Int : ParamType::Float;
+            spec.min = p.min;
+            spec.max = p.max;
+            spec.keyframable = true;
+            spec.defaultValue = {float(p.defaults.empty() ? 0.0 : p.defaults[0])};
+            return &spec;
+        }
+        return nullptr;
     }
     const EffectManifest* manifest = channel.audio ? AudioEffectLibrary::builtIn().find(effectId) : nullptr;
     if (!channel.audio)
@@ -3222,13 +3246,14 @@ bool ProjectController::addClipEffect(double clipId, const QString& effectId)
         reportError(QStringLiteral("Select a video clip to add an effect to"));
         return false;
     }
-    if (!EffectLibrary::builtIn().find(effectId.toStdString())) {
+    const bool plugin = isOfxEffect(effectId.toStdString());
+    if (!plugin && !EffectLibrary::builtIn().find(effectId.toStdString())) {
         reportError(QStringLiteral("Unknown effect %1").arg(effectId));
         return false;
     }
     auto effects = clip->effects;
     effects.push_back(ClipEffect{effectId.toStdString(), true, {}});
-    return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects), "Add Effect"));
+    return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects), plugin ? "Add Plug-in" : "Add Effect"));
 }
 
 bool ProjectController::removeClipEffect(double clipId, int index)
@@ -5844,16 +5869,68 @@ const ClipEffect* ProjectController::audioEffectAt(const QString& key) const
 namespace {
 
 // The plug-ins found, shared by every editor in the app: looked for once (in the background),
-// again only when asked.
+// again only when asked. Audio (Audio Units, VST3) and video (OpenFX) apart.
 struct PluginList {
     QVariantList plugins;
     bool scanned = false;
     bool scanning = false;
     std::vector<QPointer<ProjectController>> waiting;
 };
-PluginList& pluginList()
+PluginList& pluginList(bool video = false)
 {
-    static PluginList list;
+    static PluginList audio;
+    static PluginList pictures;
+    return video ? pictures : audio;
+}
+
+// The OpenFX plug-ins' descriptions, by id (for their parameters' ranges).
+std::map<std::string, OfxPluginInfo>& videoPluginInfos()
+{
+    static std::map<std::string, OfxPluginInfo> infos;
+    return infos;
+}
+
+// An OpenFX plug-in's parameters as the inspector's controls take them: a number each for
+// 2D and 3D ones ("<name>#<i>").
+QVariantList videoPluginControls(const OfxPluginInfo& info)
+{
+    QVariantList list;
+    static const char* const kAxes[] = {" X", " Y", " Z"};
+    for (const OfxParameterInfo& p : info.parameters) {
+        const QString name = QString::fromStdString(p.name);
+        const QString label = QString::fromStdString(p.label);
+        const auto value = [&](int i) { return i < int(p.defaults.size()) ? p.defaults[std::size_t(i)] : 0.0; };
+        if (p.type == "rgb" || p.type == "rgba") {
+            QVariantList colour;
+            for (int i = 0; i < p.components; ++i)
+                colour << value(i);
+            if (p.components == 3)
+                colour << 1.0;
+            list << QVariantMap{{QStringLiteral("id"), name}, {QStringLiteral("title"), label},
+                                {QStringLiteral("type"), QStringLiteral("color")}, {QStringLiteral("default"), colour},
+                                {QStringLiteral("min"), 0.0}, {QStringLiteral("max"), 1.0}};
+        } else if (p.type == "bool") {
+            list << QVariantMap{{QStringLiteral("id"), name}, {QStringLiteral("title"), label},
+                                {QStringLiteral("type"), QStringLiteral("bool")}, {QStringLiteral("default"), value(0)},
+                                {QStringLiteral("min"), 0.0}, {QStringLiteral("max"), 1.0}};
+        } else if (p.type == "choice") {
+            QStringList options;
+            for (const std::string& o : p.options)
+                options << QString::fromStdString(o);
+            list << QVariantMap{{QStringLiteral("id"), name}, {QStringLiteral("title"), label},
+                                {QStringLiteral("type"), QStringLiteral("enum")}, {QStringLiteral("values"), options},
+                                {QStringLiteral("default"), value(0)}, {QStringLiteral("min"), 0.0},
+                                {QStringLiteral("max"), double(std::max<std::size_t>(1, p.options.size()) - 1)}};
+        } else {
+            const bool integer = p.type.starts_with("int");
+            for (int i = 0; i < p.components; ++i)
+                list << QVariantMap{{QStringLiteral("id"), p.components == 1 ? name : name + QStringLiteral("#%1").arg(i)},
+                                    {QStringLiteral("title"), p.components == 1 ? label : label + QLatin1String(kAxes[std::min(i, 2)])},
+                                    {QStringLiteral("type"), integer ? QStringLiteral("int") : QStringLiteral("float")},
+                                    {QStringLiteral("min"), p.min}, {QStringLiteral("max"), p.max},
+                                    {QStringLiteral("default"), value(i)}, {QStringLiteral("keyframable"), p.animates}};
+        }
+    }
     return list;
 }
 
@@ -5861,8 +5938,9 @@ PluginList& pluginList()
 
 QVariantList ProjectController::audioPlugins()
 {
-    // The first read starts the look (after this read, not during it).
-    if (!pluginList().scanned && !pluginList().scanning && !m_scanningPlugins)
+    // The first read starts the look (after this read, not during it); an editor made while
+    // it's under way hears when it ends too.
+    if (!pluginList().scanned && !m_scanningPlugins)
         QTimer::singleShot(0, this, [this] {
             if (!pluginList().scanned)
                 rescanAudioPlugins();
@@ -5870,32 +5948,51 @@ QVariantList ProjectController::audioPlugins()
     return pluginList().plugins;
 }
 
+QVariantList ProjectController::videoPlugins()
+{
+    return audioPlugins().isEmpty() && !pluginList(true).scanned ? QVariantList() : pluginList(true).plugins;
+}
+
 void ProjectController::rescanAudioPlugins()
 {
-    PluginList& shared = pluginList();
-    shared.waiting.push_back(this);
+    // Both kinds, in the background: checking a new bundle runs it in a process of its own.
+    PluginList& audio = pluginList();
+    PluginList& video = pluginList(true);
+    audio.waiting.push_back(this);
     m_scanningPlugins = true;
     emit audioPluginsChanged();
-    if (shared.scanning)
+    if (audio.scanning)
         return;
-    shared.scanning = true;
-    // In the background: checking a new VST3 bundle runs it in a process of its own.
+    audio.scanning = video.scanning = true;
     std::thread([] {
-        const std::vector<PluginDescription> found = listPlugins();
-        QVariantList list;
-        for (const PluginDescription& p : found)
-            list << QVariantMap{{QStringLiteral("id"), QString::fromStdString(p.id)},
-                                {QStringLiteral("name"), QString::fromStdString(p.name)},
-                                {QStringLiteral("vendor"), QString::fromStdString(p.vendor)},
-                                {QStringLiteral("format"), QString::fromStdString(p.format)},
-                                {QStringLiteral("version"), QString::fromStdString(p.version)},
-                                {QStringLiteral("problem"), QString::fromStdString(p.problem)}};
-        QMetaObject::invokeMethod(qApp, [list] {
-            PluginList& shared = pluginList();
-            shared.plugins = list;
-            shared.scanned = true;
-            shared.scanning = false;
-            const auto waiting = std::exchange(shared.waiting, {});
+        QVariantList sounds;
+        for (const PluginDescription& p : listPlugins())
+            sounds << QVariantMap{{QStringLiteral("id"), QString::fromStdString(p.id)},
+                                  {QStringLiteral("name"), QString::fromStdString(p.name)},
+                                  {QStringLiteral("vendor"), QString::fromStdString(p.vendor)},
+                                  {QStringLiteral("format"), QString::fromStdString(p.format)},
+                                  {QStringLiteral("version"), QString::fromStdString(p.version)},
+                                  {QStringLiteral("problem"), QString::fromStdString(p.problem)}};
+        const std::vector<OfxPluginInfo> found = listOfxPlugins();
+        QVariantList pictures;
+        for (const OfxPluginInfo& p : found)
+            pictures << QVariantMap{{QStringLiteral("id"), QString::fromStdString(p.id)},
+                                    {QStringLiteral("name"), QString::fromStdString(p.name)},
+                                    {QStringLiteral("group"), QString::fromStdString(p.group)},
+                                    {QStringLiteral("format"), QStringLiteral("OpenFX")},
+                                    {QStringLiteral("metal"), p.metal},
+                                    {QStringLiteral("problem"), QString::fromStdString(p.problem)},
+                                    {QStringLiteral("params"), videoPluginControls(p)}};
+        QMetaObject::invokeMethod(qApp, [sounds, pictures, found] {
+            for (const OfxPluginInfo& p : found)
+                videoPluginInfos()[p.id] = p;
+            PluginList& audio = pluginList();
+            PluginList& video = pluginList(true);
+            audio.plugins = sounds;
+            video.plugins = pictures;
+            audio.scanned = video.scanned = true;
+            audio.scanning = video.scanning = false;
+            const auto waiting = std::exchange(audio.waiting, {});
             for (const QPointer<ProjectController>& controller : waiting) {
                 if (!controller)
                     continue;

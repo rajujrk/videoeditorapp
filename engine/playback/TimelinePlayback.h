@@ -4,6 +4,7 @@
 #include "model/Project.h"
 #include "playback/FrameSource.h"
 #include "playback/TimelineAudio.h"
+#include "video/OfxFrames.h"
 
 #include <atomic>
 #include <deque>
@@ -89,6 +90,8 @@ private:
     // Only touched by the producer thread; restarts join it first. Keyed by clip id, so
     // two clips of the same file decode independently.
     std::map<Id, LayerState> m_layers;
+    // Clips' OpenFX effects, on their decoded pictures (producer thread only).
+    OfxFrames m_ofx;
 };
 
 } // namespace tve

@@ -19,6 +19,8 @@ Rectangle {
     property double trackId: -1 // a track's audio stack
     readonly property bool onTrack: trackId > 0
     readonly property bool plugin: entry.plugin === true
+    // An OpenFX plug-in: runs on the clip's own picture, before its colour and our effects.
+    readonly property bool videoPlugin: (entry.effectId || "").startsWith("ofx:")
     readonly property string prefix: onTrack ? "trackEffect" : audio ? "audioEffect" : "clipEffect"
     // A plug-in's parameters (read again when the stack changes).
     readonly property var pluginParams: {
@@ -83,6 +85,17 @@ Rectangle {
                 buttonSize: 24
                 onClicked: card.remove()
             }
+        }
+        Text {
+            objectName: card.prefix + "PluginNote:" + card.stackIndex
+            visible: card.videoPlugin
+            Layout.fillWidth: true
+            text: card.spec.params && card.spec.params.length >= 0 && card.spec.id
+                  ? "A plug-in: it works on the clip's own picture, before its colour and our effects."
+                  : "Not available on this Mac: it's passed over until it's installed."
+            font: Theme.type.caption
+            color: card.spec.id ? Theme.color.textSecondary : Theme.color.warning
+            wrapMode: Text.WordWrap
         }
         Text {
             visible: card.plugin && card.pluginParams.length === 0

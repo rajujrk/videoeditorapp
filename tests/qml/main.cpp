@@ -588,6 +588,7 @@ int main(int argc, char** argv)
     // scratch scan cache; Apple's own Audio Units are on every Mac.
     qputenv("TVE_VST3_PATH", TVE_TEST_VST3_DIR);
     qputenv("TVE_PLUGIN_SCANNER", TVE_PLUGIN_SCANNER_PATH);
+    qputenv("TVE_OFX_PATH", TVE_TEST_OFX_DIR);
     QTemporaryDir pluginCache;
     qputenv("TVE_PLUGIN_CACHE_FILE", (pluginCache.path() + QStringLiteral("/plugin-cache.json")).toLocal8Bit());
     QTemporaryDir captionFixtures;

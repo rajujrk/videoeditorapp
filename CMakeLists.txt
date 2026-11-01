@@ -21,6 +21,7 @@ option(TVE_BUILD_TESTS "Build unit tests" ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(TveWarnings)
 include(Vst3Sdk)
+include(OpenFX)
 
 find_package(nlohmann_json CONFIG REQUIRED)
 # vcpkg's FFmpeg wrapper sets FFMPEG_INCLUDE_DIRS / FFMPEG_LIBRARIES (static libs plus their

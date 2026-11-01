@@ -295,6 +295,8 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
         CompositeFrame composite{time, {}};
         std::set<Id> live;
         buildLayers(*project, project->tracks, time, composite.layers, 0, live);
+        for (VideoLayer& layer : composite.layers)
+            m_ofx.apply(layer);
         const bool visible = !composite.layers.empty() || !live.empty();
         if (!m_queue.push(std::move(composite)))
             return;
@@ -319,6 +321,7 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
 
         // Release decoders of clips that are no longer on screen (inside compound clips too).
         std::erase_if(m_layers, [&](const auto& entry) { return !live.contains(entry.first); });
+        m_ofx.keepOnly(live);
     }
     m_finished = true;
 }
