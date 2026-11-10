@@ -19,7 +19,11 @@ class QTcpSocket;
 // makes pictures (OpenAI Images: a disc, on transparency when asked, unless "#opaque"),
 // video (Gemini interactions: a few seconds of moving colour; an extension needs the id of
 // one it made) and sound (ElevenLabs music and effects: a tone as long as asked); "#blocked"
-// is refused.
+// is refused. With tools (the copilot) it follows a plan in the request: "#plan [{name,
+// input}, …]" are its first tool calls (after a thinking block and a line of text), "#then
+// […]" the next round's; then a closing sentence (naming a failed call). "#invalid" streams
+// a tool input that isn't JSON; "#refuse" declines. A request without "#" takes its first
+// calls from TVE_MOCK_COPILOT_PLAN (the same JSON), if set.
 class MockCloudServer : public QObject {
     Q_OBJECT
 public:
@@ -41,6 +45,7 @@ private:
     explicit MockCloudServer(QObject* parent = nullptr);
     void serve(QTcpSocket* socket, const Request& request);
     void claude(QTcpSocket* socket, const Request& request);
+    void copilot(QTcpSocket* socket, const Request& request);
     void elevenLabs(QTcpSocket* socket, const Request& request);
     void openAiImages(QTcpSocket* socket, const Request& request);
     void geminiVideo(QTcpSocket* socket, const Request& request);

@@ -468,6 +468,11 @@ Colour management: an HDR · PQ project in the Color tab — the Project colour 
 ![360° video, dark](images/sphere-360-dark.png)
 ![360° video, light](images/sphere-360-light.png)
 
+The Copilot tab: a request in words, Claude's answer, and the changes it proposes — listed, not yet applied, with Apply and Don't apply — dark and light:
+
+![Copilot, dark](images/copilot-dark.png)
+![Copilot, light](images/copilot-light.png)
+
 Interchange: the Export timeline dialog's report after writing Final Cut Pro XML — what didn't carry over, by kind and how many clips — over an edit with a title and a dissolve, dark and light (the Export timeline button sits beside Save):
 
 ![Interchange, dark](images/interchange-dark.png)

@@ -181,6 +181,10 @@ void MockCloudServer::claude(QTcpSocket* socket, const Request& request)
         error(400, "invalid_request_error", "anthropic-version header is required");
         return;
     }
+    if (request.body.contains(QStringLiteral("tools"))) {
+        copilot(socket, request);
+        return;
+    }
     const QString model = request.body.value(QStringLiteral("model")).toString();
     const QString prompt = request.body.value(QStringLiteral("messages")).toArray().first().toObject()
                                .value(QStringLiteral("content")).toString();
@@ -271,6 +275,138 @@ void MockCloudServer::claude(QTcpSocket* socket, const Request& request)
         guarded->write(remaining->takeFirst());
     });
     timer->start();
+}
+
+void MockCloudServer::copilot(QTcpSocket* socket, const Request& request)
+{
+    const QJsonArray messages = request.body.value(QStringLiteral("messages")).toArray();
+    // The latest request in words, and how many answers have followed it.
+    QString asked;
+    int answers = 0;
+    QJsonArray lastResults;
+    for (const QJsonValue& value : messages) {
+        const QJsonObject m = value.toObject();
+        const QJsonValue content = m.value(QStringLiteral("content"));
+        if (m.value(QStringLiteral("role")) == QLatin1String("assistant")) {
+            ++answers;
+            continue;
+        }
+        QString text;
+        if (content.isString()) {
+            text = content.toString();
+        } else {
+            lastResults = {};
+            for (const QJsonValue& block : content.toArray()) {
+                const QJsonObject b = block.toObject();
+                if (b.value(QStringLiteral("type")) == QLatin1String("text"))
+                    text += b.value(QStringLiteral("text")).toString();
+                else if (b.value(QStringLiteral("type")) == QLatin1String("tool_result"))
+                    lastResults.append(b);
+            }
+        }
+        if (!text.isEmpty()) {
+            asked = text;
+            answers = 0;
+            lastResults = {};
+        }
+    }
+    const auto planAfter = [&](const QString& marker) {
+        const qsizetype at = asked.indexOf(marker);
+        if (at < 0)
+            return QJsonArray();
+        const QString rest = asked.mid(at + marker.size());
+        // The JSON array up to its closing bracket.
+        int depth = 0;
+        for (qsizetype i = 0; i < rest.size(); ++i) {
+            if (rest[i] == QLatin1Char('['))
+                ++depth;
+            else if (rest[i] == QLatin1Char(']') && --depth == 0)
+                return QJsonDocument::fromJson(rest.left(i + 1).toUtf8()).array();
+        }
+        return QJsonArray();
+    };
+    QJsonArray calls = answers == 0 ? planAfter(QStringLiteral("#plan ")) : answers == 1 ? planAfter(QStringLiteral("#then ")) : QJsonArray();
+    // (Or a plan from TVE_MOCK_COPILOT_PLAN, for requests in plain words: demos and pictures.)
+    if (calls.isEmpty() && answers == 0 && !asked.contains(QLatin1String("#")))
+        calls = QJsonDocument::fromJson(qgetenv("TVE_MOCK_COPILOT_PLAN")).array();
+    QString text;
+    if (!calls.isEmpty()) {
+        text = QStringLiteral("I'll make those changes.");
+    } else if (answers == 0) {
+        text = QStringLiteral("What would you like me to change? I need a little more to go on.");
+    } else {
+        QStringList failures;
+        for (const QJsonValue& r : lastResults)
+            if (r.toObject().value(QStringLiteral("is_error")).toBool())
+                failures << r.toObject().value(QStringLiteral("content")).toString();
+        text = failures.isEmpty() ? QStringLiteral("Done: the changes are ready for you to look over.")
+                                  : QStringLiteral("One change didn't work: %1").arg(failures.join(QStringLiteral("; ")));
+    }
+    const bool refuse = asked.contains(QLatin1String("#refuse"));
+    const bool invalid = asked.contains(QLatin1String("#invalid")) && answers == 0;
+
+    QList<QByteArray> events;
+    events << sse({{QStringLiteral("type"), QStringLiteral("message_start")},
+                   {QStringLiteral("message"), QJsonObject{{QStringLiteral("id"), QStringLiteral("msg_mock_copilot")},
+                                                           {QStringLiteral("type"), QStringLiteral("message")},
+                                                           {QStringLiteral("role"), QStringLiteral("assistant")},
+                                                           {QStringLiteral("model"), request.body.value(QStringLiteral("model"))},
+                                                           {QStringLiteral("content"), QJsonArray{}},
+                                                           {QStringLiteral("usage"), QJsonObject{{QStringLiteral("input_tokens"), 100},
+                                                                                                 {QStringLiteral("cache_read_input_tokens"), answers * 50},
+                                                                                                 {QStringLiteral("output_tokens"), 1}}}}}});
+    int index = 0;
+    const auto block = [&](const QJsonObject& start, const QList<QJsonObject>& deltas) {
+        events << sse({{QStringLiteral("type"), QStringLiteral("content_block_start")}, {QStringLiteral("index"), index},
+                       {QStringLiteral("content_block"), start}});
+        for (const QJsonObject& d : deltas)
+            events << sse({{QStringLiteral("type"), QStringLiteral("content_block_delta")}, {QStringLiteral("index"), index},
+                           {QStringLiteral("delta"), d}});
+        events << sse({{QStringLiteral("type"), QStringLiteral("content_block_stop")}, {QStringLiteral("index"), index}});
+        ++index;
+    };
+    QString stop = QStringLiteral("end_turn");
+    if (refuse) {
+        stop = QStringLiteral("refusal");
+    } else {
+        // Thinking (empty, as Opus 5.5 returns it by default), signed.
+        block({{QStringLiteral("type"), QStringLiteral("thinking")}, {QStringLiteral("thinking"), QString()}},
+              {QJsonObject{{QStringLiteral("type"), QStringLiteral("signature_delta")},
+                           {QStringLiteral("signature"), QStringLiteral("mock-signature-%1").arg(answers)}}});
+        block({{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), QString()}},
+              {QJsonObject{{QStringLiteral("type"), QStringLiteral("text_delta")}, {QStringLiteral("text"), text.left(8)}},
+               QJsonObject{{QStringLiteral("type"), QStringLiteral("text_delta")}, {QStringLiteral("text"), text.mid(8)}}});
+        int n = 0;
+        for (const QJsonValue& value : calls) {
+            const QJsonObject call = value.toObject();
+            const QString input = QString::fromUtf8(QJsonDocument(call.value(QStringLiteral("input")).toObject()).toJson(QJsonDocument::Compact));
+            const qsizetype half = input.size() / 2;
+            const auto json = [](const QString& part) {
+                return QJsonObject{{QStringLiteral("type"), QStringLiteral("input_json_delta")}, {QStringLiteral("partial_json"), part}};
+            };
+            block({{QStringLiteral("type"), QStringLiteral("tool_use")},
+                   {QStringLiteral("id"), QStringLiteral("toolu_mock_%1_%2").arg(answers).arg(n++)},
+                   {QStringLiteral("name"), call.value(QStringLiteral("name"))},
+                   {QStringLiteral("input"), QJsonObject{}}},
+                  {json(input.left(half)), json(input.mid(half))});
+            stop = QStringLiteral("tool_use");
+        }
+        if (invalid) {
+            block({{QStringLiteral("type"), QStringLiteral("tool_use")}, {QStringLiteral("id"), QStringLiteral("toolu_mock_bad")},
+                   {QStringLiteral("name"), QStringLiteral("split_clip")}, {QStringLiteral("input"), QJsonObject{}}},
+                  {QJsonObject{{QStringLiteral("type"), QStringLiteral("input_json_delta")}, {QStringLiteral("partial_json"), QStringLiteral("{\"clip_id\": 2, \"at\": ")}}});
+            stop = QStringLiteral("tool_use");
+        }
+    }
+    events << sse({{QStringLiteral("type"), QStringLiteral("message_delta")},
+                   {QStringLiteral("delta"), QJsonObject{{QStringLiteral("stop_reason"), stop}}},
+                   {QStringLiteral("usage"), QJsonObject{{QStringLiteral("output_tokens"), 40}}}});
+    events << sse({{QStringLiteral("type"), QStringLiteral("message_stop")}});
+
+    socket->write("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n");
+    for (const QByteArray& e : events)
+        socket->write(e);
+    socket->disconnectFromHost();
 }
 
 void MockCloudServer::elevenLabs(QTcpSocket* socket, const Request& request)

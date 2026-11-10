@@ -320,6 +320,46 @@ bool CloudServices::generate(const QString& job, const TextRequest& request, std
     return true;
 }
 
+bool CloudServices::converse(const AgentRequest& request, std::function<void(const AgentResult&)> done)
+{
+    const QString job = QStringLiteral("copilot");
+    if (busy() && (m_job != job || (m_textTask && !m_textTask->done())))
+        return false;
+    if (!busy())
+        beginJob(job, QStringLiteral("Asking Claude…"));
+    else {
+        m_status = QStringLiteral("Asking Claude…");
+        emit jobChanged();
+    }
+    AgentTask* task = m_claude->converse(request, this);
+    m_textTask = task;
+    connect(task, &TextTask::textChanged, this, [this](const QString& text) {
+        m_draft = text;
+        emit draftChanged();
+    });
+    connect(task, &TextTask::retrying, this, [this](int attempt, double seconds) {
+        m_status = QStringLiteral("Claude is busy; trying again in %1 s (attempt %2 of 3)…").arg(qRound(seconds)).arg(attempt);
+        emit jobChanged();
+    });
+    connect(task, &TextTask::finished, this, [this, task, done = std::move(done)](const TextResult& result) {
+        task->deleteLater();
+        m_inputTokens += result.usage.inputTokens;
+        m_outputTokens += result.usage.outputTokens;
+        m_cost += result.usage.cost;
+        emit usageChanged();
+        const AgentResult agent = task->agentResult();
+        // Another turn follows when it asked for tools; else (or on failure) the job ends.
+        if (!result.ok || agent.toolCalls.isEmpty() || result.stopReason != QLatin1String("tool_use"))
+            endJob(result.ok ? QString() : result.error);
+        else {
+            m_status = QStringLiteral("Editing…");
+            emit jobChanged();
+        }
+        done(agent);
+    });
+    return true;
+}
+
 bool CloudServices::speak(const QString& text, const QString& voiceId, double speed, const QString& basePath,
                           std::function<void(const SpeechResult&)> done)
 {

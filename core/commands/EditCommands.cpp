@@ -1193,6 +1193,21 @@ void SetTrackMixCommand::undo(Project& project)
 
 // --- SetProjectSettingsCommand ---
 
+// --- ApplyEditsCommand ---
+
+std::optional<std::string> ApplyEditsCommand::redo(Project& project)
+{
+    if (!(project == m_before))
+        return "the project changed since these edits were made";
+    project = m_after;
+    return std::nullopt;
+}
+
+void ApplyEditsCommand::undo(Project& project)
+{
+    project = m_before;
+}
+
 std::optional<std::string> SetProjectSettingsCommand::redo(Project& project)
 {
     const ProjectSettings& s = m_settings;

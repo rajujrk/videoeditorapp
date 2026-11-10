@@ -93,6 +93,9 @@ public:
     bool busy() const { return !m_job.isEmpty(); }
     // Starts a job; false if one runs. `done` is called once (not when this is destroyed).
     bool generate(const QString& job, const TextRequest& request, std::function<void(const TextResult&)> done);
+    // One turn of the copilot's conversation (job "copilot"; its turns follow one another in
+    // the one job until endJob, or the turn fails or is cancelled).
+    bool converse(const AgentRequest& request, std::function<void(const AgentResult&)> done);
     bool speak(const QString& text, const QString& voiceId, double speed, const QString& basePath,
                std::function<void(const SpeechResult&)> done);
     // Generates media: `start` makes the task (with this object's network).
