@@ -58,6 +58,13 @@ Rectangle {
                 project: panel.project
             }
 
+            SphereOverlay {
+                objectName: "sphereOverlay"
+                anchors.fill: video
+                project: panel.project
+                player: video
+            }
+
             DropArea {
                 anchors.fill: parent
                 keys: ["text/uri-list"]
@@ -175,6 +182,16 @@ Rectangle {
                     checkable: true
                     checked: panel.project.useProxies
                     onToggled: panel.project.useProxies = checked
+                }
+                IconButton {
+                    objectName: "lookAroundButton"
+                    visible: panel.project.spherical
+                    iconName: "sphere"
+                    tip: video.lookAround ? "Showing a view to look around in (drag it); off: the whole 360° picture"
+                                          : "Look around the 360° picture in the player (export is unchanged)"
+                    checkable: true
+                    checked: video.lookAround
+                    onToggled: video.lookAround = checked
                 }
                 IconButton {
                     objectName: "hdrViewerButton"

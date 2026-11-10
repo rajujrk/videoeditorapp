@@ -432,9 +432,15 @@ private:
 // Changes the canvas size and frame rate, or the project's colour.
 class SetProjectSettingsCommand final : public Command {
 public:
-    explicit SetProjectSettingsCommand(ProjectSettings settings) : m_settings(settings) {}
+    explicit SetProjectSettingsCommand(ProjectSettings settings, std::string label = {})
+        : m_settings(settings), m_label(std::move(label))
+    {
+    }
 
-    std::string label() const override { return m_colourOnly ? "Change Project Colour" : "Change Canvas"; }
+    std::string label() const override
+    {
+        return !m_label.empty() ? m_label : m_colourOnly ? "Change Project Colour" : "Change Canvas";
+    }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -442,6 +448,7 @@ private:
     ProjectSettings m_settings;
     ProjectSettings m_previous;
     bool m_colourOnly = false;
+    std::string m_label;
 };
 
 // Changes a clip's speed and direction. The clip keeps its source span, so its timeline

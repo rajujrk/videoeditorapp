@@ -99,6 +99,13 @@ class VideoView : public QQuickRhiItem {
     // Whether the window really is EDR, and how much brighter than SDR white it can go now.
     Q_PROPERTY(bool hdrActive READ hdrActive NOTIFY displayChanged)
     Q_PROPERTY(double displayHeadroom READ displayHeadroom NOTIFY displayChanged)
+    // A 360° project's picture as a view to look around in (where `lookYaw`, `lookPitch`
+    // point, `lookFov` wide, degrees) instead of the whole equirectangular sphere. Only the
+    // preview looks; the project is unchanged.
+    Q_PROPERTY(bool lookAround READ lookAround WRITE setLookAround NOTIFY lookChanged)
+    Q_PROPERTY(double lookYaw READ lookYaw WRITE setLookYaw NOTIFY lookChanged)
+    Q_PROPERTY(double lookPitch READ lookPitch WRITE setLookPitch NOTIFY lookChanged)
+    Q_PROPERTY(double lookFov READ lookFov WRITE setLookFov NOTIFY lookChanged)
 
 public:
     explicit VideoView(QQuickItem* parent = nullptr);
@@ -147,6 +154,15 @@ public:
     bool hdrActive() const { return m_hdrActive; }
     double displayHeadroom() const { return m_displayHeadroom; }
     void setDisplay(bool hdrActive, double headroom); // from the renderer
+    bool lookAround() const { return m_lookAround; }
+    void setLookAround(bool on);
+    double lookYaw() const { return m_look.yaw; }
+    void setLookYaw(double yaw);
+    double lookPitch() const { return m_look.pitch; }
+    void setLookPitch(double pitch);
+    double lookFov() const { return m_look.fov; }
+    void setLookFov(double fov);
+    const tve::ClipSphereView& look() const { return m_look; }
     // The views following this one (render thread).
     std::shared_ptr<tve::FrameMirrors> mirrors() const { return m_mirrors; }
 
@@ -164,6 +180,7 @@ signals:
     void followsChanged();
     void hdrOutputChanged();
     void displayChanged();
+    void lookChanged();
 
 protected:
     QQuickRhiItemRenderer* createRenderer() override;
@@ -189,6 +206,8 @@ private:
     bool m_hdrOutput = false;
     bool m_hdrActive = false;
     double m_displayHeadroom = 1.0;
+    bool m_lookAround = false;
+    tve::ClipSphereView m_look; // (its roll unused)
     std::function<void()> m_stopFileSession; // set while playing a file via `source`
 
     std::vector<tve::EffectInstance> m_effects;

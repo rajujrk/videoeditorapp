@@ -750,6 +750,44 @@ Rectangle {
                         font: Theme.type.body
                         color: Theme.color.textSecondary
                     }
+                    // 360° media: reframed to a flat view in a flat project (its direction and field
+                    // of view, keyframable), or turned on a 360° project's sphere.
+                    Section {
+                        objectName: "sphereSection"
+                        visible: inspector.clipInfo.spherical === true
+                        title: "360°"
+                        Text {
+                            objectName: "sphereNote"
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: inspector.project.spherical
+                                  ? "A 360° project: the clip is the whole sphere. Direction, tilt and roll turn it — where its front is."
+                                  : "Reframed: a flat view of the sphere. Drag in the player to look around, scroll to zoom; "
+                                    + "keyframe the direction to move the view."
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                        VisualSlider { key: "yaw"; objectName: "visual:yaw"; label: "Direction"; from: -180; to: 180
+                                       value: inspector.visual.yaw || 0; format: (v) => Math.round(v) + "°" }
+                        VisualSlider { key: "pitch"; objectName: "visual:pitch"; label: "Tilt"; from: -90; to: 90
+                                       value: inspector.visual.pitch || 0; format: (v) => Math.round(v) + "°" }
+                        VisualSlider { key: "roll"; objectName: "visual:roll"; label: "Roll"; from: -180; to: 180
+                                       value: inspector.visual.roll || 0; format: (v) => Math.round(v) + "°" }
+                        VisualSlider { key: "fov"; objectName: "visual:fov"; label: "Field of view"; from: 20; to: 150
+                                       visible: !inspector.project.spherical
+                                       value: inspector.visual.fov === undefined ? 90 : inspector.visual.fov
+                                       format: (v) => Math.round(v) + "°" }
+                        TextButton {
+                            objectName: "sphereProjectButton"
+                            Layout.fillWidth: true
+                            text: inspector.project.spherical ? "Make a flat (16:9) project" : "Make a 360° project"
+                            variant: "secondary"
+                            tip: inspector.project.spherical
+                                 ? "Reframe every 360° clip into a flat 16:9 video"
+                                 : "Work on the whole sphere and export 360° video"
+                            onClicked: inspector.project.setSphericalProject(!inspector.project.spherical)
+                        }
+                    }
                     Section {
                         visible: inspector.clipInfo.isAdjustment !== true
                         title: "Transform"

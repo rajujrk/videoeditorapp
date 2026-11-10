@@ -100,6 +100,10 @@ const std::vector<AnimatableProperty>& animatableProperties()
         {property::kCropRight, 0.0, 0.9, true},
         {property::kCropBottom, 0.0, 0.9, true},
         {property::kVolume, -60.0, 12.0, false},
+        {property::kYaw, -720.0, 720.0, true},
+        {property::kPitch, -90.0, 90.0, true},
+        {property::kRoll, -180.0, 180.0, true},
+        {property::kFov, 20.0, 150.0, true},
     };
     return properties;
 }

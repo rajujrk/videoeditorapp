@@ -463,6 +463,11 @@ Colour management: an HDR · PQ project in the Color tab — the Project colour 
 ![Colour and HDR, dark](images/colour-hdr-dark.png)
 ![Colour and HDR, light](images/colour-hdr-light.png)
 
+360° video: a 360° clip reframed in a flat project — the 360° section at the top of the Video tab (where it looks, how wide, each keyframable), the player's hint while dragging to look around — and the 360° badge in the library, dark and light:
+
+![360° video, dark](images/sphere-360-dark.png)
+![360° video, light](images/sphere-360-light.png)
+
 The Generate tab choosing a first and last picture for a video, after a sticker was placed over the picture, dark and light:
 
 ![Generate, dark](images/generate-dark.png)
