@@ -7,6 +7,7 @@
 #include "commands/StructureCommands.h"
 #include "decode/AudioDecoder.h"
 #include "decode/VideoDecoder.h"
+#include "io/Interchange.h"
 #include "io/LutFile.h"
 #include "io/MediaRelink.h"
 #include "io/ProjectSerializer.h"
@@ -1247,6 +1248,8 @@ void ProjectController::newProject(int width, int height, const QString&)
 bool ProjectController::open(const QUrl& file)
 {
     const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    if (interchangeFormatOf(path.toStdString()))
+        return openTimeline(file);
     try {
         resetProject(loadProject(path.toStdString()), path);
         requestAutoProxies();
@@ -1255,6 +1258,87 @@ bool ProjectController::open(const QUrl& file)
         reportError(QStringLiteral("Could not open %1: %2").arg(QFileInfo(path).fileName(), QString::fromUtf8(e.what())));
         return false;
     }
+}
+
+bool ProjectController::openTimeline(const QUrl& file)
+{
+    QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    const QString shown = QFileInfo(path).fileName();
+    const auto format = interchangeFormatOf(path.toStdString());
+    if (!format || *format == InterchangeFormat::Edl) {
+        reportError(QStringLiteral("%1 isn't a timeline this app can open (OpenTimelineIO or Final Cut Pro XML)").arg(shown));
+        return false;
+    }
+    if (QFileInfo(path).isDir())
+        path += QStringLiteral("/Info.fcpxml"); // a .fcpxmld bundle
+    QFile in(path);
+    if (!in.open(QIODevice::ReadOnly) || in.size() > 64 * 1024 * 1024) {
+        reportError(QStringLiteral("Cannot read ") + shown);
+        return false;
+    }
+    ImportedTimeline imported;
+    try {
+        imported = importTimeline(in.readAll().toStdString(), *format, QFileInfo(path).absolutePath().toStdString());
+    } catch (const std::exception& e) {
+        reportError(QStringLiteral("Could not open %1: %2").arg(shown, QString::fromUtf8(e.what())));
+        return false;
+    }
+    Project& project = imported.project;
+    // What the files are, where they are (the rest stay, to relink).
+    for (MediaItem& media : project.media) {
+        if (!QFileInfo::exists(QString::fromStdString(media.path)))
+            continue;
+        QString error;
+        if (auto probed = describeMedia(media.path, &error)) {
+            probed->id = media.id;
+            probed->duration = std::max(probed->duration, probed->still ? media.duration : Ticks(0));
+            media = *probed;
+        }
+    }
+    if (!imported.canvasStated) {
+        const auto video = std::ranges::find_if(project.media, [](const MediaItem& m) {
+            return m.hasVideo && !m.still && m.width > 0 && m.height > 0;
+        });
+        if (video != project.media.end()) {
+            project.settings.width = video->width - video->width % 2;
+            project.settings.height = video->height - video->height % 2;
+        }
+    }
+    resetProject(std::move(project), {});
+    m_canvasChosen = true;
+    requestAutoProxies();
+    QStringList notes;
+    for (const std::string& note : imported.notes)
+        notes << QString::fromStdString(note);
+    emit timelineOpened(notes, shown);
+    return true;
+}
+
+QVariantMap ProjectController::exportTimeline(const QUrl& file, const QString& format)
+{
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    std::optional<InterchangeFormat> kind = format == QLatin1String("otio")     ? std::optional(InterchangeFormat::Otio)
+                                          : format == QLatin1String("fcpxml") ? std::optional(InterchangeFormat::Fcpxml)
+                                          : format == QLatin1String("edl")    ? std::optional(InterchangeFormat::Edl)
+                                                                              : interchangeFormatOf(path.toStdString());
+    if (!kind) {
+        reportError(QStringLiteral("Choose OpenTimelineIO (.otio), Final Cut Pro XML (.fcpxml) or an EDL (.edl)"));
+        return {{QStringLiteral("ok"), false}};
+    }
+    if (m_project.duration() == 0) {
+        reportError(QStringLiteral("Add something to the timeline to export"));
+        return {{QStringLiteral("ok"), false}};
+    }
+    const ExportedTimeline out = tve::exportTimeline(m_project, *kind, name().toStdString());
+    QSaveFile save(path);
+    if (!save.open(QIODevice::WriteOnly) || save.write(QByteArray::fromStdString(out.text)) < 0 || !save.commit()) {
+        reportError(QStringLiteral("Cannot write ") + path);
+        return {{QStringLiteral("ok"), false}};
+    }
+    QStringList notes;
+    for (const std::string& note : out.notes)
+        notes << QString::fromStdString(note);
+    return {{QStringLiteral("ok"), true}, {QStringLiteral("notes"), notes}};
 }
 
 bool ProjectController::save(const QUrl& file)

@@ -468,6 +468,11 @@ Colour management: an HDR · PQ project in the Color tab — the Project colour 
 ![360° video, dark](images/sphere-360-dark.png)
 ![360° video, light](images/sphere-360-light.png)
 
+Interchange: the Export timeline dialog's report after writing Final Cut Pro XML — what didn't carry over, by kind and how many clips — over an edit with a title and a dissolve, dark and light (the Export timeline button sits beside Save):
+
+![Interchange, dark](images/interchange-dark.png)
+![Interchange, light](images/interchange-light.png)
+
 The Generate tab choosing a first and last picture for a video, after a sticker was placed over the picture, dark and light:
 
 ![Generate, dark](images/generate-dark.png)
