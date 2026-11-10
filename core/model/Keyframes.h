@@ -82,6 +82,11 @@ inline constexpr std::string_view kCropTop = "cropTop";
 inline constexpr std::string_view kCropRight = "cropRight";
 inline constexpr std::string_view kCropBottom = "cropBottom";
 inline constexpr std::string_view kVolume = "volume"; // gain in dB
+// A 360° clip's view (ClipSphereView), degrees.
+inline constexpr std::string_view kYaw = "yaw";
+inline constexpr std::string_view kPitch = "pitch";
+inline constexpr std::string_view kRoll = "roll";
+inline constexpr std::string_view kFov = "fov";
 } // namespace property
 
 const std::vector<AnimatableProperty>& animatableProperties();

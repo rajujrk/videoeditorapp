@@ -63,6 +63,8 @@ class ProjectController : public QObject {
     // The colour the project works in and exports: "sdr" (Rec.709), "hdr-pq" or "hdr-hlg"
     // (Rec.2020). Changing it is one undo step.
     Q_PROPERTY(QString projectColour READ projectColour WRITE setProjectColour NOTIFY projectChanged)
+    // A 360° project: an equirectangular canvas, exported as 360° video (see setSphericalProject).
+    Q_PROPERTY(bool spherical READ spherical NOTIFY projectChanged)
     Q_PROPERTY(double duration READ duration NOTIFY projectChanged)
     Q_PROPERTY(QVariantList tracks READ tracks NOTIFY projectChanged) // top to bottom
     // The same tracks as a model whose rows survive edits (use this for delegates).
@@ -268,6 +270,10 @@ public:
     double frameRate() const;
     QString projectColour() const { return QString::fromStdString(tve::toString(m_project.settings.colour)); }
     void setProjectColour(const QString& colour);
+    bool spherical() const { return m_project.settings.spherical; }
+    // Makes the project 360° (the canvas the 360° media's size) or flat (16:9: 3840 × 2160
+    // from a sphere at least 1800 tall, else 1920 × 1080 or 1280 × 720); one undo step.
+    Q_INVOKABLE bool setSphericalProject(bool on);
     double duration() const;
     QVariantList tracks() const;
     QAbstractListModel* trackModel() { return &m_trackModel; }

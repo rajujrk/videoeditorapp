@@ -17,6 +17,8 @@ add_library(tve_core STATIC
     model/Paths.cpp
     model/Colour.h
     model/Colour.cpp
+    model/Sphere.h
+    model/Sphere.cpp
     model/Motion.cpp
     model/People.cpp
     model/Masks.cpp

@@ -48,6 +48,7 @@ Popup {
     readonly property var format: project.exportFormats[Math.max(0, formatPicker.currentIndex)]
     readonly property bool hdrProject: project.projectColour !== "sdr" && format.video
     readonly property bool hevc: format.id.indexOf("hevc") >= 0
+    readonly property bool sphereProject: project.spherical && format.video
 
     // The canvas, standard heights below it, two fixed shapes, then upscaled heights.
     readonly property var sizes: {
@@ -333,6 +334,19 @@ Popup {
                     font: Theme.type.body
                     color: Theme.color.textPrimary
                 }
+            }
+
+            Text { visible: dialog.sphereProject; text: "360°"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text {
+                objectName: "exportSphereNote"
+                visible: dialog.sphereProject
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: dialog.format.extension === "mp4"
+                      ? "360° video: equirectangular, marked so (spherical metadata) for 360° players and sites"
+                      : "The equirectangular picture, not marked as 360° (only MP4 is)"
+                font: Theme.type.body
+                color: Theme.color.textPrimary
             }
 
             Text { visible: dialog.format.sound && dialog.format.video; text: "Sound"; font: Theme.type.label; color: Theme.color.textSecondary }

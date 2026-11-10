@@ -256,6 +256,10 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                 side.frame = pictureOf(clip, sourceTime);
             return side;
         };
+        const auto spherical = [&](const Clip& clip) {
+            const MediaItem* media = project.findMedia(clip.mediaId);
+            return media && media->spherical;
+        };
         const Side outgoing = sideOf(top, layer.sourceTime);
         const Side incoming = layer.transition ? sideOf(*layer.transition->to, layer.transition->toSourceTime) : Side{};
         if (outgoing.shown() && incoming.shown()) {
@@ -271,6 +275,8 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                 MatteMode::None, // no matte during a transition
                 clipSeconds, clipDuration, nullptr, peopleOf(top, layer.sourceTime), motionOf(top, layer.sourceTime),
                 cursorOf(top, layer.sourceTime), {}});
+            out.back().spherical = spherical(top);
+            out.back().transition->spherical = spherical(*t.to);
         } else if (outgoing.shown() || incoming.shown()) {
             // One side unreadable: show the other alone.
             const Side& side = outgoing.shown() ? outgoing : incoming;
@@ -281,6 +287,7 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                                      peopleOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime),
                                      motionOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime),
                                      cursorOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime), {}});
+            out.back().spherical = spherical(clip);
         }
     }
 }
@@ -292,7 +299,7 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
     Ticks time = start;
 
     while (!m_stop && time < end) {
-        CompositeFrame composite{time, {}, project->settings.colour};
+        CompositeFrame composite{time, {}, project->settings.colour, project->settings.spherical};
         std::set<Id> live;
         buildLayers(*project, project->tracks, time, composite.layers, 0, live);
         for (VideoLayer& layer : composite.layers)

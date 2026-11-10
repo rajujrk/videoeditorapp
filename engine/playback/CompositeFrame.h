@@ -67,6 +67,7 @@ struct LayerTransition {
     LayerPeople people;
     LayerMotion motion;
     LayerCursor cursor;
+    bool spherical = false; // 360° media (see VideoLayer)
 };
 
 // One clip's picture at a moment of the timeline, with how to show it. During a
@@ -102,6 +103,8 @@ struct VideoLayer {
     LayerCursor cursor;
     // A drawing: drawn from this, with no frame.
     std::optional<ClipDrawing> drawing;
+    // 360° media: reframed by visual.sphere in a flat project, turned by it in a 360° one.
+    bool spherical = false;
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.
@@ -111,6 +114,8 @@ struct CompositeFrame {
     // The project's working colour: every layer is converted into it before its colour,
     // effects and placement (SDR Rec.709 unless the project is HDR).
     ProjectColour colour = ProjectColour::Sdr;
+    // A 360° project's frame: an equirectangular sphere.
+    bool spherical = false;
 
     Ticks pts() const { return time; }
 };

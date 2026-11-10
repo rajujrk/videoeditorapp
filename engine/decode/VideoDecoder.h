@@ -25,6 +25,8 @@ struct VideoStreamInfo {
     ColourSpace colour;
     // More than 8 bits a sample: a software decode keeps them, as P010.
     bool highBitDepth = false;
+    // 360° video: the file's spherical metadata (Spherical Video V2 or V1) says equirectangular.
+    bool spherical = false;
 };
 
 // Decodes the best video stream of a file. Uses VideoToolbox when the codec supports it

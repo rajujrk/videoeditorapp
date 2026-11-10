@@ -153,6 +153,7 @@ std::optional<MediaItem> probeMedia(const std::string& path, QString* error)
         item.duration = info.duration;
         item.alpha = info.hasAlpha;
         item.colour = info.colour;
+        item.spherical = info.spherical;
     } else {
         item.hasVideo = false;
     }
@@ -218,6 +219,10 @@ QVariantMap visualMap(const ClipVisual& v)
         {QStringLiteral("cropBottom"), v.crop.bottom},
         {QStringLiteral("opacity"), v.opacity},
         {QStringLiteral("blend"), QString::fromLatin1(kBlendNames[int(v.blend)])},
+        {QStringLiteral("yaw"), v.sphere.yaw},
+        {QStringLiteral("pitch"), v.sphere.pitch},
+        {QStringLiteral("roll"), v.sphere.roll},
+        {QStringLiteral("fov"), v.sphere.fov},
     };
 }
 
@@ -579,6 +584,10 @@ double* visualField(ClipVisual& v, std::string_view id)
     if (id == property::kCropTop) return &v.crop.top;
     if (id == property::kCropRight) return &v.crop.right;
     if (id == property::kCropBottom) return &v.crop.bottom;
+    if (id == property::kYaw) return &v.sphere.yaw;
+    if (id == property::kPitch) return &v.sphere.pitch;
+    if (id == property::kRoll) return &v.sphere.roll;
+    if (id == property::kFov) return &v.sphere.fov;
     return nullptr;
 }
 
@@ -913,6 +922,33 @@ double ProjectController::frameRate() const
     return double(m_project.settings.frameRate.num) / m_project.settings.frameRate.den;
 }
 
+bool ProjectController::setSphericalProject(bool on)
+{
+    if (on == m_project.settings.spherical)
+        return true;
+    ProjectSettings settings = m_project.settings;
+    settings.spherical = on;
+    if (on) {
+        // The canvas of the 360° media (the first on the timeline, else in the library).
+        const MediaItem* sphere = nullptr;
+        for (const Track& track : m_project.tracks)
+            for (const Clip& clip : track.clips)
+                if (const MediaItem* media = m_project.findMedia(clip.mediaId); !sphere && media && media->spherical)
+                    sphere = media;
+        for (const MediaItem& media : m_project.media)
+            if (!sphere && media.spherical)
+                sphere = &media;
+        settings.width = sphere ? sphere->width : 3840;
+        settings.height = sphere ? sphere->height : 1920;
+    } else {
+        // A flat 16:9 picture, as sharp as the sphere allows: 4K from a sphere about as tall.
+        settings.height = settings.height >= 1800 ? 2160 : settings.height >= 1000 ? 1080 : 720;
+        settings.width = settings.height * 16 / 9;
+    }
+    m_canvasChosen = true;
+    return apply(std::make_unique<SetProjectSettingsCommand>(settings, on ? "Make 360° Project" : "Make Flat Project"));
+}
+
 void ProjectController::setProjectColour(const QString& colour)
 {
     const ProjectColour wanted = projectColourFrom(colour.toStdString());
@@ -1036,6 +1072,7 @@ QVariantList ProjectController::media() const
             // "HDR · PQ", "HDR · HLG", "Display P3", "Rec.2020" or "" (SDR Rec.709).
             {QStringLiteral("colour"), mediaColourLabel(item.colour)},
             {QStringLiteral("hdr"), isHdr(item.colour.transfer)},
+            {QStringLiteral("spherical"), item.spherical},
             {QStringLiteral("missing"), missing.contains(item.id)},
             {QStringLiteral("placeholder"), item.placeholder},
             {QStringLiteral("generated"),
@@ -1392,6 +1429,7 @@ bool ProjectController::addClip(double mediaId, double trackId, double start)
         settings.width = media->width;
         settings.height = media->height;
         settings.frameRate = media->frameRate;
+        settings.spherical = media->spherical; // 360° footage first: a 360° project
         apply(std::make_unique<SetProjectSettingsCommand>(settings));
         m_canvasChosen = true;
     }
@@ -1903,6 +1941,7 @@ QVariantMap ProjectController::selectedClipInfo() const
                                       : media            ? mediaName(media->path)
                                                          : QString()},
             {QStringLiteral("isTitle"), clip->text.has_value()},
+            {QStringLiteral("spherical"), media && media->spherical && !clip->generated()},
             {QStringLiteral("isCompound"), sequence != nullptr},
             {QStringLiteral("groupId"), double(clip->groupId)},
             {QStringLiteral("text"), clip->text ? textMap(*clip->text) : QVariantMap()},
@@ -2039,6 +2078,10 @@ std::optional<ClipVisual> ProjectController::visualFrom(Id clipId, const QVarian
     take("cropRight", v.crop.right);
     take("cropBottom", v.crop.bottom);
     take("opacity", v.opacity);
+    take("yaw", v.sphere.yaw);
+    take("pitch", v.sphere.pitch);
+    take("roll", v.sphere.roll);
+    take("fov", v.sphere.fov);
     if (const auto it = values.constFind(QStringLiteral("blend")); it != values.constEnd()) {
         const QString name = it->toString();
         for (int i = 0; i < int(std::size(kBlendNames)); ++i) {
@@ -3470,6 +3513,8 @@ std::optional<Exporter::Options> ProjectController::exportOptions(const QVariant
     if (isHdr(m_project.settings.colour) && settings.codec == VideoCodec::Hevc
         && options.value(QStringLiteral("hdr"), true).toBool())
         settings.colour = m_project.settings.colour;
+    // A 360° project's MP4 says so; other files hold the equirectangular picture unmarked.
+    settings.spherical = m_project.settings.spherical && settings.container == Container::Mp4;
     const bool gif = format->codec == VideoCodec::Gif && settings.hasVideo();
 
     // Size: exact, or a short side in the canvas's shape, or the canvas.

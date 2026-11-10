@@ -40,6 +40,9 @@ struct MediaSettings {
     // (Rec.2020 primaries, D65, 0.0001–1000 nits) and, for PQ, the content light levels
     // measured as it is written. SDR: Rec.709.
     ProjectColour colour = ProjectColour::Sdr;
+    // 360° video: equirectangular pictures, an MP4 marked so (Spherical Video V2: its sv3d
+    // and st3d boxes), as 360° players and sites read it.
+    bool spherical = false;
 
     bool hasVideo() const { return container == Container::Mp4 || container == Container::Mov || container == Container::Gif; }
     bool hasAudio() const { return audio && container != Container::Gif; }

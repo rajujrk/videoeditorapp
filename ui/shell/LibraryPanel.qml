@@ -1001,11 +1001,25 @@ Rectangle {
                             Text { id: aiLabel; anchors.centerIn: parent; text: "AI"; font: Theme.type.caption; color: "#FFFFFF" }
                         }
 
+                        // 360° media: marked.
+                        Rectangle {
+                            objectName: "sphereBadge:" + mediaTile.modelData.name
+                            visible: mediaTile.modelData.spherical === true
+                            anchors { right: parent.right; top: parent.top; margins: Theme.space.s }
+                            width: sphereLabel.implicitWidth + Theme.space.s
+                            height: sphereLabel.implicitHeight + Theme.space.xxs
+                            radius: Theme.radius.s
+                            color: Theme.color.overlay
+                            Text { id: sphereLabel; anchors.centerIn: parent; text: "360°"; font: Theme.type.caption; color: "#FFFFFF" }
+                        }
+
                         // HDR media: marked, with how it is encoded (PQ or HLG).
                         Rectangle {
                             objectName: "hdrBadge:" + mediaTile.modelData.name
                             visible: mediaTile.modelData.hdr === true
                             anchors { right: parent.right; top: parent.top; margins: Theme.space.s }
+                            // (Below the 360° badge when it is both.)
+                            anchors.topMargin: Theme.space.s + (mediaTile.modelData.spherical === true ? 22 : 0)
                             width: hdrLabel.implicitWidth + Theme.space.s
                             height: hdrLabel.implicitHeight + Theme.space.xxs
                             radius: Theme.radius.s

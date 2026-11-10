@@ -9,6 +9,8 @@ extern "C" {
 #include <libavutil/channel_layout.h>
 #include <libavutil/mastering_display_metadata.h>
 #include <libavutil/opt.h>
+#include <libavutil/spherical.h>
+#include <libavutil/stereo3d.h>
 #include <libswscale/swscale.h>
 }
 
@@ -113,6 +115,8 @@ std::optional<std::string> validateSettings(const MediaSettings& s)
             return "the frame rate must be positive";
         if (isHdr(s.colour) && s.codec != VideoCodec::Hevc)
             return "HDR goes out as 10-bit HEVC";
+        if (s.spherical && s.container != Container::Mp4)
+            return "360° video goes out as MP4";
     }
     if (!s.hasVideo() && !s.audio)
         return "a sound file needs its sound";
@@ -327,6 +331,27 @@ struct MediaWriter::Impl {
             return fail(s.codec == VideoCodec::ProRes ? "no ProRes encoder" : "cannot open the picture encoder");
         videoStream = avformat_new_stream(format, nullptr);
         avcodec_parameters_from_context(videoStream->codecpar, video);
+        // 360°: an equirectangular sphere, one picture for both eyes.
+        if (s.spherical) {
+            AVCodecParameters* par = videoStream->codecpar;
+            std::size_t size = 0;
+            AVSphericalMapping* mapping = av_spherical_alloc(&size);
+            AVPacketSideData* data = mapping ? av_packet_side_data_add(&par->coded_side_data, &par->nb_coded_side_data,
+                                                                       AV_PKT_DATA_SPHERICAL, mapping, size, 0)
+                                             : nullptr;
+            if (!data) {
+                av_free(mapping);
+                return fail("out of memory");
+            }
+            mapping->projection = AV_SPHERICAL_EQUIRECTANGULAR;
+            AVStereo3D* stereo = av_stereo3d_alloc_size(&size);
+            if (!stereo || !av_packet_side_data_add(&par->coded_side_data, &par->nb_coded_side_data, AV_PKT_DATA_STEREO3D,
+                                                    stereo, size, 0)) {
+                av_free(stereo);
+                return fail("out of memory");
+            }
+            stereo->type = AV_STEREO3D_2D;
+        }
         // HDR: the mastering display, in the file (and with each frame, for the encoder).
         AVMasteringDisplayMetadata* mastering = nullptr;
         if (hdr) {
@@ -467,6 +492,9 @@ std::unique_ptr<MediaWriter> MediaWriter::open(const std::string& path, const Me
 
     if (int rc = avformat_alloc_output_context2(&d->format, nullptr, muxerName(settings.container), path.c_str()); rc < 0)
         return fail("cannot create " + path + ": " + avError(rc));
+    // FFmpeg writes MP4's spherical boxes (Google's, not ISO's) only when told it may.
+    if (settings.spherical)
+        d->format->strict_std_compliance = FF_COMPLIANCE_UNOFFICIAL;
     if (settings.hasVideo() && !d->openVideo())
         return fail(d->error);
     if ((settings.hasAudio() || !settings.hasVideo()) && !d->openAudio())

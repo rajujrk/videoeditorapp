@@ -37,12 +37,12 @@ NLOHMANN_JSON_SERIALIZE_ENUM(Transfer, {
     {Transfer::Hlg, "hlg"},
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColourSpace, primaries, transfer)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ProjectSettings, width, height, frameRate, sampleRate, colour)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ProjectSettings, width, height, frameRate, sampleRate, colour, spherical)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GeneratedBy, provider, model, kind, prompt, reference, source, created)
 // Fields added after schema 1 shipped default when absent, so older files still load.
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MediaItem, id, path, duration, hasVideo, hasAudio, width, height,
                                                 frameRate, audioSampleRate, audioChannels, still, alpha, lottie,
-                                                fingerprint, generated, placeholder, colour)
+                                                fingerprint, generated, placeholder, colour, spherical)
 NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
     {BlendMode::Normal, "normal"},
     {BlendMode::Multiply, "multiply"},
@@ -54,7 +54,8 @@ NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipTransform, x, y, scale, rotation)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipCrop, left, top, right, bottom)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipVisual, transform, crop, opacity, blend)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipSphereView, yaw, pitch, roll, fov)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipVisual, transform, crop, opacity, blend, sphere)
 
 NLOHMANN_JSON_SERIALIZE_ENUM(TransitionAlignment, {
     {TransitionAlignment::Center, "center"},

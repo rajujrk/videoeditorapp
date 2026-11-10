@@ -683,6 +683,11 @@ std::optional<std::string> validateVisual(const ClipVisual& v)
     if (!inRange(v.crop.left) || !inRange(v.crop.right) || !inRange(v.crop.top) || !inRange(v.crop.bottom)
         || v.crop.left + v.crop.right > 0.95 || v.crop.top + v.crop.bottom > 0.95)
         return "crop would leave too little of the picture";
+    const ClipSphereView& s = v.sphere;
+    if (s.yaw < -720.0 || s.yaw > 720.0 || s.pitch < -90.0 || s.pitch > 90.0 || s.roll < -180.0 || s.roll > 180.0)
+        return "the 360° direction is out of range";
+    if (s.fov < 20.0 || s.fov > 150.0)
+        return "the field of view must be between 20° and 150°";
     return std::nullopt;
 }
 

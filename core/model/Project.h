@@ -59,6 +59,9 @@ struct MediaItem {
     bool alpha = false;
     // Its pictures' colour space as the file says (SDR Rec.709 when it says nothing).
     ColourSpace colour;
+    // 360° video: equirectangular pictures of the whole sphere, as the file's spherical
+    // metadata says.
+    bool spherical = false;
     // A Lottie animation (a sticker): drawn, not decoded, looping; like a still it lasts as
     // long as its clips (`still` is set too), `duration` being one cycle.
     bool lottie = false;
@@ -107,12 +110,27 @@ struct ClipCrop {
     friend bool operator==(const ClipCrop&, const ClipCrop&) = default;
 };
 
-// How a clip looks: placement, crop, opacity and blend mode.
+// Where a 360° clip looks, in degrees: in a flat project the clip is reframed — the view in
+// that direction with that horizontal field of view; in a 360° project the sphere is turned
+// so that direction is its front (the field of view unused). Unused for flat media.
+struct ClipSphereView {
+    double yaw = 0.0;   // right of the front, -720..720
+    double pitch = 0.0; // up, -90..90
+    double roll = 0.0;  // clockwise, -180..180
+    double fov = 90.0;  // 20..150
+
+    bool turned() const { return yaw != 0.0 || pitch != 0.0 || roll != 0.0; }
+    friend bool operator==(const ClipSphereView&, const ClipSphereView&) = default;
+};
+
+// How a clip looks: placement, crop, opacity and blend mode (and, for 360° media, where it
+// looks).
 struct ClipVisual {
     ClipTransform transform;
     ClipCrop crop;
     double opacity = 1.0;
     BlendMode blend = BlendMode::Normal;
+    ClipSphereView sphere;
 
     friend bool operator==(const ClipVisual&, const ClipVisual&) = default;
 };
@@ -458,6 +476,9 @@ struct ProjectSettings {
     std::int32_t sampleRate = 48000;
     // The colour it works in and exports: SDR Rec.709, or HDR Rec.2020 (PQ or HLG).
     ProjectColour colour = ProjectColour::Sdr;
+    // A 360° project: its canvas is an equirectangular sphere, exported with spherical
+    // metadata; 360° clips go on it whole (turned by their view), flat ones as they are.
+    bool spherical = false;
 
     friend bool operator==(const ProjectSettings&, const ProjectSettings&) = default;
 };

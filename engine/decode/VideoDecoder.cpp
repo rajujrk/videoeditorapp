@@ -10,6 +10,7 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/hwcontext.h>
 #include <libavutil/pixdesc.h>
+#include <libavutil/spherical.h>
 #include <libswscale/swscale.h>
 }
 
@@ -272,6 +273,9 @@ std::unique_ptr<VideoDecoder> VideoDecoder::open(const std::string& path, std::s
     d->info.hasAlpha = sourceFormat && (sourceFormat->flags & AV_PIX_FMT_FLAG_ALPHA);
     d->info.highBitDepth = sourceFormat && sourceFormat->comp[0].depth > 8;
     d->info.colour = colourFromTags(stream->codecpar->color_primaries, stream->codecpar->color_trc);
+    if (const AVPacketSideData* sphere = av_packet_side_data_get(stream->codecpar->coded_side_data,
+                                                                 stream->codecpar->nb_coded_side_data, AV_PKT_DATA_SPHERICAL))
+        d->info.spherical = reinterpret_cast<const AVSphericalMapping*>(sphere->data)->projection == AV_SPHERICAL_EQUIRECTANGULAR;
     for (int i = 0; !d->info.hasAlpha; ++i) {
         const AVCodecHWConfig* config = avcodec_get_hw_config(decoder, i);
         if (!config)

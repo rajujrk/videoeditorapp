@@ -5,6 +5,7 @@
 
 #include "gpu/ColourPass.h"
 #include "gpu/Compositor.h"
+#include "gpu/SpherePass.h"
 #include "gpu/EffectChain.h"
 #include "playback/FrameMirror.h"
 #include "playback/PlaybackSession.h"
@@ -80,6 +81,10 @@ private:
     std::unique_ptr<FrameCompositor> m_frameCompositor;
     std::unique_ptr<tve::EffectChain> m_outputChain;
     std::unique_ptr<tve::ColourPass> m_display;
+    std::unique_ptr<tve::SpherePass> m_lookPass;
+    bool m_lookAround = false;
+    tve::ClipSphereView m_look;
+    QSize m_lookSize; // the view's size when last looked
     std::shared_ptr<tve::FrameMirrors> m_mirrors;
     bool m_hdrActive = false;
     double m_headroom = 1.0;
@@ -145,6 +150,7 @@ void VideoRenderer::initialize(QRhiCommandBuffer*)
     m_presentUniforms->create();
     m_outputChain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
     m_display = std::make_unique<tve::ColourPass>(m_rhi);
+    m_lookPass = std::make_unique<tve::SpherePass>(m_rhi);
 
     // A placeholder input gives the present pipeline its binding layout.
     m_placeholder.reset(m_rhi->newTexture(QRhiTexture::RGBA8, QSize(1, 1)));
@@ -205,6 +211,11 @@ void VideoRenderer::synchronize(QQuickRhiItem* item)
         m_needsProcessing = true;
     }
     m_mirrors = view->mirrors();
+    if (view->lookAround() != m_lookAround || view->look() != m_look) {
+        m_lookAround = view->lookAround();
+        m_look = view->look();
+        m_needsProcessing = true;
+    }
 
     // The display: an EDR window's swapchain, and how far above SDR white it reaches now
     // (macOS changes it with the brightness).
@@ -239,10 +250,18 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
     QRhiTexture* canvas =
         m_frameCompositor->render(cb, *resources.frame, m_canvasSize, seconds, m_overrides.get(), resources.textures);
     m_processed = canvas ? m_outputChain->process(cb, canvas, seconds) : nullptr;
+    // A 360° project looked around in: the view, the item's size.
+    QRhiTexture* picture = m_processed;
+    m_lookPass->begin();
+    m_lookSize = {};
+    if (picture && m_lookAround && resources.frame->spherical) {
+        m_lookSize = renderTarget()->pixelSize();
+        picture = m_lookPass->reframe(cb, picture, m_look, m_lookSize);
+    }
     // The display transform (nothing for an SDR project on an SDR display).
     m_display->begin();
     const tve::ColourSpace display{tve::Primaries::Rec709, m_hdrActive ? tve::Transfer::Linear : tve::Transfer::Sdr};
-    m_shown = m_display->apply(cb, m_processed, tve::conversion(tve::workingSpace(resources.frame->colour), display,
+    m_shown = m_display->apply(cb, picture, tve::conversion(tve::workingSpace(resources.frame->colour), display,
                                                                m_headroom));
 }
 
@@ -321,6 +340,8 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
         m_frameCompositor->flushTextureCache();
     }
 
+    if (m_lookSize.isValid() && m_lookSize != renderTarget()->pixelSize())
+        m_needsProcessing = true; // the view resized: look again at its size
     if (m_hasFrame && m_needsProcessing) {
         renderFrame(cb, seconds);
         m_needsProcessing = false;
@@ -335,7 +356,8 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
     QRhiResourceUpdateBatch* updates = m_rhi->nextResourceUpdateBatch();
     if (canPresent) {
         float scale[4] = {1.0f, 1.0f, m_rhi->isYUpInNDC() ? 1.0f : 0.0f, 0.0f};
-        const float canvasAspect = float(m_canvasSize.width()) / float(m_canvasSize.height());
+        const QSize shown = m_shown->pixelSize(); // the canvas, or the view looked around in
+        const float canvasAspect = float(shown.width()) / float(shown.height());
         const float viewAspect = float(outputSize.width()) / float(outputSize.height());
         if (canvasAspect > viewAspect)
             scale[1] = viewAspect / canvasAspect;
@@ -538,6 +560,46 @@ void VideoView::setHdrOutput(bool on)
     setColorBufferFormat(on ? TextureFormat::RGBA16F : TextureFormat::RGBA8);
     requestHdrWindow();
     emit hdrOutputChanged();
+    update();
+}
+
+void VideoView::setLookAround(bool on)
+{
+    if (on == m_lookAround)
+        return;
+    m_lookAround = on;
+    emit lookChanged();
+    update();
+}
+
+void VideoView::setLookYaw(double yaw)
+{
+    // Kept within one turn either way.
+    yaw = std::remainder(yaw, 360.0);
+    if (yaw == m_look.yaw)
+        return;
+    m_look.yaw = yaw;
+    emit lookChanged();
+    update();
+}
+
+void VideoView::setLookPitch(double pitch)
+{
+    pitch = std::clamp(pitch, -90.0, 90.0);
+    if (pitch == m_look.pitch)
+        return;
+    m_look.pitch = pitch;
+    emit lookChanged();
+    update();
+}
+
+void VideoView::setLookFov(double fov)
+{
+    fov = std::clamp(fov, 20.0, 150.0);
+    if (fov == m_look.fov)
+        return;
+    m_look.fov = fov;
+    emit lookChanged();
     update();
 }
 

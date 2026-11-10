@@ -31,6 +31,7 @@ class EffectChain;
 class TransitionRenderer;
 class ColorGrader;
 class ColourPass;
+class SpherePass;
 class MaskRenderer;
 }
 
@@ -38,7 +39,8 @@ class MaskRenderer;
 // for export alike:
 //   1. each layer: YUV → RGB at the layer's own resolution (zero-copy from its
 //      CVPixelBuffer), or a title's text; converted from its own colour space into the
-//      project's working one (frame.colour); then that clip's colour and effects
+//      project's working one (frame.colour); a 360° clip reframed to a flat view (or, in a
+//      360° project, turned); then that clip's colour and effects
 //   2. the compositor draws the layers onto the canvas (placement, crop, opacity, blend).
 //      A clip with canvas effects (shadows, borders, fills) is placed on a transparent
 //      canvas of its own first, those effects run there, and the result is drawn.
@@ -132,6 +134,7 @@ private:
     std::unique_ptr<tve::TransitionRenderer> m_transitions;
     std::unique_ptr<tve::ColorGrader> m_grader;
     std::unique_ptr<tve::ColourPass> m_colour;
+    std::unique_ptr<tve::SpherePass> m_sphere;
     std::unique_ptr<tve::MaskRenderer> m_masks;
     // Per matted layer within a frame: the layer's and its matte's own canvases.
     std::vector<std::array<std::unique_ptr<tve::Compositor>, 2>> m_matteCanvases;

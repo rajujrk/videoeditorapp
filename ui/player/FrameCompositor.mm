@@ -8,6 +8,7 @@
 
 #include "gpu/ColorGrader.h"
 #include "gpu/ColourPass.h"
+#include "gpu/SpherePass.h"
 #include "decode/ColourTags.h"
 #include "gpu/Compositor.h"
 #include "gpu/MaskRenderer.h"
@@ -151,6 +152,7 @@ FrameCompositor::FrameCompositor(QRhi* rhi) : m_rhi(rhi)
     m_transitions = std::make_unique<tve::TransitionRenderer>(m_rhi, tve::EffectLibrary::builtIn());
     m_grader = std::make_unique<tve::ColorGrader>(m_rhi);
     m_colour = std::make_unique<tve::ColourPass>(m_rhi);
+    m_sphere = std::make_unique<tve::SpherePass>(m_rhi);
     m_masks = std::make_unique<tve::MaskRenderer>(m_rhi);
 }
 
@@ -457,6 +459,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     m_transitions->begin();
     m_grader->begin();
     m_colour->begin();
+    m_sphere->begin();
     m_masks->begin();
     const tve::ColourSpace working = tve::workingSpace(frame.colour);
     std::set<tve::Id> liveClips;
@@ -488,7 +491,8 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                                  const tve::LayerPeople* people = nullptr,
                                  const tve::LayerMotion* motion = nullptr,
                                  const tve::LayerCursor* cursor = nullptr,
-                                 const std::optional<tve::ClipDrawing>* drawing = nullptr) -> QRhiTexture* {
+                                 const std::optional<tve::ClipDrawing>* drawing = nullptr,
+                                 bool spherical = false) -> QRhiTexture* {
         QRhiTexture* picture = nullptr;
         if (canvasBelow) {
             picture = canvasBelow; // an adjustment layer works on what is under it
@@ -554,6 +558,11 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             overrides->apply(clipId, visual, effects, grade, look);
             overrides->applyKeying(clipId, key, masks);
         }
+        // 360° media: a flat view of it for a flat canvas (its direction and field of view),
+        // or, on a 360° canvas, the sphere turned to that direction.
+        if (spherical && !canvasBelow && !nested)
+            picture = frame.spherical ? m_sphere->turn(cb, picture, visual.sphere)
+                                      : m_sphere->reframe(cb, picture, visual.sphere, m_canvasSize);
         if (!text) { // colour first (the look, then the grade), then the key and masks, then effects
             picture = m_grader->apply(cb, picture, look);
             picture = m_grader->apply(cb, picture, grade);
@@ -644,7 +653,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             QRhiTexture* picture = clipPicture(layer.clipId, layer.frame, visual, layer.effects, layer.grade, layer.look,
                                                layer.text, nullptr, layer.stillPath, layer.chromaKey, layer.masks,
                                                layer.clipSeconds, layer.clipDuration, layer.nested.get(), &layer.people,
-                                               &layer.motion, &layer.cursor, &layer.drawing);
+                                               &layer.motion, &layer.cursor, &layer.drawing, layer.spherical);
             // Track matte: the layer just above is the matte, placed by itself, and not drawn.
             tve::VideoLayer* matteLayer = index + 1 < layers.size() ? &layers[index + 1] : nullptr;
             if (layer.matte != tve::MatteMode::None && !layer.transition && matteLayer && !matteLayer->transition
@@ -656,7 +665,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                                 matteLayer->look, matteLayer->text, nullptr, matteLayer->stillPath, matteLayer->chromaKey,
                                 matteLayer->masks, matteLayer->clipSeconds, matteLayer->clipDuration,
                                 matteLayer->nested.get(), &matteLayer->people, &matteLayer->motion, &matteLayer->cursor,
-                                &matteLayer->drawing);
+                                &matteLayer->drawing, matteLayer->spherical);
                 if (!picture)
                     continue;
                 if (m_matteCanvases.size() <= matteIndex)
@@ -688,7 +697,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                 clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade,
                             transition.look, std::nullopt, nullptr, transition.stillPath, transition.chromaKey,
                             transition.masks, transition.clipSeconds, 0.0, nullptr, &transition.people,
-                            &transition.motion, &transition.cursor);
+                            &transition.motion, &transition.cursor, nullptr, transition.spherical);
             if (!picture || !incoming) {
                 if (picture || incoming)
                     place(target, picture ? layer.clipId : transition.clipId, picture ? picture : incoming,
