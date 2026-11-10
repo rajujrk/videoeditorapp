@@ -263,7 +263,9 @@ Rectangle {
                 // Quick actions
                 RowLayout {
                     spacing: Theme.space.s
-                    TextButton { objectName: "openProject"; text: "Open project…"; iconName: "folder"; onClicked: home.openRequested() }
+                    TextButton { objectName: "openProject"; text: "Open project…"; iconName: "folder"
+                                 tip: "A project, or a timeline from another editor (OpenTimelineIO, Final Cut Pro XML)"
+                                 onClicked: home.openRequested() }
                     TextButton { text: "Record screen"; iconName: "record"; enabled: false; tip: "Recording arrives in Phase 4" }
                     TextButton { text: "Instant mode"; iconName: "effects"; enabled: false; tip: "Instant mode arrives in Phase 4" }
                 }

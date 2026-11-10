@@ -88,7 +88,8 @@ ApplicationWindow {
         id: openDialog
         title: "Open project"
         fileMode: FileDialog.OpenFile
-        nameFilters: ["TechieVideoEditor projects (*.tve)", "All files (*)"]
+        nameFilters: ["TechieVideoEditor projects (*.tve)",
+                      "Timelines from other editors (*.otio *.fcpxml *.fcpxmld)", "All files (*)"]
         onAccepted: {
             if (project.open(selectedFile))
                 root.screen = "editor"

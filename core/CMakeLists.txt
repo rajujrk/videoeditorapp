@@ -19,6 +19,11 @@ add_library(tve_core STATIC
     model/Colour.cpp
     model/Sphere.h
     model/Sphere.cpp
+    io/Interchange.h
+    io/Interchange.cpp
+    io/InterchangeOtio.cpp
+    io/InterchangeFcpxml.cpp
+    io/InterchangeEdl.cpp
     model/Motion.cpp
     model/People.cpp
     model/Masks.cpp
@@ -53,5 +58,7 @@ add_library(tve_core STATIC
 add_library(tve::core ALIAS tve_core)
 
 target_include_directories(tve_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(tve_core PUBLIC nlohmann_json::nlohmann_json)
+# The system's libxml2 (macOS SDK, MIT) reads Final Cut Pro XML.
+find_package(LibXml2 REQUIRED)
+target_link_libraries(tve_core PUBLIC nlohmann_json::nlohmann_json PRIVATE LibXml2::LibXml2)
 tve_set_warnings(tve_core)

@@ -10,6 +10,7 @@ Rectangle {
     signal homeRequested()
     signal saveRequested()
     signal exportRequested()
+    signal interchangeRequested()
     signal shortcutsRequested()
     signal cloudSettingsRequested()
 
@@ -72,6 +73,12 @@ Rectangle {
             onClicked: bar.project.redo()
         }
         IconButton { iconName: "save"; tip: "Save project" + KeyMap.hints["save"]; onClicked: bar.saveRequested() }
+        IconButton {
+            objectName: "interchangeButton"
+            iconName: "interchange"
+            tip: "Export the timeline for another editor (OpenTimelineIO, Final Cut Pro XML, EDL)"
+            onClicked: bar.interchangeRequested()
+        }
         IconButton {
             objectName: "cloudSettingsButton"
             iconName: "assistant"

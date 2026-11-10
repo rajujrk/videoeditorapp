@@ -15,6 +15,7 @@ add_executable(tve_core_tests
     core/test_track_effects.cpp
     core/test_colour.cpp
     core/test_sphere.cpp
+    core/test_interchange.cpp
     core/test_keyframes.cpp
     core/test_speed_ramp.cpp
     core/test_color.cpp

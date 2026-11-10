@@ -391,7 +391,15 @@ public:
 
     // Project lifecycle
     Q_INVOKABLE void newProject(int width, int height, const QString& name = {});
+    // A project file, or another editor's timeline (.otio, .fcpxml: see openTimeline).
     Q_INVOKABLE bool open(const QUrl& file);
+    // Another editor's timeline as a new, unsaved project: its media probed where the files
+    // are (missing ones to relink), the canvas the file's (else the first video's). Emits
+    // timelineOpened with what didn't carry over.
+    Q_INVOKABLE bool openTimeline(const QUrl& file);
+    // The timeline for another editor: format "otio", "fcpxml" or "edl" (empty: by the file's
+    // extension). {ok, notes: what didn't carry over}; on failure lastError says why.
+    Q_INVOKABLE QVariantMap exportTimeline(const QUrl& file, const QString& format = {});
     Q_INVOKABLE bool save(const QUrl& file = {});
 
     // Media: returns the number of files imported (already-imported files are reused).
@@ -881,6 +889,8 @@ public:
     const tve::Project& project() const { return m_project; }
 
 signals:
+    // A timeline from another editor was opened; `notes` say what didn't carry over.
+    void timelineOpened(const QStringList& notes, const QString& fileName);
     void viewChanged();
     void projectChanged();
     void audioPluginsChanged();

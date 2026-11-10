@@ -39,6 +39,10 @@ Rectangle {
             onHomeRequested: editor.homeRequested()
             onSaveRequested: editor.saveProject()
             onExportRequested: exportDialog.open()
+            onInterchangeRequested: {
+                interchangeDialog.prepare()
+                interchangeDialog.open()
+            }
             onShortcutsRequested: shortcutsDialog.open()
             onCloudSettingsRequested: cloudSettings.open()
         }
@@ -154,6 +158,16 @@ Rectangle {
         id: exportDialog
         objectName: "exportDialog"
         project: editor.project
+    }
+
+    InterchangeDialog {
+        id: interchangeDialog
+        objectName: "interchangeDialog"
+        project: editor.project
+    }
+    Connections {
+        target: editor.project
+        function onTimelineOpened(notes, fileName) { interchangeDialog.showOpened(notes, fileName) }
     }
 
     FileDialog {
