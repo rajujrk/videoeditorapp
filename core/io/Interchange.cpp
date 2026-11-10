@@ -131,6 +131,8 @@ Timeline fromProject(const Project& project, const std::string& name, Notes& not
             }
             if (clip.compound()) {
                 notes.add(TVE_TR("core", "Compound clips (left as space)"));
+                if (clip.transitionIn)
+                    notes.add(TVE_TR("core", "Transitions to and from compound clips (left out)"));
                 continue;
             }
             if (!clip.text && (!media || media->lottie)) {
@@ -161,7 +163,11 @@ Timeline fromProject(const Project& project, const std::string& name, Notes& not
                     item.still = true;
                 }
             }
-            if (clip.transitionIn) {
+            // A compound clip is left as space: no transition into it (above) or out of it.
+            const auto before = std::ranges::find(source.clips, clip.start, &Clip::end);
+            if (clip.transitionIn && before != source.clips.end() && before->compound()) {
+                notes.add(TVE_TR("core", "Transitions to and from compound clips (left out)"));
+            } else if (clip.transitionIn) {
                 const ClipTransition& t = *clip.transitionIn;
                 Transition transition;
                 switch (t.alignment) {

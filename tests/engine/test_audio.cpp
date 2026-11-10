@@ -593,6 +593,45 @@ TEST_CASE("a compound clip plays the sound of the clips inside it")
     CHECK(peak(mix, 0, mix.size() / 2) == 0.0f);
 }
 
+TEST_CASE("a compound clip played faster or backwards plays its sound that way")
+{
+    requireSamples();
+    AudioProject p;
+    const Id clicks = p.importAudio("test_clicks.wav", 3 * kSec);
+    // Inside: clicks at 0.25 s and 1.25 s of its sequence; the compound clip at 1–3 s.
+    const Id inner = p.push<AddClipCommand>(p.audioTrack, clicks, kSec, 2 * kSec, kSec / 4).clipId();
+    const Id outer = p.push<CreateCompoundCommand>(std::vector<Id>{inner}, "Clicks").clipId();
+    TimelineAudio mixer;
+
+    // Twice as fast, the pitch following (like tape): at 1.125 s and 1.625 s, and nothing
+    // after its end at 2 s.
+    p.push<SetClipKeepPitchCommand>(outer, false);
+    p.push<SetClipSpeedCommand>(outer, 2.0, false);
+    mixer.restart(p.project, 0);
+    auto mix = drainMix(mixer);
+    CHECK(firstLoud(mix) == Catch::Approx(54000).margin(48));
+    CHECK(peak(mix, 77900, 78500) > 0.5f);
+    CHECK(peak(mix, 70000, 77800) < 0.1f);
+    CHECK(peak(mix, 96500, mix.size() / 2) == 0.0f);
+
+    // Backwards: the later click first, at 1.375 s, then the other at 1.875 s.
+    p.push<SetClipSpeedCommand>(outer, 2.0, true);
+    mixer.restart(p.project, 0);
+    mix = drainMix(mixer);
+    CHECK(firstLoud(mix) == Catch::Approx(66000).margin(480));
+    CHECK(peak(mix, 89400, 90500) > 0.5f);
+    CHECK(peak(mix, 72000, 89000) < 0.1f);
+
+    // Its pitch kept: time-stretched, the clicks still about where they were.
+    p.push<SetClipSpeedCommand>(outer, 2.0, false);
+    p.push<SetClipKeepPitchCommand>(outer, true);
+    mixer.restart(p.project, 0);
+    mix = drainMix(mixer);
+    CHECK(firstLoud(mix) == Catch::Approx(54000).margin(2400));
+    CHECK(peak(mix, 75600, 80400) > 0.3f);
+    CHECK(peak(mix, 100000, mix.size() / 2) == 0.0f);
+}
+
 #include "encode/WavWriter.h"
 
 #include <unistd.h>

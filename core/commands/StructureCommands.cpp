@@ -279,6 +279,11 @@ std::optional<std::string> BreakCompoundCommand::redo(Project& project)
     const Sequence* found = compound.compound() ? project.findSequence(compound.sequenceId) : nullptr;
     if (!found)
         return "not a compound clip";
+    // Its clips go back on the timeline as they are: played faster, slower, backwards or
+    // held, they would no longer match what the compound clip showed.
+    if (compound.speed != 1.0 || compound.reversed || compound.freeze || !compound.speedRamp.empty())
+        return compound.freeze ? "a frozen compound clip cannot be broken apart"
+                               : "set the compound clip back to normal speed to break it apart";
     const Sequence sequence = *found;
     m_before = project;
 

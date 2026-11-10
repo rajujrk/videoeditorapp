@@ -313,6 +313,40 @@ TEST_CASE("another editor's Final Cut Pro XML: timecode starts, compound clips, 
                       "it has no project with a timeline");
 }
 
+TEST_CASE("transitions to and from a compound clip are left out with it")
+{
+    // A, a compound clip dissolving in, then B dissolving in from it.
+    Project p;
+    p.media.push_back({.id = 1, .path = "/media/a.mov", .duration = 10 * kSec, .hasVideo = true, .hasAudio = true});
+    Track main{.id = 11, .kind = TrackKind::Video, .name = "Video 1"};
+    main.clips.push_back(Clip{.id = 21, .mediaId = 1, .start = 0, .duration = 2 * kSec});
+    Clip compound{.id = 22, .start = 2 * kSec, .duration = 2 * kSec};
+    compound.sequenceId = 40;
+    compound.speed = 2.0;
+    compound.transitionIn = ClipTransition{.transitionId = "tve.transition.dissolve", .duration = 1 * kSec};
+    main.clips.push_back(compound);
+    Clip after{.id = 23, .mediaId = 1, .start = 4 * kSec, .duration = 2 * kSec, .sourceIn = 4 * kSec};
+    after.transitionIn = ClipTransition{.transitionId = "tve.transition.dissolve", .duration = 1 * kSec};
+    main.clips.push_back(after);
+    Sequence inside{.id = 40, .name = "Inside"};
+    Track innerTrack{.id = 12, .kind = TrackKind::Video, .name = "V1"};
+    innerTrack.clips.push_back(Clip{.id = 24, .mediaId = 1, .start = 0, .duration = 4 * kSec});
+    inside.tracks.push_back(innerTrack);
+    p.sequences.push_back(inside);
+    p.tracks = {main};
+    p.setNextId(100);
+
+    const ExportedTimeline out = exportTimeline(p, InterchangeFormat::Otio, "Nested");
+    CHECK(mentions(out.notes, "Compound clips (left as space)"));
+    CHECK(mentions(out.notes, "Transitions to and from compound clips (left out)"));
+    const auto json = nlohmann::json::parse(out.text);
+    const auto& items = json["tracks"]["children"][0]["children"];
+    REQUIRE(items.size() == 3); // A, the space, B: no transitions
+    CHECK(items[1]["OTIO_SCHEMA"] == "Gap.1");
+    for (const auto& item : items)
+        CHECK(item["OTIO_SCHEMA"] != "Transition.1");
+}
+
 TEST_CASE("an EDL has the main track's events, dissolves, speed and markers")
 {
     const ExportedTimeline out = exportTimeline(sample(), InterchangeFormat::Edl, "Sample");

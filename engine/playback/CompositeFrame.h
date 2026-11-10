@@ -68,6 +68,8 @@ struct LayerTransition {
     LayerMotion motion;
     LayerCursor cursor;
     bool spherical = false; // 360° media (see VideoLayer)
+    // The incoming clip is a compound clip: its sequence's layers, drawn as its picture.
+    std::shared_ptr<CompositeFrame> nested;
 };
 
 // One clip's picture at a moment of the timeline, with how to show it. During a

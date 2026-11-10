@@ -144,6 +144,26 @@ Ticks Clip::sourceTimeBeyond(Ticks time) const
     return reversed ? sourceIn + sourceSpan() - offset - 1 : sourceIn + offset;
 }
 
+Ticks Clip::timelineTimeOf(Ticks source) const
+{
+    if (freeze || duration <= 0)
+        return start;
+    // Source time only moves one way through a clip (backwards when reversed): search.
+    const auto reached = [&](Ticks time) { return reversed ? sourceTimeAt(time) <= source : sourceTimeAt(time) >= source; };
+    if (!reached(end() - 1))
+        return end();
+    Ticks low = start;
+    Ticks high = end() - 1;
+    while (low < high) {
+        const Ticks middle = low + (high - low) / 2;
+        if (reached(middle))
+            high = middle;
+        else
+            low = middle + 1;
+    }
+    return low;
+}
+
 const Clip* Track::findClip(Id clipId) const
 {
     auto it = std::ranges::find(clips, clipId, &Clip::id);

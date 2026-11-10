@@ -332,6 +332,12 @@ and a sticker grouped with the last clip, dark and light:
 ![Markers, groups and compound clips, dark](images/structure-dark.png)
 ![Markers, groups and compound clips, light](images/structure-light.png)
 
+A compound clip at 2× between two clips, with a dissolve on each of its cuts and its Speed
+tab open in the inspector (the timeline zoomed in), dark and light:
+
+![A compound clip at twice the speed with transitions, dark](images/compound-speed-dark.png)
+![A compound clip at twice the speed with transitions, light](images/compound-speed-light.png)
+
 The export dialog with the Vertical 9:16 preset on a marker's range, and the render queue
 (a finished GIF, a paused ProRes master, two exports waiting), dark and light:
 

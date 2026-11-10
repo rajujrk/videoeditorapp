@@ -175,7 +175,7 @@ bool KeyMap::assign(const QString& id, const QString& sequence)
         return false;
     }
     if (reservedKeys().contains(key)) {
-        fail(QStringLiteral("%1 belongs to the system").arg(QKeySequence::fromString(key).toString(QKeySequence::NativeText)));
+        fail(tr("%1 belongs to the system").arg(QKeySequence::fromString(key).toString(QKeySequence::NativeText)));
         return false;
     }
     for (Action& other : m_actions)

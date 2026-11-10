@@ -1113,12 +1113,11 @@ Rectangle {
 
                 Text {
                     visible: inspector.clipInfo.isTitle === true || inspector.clipInfo.isAdjustment === true
-                             || inspector.clipInfo.isStill === true || inspector.clipInfo.isCompound === true
+                             || inspector.clipInfo.isStill === true
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
                     text: inspector.clipInfo.isTitle === true ? qsTr("Titles have no speed; trim them to change how long they last.")
                         : inspector.clipInfo.isSticker === true ? qsTr("Stickers have no speed; trim them to change how long they last.")
-                        : inspector.clipInfo.isCompound === true ? qsTr("Compound clips have no speed; trim them to change how long they last.")
                         : inspector.clipInfo.isStill === true ? qsTr("Images have no speed; trim them to change how long they last.")
                         : qsTr("Adjustment layers have no speed; trim them to change how long they last.")
                     font: Theme.type.body
@@ -1128,9 +1127,9 @@ Rectangle {
 
                 Section {
                     id: speedSection
+                    objectName: "speedSection"
                     visible: inspector.clipInfo.id !== undefined && inspector.clipInfo.isTitle !== true
                              && inspector.clipInfo.isAdjustment !== true && inspector.clipInfo.isStill !== true
-                             && inspector.clipInfo.isCompound !== true
                     Layout.topMargin: Theme.space.s
                     title: qsTr("Speed")
                     readonly property bool still: inspector.clipInfo.freeze === true

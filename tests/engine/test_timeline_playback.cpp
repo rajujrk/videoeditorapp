@@ -750,6 +750,96 @@ TEST_CASE("a compound clip plays as one layer holding its sequence's layers")
     CHECK(inside[1].frame.pts() == 22 * kFrame30); // its in-point 0.5 s, 0.25 s in
 }
 
+TEST_CASE("a compound clip at twice the speed, with transitions into it and out of it")
+{
+    requireSamples();
+    auto project = std::make_shared<Project>();
+    CommandStack stack(*project);
+    auto push = [&](std::unique_ptr<Command> c) {
+        auto error = stack.push(std::move(c));
+        INFO(error.value_or(""));
+        REQUIRE_FALSE(error);
+    };
+    auto v1 = std::make_unique<AddTrackCommand>(TrackKind::Video, "V1");
+    auto* v1Cmd = v1.get();
+    push(std::move(v1));
+    auto media = std::make_unique<ImportMediaCommand>(sample("test_1080p30_h264.mp4"), 2 * kSec);
+    auto* mediaCmd = media.get();
+    push(std::move(media));
+    const Id track = v1Cmd->trackId();
+    const Id file = mediaCmd->mediaId();
+    // Inside the compound clip: the file's first second. At 2×, it lasts 0.5 s, at 0.5–1 s;
+    // before it the file's start (0–0.5 s), after it the file from 1 s (1–2 s).
+    auto inner = std::make_unique<AddClipCommand>(track, file, 0, kSec, 0);
+    auto* innerCmd = inner.get();
+    push(std::move(inner));
+    auto compound = std::make_unique<CreateCompoundCommand>(std::vector<Id>{innerCmd->clipId()}, "Inside");
+    auto* compoundCmd = compound.get();
+    push(std::move(compound));
+    const Id nested = compoundCmd->clipId();
+    push(std::make_unique<SetClipSpeedCommand>(nested, 2.0, false));
+    push(std::make_unique<MoveClipCommand>(nested, track, kSec / 2));
+    auto before = std::make_unique<AddClipCommand>(track, file, 0, kSec / 2, 0);
+    auto* beforeCmd = before.get();
+    push(std::move(before));
+    auto after = std::make_unique<AddClipCommand>(track, file, kSec, kSec, kSec);
+    auto* afterCmd = after.get();
+    push(std::move(after));
+    // Half-second dissolves centred on both cuts: 0.25–0.75 s and 0.75–1.25 s.
+    push(std::make_unique<SetClipTransitionCommand>(nested, ClipTransition{.transitionId = "tve.transition.dissolve", .duration = kSec / 2}));
+    push(std::make_unique<SetClipTransitionCommand>(afterCmd->clipId(), ClipTransition{.transitionId = "tve.transition.dissolve", .duration = kSec / 2}));
+
+    const auto frameAt = [&](TimelinePlayback& playback, Ticks time) {
+        playback.seek(time);
+        for (int attempt = 0; attempt < 400 && !playback.queue().frontPts(); ++attempt)
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        int skipped = 0;
+        auto frame = playback.queue().takeLatestDue(time, skipped);
+        REQUIRE(frame);
+        return std::move(*frame);
+    };
+    {
+    TimelinePlayback playback; // (gone before the project is edited again: it reads it)
+    playback.setProject(project);
+
+    // At 0.3 s: from the first clip into the compound clip, whose sequence is held at its start.
+    CompositeFrame into = frameAt(playback, 9 * kFrame30);
+    REQUIRE(into.layers.size() == 1);
+    CHECK(into.layers[0].clipId == beforeCmd->clipId());
+    CHECK(into.layers[0].frame.pts() == 9 * kFrame30);
+    REQUIRE(into.layers[0].transition);
+    CHECK(into.layers[0].transition->clipId == nested);
+    CHECK(into.layers[0].transition->progress == Catch::Approx(0.1).margin(0.01));
+    REQUIRE(into.layers[0].transition->nested);
+    REQUIRE(into.layers[0].transition->nested->layers.size() == 1);
+    CHECK(into.layers[0].transition->nested->layers[0].frame.pts() == 0);
+
+    // At 0.8 s: out of it into the last clip; inside, 0.6 s of its sequence (frame 18).
+    CompositeFrame out = frameAt(playback, 24 * kFrame30);
+    REQUIRE(out.layers.size() == 1);
+    CHECK(out.layers[0].clipId == nested);
+    REQUIRE(out.layers[0].nested);
+    REQUIRE(out.layers[0].nested->layers.size() == 1);
+    CHECK(out.layers[0].nested->layers[0].frame.pts() == 18 * kFrame30);
+    REQUIRE(out.layers[0].transition);
+    CHECK(out.layers[0].transition->clipId == afterCmd->clipId());
+    CHECK_FALSE(out.layers[0].transition->nested);
+    CHECK(out.layers[0].transition->frame.pts() == 24 * kFrame30); // its in-point 1 s, less 0.2 s
+    }
+
+    // Backwards, at 0.6 s: 0.8 s of its sequence (2 × 0.1 s from its end, less a tick, which
+    // still shows frame 24), still in the dissolve in.
+    push(std::make_unique<SetClipSpeedCommand>(nested, 2.0, true));
+    TimelinePlayback playback;
+    playback.setProject(project);
+    CompositeFrame back = frameAt(playback, 18 * kFrame30);
+    REQUIRE(back.layers.size() == 1);
+    REQUIRE(back.layers[0].transition);
+    REQUIRE(back.layers[0].transition->nested);
+    REQUIRE(back.layers[0].transition->nested->layers.size() == 1);
+    CHECK(back.layers[0].transition->nested->layers[0].frame.pts() == 24 * kFrame30);
+}
+
 TEST_CASE("a clip's OpenFX effects run on its picture before it reaches the compositor")
 {
     requireSamples();

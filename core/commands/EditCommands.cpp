@@ -1010,8 +1010,10 @@ std::optional<std::string> SetClipKeepPitchCommand::redo(Project& project)
         return "clip not found";
     if (auto error = checkEditable(location->track))
         return error;
-    if (auto error = soundError(project, *location->track, *location->clip))
-        return error;
+    // (A compound clip's sound is its sequence's: its pitch is kept or not as a whole.)
+    if (!location->clip->compound())
+        if (auto error = soundError(project, *location->track, *location->clip))
+            return error;
     m_previous = location->clip->keepPitch;
     location->clip->keepPitch = m_keep;
     return std::nullopt;
@@ -1242,8 +1244,6 @@ std::optional<std::string> SetClipSpeedCommand::redo(Project& project)
         return "a freeze frame has no speed";
     if (location->clip->generated())
         return location->clip->text ? "titles have no speed" : "adjustment layers have no speed";
-    if (location->clip->compound())
-        return "compound clips have no speed";
     if (const MediaItem* media = project.findMedia(location->clip->mediaId); media && media->still)
         return "a still image has no speed";
     if (m_speed < kMinSpeed || m_speed > kMaxSpeed)
@@ -1288,8 +1288,6 @@ std::optional<std::string> SetClipSpeedRampCommand::redo(Project& project)
         return "a freeze frame has no speed";
     if (clip.generated())
         return clip.text ? "titles have no speed" : "adjustment layers have no speed";
-    if (clip.compound())
-        return "compound clips have no speed";
     if (const MediaItem* media = project.findMedia(clip.mediaId); media && media->still)
         return "a still image has no speed";
     if (!m_ramp.empty()) {
@@ -1340,8 +1338,6 @@ std::optional<std::string> FreezeFrameCommand::redo(Project& project)
         return "freeze frames are made from video clips";
     if (location->clip->generated())
         return "freeze frames are made from video clips";
-    if (location->clip->compound())
-        return "compound clips have no speed";
     if (const MediaItem* media = project.findMedia(location->clip->mediaId); media && media->still)
         return "a still image is already still";
     const Clip clip = *location->clip;
@@ -1421,8 +1417,6 @@ std::optional<std::string> SetClipTransitionCommand::redo(Project& project)
         const auto previous = std::ranges::find(clips, clip.start, &Clip::end);
         if (clip.generated() || (previous != clips.end() && previous->generated()))
             return "transitions go between video clips";
-        if (clip.compound() || (previous != clips.end() && previous->compound()))
-            return "transitions do not go on compound clips yet";
         if (m_transition->duration < kMinTransitionDuration || m_transition->duration > kMaxTransitionDuration)
             return "transition length is out of range";
         const bool touching = previous != clips.end();
