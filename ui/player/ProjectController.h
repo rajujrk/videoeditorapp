@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Exporter.h"
+#include "RenderCache.h"
+#include "model/RenderCost.h"
 #include "ProxyManager.h"
 #include "MediaImports.h"
 #include "AutoEdit.h"
@@ -147,6 +149,15 @@ class ProjectController : public QObject {
     Q_PROPERTY(bool analyzing READ analyzing NOTIFY analysisChanged)
     Q_PROPERTY(double analysisProgress READ analysisProgress NOTIFY analysisChanged)
     Q_PROPERTY(QString analysisTask READ analysisTask NOTIFY analysisChanged)
+    // Render files (RenderCache): the stretches too heavy to play in real time and those
+    // rendered, [{from, to (seconds), rendered}] in order, for the bar over the ruler.
+    Q_PROPERTY(QVariantList renderStretches READ renderStretches NOTIFY renderChanged)
+    Q_PROPERTY(bool rendering READ rendering NOTIFY renderChanged)
+    Q_PROPERTY(double renderProgress READ renderProgress NOTIFY renderProgressChanged)
+    // Heavy stretches not yet rendered: what Render would do.
+    Q_PROPERTY(bool needsRender READ needsRender NOTIFY renderChanged)
+    // The render files' size, in bytes.
+    Q_PROPERTY(double renderFilesSize READ renderFilesSize NOTIFY renderChanged)
     // {clipId, ranges: [{start, end}], total}: pauses to remove.
     Q_PROPERTY(QVariantMap silences READ silences NOTIFY analysisChanged)
     // {clipId, cuts: [seconds]}: scene changes.
@@ -898,6 +909,22 @@ public:
     Q_INVOKABLE QString timecode(double seconds) const;
 
     const tve::Project& project() const { return m_project; }
+    // What the player shows (benchmarks wait on its frames).
+    std::shared_ptr<tve::TimelinePlayback> playback() const { return m_playback; }
+
+    QVariantList renderStretches() const { return m_renderStretches; }
+    bool rendering() const { return m_renderThread.joinable(); }
+    double renderProgress() const { return m_renderProgress; }
+    bool needsRender() const;
+    double renderFilesSize() const { return double(RenderCache::size()); }
+    // Renders the heavy stretches (or the whole timeline) to render files in the background,
+    // in pieces; playback uses each as it is done. False (with lastError) if there's nothing
+    // to render or a render is under way.
+    Q_INVOKABLE bool renderHeavy();
+    Q_INVOKABLE bool renderAll();
+    Q_INVOKABLE void cancelRender();
+    // Deletes every render file (they are made again when needed).
+    Q_INVOKABLE void deleteRenderFiles();
 
 signals:
     // The app's language changed: the lists with names in it are read again.
@@ -930,6 +957,8 @@ signals:
     // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
     void exportFinished(bool ok, const QString& message, double jobId);
     void analysisChanged();
+    void renderChanged();
+    void renderProgressChanged();
     void speechModelsChanged();
     void upscaleModelChanged();
     void modelDownloadFinished(const QString& modelId, bool ok, const QString& error);
@@ -1142,6 +1171,15 @@ private:
     std::map<std::string, tve::VideoFeatures> m_videoFeatures;
     std::thread m_analysisThread;
     std::atomic<bool> m_cancelAnalysis{false};
+    // Render files: what applies now (given to the player), the bar's stretches, the render.
+    void updatePlayback();
+    bool renderPieces(std::vector<std::pair<tve::Ticks, tve::Ticks>> pieces);
+    std::vector<tve::RenderedStretch> m_rendered;
+    QVariantList m_renderStretches;
+    std::vector<tve::PlaybackLoad> m_heavy;
+    std::thread m_renderThread;
+    std::atomic<bool> m_cancelRender{false};
+    double m_renderProgress = 0.0;
     double m_analysisProgress = 0;
     QString m_analysisTask;
     QVariantMap m_silences;

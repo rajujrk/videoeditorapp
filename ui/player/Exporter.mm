@@ -248,6 +248,7 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
         // Pictures: the timeline playback engine, never started, produces every frame
         // as fast as it can. Sound: the mixer, likewise.
         tve::TimelinePlayback playback;
+        playback.setParallelDecoding(false);
         playback.setProject(project);
         if (from > 0)
             playback.seek(from);
@@ -256,75 +257,77 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
         tve::CompositeFrame current{0, {}};
 
         for (std::int64_t n = 0; n < totalFrames; ++n) {
-            const tve::Ticks time = from + n * frameTicks;
-            // The newest composite at or before this frame's time (a gap keeps its black).
-            for (;;) {
-                const auto front = playback.queue().frontPts();
-                if (front && *front <= time) {
-                    int skipped = 0;
-                    current = std::move(*playback.queue().takeLatestDue(time, skipped));
-                    continue;
+            @autoreleasepool { // each frame's Metal and Core Video objects go with it
+                const tve::Ticks time = from + n * frameTicks;
+                // The newest composite at or before this frame's time (a gap keeps its black).
+                for (;;) {
+                    const auto front = playback.queue().frontPts();
+                    if (front && *front <= time) {
+                        int skipped = 0;
+                        current = std::move(*playback.queue().takeLatestDue(time, skipped));
+                        continue;
+                    }
+                    if (front || playback.producerFinished())
+                        break;
+                    std::this_thread::sleep_for(1ms);
                 }
-                if (front || playback.producerFinished())
-                    break;
-                std::this_thread::sleep_for(1ms);
-            }
 
-            QRhiCommandBuffer* cb = nullptr;
-            if (rhi->beginOffscreenFrame(&cb) != QRhi::FrameOpSuccess)
-                return abandon(QStringLiteral("the GPU stopped responding"));
-            std::vector<CVMetalTextureRef> retained;
-            QRhiTexture* picture = compositor.render(cb, current, canvas, float(tve::toSeconds(time)), nullptr, retained);
-            fileColour.begin();
-            picture = fileColour.apply(cb, picture, toFile);
-            if (picture && (output != canvas || options.fill)) {
-                scaler.begin(cb, output);
-                scaler.draw(cb, picture, placement);
-                picture = scaler.result();
-            }
-            QRhiReadbackResult lumaData;
-            QRhiReadbackResult chromaData;
-            if (picture && luma.bind(rhi.get(), picture, sampler.get(), vertex, fragment)
-                && (rgba || chroma.bind(rhi.get(), picture, sampler.get(), vertex, fragment))) {
-                luma.draw(rhi.get(), cb, rgba ? 2 : 0, hdr);
-                if (!rgba)
-                    chroma.draw(rhi.get(), cb, 1, hdr);
-                QRhiResourceUpdateBatch* readback = rhi->nextResourceUpdateBatch();
-                readback->readBackTexture({luma.texture.get()}, &lumaData);
-                if (!rgba)
-                    readback->readBackTexture({chroma.texture.get()}, &chromaData);
-                cb->resourceUpdate(readback);
-            }
-            const bool ended = rhi->endOffscreenFrame() == QRhi::FrameOpSuccess; // waits for the GPU
-            for (CVMetalTextureRef texture : retained)
-                CFRelease(texture);
-            compositor.flushTextureCache();
-            if (!ended || lumaData.data.isEmpty() || (!rgba && chromaData.data.isEmpty()))
-                return abandon(QStringLiteral("rendering frame %1 failed").arg(n));
+                QRhiCommandBuffer* cb = nullptr;
+                if (rhi->beginOffscreenFrame(&cb) != QRhi::FrameOpSuccess)
+                    return abandon(QStringLiteral("the GPU stopped responding"));
+                std::vector<CVMetalTextureRef> retained;
+                QRhiTexture* picture = compositor.render(cb, current, canvas, float(tve::toSeconds(time)), nullptr, retained);
+                fileColour.begin();
+                picture = fileColour.apply(cb, picture, toFile);
+                if (picture && (output != canvas || options.fill)) {
+                    scaler.begin(cb, output);
+                    scaler.draw(cb, picture, placement);
+                    picture = scaler.result();
+                }
+                QRhiReadbackResult lumaData;
+                QRhiReadbackResult chromaData;
+                if (picture && luma.bind(rhi.get(), picture, sampler.get(), vertex, fragment)
+                    && (rgba || chroma.bind(rhi.get(), picture, sampler.get(), vertex, fragment))) {
+                    luma.draw(rhi.get(), cb, rgba ? 2 : 0, hdr);
+                    if (!rgba)
+                        chroma.draw(rhi.get(), cb, 1, hdr);
+                    QRhiResourceUpdateBatch* readback = rhi->nextResourceUpdateBatch();
+                    readback->readBackTexture({luma.texture.get()}, &lumaData);
+                    if (!rgba)
+                        readback->readBackTexture({chroma.texture.get()}, &chromaData);
+                    cb->resourceUpdate(readback);
+                }
+                const bool ended = rhi->endOffscreenFrame() == QRhi::FrameOpSuccess; // waits for the GPU
+                for (CVMetalTextureRef texture : retained)
+                    CFRelease(texture);
+                compositor.flushTextureCache();
+                if (!ended || lumaData.data.isEmpty() || (!rgba && chromaData.data.isEmpty()))
+                    return abandon(QStringLiteral("rendering frame %1 failed").arg(n));
 
-            if (rgba) {
-                const auto rows = packedRows(lumaData, output.width() * 4, output.height());
-                if (!writer->writeVideoRgba(rows.data(), output.width() * 4))
-                    return abandon(coreText(writer->lastError()));
-            } else if (hdr) {
-                const auto y = packedRows(lumaData, output.width() * 2, output.height());
-                const auto uv = packedRows(chromaData, output.width() * 2, output.height() / 2); // width/2 × 4 bytes
-                if (!writer->writeVideoP010(reinterpret_cast<const std::uint16_t*>(y.data()), output.width(),
-                                            reinterpret_cast<const std::uint16_t*>(uv.data()), output.width()))
-                    return abandon(coreText(writer->lastError()));
-            } else {
-                const auto y = packedRows(lumaData, output.width(), output.height());
-                const auto uv = packedRows(chromaData, output.width(), output.height() / 2); // width/2 × 2 bytes
-                if (!writer->writeVideo(y.data(), output.width(), uv.data(), output.width()))
-                    return abandon(coreText(writer->lastError()));
+                if (rgba) {
+                    const auto rows = packedRows(lumaData, output.width() * 4, output.height());
+                    if (!writer->writeVideoRgba(rows.data(), output.width() * 4))
+                        return abandon(coreText(writer->lastError()));
+                } else if (hdr) {
+                    const auto y = packedRows(lumaData, output.width() * 2, output.height());
+                    const auto uv = packedRows(chromaData, output.width() * 2, output.height() / 2); // width/2 × 4 bytes
+                    if (!writer->writeVideoP010(reinterpret_cast<const std::uint16_t*>(y.data()), output.width(),
+                                                reinterpret_cast<const std::uint16_t*>(uv.data()), output.width()))
+                        return abandon(coreText(writer->lastError()));
+                } else {
+                    const auto y = packedRows(lumaData, output.width(), output.height());
+                    const auto uv = packedRows(chromaData, output.width(), output.height() / 2); // width/2 × 2 bytes
+                    if (!writer->writeVideo(y.data(), output.width(), uv.data(), output.width()))
+                        return abandon(coreText(writer->lastError()));
+                }
+
+                // Sound up to the end of this frame.
+                if (auto failed = writeSoundUntil(tve::audio::samplesFromTicks(std::min(duration, (n + 1) * frameTicks))))
+                    return abandon(*failed);
+
+                if (progress && !progress(double(n + 1) / double(totalFrames)))
+                    return abandon(QString()); // cancelled
             }
-
-            // Sound up to the end of this frame.
-            if (auto failed = writeSoundUntil(tve::audio::samplesFromTicks(std::min(duration, (n + 1) * frameTicks))))
-                return abandon(*failed);
-
-            if (progress && !progress(double(n + 1) / double(totalFrames)))
-                return abandon(QString()); // cancelled
         }
     }
     if (!writer->finish())

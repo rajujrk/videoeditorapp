@@ -184,6 +184,16 @@ Rectangle {
                     onToggled: panel.project.useProxies = checked
                 }
                 IconButton {
+                    objectName: "halfResolutionToggle"
+                    iconName: "half-size"
+                    tip: video.halfResolution
+                         ? qsTr("Previewing at half resolution: heavy timelines play smoothly (export is full size)")
+                         : qsTr("Previewing at full resolution; half resolution plays heavy timelines more smoothly")
+                    checkable: true
+                    checked: video.halfResolution
+                    onToggled: video.halfResolution = checked
+                }
+                IconButton {
                     objectName: "lookAroundButton"
                     visible: panel.project.spherical
                     iconName: "sphere"

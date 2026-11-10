@@ -22,6 +22,8 @@ qt_add_qml_module(tve_player
         Language.h
         Language.cpp
         CatalogueStrings.cpp
+        RenderCache.h
+        RenderCache.cpp
         VoiceCloning.h
         VoiceCloning.cpp
         KeyMap.h

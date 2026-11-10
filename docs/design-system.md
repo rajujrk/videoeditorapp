@@ -493,6 +493,11 @@ A voice added at the playhead with captions timed to its words, dark and light:
 ![Voice, dark](images/ai-voice-dark.png)
 ![Voice, light](images/ai-voice-light.png)
 
+Render files: two stretches too heavy to play in real time — the first rendered (blue along the ruler's foot), the second changed since (orange again) — the Render button (an orange dot while something needs rendering) with its menu, and the half resolution preview turned on in the player's bar, dark and light:
+
+![Render files, dark](images/render-files-dark.png)
+![Render files, light](images/render-files-light.png)
+
 The app in Tamil: the Home screen with the Language menu at the foot of the rail, and the editor with a Tamil title, the Audio library and the Video tab, dark and light. Labels are written for a language whose words run longer: a button squeezed narrower than its label ends it in "…" and shows all of it as its tooltip; paragraphs wrap; numbers, dates and timecode come from the language's locale (`Fmt` in the theme module):
 
 ![Tamil, Home, dark](images/tamil-home-dark.png)
@@ -502,7 +507,7 @@ The app in Tamil: the Home screen with the Language menu at the foot of the rail
 
 ### Icons
 
-56 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+61 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.

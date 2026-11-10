@@ -1,8 +1,13 @@
 #include "playback/TimelinePlayback.h"
 
+#include "playback/AutoreleasePool.h"
+
 #include "model/TimelineQuery.h"
 
+#include <dispatch/dispatch.h>
+
 #include <algorithm>
+#include <functional>
 #include <set>
 
 namespace tve {
@@ -12,10 +17,11 @@ TimelinePlayback::~TimelinePlayback()
     stopProducer();
 }
 
-void TimelinePlayback::setProject(std::shared_ptr<const Project> project)
+void TimelinePlayback::setProject(std::shared_ptr<const Project> project, std::vector<RenderedStretch> rendered)
 {
     std::lock_guard lock(m_control);
     m_project = std::move(project);
+    m_rendered = std::make_shared<const std::vector<RenderedStretch>>(std::move(rendered));
     restartAt(m_clock.now());
 }
 
@@ -47,7 +53,7 @@ void TimelinePlayback::restartAt(Ticks time)
     m_stop = false;
     m_finished = false;
     if (m_project)
-        m_producer = std::thread([this, project = m_project, time] { run(project, time); });
+        m_producer = std::thread([this, project = m_project, rendered = m_rendered, time] { run(project, rendered, time); });
     m_audio->restart(m_project, time);
 }
 
@@ -140,25 +146,78 @@ const DecodedFrame* TimelinePlayback::frameAt(LayerState& state, const MediaItem
     return state.current ? &*state.current : nullptr;
 }
 
+const DecodedFrame* TimelinePlayback::pictureOf(LayerState& state, const Project& project, const Clip& clip,
+                                                Ticks sourceTime)
+{
+    const MediaItem* media = project.findMedia(clip.mediaId);
+    if (!media)
+        return nullptr;
+    // Its processed copy where it covers this time (its own time starts at `from`); the
+    // media's pictures where it does not, or if it cannot be read.
+    if (const auto& processed = clip.processedVideo;
+        processed && sourceTime >= processed->from && sourceTime < processed->to) {
+        MediaItem copy;
+        copy.path = processed->path;
+        const Ticks at = sourceTime - processed->from;
+        if (const DecodedFrame* frame = clip.reversed ? reversedFrameAt(state, copy, at) : frameAt(state, copy, at))
+            return frame;
+    }
+    return clip.reversed ? reversedFrameAt(state, *media, sourceTime) : frameAt(state, *media, sourceTime);
+}
+
+void TimelinePlayback::prefetch(const Project& project, Ticks time)
+{
+    // The decoded pictures buildLayers will want: each visible clip's (both of a
+    // transition's), inside compound clips too.
+    struct Job {
+        const Clip* clip;
+        Ticks sourceTime;
+        LayerState* state = nullptr;
+    };
+    std::vector<Job> jobs;
+    const std::function<void(const std::vector<Track>&, Ticks, int)> collect = [&](const std::vector<Track>& tracks,
+                                                                                   Ticks at, int depth) {
+        const auto add = [&](const Clip& clip, Ticks sourceTime) {
+            const MediaItem* media = project.findMedia(clip.mediaId);
+            if (media && !media->still && !clip.text && !clip.drawing && !clip.adjustment)
+                jobs.push_back({&clip, sourceTime});
+        };
+        for (const VisibleClip& layer : visibleVideoLayersAt(project, tracks, at)) {
+            const Clip& clip = *layer.clip;
+            if (clip.compound()) {
+                if (const Sequence* sequence = project.findSequence(clip.sequenceId); sequence && depth < kMaxNesting)
+                    collect(sequence->tracks, layer.sourceTime, depth + 1);
+                continue;
+            }
+            add(clip, layer.sourceTime);
+            if (layer.transition)
+                add(*layer.transition->to, layer.transition->toSourceTime);
+        }
+    };
+    collect(project.tracks, time, 0);
+    if (!m_parallelDecoding || jobs.size() < 2)
+        return; // one layer: nothing to overlap
+    // Their states made here, first: the decoding below only touches its own.
+    for (Job& job : jobs)
+        job.state = &m_layers[job.clip->id];
+    struct Context {
+        TimelinePlayback* self;
+        const Project* project;
+        std::vector<Job>* jobs;
+    } context{this, &project, &jobs};
+    dispatch_apply_f(jobs.size(), dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE, 0), &context,
+                     [](void* data, std::size_t index) {
+                         auto* c = static_cast<Context*>(data);
+                         Job& job = (*c->jobs)[index];
+                         c->self->pictureOf(*job.state, *c->project, *job.clip, job.sourceTime);
+                     });
+}
+
 void TimelinePlayback::buildLayers(const Project& project, const std::vector<Track>& tracks, Ticks time,
                                    std::vector<VideoLayer>& out, int depth, std::set<Id>& live)
 {
-    const auto pictureOf = [&](const Clip& clip, Ticks sourceTime) -> const DecodedFrame* {
-        const MediaItem* media = project.findMedia(clip.mediaId);
-        if (!media)
-            return nullptr;
-        LayerState& state = m_layers[clip.id];
-        // Its processed copy where it covers this time (its own time starts at `from`); the
-        // media's pictures where it does not, or if it cannot be read.
-        if (const auto& processed = clip.processedVideo;
-            processed && sourceTime >= processed->from && sourceTime < processed->to) {
-            MediaItem copy;
-            copy.path = processed->path;
-            const Ticks at = sourceTime - processed->from;
-            if (const DecodedFrame* frame = clip.reversed ? reversedFrameAt(state, copy, at) : frameAt(state, copy, at))
-                return frame;
-        }
-        return clip.reversed ? reversedFrameAt(state, *media, sourceTime) : frameAt(state, *media, sourceTime);
+    const auto pictureOf = [&](const Clip& clip, Ticks sourceTime) {
+        return this->pictureOf(m_layers[clip.id], project, clip, sourceTime);
     };
     const auto lookOf = [](const Clip& clip) { return clip.look ? clip.look->effective() : ColorGrade{}; };
     const auto motionOf = [](const Clip& clip, Ticks sourceTime) {
@@ -292,16 +351,46 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
     }
 }
 
-void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
+bool TimelinePlayback::renderedLayer(const RenderedStretch& stretch, std::size_t index, Ticks time, CompositeFrame& out)
+{
+    MediaItem file;
+    file.path = stretch.path;
+    // (Its own state, apart from the clips': ids count down from the last one.)
+    LayerState& state = m_layers[kRenderedLayerId - Id(index)];
+    const DecodedFrame* frame = frameAt(state, file, time - stretch.from);
+    if (!frame)
+        return false;
+    VideoLayer layer;
+    layer.clipId = kRenderedLayerId - Id(index);
+    layer.frame = frame->share();
+    out.layers.push_back(std::move(layer));
+    return true;
+}
+
+void TimelinePlayback::run(std::shared_ptr<const Project> project,
+                           std::shared_ptr<const std::vector<RenderedStretch>> rendered, Ticks start)
 {
     const Ticks end = project->duration();
     const Ticks frameTicks = frameDuration(project->settings.frameRate);
     Ticks time = start;
 
     while (!m_stop && time < end) {
+        const AutoreleasePool pool; // what decoding this frame autoreleased goes with it
         CompositeFrame composite{time, {}, project->settings.colour, project->settings.spherical};
         std::set<Id> live;
-        buildLayers(*project, project->tracks, time, composite.layers, 0, live);
+        // A rendered stretch: its file's picture; else the layers, composited.
+        bool fromRender = false;
+        for (std::size_t i = 0; rendered && i < rendered->size() && !fromRender; ++i) {
+            const RenderedStretch& stretch = (*rendered)[i];
+            if (time >= stretch.from && time < stretch.to && renderedLayer(stretch, i, time, composite)) {
+                fromRender = true;
+                live.insert(kRenderedLayerId - Id(i));
+            }
+        }
+        if (!fromRender) {
+            prefetch(*project, time);
+            buildLayers(*project, project->tracks, time, composite.layers, 0, live);
+        }
         for (VideoLayer& layer : composite.layers)
             m_ofx.apply(layer);
         const bool visible = !composite.layers.empty() || !live.empty();

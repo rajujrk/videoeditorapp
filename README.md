@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), templates in six shapes (17a), instant videos, highlight montages and smart shorts (17b), drawing, paths and overlay transitions (18a), and the pack store (18b) done — the Phase 4 slices are complete. Phase 5: audio plug-ins — Audio Units and VST3 (19a) — video plug-ins — OpenFX (19b) — colour management with HDR — PQ and HLG, an HDR viewer and 10-bit HEVC export (20a) — 360° video — reframing, looking around and 360° export (20b) — interchange — OpenTimelineIO and Final Cut Pro XML both ways, EDL out (21a) — the AI copilot — editing by asking Claude, every change shown first (21b) — voice cloning with consent (22a) — and localization — the app in English and Tamil (22b) — done.** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), templates in six shapes (17a), instant videos, highlight montages and smart shorts (17b), drawing, paths and overlay transitions (18a), and the pack store (18b) done — the Phase 4 slices are complete. Phase 5: audio plug-ins — Audio Units and VST3 (19a) — video plug-ins — OpenFX (19b) — colour management with HDR — PQ and HLG, an HDR viewer and 10-bit HEVC export (20a) — 360° video — reframing, looking around and 360° export (20b) — interchange — OpenTimelineIO and Final Cut Pro XML both ways, EDL out (21a) — the AI copilot — editing by asking Claude, every change shown first (21b) — voice cloning with consent (22a) — localization — the app in English and Tamil (22b) — and performance hardening — render files for heavy stretches, a half-resolution preview and measured budgets (22c) — done; the Phase 5 slices are complete.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -334,6 +334,15 @@ consent statement written for them then (their name, today's date, four code wor
 afresh, a short passage) into the microphone; the recording is checked on this Mac with the
 speech model, and only a recording that says the statement is sent to ElevenLabs. The voice then
 appears among your voices, its consent recording kept with it; deleting it removes both.
+
+**Smooth playback.** Stretches of the timeline too heavy to play in real time (many layers,
+blurs, plug-ins, cutouts) show an orange bar along the ruler. **Render** in the timeline
+toolbar (⌃R) renders them in the background — or the whole timeline — and they then play from
+their render files (the bar turns blue). A render file belongs to exactly what its stretch
+shows: change something there and the stretch is heavy again, undo and the file applies again.
+Render files live in the app's data and are pruned past 20 GB; **Delete render files** removes
+them. The player's **half resolution** button previews at a quarter of the pixels, which also
+keeps heavy timelines smooth; exports are always at full size and never use render files.
 
 **Languages.** The app speaks English and Tamil (தமிழ்). It follows your Mac's language; the
 **Language** menu on the Home screen chooses one instead, and the change shows at once,
@@ -692,6 +701,15 @@ changed, every transition at four moments, blend modes, placement, keyframes, co
 masks, keys, mattes, titles, stickers, compound clips, adjustment layers) built from generated
 pictures, rendered by the real renderer offscreen and compared at 128 × 72 with the reference
 PNGs in `tests/golden/metal/` (mean channel difference ≤ 2, at most 1 % of pixels far off).
+`tve_perf_tests` measures the performance budgets (playback of three 4K layers with effects,
+scrubbing with and without proxies, start-up, opening a 200-clip project, export speed,
+memory) with the real engine and renderer, and fails when one is missed. They run one at a
+time; on their own:
+
+```bash
+ctest --preset macos-release -L perf
+```
+
 After a deliberate change to how something looks, rewrite the references and review them:
 
 ```bash

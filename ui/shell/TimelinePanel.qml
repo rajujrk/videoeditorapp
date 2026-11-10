@@ -179,6 +179,59 @@ Rectangle {
                 }
             }
 
+            // Render files: the heavy stretches (orange over the ruler) rendered once, to play
+            // smoothly; the whole timeline; or the files deleted.
+            IconButton {
+                id: renderButton
+                objectName: "renderButton"
+                iconName: "render"
+                tip: timeline.project.rendering
+                     ? qsTr("Rendering… %1").arg(Fmt.percent(timeline.project.renderProgress))
+                     : timeline.project.needsRender
+                     ? qsTr("Some stretches are too heavy to play smoothly: render them%1").arg(KeyMap.hints["render"])
+                     : qsTr("Render files: play heavy stretches smoothly")
+                checked: timeline.project.rendering
+                onClicked: renderMenu.popup(this, 0, -renderMenu.implicitHeight)
+
+                Rectangle {
+                    visible: timeline.project.needsRender && !timeline.project.rendering
+                    width: 7
+                    height: 7
+                    radius: 3.5
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    anchors.margins: 3
+                    color: Theme.color.warning
+                }
+                Menu {
+                    id: renderMenu
+                    MenuItem {
+                        objectName: "renderHeavy"
+                        text: qsTr("Render the heavy stretches")
+                        enabled: timeline.project.needsRender && !timeline.project.rendering
+                        onTriggered: timeline.project.renderHeavy()
+                    }
+                    MenuItem {
+                        objectName: "renderAll"
+                        text: qsTr("Render the whole timeline")
+                        enabled: timeline.project.duration > 0 && !timeline.project.rendering
+                        onTriggered: timeline.project.renderAll()
+                    }
+                    MenuItem {
+                        objectName: "cancelRender"
+                        text: qsTr("Stop rendering")
+                        enabled: timeline.project.rendering
+                        onTriggered: timeline.project.cancelRender()
+                    }
+                    MenuItem {
+                        objectName: "deleteRenderFiles"
+                        text: qsTr("Delete render files (%1)").arg(Fmt.mb(timeline.project.renderFilesSize))
+                        enabled: timeline.project.renderFilesSize > 0
+                        onTriggered: timeline.project.deleteRenderFiles()
+                    }
+                }
+            }
+
             Item { Layout.fillWidth: true }
 
             Text {
@@ -352,6 +405,32 @@ Rectangle {
                             }
                         }
                         Divider { anchors.bottom: parent.bottom; width: parent.width }
+
+                        // Render files: heavy stretches not yet rendered (orange) and those
+                        // rendered (blue), along the ruler's foot.
+                        Repeater {
+                            model: timeline.project.renderStretches
+                            delegate: Rectangle {
+                                required property var modelData
+                                required property int index
+                                objectName: "renderStretch:" + index
+                                readonly property bool rendered: modelData.rendered
+                                x: modelData.from * timeline.pixelsPerSecond
+                                width: Math.max(2, (modelData.to - modelData.from) * timeline.pixelsPerSecond)
+                                height: 3
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: 1
+                                z: 1
+                                color: rendered ? Theme.color.accent : Theme.color.warning
+                                HoverHandler { id: stretchHover }
+                                ToolTip {
+                                    visible: stretchHover.hovered
+                                    delay: 400
+                                    text: parent.rendered ? qsTr("Rendered: plays from its render file")
+                                                          : qsTr("Too heavy to play smoothly: render it%1").arg(KeyMap.hints["render"])
+                                }
+                            }
+                        }
 
                         MouseArea {
                             anchors.fill: parent
