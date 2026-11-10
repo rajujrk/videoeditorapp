@@ -199,6 +199,12 @@ Rectangle {
     Shortcut { sequences: editor.keys.frameForward; enabled: editor.visible && !editor.typing; onActivated: editor.project.stepFrames(1) }
     Shortcut { sequences: editor.keys.goToStart; enabled: editor.visible && !editor.typing; onActivated: editor.project.seek(0) }
     Shortcut { sequences: editor.keys.goToEnd; enabled: editor.visible && !editor.typing; onActivated: editor.project.seek(editor.project.duration) }
+    Shortcut {
+        objectName: "shortcut:render"
+        sequences: editor.keys.render
+        enabled: editor.visible && !editor.typing && editor.project.needsRender && !editor.project.rendering
+        onActivated: editor.project.renderHeavy()
+    }
     Shortcut { sequences: editor.keys.addMarker; enabled: editor.visible && !editor.typing; onActivated: editor.project.addMarker() }
     Shortcut { sequences: editor.keys.nextMarker; enabled: editor.visible && !editor.typing; onActivated: editor.project.seekMarker(1) }
     Shortcut { sequences: editor.keys.previousMarker; enabled: editor.visible && !editor.typing; onActivated: editor.project.seekMarker(-1) }

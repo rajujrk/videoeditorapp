@@ -45,6 +45,7 @@ KeyMap::KeyMap(QObject* parent) : QObject(parent)
     add("goToEnd", QT_TRANSLATE_NOOP("KeyMap", "Go to end"), "Playback", {QStringLiteral("End")});
     add("previousMarker", QT_TRANSLATE_NOOP("KeyMap", "Previous marker"), "Playback", {QStringLiteral("Alt+Left")});
     add("nextMarker", QT_TRANSLATE_NOOP("KeyMap", "Next marker"), "Playback", {QStringLiteral("Alt+Right")});
+    add("render", QT_TRANSLATE_NOOP("KeyMap", "Render the heavy stretches"), "Playback", {QStringLiteral("Ctrl+R")});
     add("split", QT_TRANSLATE_NOOP("KeyMap", "Split at the playhead"), "Editing", {QStringLiteral("S")});
     add("delete", QT_TRANSLATE_NOOP("KeyMap", "Delete the selection"), "Editing", {QStringLiteral("Del"), QStringLiteral("Backspace")});
     add("undo", QT_TRANSLATE_NOOP("KeyMap", "Undo"), "Editing", {QStringLiteral("Ctrl+Z")});

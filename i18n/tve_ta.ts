@@ -3639,6 +3639,10 @@
         <translation>அடுத்த குறியீடு</translation>
     </message>
     <message>
+        <source>Render the heavy stretches</source>
+        <translation>கனமான பகுதிகளை ரெண்டர் செய்</translation>
+    </message>
+    <message>
         <source>Split at the playhead</source>
         <translation>இயக்கக்குறியில் பிரி</translation>
     </message>
@@ -4331,6 +4335,14 @@
         <translation>அசல் மீடியாவை இயக்குகிறது</translation>
     </message>
     <message>
+        <source>Previewing at half resolution: heavy timelines play smoothly (export is full size)</source>
+        <translation>பாதித் தெளிவுத்திறனில் முன்னோட்டம்: கனமான காலவரிசைகள் சீராக இயங்கும் (ஏற்றுமதி முழு அளவில்)</translation>
+    </message>
+    <message>
+        <source>Previewing at full resolution; half resolution plays heavy timelines more smoothly</source>
+        <translation>முழுத் தெளிவுத்திறனில் முன்னோட்டம்; பாதித் தெளிவுத்திறன் கனமான காலவரிசைகளை மேலும் சீராக இயக்கும்</translation>
+    </message>
+    <message>
         <source>Showing a view to look around in (drag it); off: the whole 360° picture</source>
         <translation>சுற்றிப் பார்க்கும் பார்வையைக் காட்டுகிறது (இழுக்கவும்); அணைத்தால்: முழு 360° படம்</translation>
     </message>
@@ -4398,6 +4410,10 @@
         <translation>%1-ஐத் திறக்க முடியவில்லை: %2</translation>
     </message>
     <message>
+        <source>%1 isn&apos;t a timeline this app can open (OpenTimelineIO or Final Cut Pro XML)</source>
+        <translation>%1 இந்த ஆப் திறக்கக்கூடிய காலவரிசை அல்ல (OpenTimelineIO அல்லது Final Cut Pro XML)</translation>
+    </message>
+    <message>
         <source>Cannot read %1</source>
         <translation>%1-ஐப் படிக்க முடியவில்லை</translation>
     </message>
@@ -4440,6 +4456,18 @@
     <message>
         <source>Select a clip to delete</source>
         <translation>நீக்க ஒரு கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Already rendering</source>
+        <translation>ஏற்கெனவே ரெண்டர் ஆகிறது</translation>
+    </message>
+    <message>
+        <source>Nothing to render: every stretch plays already</source>
+        <translation>ரெண்டர் செய்ய எதுவும் இல்லை: ஒவ்வொரு பகுதியும் ஏற்கெனவே சீராக இயங்குகிறது</translation>
+    </message>
+    <message>
+        <source>Rendering failed: %1</source>
+        <translation>ரெண்டர் தோல்வியடைந்தது: %1</translation>
     </message>
     <message>
         <source>Only videos have proxies</source>
@@ -5967,6 +5995,34 @@
         <translation>மிக்சர்: டிராக் ஒலியளவு, சமநிலை, தனி, ஒலிப்பு அளவுமானிகள்</translation>
     </message>
     <message>
+        <source>Rendering… %1</source>
+        <translation>ரெண்டர் ஆகிறது… %1</translation>
+    </message>
+    <message>
+        <source>Some stretches are too heavy to play smoothly: render them%1</source>
+        <translation>சில பகுதிகள் சீராக இயங்க மிகக் கனமானவை: அவற்றை ரெண்டர் செய்யவும்%1</translation>
+    </message>
+    <message>
+        <source>Render files: play heavy stretches smoothly</source>
+        <translation>ரெண்டர் கோப்புகள்: கனமான பகுதிகளைச் சீராக இயக்கு</translation>
+    </message>
+    <message>
+        <source>Render the heavy stretches</source>
+        <translation>கனமான பகுதிகளை ரெண்டர் செய்</translation>
+    </message>
+    <message>
+        <source>Render the whole timeline</source>
+        <translation>முழுக் காலவரிசையையும் ரெண்டர் செய்</translation>
+    </message>
+    <message>
+        <source>Stop rendering</source>
+        <translation>ரெண்டரை நிறுத்து</translation>
+    </message>
+    <message>
+        <source>Delete render files (%1)</source>
+        <translation>ரெண்டர் கோப்புகளை நீக்கு (%1)</translation>
+    </message>
+    <message>
         <source>Zoom out</source>
         <translation>சிறிதாக்கு</translation>
     </message>
@@ -5997,6 +6053,14 @@
     <message>
         <source>Mute track</source>
         <translation>டிராக் ஒலியை அடக்கு</translation>
+    </message>
+    <message>
+        <source>Rendered: plays from its render file</source>
+        <translation>ரெண்டர் செய்யப்பட்டது: அதன் ரெண்டர் கோப்பிலிருந்து இயங்கும்</translation>
+    </message>
+    <message>
+        <source>Too heavy to play smoothly: render it%1</source>
+        <translation>சீராக இயங்க மிகக் கனமானது: அதை ரெண்டர் செய்யவும்%1</translation>
     </message>
     <message>
         <source>● REC</source>

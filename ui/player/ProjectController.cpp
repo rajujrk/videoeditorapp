@@ -1,6 +1,7 @@
 #include "ProjectController.h"
 
 #include "Language.h"
+#include "model/RenderCost.h"
 #include "VideoView.h"
 #include "audio/AudioOutput.h"
 #include "audio/AudioRecorder.h"
@@ -876,7 +877,7 @@ ProjectController::ProjectController(QObject* parent)
     connect(&m_proxies, &ProxyManager::changed, this, [this](const QString&, bool ready) {
         emit proxiesChanged();
         if (ready && m_useProxies)
-            m_playback->setProject(playbackSnapshot()); // switch to it where it is on screen
+            updatePlayback(); // switch to it where it is on screen
     });
     m_autosaveTimer.setSingleShot(true);
     m_autosaveTimer.setInterval(kAutosaveDelayMs);
@@ -899,6 +900,9 @@ ProjectController::~ProjectController()
     m_cancelAnalysis = true;
     if (m_analysisThread.joinable())
         m_analysisThread.join();
+    m_cancelRender = true;
+    if (m_renderThread.joinable())
+        m_renderThread.join();
     // Quitting with unsaved changes keeps them recoverable; otherwise nothing is left behind.
     blockSignals(true); // nothing should react to a half-destroyed controller
     closeVoiceOver();   // a take in progress lands on the timeline first
@@ -1294,7 +1298,7 @@ bool ProjectController::openTimeline(const QUrl& file)
     const QString shown = QFileInfo(path).fileName();
     const auto format = interchangeFormatOf(path.toStdString());
     if (!format || *format == InterchangeFormat::Edl) {
-        reportError(QStringLiteral("%1 isn't a timeline this app can open (OpenTimelineIO or Final Cut Pro XML)").arg(shown));
+        reportError(tr("%1 isn't a timeline this app can open (OpenTimelineIO or Final Cut Pro XML)").arg(shown));
         return false;
     }
     if (QFileInfo(path).isDir())
@@ -1690,7 +1694,7 @@ bool ProjectController::apply(std::unique_ptr<Command> command)
 
 void ProjectController::publish()
 {
-    m_playback->setProject(playbackSnapshot());
+    updatePlayback();
     m_trackModel.update(tracks());
     emit projectChanged();
     emit selectedClipInfoChanged();
@@ -1717,6 +1721,204 @@ std::shared_ptr<const Project> ProjectController::playbackSnapshot() const
     return snapshot;
 }
 
+// --- Render files ---
+
+namespace {
+
+// An effect's cost per 4K picture, from its passes (see RenderCost): blurs and glows sample
+// widely, most others read each pixel once.
+double effectLoad(const tve::ClipEffect& effect)
+{
+    if (isOfxEffect(effect.effectId))
+        return 0.15;
+    const tve::LoadedEffect* loaded = tve::EffectLibrary::builtIn().find(effect.effectId);
+    if (!loaded)
+        return tve::defaultEffectWeight(effect);
+    const auto& m = loaded->manifest;
+    const bool wide = std::ranges::find(m.categories, std::string("blur")) != m.categories.end()
+                   || m.id.find("glow") != std::string::npos;
+    return double(std::max<std::size_t>(1, m.passes.size())) * (wide ? 0.11 : 0.01);
+}
+
+} // namespace
+
+void ProjectController::updatePlayback()
+{
+    auto snapshot = playbackSnapshot();
+    // The render files made from the project as it is now (an edit inside a stretch gives it
+    // another key); the heavy stretches as it plays (proxies count at their size).
+    m_rendered = RenderCache().validFor(m_project);
+    // (TVE_REALTIME_LOAD: another limit, for tests.)
+    bool overridden = false;
+    const double limit = qEnvironmentVariable("TVE_REALTIME_LOAD").toDouble(&overridden);
+    m_heavy = tve::heavyStretches(*snapshot, overridden && limit > 0.0 ? limit : tve::kRealTimeLoad, effectLoad);
+    m_playback->setProject(snapshot, m_rendered);
+
+    // The bar: rendered stretches, and the heavy ones' parts outside them.
+    QVariantList stretches;
+    std::vector<std::pair<tve::Ticks, tve::Ticks>> marks;
+    for (const tve::RenderedStretch& r : m_rendered)
+        marks.push_back({r.from, r.to});
+    for (const tve::PlaybackLoad& heavy : m_heavy) {
+        tve::Ticks at = heavy.from;
+        for (const tve::RenderedStretch& r : m_rendered) {
+            if (r.to <= at || r.from >= heavy.to)
+                continue;
+            if (r.from > at)
+                stretches << QVariantMap{{QStringLiteral("from"), tve::toSeconds(at)},
+                                         {QStringLiteral("to"), tve::toSeconds(r.from)},
+                                         {QStringLiteral("rendered"), false}};
+            at = std::max(at, r.to);
+        }
+        if (at < heavy.to)
+            stretches << QVariantMap{{QStringLiteral("from"), tve::toSeconds(at)},
+                                     {QStringLiteral("to"), tve::toSeconds(heavy.to)},
+                                     {QStringLiteral("rendered"), false}};
+    }
+    for (const tve::RenderedStretch& r : m_rendered)
+        stretches << QVariantMap{{QStringLiteral("from"), tve::toSeconds(r.from)},
+                                 {QStringLiteral("to"), tve::toSeconds(r.to)},
+                                 {QStringLiteral("rendered"), true}};
+    std::sort(stretches.begin(), stretches.end(), [](const QVariant& a, const QVariant& b) {
+        return a.toMap().value(QStringLiteral("from")).toDouble() < b.toMap().value(QStringLiteral("from")).toDouble();
+    });
+    if (stretches != m_renderStretches) {
+        m_renderStretches = stretches;
+        emit renderChanged();
+    }
+}
+
+bool ProjectController::needsRender() const
+{
+    for (const QVariant& stretch : m_renderStretches)
+        if (!stretch.toMap().value(QStringLiteral("rendered")).toBool())
+            return true;
+    return false;
+}
+
+namespace {
+
+// [from, to) on the frame grid, in pieces of at most RenderCache::kMaxPiece, without what
+// `rendered` already covers.
+std::vector<std::pair<tve::Ticks, tve::Ticks>> piecesOf(const std::vector<std::pair<tve::Ticks, tve::Ticks>>& spans,
+                                                        const std::vector<tve::RenderedStretch>& rendered,
+                                                        tve::Ticks frame, tve::Ticks end)
+{
+    std::vector<std::pair<tve::Ticks, tve::Ticks>> pieces;
+    for (auto [from, to] : spans) {
+        from = from / frame * frame;
+        to = std::min(end, (to + frame - 1) / frame * frame);
+        for (tve::Ticks at = from; at < to;) {
+            const auto covering = std::ranges::find_if(rendered, [&](const auto& r) { return r.from <= at && at < r.to; });
+            if (covering != rendered.end()) {
+                at = covering->to;
+                continue;
+            }
+            tve::Ticks next = std::min(to, at + RenderCache::kMaxPiece);
+            for (const auto& r : rendered)
+                if (r.from > at && r.from < next)
+                    next = r.from;
+            pieces.push_back({at, next});
+            at = next;
+        }
+    }
+    return pieces;
+}
+
+} // namespace
+
+bool ProjectController::renderHeavy()
+{
+    std::vector<std::pair<tve::Ticks, tve::Ticks>> spans;
+    for (const tve::PlaybackLoad& heavy : m_heavy)
+        spans.push_back({heavy.from, heavy.to});
+    return renderPieces(piecesOf(spans, m_rendered, frameTicks(), m_project.duration()));
+}
+
+bool ProjectController::renderAll()
+{
+    // What shows: every stretch with something in it (gaps are black already).
+    std::vector<std::pair<tve::Ticks, tve::Ticks>> spans;
+    for (const tve::PlaybackLoad& stretch : tve::playbackLoad(m_project)) {
+        if (stretch.load <= 0.0)
+            continue;
+        if (!spans.empty() && spans.back().second == stretch.from)
+            spans.back().second = stretch.to;
+        else
+            spans.push_back({stretch.from, stretch.to});
+    }
+    return renderPieces(piecesOf(spans, m_rendered, frameTicks(), m_project.duration()));
+}
+
+bool ProjectController::renderPieces(std::vector<std::pair<tve::Ticks, tve::Ticks>> pieces)
+{
+    if (m_renderThread.joinable()) {
+        reportError(tr("Already rendering"));
+        return false;
+    }
+    if (pieces.empty()) {
+        reportError(tr("Nothing to render: every stretch plays already"));
+        return false;
+    }
+    // From the project as it is (its media, not proxies); each piece's file is keyed by it.
+    auto project = std::make_shared<const Project>(m_project);
+    tve::Ticks total = 0;
+    for (const auto& [from, to] : pieces)
+        total += to - from;
+    m_cancelRender = false;
+    m_renderProgress = 0.0;
+    m_renderThread = std::thread([this, project, pieces = std::move(pieces), total] {
+        QString error;
+        tve::Ticks done = 0;
+        double reported = -1.0;
+        for (const auto& [from, to] : pieces) {
+            const bool ok = RenderCache::render(project, from, to, [&](double part) {
+                const double progress = double(done + tve::Ticks(part * double(to - from))) / double(total);
+                if (progress - reported >= 0.01) {
+                    reported = progress;
+                    QMetaObject::invokeMethod(this, [this, progress] {
+                        m_renderProgress = progress;
+                        emit renderProgressChanged();
+                    }, Qt::QueuedConnection);
+                }
+                return !m_cancelRender.load();
+            }, &error);
+            if (!ok)
+                break;
+            done += to - from;
+            // Played from its file at once.
+            QMetaObject::invokeMethod(this, [this] { updatePlayback(); }, Qt::QueuedConnection);
+        }
+        QMetaObject::invokeMethod(this, [this, error] {
+            if (m_renderThread.joinable())
+                m_renderThread.join();
+            m_renderProgress = 0.0;
+            if (!error.isEmpty())
+                reportError(tr("Rendering failed: %1").arg(error));
+            updatePlayback();
+            emit renderChanged();
+            emit renderProgressChanged();
+        }, Qt::QueuedConnection);
+    });
+    emit renderChanged();
+    return true;
+}
+
+void ProjectController::cancelRender()
+{
+    m_cancelRender = true;
+}
+
+void ProjectController::deleteRenderFiles()
+{
+    cancelRender();
+    if (m_renderThread.joinable())
+        m_renderThread.join();
+    RenderCache::clear();
+    updatePlayback();
+    emit renderChanged();
+}
+
 void ProjectController::requestAutoProxies()
 {
     if (!m_autoProxies)
@@ -1733,7 +1935,7 @@ void ProjectController::setUseProxies(bool use)
     if (use == m_useProxies)
         return;
     m_useProxies = use;
-    m_playback->setProject(playbackSnapshot());
+    updatePlayback();
     emit proxiesChanged();
 }
 
@@ -1773,7 +1975,7 @@ bool ProjectController::deleteProxy(double mediaId)
     if (!media)
         return false;
     m_proxies.remove(QString::fromStdString(media->path));
-    m_playback->setProject(playbackSnapshot());
+    updatePlayback();
     return true;
 }
 

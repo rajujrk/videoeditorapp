@@ -477,6 +477,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("voicesDir"), qEnvironmentVariable("TVE_VOICE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("consentDir"), qEnvironmentVariable("TVE_CONSENT_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("languageFile"), qEnvironmentVariable("TVE_LANGUAGE_FILE"));
+        engine->rootContext()->setContextProperty(QStringLiteral("renderFilesDir"), qEnvironmentVariable("TVE_RENDER_CACHE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("keyStoreDir"), qEnvironmentVariable("TVE_KEY_STORE"));
         engine->rootContext()->setContextProperty(QStringLiteral("importFixturesDir"), qEnvironmentVariable("TVE_TEST_IMPORTS_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("importsDir"), qEnvironmentVariable("TVE_IMPORT_DIR"));
@@ -589,6 +590,9 @@ int main(int argc, char** argv)
         if (file.open(QIODevice::WriteOnly))
             file.write(R"({"language": "en"})");
     }
+    // Render files in a scratch folder.
+    QTemporaryDir renderFiles;
+    qputenv("TVE_RENDER_CACHE_DIR", QDir(renderFiles.path()).canonicalPath().toLocal8Bit());
     QTemporaryDir consents;
     qputenv("TVE_CONSENT_DIR", QDir(consents.path()).canonicalPath().toLocal8Bit());
     qputenv("TVE_CONSENT_SEED", "7");

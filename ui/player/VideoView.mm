@@ -72,6 +72,12 @@ private:
 
     static void release(FrameResources& resources);
     bool bindPresentInput(QRhiTexture* image);
+    // The size the frame is composited at: the canvas, or half of it (even, at least 16).
+    QSize canvasFor(tve::FrameSource::Size canvas) const
+    {
+        const int divisor = m_halfResolution ? 2 : 1;
+        return QSize(std::max(canvas.width / divisor / 2 * 2, 16), std::max(canvas.height / divisor / 2 * 2, 16));
+    }
     void renderFrame(QRhiCommandBuffer* cb, float seconds);
     void captureScope(QRhiCommandBuffer* cb);
 
@@ -84,6 +90,7 @@ private:
     std::unique_ptr<tve::ColourPass> m_display;
     std::unique_ptr<tve::SpherePass> m_lookPass;
     bool m_lookAround = false;
+    bool m_halfResolution = false;
     tve::ClipSphereView m_look;
     QSize m_lookSize; // the view's size when last looked
     std::shared_ptr<tve::FrameMirrors> m_mirrors;
@@ -212,6 +219,13 @@ void VideoRenderer::synchronize(QQuickRhiItem* item)
         m_needsProcessing = true;
     }
     m_mirrors = view->mirrors();
+    if (view->halfResolution() != m_halfResolution) {
+        m_halfResolution = view->halfResolution();
+        if (m_source) {
+            m_canvasSize = canvasFor(m_source->canvasSize());
+            m_needsProcessing = true;
+        }
+    }
     if (view->lookAround() != m_lookAround || view->look() != m_look) {
         m_lookAround = view->lookAround();
         m_look = view->look();
@@ -332,8 +346,7 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
                 if (!frame->layers.empty())
                     ++m_source->counters().presented;
                 m_frames[m_currentFrame].frame = std::move(*frame);
-                const auto canvas = m_source->canvasSize();
-                m_canvasSize = QSize(std::max(canvas.width, 16), std::max(canvas.height, 16));
+                m_canvasSize = canvasFor(m_source->canvasSize());
                 m_hasFrame = true;
                 m_needsProcessing = true;
             }
@@ -562,6 +575,15 @@ void VideoView::setHdrOutput(bool on)
     setColorBufferFormat(on ? TextureFormat::RGBA16F : TextureFormat::RGBA8);
     requestHdrWindow();
     emit hdrOutputChanged();
+    update();
+}
+
+void VideoView::setHalfResolution(bool on)
+{
+    if (on == m_halfResolution)
+        return;
+    m_halfResolution = on;
+    emit halfResolutionChanged();
     update();
 }
 

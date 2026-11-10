@@ -13,6 +13,7 @@
 #include "gpu/EffectLibrary.h"
 
 #include <QCommandLineParser>
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -78,6 +79,8 @@ void attachStatsPrinter(VideoView* view, QCoreApplication& app)
 
 int main(int argc, char* argv[])
 {
+    QElapsedTimer sinceStart; // for --startup-probe
+    sinceStart.start();
     QQuickWindow::setGraphicsApi(QSGRendererInterface::Metal);
     // Basic is the one Controls style that takes all its colors from the palette, which
     // Main.qml fills from the theme tokens.
@@ -133,9 +136,12 @@ int main(int argc, char* argv[])
                                                QStringLiteral("Make proxies of the given media, then quit."));
     const QCommandLineOption noProxiesOption(QStringLiteral("no-proxies"),
                                              QStringLiteral("Play the original media, not proxies."));
+    const QCommandLineOption startupProbeOption(
+        QStringLiteral("startup-probe"),
+        QStringLiteral("Print \"startup <ms>\" once the first screen is drawn, then quit (start-up time)."));
     parser.addOptions({statsOption, quitOption, effectsOption, screenshotOption, screenshotAtOption, screenOption,
                        themeOption, playOption, seekOption, exportOption, exportSizeOption, exportCodecOption,
-                       exportFormatOption, exportPresetOption, makeProxiesOption, noProxiesOption});
+                       exportFormatOption, exportPresetOption, makeProxiesOption, noProxiesOption, startupProbeOption});
     parser.addPositionalArgument(QStringLiteral("files"),
                                  QStringLiteral("A .tve project to open, or media files to add to a new project."),
                                  QStringLiteral("[files...]"));
@@ -274,6 +280,16 @@ int main(int argc, char* argv[])
         });
     }
 
+    if (parser.isSet(startupProbeOption)) {
+        // The first frame on screen: the screen is there to use.
+        QObject::connect(window, &QQuickWindow::frameSwapped, &app, [&sinceStart] {
+            std::printf("startup %lld\n", static_cast<long long>(sinceStart.elapsed()));
+            std::fflush(stdout);
+            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        }, Qt::SingleShotConnection);
+        if (project)
+            project->setAutosaveEnabled(false);
+    }
     if (parser.isSet(quitOption)) {
         bool ok = false;
         const double seconds = parser.value(quitOption).toDouble(&ok);

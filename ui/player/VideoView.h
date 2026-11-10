@@ -106,6 +106,9 @@ class VideoView : public QQuickRhiItem {
     Q_PROPERTY(double lookYaw READ lookYaw WRITE setLookYaw NOTIFY lookChanged)
     Q_PROPERTY(double lookPitch READ lookPitch WRITE setLookPitch NOTIFY lookChanged)
     Q_PROPERTY(double lookFov READ lookFov WRITE setLookFov NOTIFY lookChanged)
+    // Draw the preview at half the canvas's size (each side), a quarter of the pixels to
+    // composite: heavy timelines keep up. Export is always at full size.
+    Q_PROPERTY(bool halfResolution READ halfResolution WRITE setHalfResolution NOTIFY halfResolutionChanged)
 
 public:
     explicit VideoView(QQuickItem* parent = nullptr);
@@ -163,6 +166,8 @@ public:
     double lookFov() const { return m_look.fov; }
     void setLookFov(double fov);
     const tve::ClipSphereView& look() const { return m_look; }
+    bool halfResolution() const { return m_halfResolution; }
+    void setHalfResolution(bool on);
     // The views following this one (render thread).
     std::shared_ptr<tve::FrameMirrors> mirrors() const { return m_mirrors; }
 
@@ -182,6 +187,7 @@ signals:
     void hdrOutputChanged();
     void displayChanged();
     void lookChanged();
+    void halfResolutionChanged();
 
 protected:
     QQuickRhiItemRenderer* createRenderer() override;
@@ -209,6 +215,7 @@ private:
     double m_displayHeadroom = 1.0;
     bool m_lookAround = false;
     tve::ClipSphereView m_look; // (its roll unused)
+    bool m_halfResolution = false;
     std::function<void()> m_stopFileSession; // set while playing a file via `source`
 
     std::vector<tve::EffectInstance> m_effects;

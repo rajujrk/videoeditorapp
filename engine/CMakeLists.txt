@@ -43,6 +43,7 @@ add_library(tve_engine STATIC
     playback/FrameSource.h
     playback/FrameMirror.h
     playback/PlaybackClock.h
+    playback/AutoreleasePool.h
     playback/PlaybackSession.h
     playback/PlaybackSession.cpp
     playback/TimelinePlayback.h

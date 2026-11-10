@@ -1,6 +1,9 @@
 #include "io/ProjectSerializer.h"
 
+#include <filesystem>
+#include <functional>
 #include <fstream>
+#include <set>
 #include <stdexcept>
 
 #include <nlohmann/json.hpp>
@@ -302,6 +305,70 @@ nlohmann::json gradeToJson(const ColorGrade& grade)
 ColorGrade gradeFromJson(const nlohmann::json& json)
 {
     return json.get<ColorGrade>();
+}
+
+std::string renderedContent(const Project& project, Ticks from, Ticks to)
+{
+    std::set<Id> mediaUsed;
+    const std::function<void(const std::vector<Track>&)> useMedia = [&](const std::vector<Track>& tracks) {
+        for (const Track& track : tracks)
+            for (const Clip& clip : track.clips)
+                mediaUsed.insert(clip.mediaId);
+    };
+    nlohmann::json tracks = nlohmann::json::array();
+    for (const Track& track : project.tracks) {
+        if (track.kind == TrackKind::Audio)
+            continue;
+        Track shown = track;
+        shown.name.clear();
+        shown.locked = shown.muted = shown.solo = false;
+        shown.gainDb = shown.pan = 0.0f;
+        shown.audioEffects.clear();
+        shown.clips.clear();
+        const auto over = [&](std::size_t i) {
+            const Clip& c = track.clips[i];
+            return c.start < to && c.start + c.duration > from;
+        };
+        // A neighbour counts when it touches one over the stretch (a transition between them
+        // reaches across the cut).
+        const auto touches = [&](std::size_t a, std::size_t b) {
+            return track.clips[a].start + track.clips[a].duration == track.clips[b].start;
+        };
+        for (std::size_t i = 0; i < track.clips.size(); ++i) {
+            if (over(i) || (i > 0 && over(i - 1) && touches(i - 1, i))
+                || (i + 1 < track.clips.size() && over(i + 1) && touches(i, i + 1))) {
+                Clip clip = track.clips[i];
+                clip.audioEffects.clear(); // what is heard doesn't show
+                clip.gainDb = 0.0f;
+                clip.fadeIn = clip.fadeOut = 0;
+                clip.enhancedAudio.reset();
+                shown.clips.push_back(std::move(clip));
+                mediaUsed.insert(track.clips[i].mediaId);
+            }
+        }
+        tracks.push_back(shown);
+    }
+    for (const Sequence& sequence : project.sequences)
+        useMedia(sequence.tracks);
+    nlohmann::json media = nlohmann::json::array();
+    for (const MediaItem& item : project.media) {
+        if (!mediaUsed.contains(item.id))
+            continue;
+        nlohmann::json entry = item;
+        std::error_code error;
+        const auto size = std::filesystem::file_size(item.path, error);
+        entry["fileSize"] = error ? 0 : size;
+        const auto modified = std::filesystem::last_write_time(item.path, error);
+        entry["fileTime"] = error ? 0 : modified.time_since_epoch().count();
+        media.push_back(std::move(entry));
+    }
+    return nlohmann::json{{"from", from},
+                          {"to", to},
+                          {"settings", project.settings},
+                          {"tracks", tracks},
+                          {"media", media},
+                          {"sequences", project.sequences}}
+        .dump();
 }
 
 } // namespace tve

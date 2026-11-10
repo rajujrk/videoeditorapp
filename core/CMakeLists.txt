@@ -35,6 +35,7 @@ add_library(tve_core STATIC
     model/Project.cpp
     model/TimelineQuery.h
     model/TimelineQuery.cpp
+    model/RenderCost.cpp
     commands/Command.h
     commands/CommandStack.h
     commands/CommandStack.cpp

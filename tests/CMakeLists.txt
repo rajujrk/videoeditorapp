@@ -29,6 +29,7 @@ add_executable(tve_core_tests
     core/test_captions.cpp
     core/test_people.cpp
     core/test_motion.cpp
+    core/test_render_cost.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
@@ -117,6 +118,19 @@ if(TARGET tve_player)
     add_test(NAME tve_golden_tests COMMAND tve_golden_tests)
     # Heavy GPU use: not at the same time as the UI tests, whose timings it would upset.
     set_tests_properties(tve_golden_tests PROPERTIES RESOURCE_LOCK gpu)
+endif()
+
+# The performance budgets (docs §10), measured with the real engine and renderer: each
+# test fails when its budget is missed. On their own, since anything else running skews them.
+if(TARGET tve_player AND TARGET TechieVideoEditor)
+    qt_add_executable(tve_perf_tests perf/test_perf.mm)
+    set_target_properties(tve_perf_tests PROPERTIES MACOSX_BUNDLE OFF)
+    target_compile_definitions(tve_perf_tests PRIVATE TVE_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples"
+                                                     TVE_APP_PATH="$<TARGET_FILE:TechieVideoEditor>")
+    target_include_directories(tve_perf_tests PRIVATE $<TARGET_PROPERTY:tve_player,INTERFACE_INCLUDE_DIRECTORIES>)
+    target_link_libraries(tve_perf_tests PRIVATE tve_player tve::engine tve::gpu Qt6::Gui Catch2::Catch2)
+    add_dependencies(tve_perf_tests TechieVideoEditor)
+    catch_discover_tests(tve_perf_tests PROPERTIES RUN_SERIAL TRUE LABELS perf)
 endif()
 
 if(TARGET tve_shell)

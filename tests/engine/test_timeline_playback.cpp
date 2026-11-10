@@ -820,3 +820,58 @@ TEST_CASE("a clip's OpenFX effects run on its picture before it reaches the comp
             CHECK(std::abs(a[std::size_t(c)] + b[std::size_t(c)] - 255) <= 2);
     }
 }
+
+TEST_CASE("a rendered stretch plays from its render file, the rest from the layers")
+{
+    requireSamples();
+    auto project = std::make_shared<Project>();
+    CommandStack stack(*project);
+    auto track = std::make_unique<AddTrackCommand>(TrackKind::Video, "V1");
+    auto* trackCmd = track.get();
+    REQUIRE_FALSE(stack.push(std::move(track)));
+    auto media = std::make_unique<ImportMediaCommand>(sample("test_1080p30_h264.mp4"), 2 * kSec);
+    auto* mediaCmd = media.get();
+    REQUIRE_FALSE(stack.push(std::move(media)));
+    auto clip = std::make_unique<AddClipCommand>(trackCmd->trackId(), mediaCmd->mediaId(), 0, 2 * kSec, 0);
+    auto* clipCmd = clip.get();
+    REQUIRE_FALSE(stack.push(std::move(clip)));
+
+    // 0.5–1.5 s "rendered" to another file: its frames from the stretch's start.
+    TimelinePlayback playback;
+    playback.setProject(project, {RenderedStretch{kSec / 2, 3 * kSec / 2, sample("gradients_1080p30_h264.mp4")}});
+    std::vector<CompositeFrame> frames;
+    playback.seek(0);
+    while (!playback.producerFinished() || playback.queue().frontPts()) {
+        if (auto front = playback.queue().frontPts()) {
+            int skipped = 0;
+            frames.push_back(std::move(*playback.queue().takeLatestDue(*front, skipped)));
+            continue;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    REQUIRE(frames.size() == 60);
+    for (const CompositeFrame& frame : frames) {
+        REQUIRE(frame.layers.size() == 1);
+        const VideoLayer& layer = frame.layers[0];
+        const bool rendered = frame.time >= kSec / 2 && frame.time < 3 * kSec / 2;
+        INFO("at " << toSeconds(frame.time) << " s");
+        if (rendered) {
+            CHECK(layer.clipId != clipCmd->clipId());
+            CHECK(layer.effects.empty());
+            CHECK(layer.visual == ClipVisual{});
+            CHECK(layer.frame.pts() == Catch::Approx(double(frame.time - kSec / 2)).margin(double(kSec) / 60));
+        } else {
+            CHECK(layer.clipId == clipCmd->clipId());
+            CHECK(layer.frame.pts() == Catch::Approx(double(frame.time)).margin(double(kSec) / 60));
+        }
+    }
+    // A render file that can't be read: the layers, as if there were none.
+    playback.setProject(project, {RenderedStretch{0, 2 * kSec, "/nowhere/missing.mov"}});
+    playback.seek(kSec);
+    for (int attempt = 0; attempt < 2000 && !playback.queue().frontPts(); ++attempt)
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    int skipped = 0;
+    auto frame = playback.queue().takeLatestDue(*playback.queue().frontPts(), skipped);
+    REQUIRE(frame->layers.size() == 1);
+    CHECK(frame->layers[0].clipId == clipCmd->clipId());
+}
