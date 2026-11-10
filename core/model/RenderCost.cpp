@@ -54,7 +54,10 @@ double extraLoad(const Clip& clip, double pixels, const EffectWeight& weight)
     return load;
 }
 
-double loadAt(const Project& project, const std::vector<Track>& tracks, Ticks time, int depth, const EffectWeight& weight)
+// `rate`: how many times faster than real time the compound clips around these tracks play
+// them (their media decoded that much faster).
+double loadAt(const Project& project, const std::vector<Track>& tracks, Ticks time, int depth, const EffectWeight& weight,
+              double rate = 1.0)
 {
     const double canvas = double(project.settings.width) * project.settings.height;
     double load = 0.0;
@@ -70,26 +73,31 @@ double loadAt(const Project& project, const std::vector<Track>& tracks, Ticks ti
         double decode = kLayer4k30 * (pixels / k4kPixels) * (fps / 30.0);
         if (!clip.freeze)
             decode *= std::max(1.0, std::abs(clip.speed)) * (clip.reversed ? 1.5 : 1.0); // reversed: whole groups
-        return decode + extraLoad(clip, pixels, weight);
+        return decode * rate + extraLoad(clip, pixels, weight);
+    };
+    // A compound clip: its sequence at that moment, played at its speed, drawn on a canvas.
+    const auto sideLoad = [&](const Clip& clip, Ticks sourceTime) {
+        if (!clip.compound())
+            return clipLoad(clip);
+        const Sequence* sequence = project.findSequence(clip.sequenceId);
+        if (!sequence || depth >= kMaxNesting)
+            return 0.0;
+        const double inner = clip.freeze ? rate : rate * std::max(1.0, std::abs(clip.speed)) * (clip.reversed ? 1.5 : 1.0);
+        return 0.02 + extraLoad(clip, canvas, weight) + loadAt(project, sequence->tracks, sourceTime, depth + 1, weight, inner);
     };
     for (const VisibleClip& layer : visibleVideoLayersAt(project, tracks, time)) {
-        const Clip& clip = *layer.clip;
-        if (clip.compound()) {
-            if (const Sequence* sequence = project.findSequence(clip.sequenceId); sequence && depth < kMaxNesting)
-                load += 0.02 + extraLoad(clip, canvas, weight) + loadAt(project, sequence->tracks, layer.sourceTime, depth + 1, weight);
-            continue;
-        }
-        load += clipLoad(clip);
+        load += sideLoad(*layer.clip, layer.sourceTime);
         if (layer.transition)
-            load += 0.02 + clipLoad(*layer.transition->to);
+            load += 0.02 + sideLoad(*layer.transition->to, layer.transition->toSourceTime);
     }
     return load;
 }
 
 // Where what plays may change: clips' edges, transitions' (as far as they could reach) and,
-// in compound clips, their sequence's, on the timeline.
-void collectCuts(const Project& project, const std::vector<Track>& tracks, Ticks offset, Ticks from, Ticks to,
-                 int depth, std::set<Ticks>& cuts)
+// in compound clips, their sequence's, on the timeline (where the compound clip, at its
+// speed, reaches them).
+void collectCuts(const Project& project, const std::vector<Track>& tracks, Ticks from, Ticks to, int depth,
+                 std::set<Ticks>& cuts)
 {
     const auto add = [&](Ticks t) {
         if (t > from && t < to)
@@ -99,17 +107,28 @@ void collectCuts(const Project& project, const std::vector<Track>& tracks, Ticks
         if (track.kind == TrackKind::Audio || track.hidden)
             continue;
         for (const Clip& clip : track.clips) {
-            const Ticks start = offset + clip.start;
-            add(start);
-            add(start + clip.duration);
+            add(clip.start);
+            add(clip.end());
             if (clip.transitionIn) {
-                add(start - clip.transitionIn->duration);
-                add(start + clip.transitionIn->duration);
+                add(clip.start - clip.transitionIn->duration);
+                add(clip.start + clip.transitionIn->duration);
             }
-            if (clip.compound() && depth < kMaxNesting)
-                if (const Sequence* sequence = project.findSequence(clip.sequenceId))
-                    collectCuts(project, sequence->tracks, start - clip.sourceIn, std::max(from, start),
-                                std::min(to, start + clip.duration), depth + 1, cuts);
+            if (!clip.compound() || clip.freeze || depth >= kMaxNesting)
+                continue; // (a frozen one shows one moment of its sequence throughout)
+            const Sequence* sequence = project.findSequence(clip.sequenceId);
+            const Ticks inFrom = std::max(from, clip.start);
+            const Ticks inTo = std::min(to, clip.end());
+            if (!sequence || inFrom >= inTo)
+                continue;
+            const Ticks a = clip.sourceTimeAt(inFrom);
+            const Ticks b = clip.sourceTimeAt(inTo - 1);
+            std::set<Ticks> inner;
+            collectCuts(project, sequence->tracks, std::min(a, b) - 1, std::max(a, b) + 1, depth + 1, inner);
+            for (const Ticks t : inner) {
+                const Ticks at = clip.timelineTimeOf(t);
+                if (at > inFrom && at < inTo)
+                    cuts.insert(at);
+            }
         }
     }
 }
@@ -125,7 +144,7 @@ std::vector<PlaybackLoad> playbackLoad(const Project& project, const EffectWeigh
 {
     const Ticks end = project.duration();
     std::set<Ticks> cuts{0, end};
-    collectCuts(project, project.tracks, 0, 0, end, 0, cuts);
+    collectCuts(project, project.tracks, 0, end, 0, cuts);
     std::vector<PlaybackLoad> stretches;
     for (auto it = cuts.begin(); it != cuts.end() && std::next(it) != cuts.end(); ++it) {
         const Ticks a = *it;

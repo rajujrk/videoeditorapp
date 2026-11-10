@@ -422,6 +422,9 @@ struct Clip {
     // The same mapping continued past the clip's edges (into its handles, for transitions).
     // May fall outside the media; callers clamp.
     Ticks sourceTimeBeyond(Ticks time) const;
+    // The other way: the first timeline time inside the clip that shows `source` (or passes
+    // it); end() when the clip never gets there, start for a freeze frame.
+    Ticks timelineTimeOf(Ticks source) const;
 
     // Linear amplitude at a timeline time inside the clip: gain (animated or not) × fade ramps.
     float gainAt(Ticks time) const;

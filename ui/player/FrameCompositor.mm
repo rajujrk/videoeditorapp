@@ -696,7 +696,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             QRhiTexture* incoming =
                 clipPicture(transition.clipId, transition.frame, incomingVisual, transition.effects, transition.grade,
                             transition.look, std::nullopt, nullptr, transition.stillPath, transition.chromaKey,
-                            transition.masks, transition.clipSeconds, 0.0, nullptr, &transition.people,
+                            transition.masks, transition.clipSeconds, 0.0, transition.nested.get(), &transition.people,
                             &transition.motion, &transition.cursor, nullptr, transition.spherical);
             if (!picture || !incoming) {
                 if (picture || incoming)

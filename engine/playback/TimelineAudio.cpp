@@ -270,9 +270,27 @@ void TimelineAudio::mixClip(const Project& project, const Track& track, const Cl
                 stream.decoder = media ? AudioDecoder::open(media->path) : nullptr;
         }
         const bool plainSpeed = clip.speed == 1.0 && !clip.reversed && clip.speedRamp.empty();
-        if (soundFrames > 0 && clip.compound()) {
-            // Its sequence's tracks, mixed (compound clips play at their own speed).
-            const Sequence* sequence = project.findSequence(clip.sequenceId);
+        // Where the sound comes from: the decoder, or a compound clip's sequence, mixed as it is
+        // read (into a scratch of its own: the reads below land in `scratch`).
+        const Sequence* sequence = clip.compound() ? project.findSequence(clip.sequenceId) : nullptr;
+        const bool hasSource = clip.compound() ? sequence != nullptr : stream.decoder != nullptr;
+        const auto seekSource = [&](Ticks sourceTime) {
+            if (!sequence)
+                return stream.decoder->seek(sourceTime);
+            stream.sequenceAt = sourceTime;
+            return true;
+        };
+        const auto readSource = [&](float* into, int count) {
+            if (!sequence)
+                return stream.decoder->read(into, count);
+            std::fill_n(into, std::size_t(count) * audio::kChannels, 0.0f);
+            mixTracks(project, sequence->tracks, stream.sequenceAt, count, keepUntil, into,
+                      m_sequenceScratch[std::size_t(depth)], depth + 1);
+            stream.sequenceAt += audio::ticksFromSamples(count);
+            return count; // (silence past its end)
+        };
+        if (soundFrames > 0 && clip.compound() && plainSpeed) {
+            // Its sequence's tracks, mixed at the time it plays.
             const Ticks sourceTime = clip.sourceTimeBeyond(inFrom);
             const int silent =
                 sourceTime < 0 ? int(std::min<std::int64_t>(audio::samplesFromTicks(-sourceTime), soundFrames)) : 0;
@@ -280,7 +298,7 @@ void TimelineAudio::mixClip(const Project& project, const Track& track, const Cl
                 mixTracks(project, sequence->tracks, std::max<Ticks>(sourceTime, 0), soundFrames - silent, keepUntil,
                           dst + std::size_t(silent) * audio::kChannels, scratch, depth + 1);
             read = soundFrames;
-        } else if (soundFrames == 0 || !stream.decoder) {
+        } else if (soundFrames == 0 || !hasSource) {
             // In the effects' tail, or unreadable media: silence (the effects still ring dst).
         } else if (plainSpeed) {
             // Before the media's start (a head handle that is not there) is silence.
@@ -315,14 +333,14 @@ void TimelineAudio::mixClip(const Project& project, const Track& track, const Cl
                 if (stream.stretchNext < 0.0 || std::abs(position - stream.stretchNext) > 64.0) {
                     const auto inputStart = std::max<std::int64_t>(
                         0, std::int64_t(position - (2.0 * step + 1.5) * dsp::TimeStretcher::kHop - dsp::TimeStretcher::kSearch));
-                    if (!stream.decoder->seek(audio::ticksFromSamples(inputStart)))
+                    if (!seekSource(audio::ticksFromSamples(inputStart)))
                         return read;
                     stretcher.reset(inputStart, position, step);
                     stream.nextSourceTime = -1;
                 }
                 scratch.resize(std::size_t(1024) * audio::kChannels);
                 while (!stretcher.canPull(soundFrames, step)) {
-                    const int got = stream.decoder->read(scratch.data(), 1024);
+                    const int got = readSource(scratch.data(), 1024);
                     if (got <= 0) {
                         stretcher.finish();
                         break;
@@ -338,11 +356,11 @@ void TimelineAudio::mixClip(const Project& project, const Track& track, const Cl
                 const int needed = int(std::ceil(double(soundFrames) * step)) + 2;
                 const Ticks spanTicks = Ticks(std::llround(double(soundEnd - inFrom) * step));
                 const Ticks blockStart = std::max<Ticks>(0, clip.reversed ? sourceFrom + 1 - spanTicks : sourceFrom);
-                if (!stream.decoder->seek(blockStart))
+                if (!seekSource(blockStart))
                     return read;
                 stream.nextSourceTime = -1; // resampled reads always seek
                 scratch.assign(std::size_t(needed) * audio::kChannels, 0.0f);
-                const int available = stream.decoder->read(scratch.data(), needed);
+                const int available = readSource(scratch.data(), needed);
                 if (available >= 2) {
                     const double top =
                         clip.reversed ? double(audio::samplesFromTicks(sourceFrom + 1 - blockStart)) - 1.0 : 0.0;

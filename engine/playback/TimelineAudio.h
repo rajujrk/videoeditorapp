@@ -106,6 +106,7 @@ private:
         std::unique_ptr<dsp::TimeStretcher> stretcher;
         double stretchNext = -1.0; // source sample the stretcher continues from
         Ticks nextOutput = -1;     // where its effects' output continues from (-1: start afresh)
+        Ticks sequenceAt = 0;      // a compound clip played off its speed: where its sequence's mix is read next
     };
     struct TrackStream {
         std::unique_ptr<AudioEffectChain> effects;
@@ -144,6 +145,7 @@ private:
     std::array<std::vector<float>, kMaxNesting + 2> m_trackBuffers; // a nested track's mix, per depth
     std::array<std::vector<float>, kMaxNesting + 2> m_clipPrime;    // plug-in priming, per depth
     std::array<std::vector<float>, kMaxNesting + 2> m_trackPrime;
+    std::array<std::vector<float>, kMaxNesting + 2> m_sequenceScratch; // the scratch of a sequence read as a source
     std::map<Id, TrackStream> m_trackStreams;
     std::map<Id, Ticks> m_clipEnds; // when each stream used this chunk can close
     dsp::LoudnessMeter m_meter;

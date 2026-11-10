@@ -2,7 +2,10 @@
 #include "commands/EditCommands.h"
 #include "commands/StructureCommands.h"
 #include "io/ProjectSerializer.h"
+#include "model/RenderCost.h"
 #include "model/TimelineQuery.h"
+
+#include <algorithm>
 
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
@@ -151,13 +154,10 @@ TEST_CASE("compound clips: made from clips, played as one, broken apart again", 
     REQUIRE(layers.size() == 1);
     CHECK(layers[0].clip->id == make.clipId());
 
-    // Trimmed within its sequence; no speed; no transitions; saved.
+    // Trimmed within its sequence; saved. (Speed and transitions: the next test.)
     p.push<TrimClipCommand>(make.clipId(), TrimClipCommand::Edge::Start, kSec / 2);
     CHECK(p.get(make.clipId())->sourceIn == kSec / 2);
     CHECK(p.tryPush(std::make_unique<TrimClipCommand>(make.clipId(), TrimClipCommand::Edge::End, 5 * kSec)).has_value());
-    CHECK(p.tryPush(std::make_unique<SetClipSpeedCommand>(make.clipId(), 2.0, false)).value() == "compound clips have no speed");
-    CHECK(p.tryPush(std::make_unique<SetClipTransitionCommand>(later, ClipTransition{"tve.transition.dissolve"})).value()
-          == "transitions do not go on compound clips yet");
     const Project loaded = projectFromJson(projectToJson(p.project));
     CHECK(loaded.sequences == p.project.sequences);
 
@@ -182,6 +182,93 @@ TEST_CASE("compound clips: made from clips, played as one, broken apart again", 
     // Ids handed out stay used: a new clip does not reuse the compound's.
     const Id fresh = p.clip(p.upper, 10 * kSec, kSec);
     CHECK(fresh > make.clipId());
+}
+
+TEST_CASE("compound clips: faster, slower, backwards, ramped, frozen, and with transitions", "[structure]")
+{
+    StructureProject p;
+    const Id first = p.clip(p.main, 0, kSec, 30 * kSec);
+    const Id a = p.clip(p.main, kSec, 2 * kSec, 10 * kSec);
+    const Id b = p.clip(p.main, 3 * kSec, 2 * kSec, 20 * kSec);
+    const Id later = p.clip(p.main, 5 * kSec, kSec);
+    const Id compound = p.push<CreateCompoundCommand>(std::vector<Id>{a, b}, "Both").clipId();
+    REQUIRE(p.get(compound)->start == kSec);
+    REQUIRE(p.get(compound)->duration == 4 * kSec);
+
+    // Twice as fast: half as long, the clip after it moved up, its sequence shown twice as fast.
+    p.push<SetClipSpeedCommand>(compound, 2.0, false);
+    CHECK(p.get(compound)->duration == 2 * kSec);
+    CHECK(p.get(compound)->sourceSpan() == 4 * kSec);
+    CHECK(p.get(later)->start == 3 * kSec);
+    auto layers = visibleVideoLayersAt(p.project, 2 * kSec);
+    REQUIRE(layers.size() == 1);
+    CHECK(layers[0].clip->id == compound);
+    CHECK(layers[0].sourceTime == 2 * kSec);
+    CHECK(p.get(compound)->timelineTimeOf(2 * kSec) == 2 * kSec);
+    // Where its sequence cuts from one clip to the next (at 2 s inside), the timeline's load
+    // is measured apart: at 2 s on the timeline, not at 1 s + 2 s.
+    const auto stretches = playbackLoad(p.project);
+    CHECK(std::ranges::any_of(stretches, [](const PlaybackLoad& s) { return s.from == 2 * kSec; }));
+
+    // Backwards: the sequence's end first.
+    p.push<SetClipSpeedCommand>(compound, 2.0, true);
+    CHECK(visibleVideoLayersAt(p.project, kSec)[0].sourceTime == 4 * kSec - 1);
+    CHECK(p.get(compound)->timelineTimeOf(kSec) == 2 * kSec + kSec / 2);
+    CHECK(p.get(compound)->timelineTimeOf(-kSec) == p.get(compound)->end()); // never shown
+
+    // A ramp from 1× to 3×: the same span, at an average of 2×.
+    p.push<SetClipSpeedRampCommand>(compound, SpeedRamp{{0.0, 1.0}, {1.0, 3.0}}, false);
+    CHECK(p.get(compound)->duration == 2 * kSec);
+    CHECK_FALSE(p.get(compound)->speedRamp.empty());
+    CHECK(visibleVideoLayersAt(p.project, kSec + kSec / 2)[0].sourceTime < kSec * 3 / 2); // slow at first
+
+    // Broken apart only at normal speed (its clips would no longer match what it showed).
+    CHECK(p.tryPush(std::make_unique<BreakCompoundCommand>(compound)).value()
+          == "set the compound clip back to normal speed to break it apart");
+    p.push<SetClipSpeedCommand>(compound, 1.0, false);
+    CHECK(p.get(compound)->duration == 4 * kSec);
+    CHECK(p.get(later)->start == 5 * kSec);
+    CHECK(p.get(compound)->speedRamp.empty());
+
+    // Its pitch kept or not, as a whole.
+    p.push<SetClipKeepPitchCommand>(compound, false);
+    CHECK_FALSE(p.get(compound)->keepPitch);
+
+    // A frozen moment of it: a compound clip too, holding its sequence at 1 s.
+    auto& freeze = p.push<FreezeFrameCommand>(compound, 2 * kSec, kSec);
+    const Clip* still = p.get(freeze.freezeClipId());
+    REQUIRE(still);
+    CHECK(still->compound());
+    CHECK(still->freeze);
+    CHECK(still->sourceIn == kSec);
+    CHECK(visibleVideoLayersAt(p.project, 2 * kSec + kSec / 2)[0].sourceTime == kSec);
+    CHECK(p.tryPush(std::make_unique<BreakCompoundCommand>(freeze.freezeClipId())).value()
+          == "a frozen compound clip cannot be broken apart");
+    p.stack.undo();
+    CHECK_FALSE(p.get(freeze.freezeClipId()));
+
+    // Transitions into it and out of it, playing both sides' pictures.
+    p.push<SetClipTransitionCommand>(compound, ClipTransition{"tve.transition.dissolve"});
+    p.push<SetClipTransitionCommand>(later, ClipTransition{"tve.transition.dissolve"});
+    const Track& main = *p.project.findTrack(p.main);
+    const auto into = transitionInto(main, *p.get(compound));
+    REQUIRE(into);
+    CHECK(into->from->id == first);
+    layers = visibleVideoLayersAt(p.project, kSec - kSec / 10);
+    REQUIRE(layers.size() == 1);
+    CHECK(layers[0].clip->id == first);
+    REQUIRE(layers[0].transition);
+    CHECK(layers[0].transition->to->id == compound);
+    CHECK(layers[0].transition->toSourceTime == 0); // its head handle: none, held at its first moment
+    layers = visibleVideoLayersAt(p.project, 5 * kSec + kSec / 10);
+    REQUIRE(layers[0].transition);
+    CHECK(layers[0].clip->id == compound);
+    CHECK(layers[0].sourceTime == 4 * kSec - 1); // its tail: held at its last moment
+    CHECK(layers[0].transition->to->id == later);
+    // Its sound crossfades over the same span.
+    CHECK(audibleSpan(main, *p.get(compound)).start < kSec);
+    const Project loaded = projectFromJson(projectToJson(p.project));
+    CHECK(loaded.tracks == p.project.tracks);
 }
 
 TEST_CASE("a compound clip needs room and real clips", "[structure]")

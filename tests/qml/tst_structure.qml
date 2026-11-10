@@ -262,9 +262,7 @@ Item {
             showsAt(f, 0.05, 0.5, isRed, "the compound's bottom layer did not show")
             showsAt(f, 0.95, 0.5, isBlue, "the compound's bottom layer did not show")
 
-            // It has no speed; trimmed and moved it plays the part it shows.
-            verify(!p.setClipSpeed(compound.id, 2, false))
-            verify(p.lastError.indexOf("compound") >= 0)
+            // Trimmed and moved it plays the part it shows.
             verify(p.trimClip(compound.id, false, 3))
             verify(p.moveClip(compound.id, mainTrack(p).id, 1))
             fuzzyCompare(mainTrack(p).clips[0].start, 1, 0.01)
@@ -297,6 +295,48 @@ Item {
             const reopened = g.project.tracks.find((t) => t.main).clips[0]
             verify(reopened.isCompound)
             compare(reopened.label, "Compound 1")
+        }
+
+        function test_compound_clips_have_speed_and_transitions() {
+            const f = layered()
+            const p = f.project
+            p.selectedClip = mainTrack(p).clips[0].id
+            p.toggleClipSelection(trackAbove(p).clips[0].id)
+            verify(p.createCompound() > 0)
+            const compound = mainTrack(p).clips[0].id
+            // After it, a green screen with a red square in the middle.
+            compare(p.importMedia([still("keyed.png")]), 1)
+            verify(p.addClip(p.media[2].id, mainTrack(p).id, 5))
+            const after = mainTrack(p).clips[1].id
+
+            // Its speed, in the inspector like any clip's: twice as fast, half as long, and the
+            // clip after it moves up.
+            p.selectedClip = compound
+            click(f.editor, "inspectorTab:Speed")
+            verify(settled(f.editor, "speedSection").visible)
+            click(f.editor, "speedPreset:2")
+            compare(p.undoText, "Change Speed")
+            compare(p.selectedClipInfo.speed, 2)
+            fuzzyCompare(mainTrack(p).clips[0].duration, 2.5, 0.01)
+            fuzzyCompare(mainTrack(p).clips[1].start, 2.5, 0.01)
+            verify(findChild(f.editor, "reverseSwitch").visible)
+            // Broken apart only at normal speed.
+            verify(!p.breakCompound(compound))
+            verify(p.lastError.indexOf("normal speed") >= 0)
+
+            // A dissolve on the cut out of it, put there by "apply to all" like any other cut.
+            compare(p.applyTransitionToAll("tve.transition.dissolve", 1), 1)
+            const placed = mainTrack(p).clips.find((c) => c.id === after)
+            verify(Object.keys(placed.transition || {}).length > 0)
+            tryVerify(() => findChild(f.editor, "transition:" + after) !== null)
+            // Before, its disc; half-way, the disc and the red square mixed; then the square.
+            p.seek(1)
+            showsAt(f, 0.5, 0.5, isGreen, "the compound clip's disc did not show")
+            p.seek(2.5)
+            showsAt(f, 0.5, 0.5, (c) => c.r > 0.3 && c.r < 0.7 && c.g > 0.25 && c.g < 0.65,
+                    "the dissolve did not mix the compound clip with the next clip")
+            p.seek(3.5)
+            showsAt(f, 0.5, 0.5, isRed, "the clip after the dissolve did not show")
         }
     }
 }

@@ -182,16 +182,18 @@ void TimelinePlayback::prefetch(const Project& project, Ticks time)
             if (media && !media->still && !clip.text && !clip.drawing && !clip.adjustment)
                 jobs.push_back({&clip, sourceTime});
         };
-        for (const VisibleClip& layer : visibleVideoLayersAt(project, tracks, at)) {
-            const Clip& clip = *layer.clip;
-            if (clip.compound()) {
-                if (const Sequence* sequence = project.findSequence(clip.sequenceId); sequence && depth < kMaxNesting)
-                    collect(sequence->tracks, layer.sourceTime, depth + 1);
-                continue;
+        const auto side = [&](const Clip& clip, Ticks sourceTime) {
+            if (!clip.compound()) {
+                add(clip, sourceTime);
+                return;
             }
-            add(clip, layer.sourceTime);
+            if (const Sequence* sequence = project.findSequence(clip.sequenceId); sequence && depth < kMaxNesting)
+                collect(sequence->tracks, sourceTime, depth + 1);
+        };
+        for (const VisibleClip& layer : visibleVideoLayersAt(project, tracks, at)) {
+            side(*layer.clip, layer.sourceTime);
             if (layer.transition)
-                add(*layer.transition->to, layer.transition->toSourceTime);
+                side(*layer.transition->to, layer.transition->toSourceTime);
         }
     };
     collect(project.tracks, time, 0);
@@ -288,26 +290,24 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                                      clipSeconds, clipDuration, nullptr, {}, {}, {}, top.drawing});
             continue;
         }
-        if (top.compound()) {
-            // Its sequence at the time it plays, as one picture.
-            auto nested = std::make_shared<CompositeFrame>(CompositeFrame{layer.sourceTime, {}});
-            if (const Sequence* sequence = project.findSequence(top.sequenceId); sequence && depth < kMaxNesting)
-                buildLayers(project, sequence->tracks, layer.sourceTime, nested->layers, depth + 1, live);
-            out.push_back(VideoLayer{top.id, DecodedFrame{}, top.visualAt(time), top.effectsAt(time), std::nullopt,
-                                     std::nullopt, top.color, lookOf(top), false, {}, top.chromaKey, top.masks,
-                                     top.matte, clipSeconds, clipDuration, std::move(nested), {}, {}, {}, {}});
-            continue;
-        }
-        // Each side is a decoded frame, or a still image's path (nothing to decode).
+        // Each side is a decoded frame, a still image's path (nothing to decode), or a compound
+        // clip's sequence at the time it plays, as one picture.
         struct Side {
             const Clip* clip = nullptr;
             const DecodedFrame* frame = nullptr;
             std::string stillPath;
-            bool shown() const { return frame || !stillPath.empty(); }
+            std::shared_ptr<CompositeFrame> nested;
+            bool shown() const { return frame || !stillPath.empty() || nested; }
             DecodedFrame picture() const { return frame ? frame->share() : DecodedFrame{}; }
         };
         const auto sideOf = [&](const Clip& clip, Ticks sourceTime) {
-            Side side{&clip, nullptr, {}};
+            Side side{&clip, nullptr, {}, nullptr};
+            if (clip.compound()) {
+                side.nested = std::make_shared<CompositeFrame>(CompositeFrame{sourceTime, {}});
+                if (const Sequence* sequence = project.findSequence(clip.sequenceId); sequence && depth < kMaxNesting)
+                    buildLayers(project, sequence->tracks, sourceTime, side.nested->layers, depth + 1, live);
+                return side;
+            }
             const MediaItem* media = project.findMedia(clip.mediaId);
             if (media && media->still)
                 side.stillPath = media->path;
@@ -315,6 +315,13 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                 side.frame = pictureOf(clip, sourceTime);
             return side;
         };
+        if (top.compound() && !layer.transition) {
+            Side side = sideOf(top, layer.sourceTime);
+            out.push_back(VideoLayer{top.id, DecodedFrame{}, top.visualAt(time), top.effectsAt(time), std::nullopt,
+                                     std::nullopt, top.color, lookOf(top), false, {}, top.chromaKey, top.masks,
+                                     top.matte, clipSeconds, clipDuration, std::move(side.nested), {}, {}, {}, {}});
+            continue;
+        }
         const auto spherical = [&](const Clip& clip) {
             const MediaItem* media = project.findMedia(clip.mediaId);
             return media && media->spherical;
@@ -329,20 +336,19 @@ void TimelinePlayback::buildLayers(const Project& project, const std::vector<Tra
                                 t.to->visualAt(time), t.to->effectsAt(time), t.to->color, lookOf(*t.to),
                                 incoming.stillPath, t.to->chromaKey, t.to->masks, toSeconds(time - t.to->start),
                                 peopleOf(*t.to, t.toSourceTime), motionOf(*t.to, t.toSourceTime),
-                                cursorOf(*t.to, t.toSourceTime)},
+                                cursorOf(*t.to, t.toSourceTime), spherical(*t.to), incoming.nested},
                 std::nullopt, top.color, lookOf(top), false, outgoing.stillPath, top.chromaKey, top.masks,
                 MatteMode::None, // no matte during a transition
-                clipSeconds, clipDuration, nullptr, peopleOf(top, layer.sourceTime), motionOf(top, layer.sourceTime),
+                clipSeconds, clipDuration, outgoing.nested, peopleOf(top, layer.sourceTime), motionOf(top, layer.sourceTime),
                 cursorOf(top, layer.sourceTime), {}});
             out.back().spherical = spherical(top);
-            out.back().transition->spherical = spherical(*t.to);
         } else if (outgoing.shown() || incoming.shown()) {
             // One side unreadable: show the other alone.
             const Side& side = outgoing.shown() ? outgoing : incoming;
             const Clip& clip = *side.clip;
             out.push_back(VideoLayer{clip.id, side.picture(), clip.visualAt(time), clip.effectsAt(time), std::nullopt,
                                      std::nullopt, clip.color, lookOf(clip), false, side.stillPath, clip.chromaKey,
-                                     clip.masks, clip.matte, toSeconds(time - clip.start), toSeconds(clip.duration), nullptr,
+                                     clip.masks, clip.matte, toSeconds(time - clip.start), toSeconds(clip.duration), side.nested,
                                      peopleOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime),
                                      motionOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime),
                                      cursorOf(clip, &side == &outgoing ? layer.sourceTime : layer.transition->toSourceTime), {}});

@@ -3053,10 +3053,6 @@
         <translation>ஸ்டிக்கர்களுக்கு வேகம் இல்லை; எவ்வளவு நேரம் நீடிக்கும் என்பதை மாற்ற அவற்றைக் குறைக்கவும்.</translation>
     </message>
     <message>
-        <source>Compound clips have no speed; trim them to change how long they last.</source>
-        <translation>கூட்டுக் கிளிப்புகளுக்கு வேகம் இல்லை; எவ்வளவு நேரம் நீடிக்கும் என்பதை மாற்ற அவற்றைக் குறைக்கவும்.</translation>
-    </message>
-    <message>
         <source>Images have no speed; trim them to change how long they last.</source>
         <translation>படங்களுக்கு வேகம் இல்லை; எவ்வளவு நேரம் நீடிக்கும் என்பதை மாற்ற அவற்றைக் குறைக்கவும்.</translation>
     </message>
@@ -3697,6 +3693,10 @@
     <message>
         <source>That is not a single key or key combination</source>
         <translation>அது ஒரு தனி விசையோ விசைச் சேர்க்கையோ அல்ல</translation>
+    </message>
+    <message>
+        <source>%1 belongs to the system</source>
+        <translation>%1 கணினிக்குச் சொந்தமானது</translation>
     </message>
     <message>
         <source>Cannot save the shortcuts to %1</source>
@@ -9650,6 +9650,10 @@ The Journey</source>
     <message>
         <source>Compound clips (left as space)</source>
         <translation>கூட்டுக் கிளிப்புகள் (இடைவெளியாக விடப்பட்டன)</translation>
+    </message>
+    <message>
+        <source>Transitions to and from compound clips (left out)</source>
+        <translation>கூட்டுக் கிளிப்புகளுக்குள்ளும் அவற்றிலிருந்தும் செல்லும் மாற்றங்கள் (விடப்பட்டன)</translation>
     </message>
     <message>
         <source>Stickers (left as space)</source>

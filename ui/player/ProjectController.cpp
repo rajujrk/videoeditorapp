@@ -6570,8 +6570,7 @@ std::vector<Id> ProjectController::transitionCuts() const
         for (std::size_t i = 1; i < track.clips.size(); ++i) {
             const Clip& before = track.clips[i - 1];
             const Clip& clip = track.clips[i];
-            if (before.end() == clip.start && !before.generated() && !clip.generated() && !before.compound()
-                && !clip.compound())
+            if (before.end() == clip.start && !before.generated() && !clip.generated())
                 cuts.push_back(clip.id);
         }
     }
