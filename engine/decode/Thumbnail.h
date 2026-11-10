@@ -17,7 +17,8 @@ struct RgbaImage {
 
 // Decodes the frame shown at `time` in a video file and scales it to `height` pixels high,
 // keeping its aspect ratio. For small previews (media bin, timeline strips): nearest
-// sampling, BT.601/709 by size.
+// sampling, BT.601/709 by size (or BT.2020 as tagged); HDR and wide-gamut pictures are
+// converted to SDR Rec.709 (highlights rolled off).
 std::optional<RgbaImage> extractThumbnail(const std::string& path, Ticks time, int height);
 
 class VideoDecoder;

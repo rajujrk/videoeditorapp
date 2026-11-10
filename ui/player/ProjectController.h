@@ -60,6 +60,9 @@ class ProjectController : public QObject {
     Q_PROPERTY(int canvasWidth READ canvasWidth NOTIFY projectChanged)
     Q_PROPERTY(int canvasHeight READ canvasHeight NOTIFY projectChanged)
     Q_PROPERTY(double frameRate READ frameRate NOTIFY projectChanged)
+    // The colour the project works in and exports: "sdr" (Rec.709), "hdr-pq" or "hdr-hlg"
+    // (Rec.2020). Changing it is one undo step.
+    Q_PROPERTY(QString projectColour READ projectColour WRITE setProjectColour NOTIFY projectChanged)
     Q_PROPERTY(double duration READ duration NOTIFY projectChanged)
     Q_PROPERTY(QVariantList tracks READ tracks NOTIFY projectChanged) // top to bottom
     // The same tracks as a model whose rows survive edits (use this for delegates).
@@ -263,6 +266,8 @@ public:
     int canvasWidth() const { return m_project.settings.width; }
     int canvasHeight() const { return m_project.settings.height; }
     double frameRate() const;
+    QString projectColour() const { return QString::fromStdString(tve::toString(m_project.settings.colour)); }
+    void setProjectColour(const QString& colour);
     double duration() const;
     QVariantList tracks() const;
     QAbstractListModel* trackModel() { return &m_trackModel; }

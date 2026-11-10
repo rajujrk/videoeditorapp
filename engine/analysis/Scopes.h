@@ -11,6 +11,8 @@ struct ScopeImage {
     int width = 0;
     int height = 0;
     std::vector<float> rgb; // width × height × 3
+    // Luma's weights: Rec.709's, or Rec.2020's for an HDR picture.
+    std::array<float, 3> lumaWeights{0.2126f, 0.7152f, 0.0722f};
 };
 
 // Counts in a grid: `columns` across, `rows` up (row 0 is the bottom: black, or the lowest

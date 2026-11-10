@@ -2,6 +2,7 @@
 
 #include "FrameCompositor.h"
 
+#include "gpu/ColourPass.h"
 #include "gpu/Compositor.h"
 #include "playback/TimelinePlayback.h"
 
@@ -15,10 +16,12 @@ struct StillRenderer::Impl {
     std::unique_ptr<QRhi> rhi;
     std::unique_ptr<FrameCompositor> compositor;
     std::unique_ptr<tve::Compositor> scaler;
+    std::unique_ptr<tve::ColourPass> toSdr; // an HDR project's picture, for an SDR image
 
     ~Impl()
     {
         // The GPU objects go before their device.
+        toSdr.reset();
         scaler.reset();
         compositor.reset();
         rhi.reset();
@@ -33,6 +36,7 @@ StillRenderer::StillRenderer() : d(std::make_unique<Impl>())
         return;
     d->compositor = std::make_unique<FrameCompositor>(d->rhi.get());
     d->scaler = std::make_unique<tve::Compositor>(d->rhi.get());
+    d->toSdr = std::make_unique<tve::ColourPass>(d->rhi.get());
 }
 
 StillRenderer::~StillRenderer() = default;
@@ -73,6 +77,8 @@ QImage StillRenderer::render(std::shared_ptr<const tve::Project> project, tve::T
     std::vector<CVMetalTextureRef> retained;
     QRhiTexture* picture = d->compositor->render(cb, frame, canvas, float(tve::toSeconds(time)), nullptr, retained);
     QRhiReadbackResult result;
+    d->toSdr->begin();
+    picture = d->toSdr->apply(cb, picture, tve::conversion(tve::workingSpace(frame.colour), tve::ColourSpace{}));
     if (picture) {
         d->scaler->begin(cb, size);
         d->scaler->draw(cb, picture, tve::ClipVisual{});

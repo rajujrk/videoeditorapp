@@ -7,6 +7,8 @@
 #include "VideoView.h"
 
 #include "gpu/ColorGrader.h"
+#include "gpu/ColourPass.h"
+#include "decode/ColourTags.h"
 #include "gpu/Compositor.h"
 #include "gpu/MaskRenderer.h"
 #include "gpu/EffectChain.h"
@@ -14,6 +16,7 @@
 #include "gpu/TransitionRenderer.h"
 #include "analysis/PeopleVision.h"
 
+#include <QColorSpace>
 #include <QFile>
 #include <QMatrix4x4>
 #include <rhi/qrhi.h>
@@ -147,6 +150,7 @@ FrameCompositor::FrameCompositor(QRhi* rhi) : m_rhi(rhi)
     m_compositor = std::make_unique<tve::Compositor>(m_rhi);
     m_transitions = std::make_unique<tve::TransitionRenderer>(m_rhi, tve::EffectLibrary::builtIn());
     m_grader = std::make_unique<tve::ColorGrader>(m_rhi);
+    m_colour = std::make_unique<tve::ColourPass>(m_rhi);
     m_masks = std::make_unique<tve::MaskRenderer>(m_rhi);
 }
 
@@ -347,6 +351,8 @@ QRhiTexture* FrameCompositor::stillTexture(QRhiCommandBuffer* cb, const std::str
         m_stills.erase(path);
         return nullptr;
     }
+    if (image.colorSpace().isValid() && image.colorSpace().primaries() == QColorSpace::Primaries::DciP3D65)
+        still.colour.primaries = tve::Primaries::DisplayP3;
     QRhiResourceUpdateBatch* upload = m_rhi->nextResourceUpdateBatch();
     upload->uploadTexture(still.texture.get(), image);
     cb->resourceUpdate(upload);
@@ -450,7 +456,9 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     m_compositor->begin(cb, m_canvasSize);
     m_transitions->begin();
     m_grader->begin();
+    m_colour->begin();
     m_masks->begin();
+    const tve::ColourSpace working = tve::workingSpace(frame.colour);
     std::set<tve::Id> liveClips;
     std::size_t slotIndex = 0;
     std::size_t transitionIndex = 0;
@@ -509,6 +517,17 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         }
         if (!picture)
             return nullptr;
+        // Into the working colour space: video as its frames are tagged, a still as its file
+        // says, titles, drawings and stickers as SDR Rec.709. (What is under an adjustment
+        // layer, and a compound clip's canvas, are in it already.) Same space: no pass.
+        if (!canvasBelow && !nested) {
+            tve::ColourSpace own;
+            if (decoded.pixelBuffer() && !text && !(drawing && *drawing) && stillPath.empty())
+                own = tve::bufferColour(decoded.pixelBuffer());
+            else if (!stillPath.empty() && !tve::isLottieFile(stillPath) && m_stills.contains(stillPath))
+                own = m_stills[stillPath].colour;
+            picture = m_colour->apply(cb, picture, tve::conversion(own, working));
+        }
         // First of all, on the decoded picture: people (the cutout from a matte found in this
         // very frame, then covered faces), where Vision saw them.
         if (people && decoded.pixelBuffer()) {

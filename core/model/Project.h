@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/ColorGrade.h"
+#include "model/Colour.h"
 #include "model/Keyframes.h"
 #include "model/Masks.h"
 #include "model/Cursor.h"
@@ -56,6 +57,8 @@ struct MediaItem {
     bool still = false;
     // The pictures have transparency (ProRes 4444, GIF…): they play over what is below.
     bool alpha = false;
+    // Its pictures' colour space as the file says (SDR Rec.709 when it says nothing).
+    ColourSpace colour;
     // A Lottie animation (a sticker): drawn, not decoded, looping; like a still it lasts as
     // long as its clips (`still` is set too), `duration` being one cycle.
     bool lottie = false;
@@ -453,6 +456,8 @@ struct ProjectSettings {
     std::int32_t height = 1080;
     FrameRate frameRate{30, 1};
     std::int32_t sampleRate = 48000;
+    // The colour it works in and exports: SDR Rec.709, or HDR Rec.2020 (PQ or HLG).
+    ProjectColour colour = ProjectColour::Sdr;
 
     friend bool operator==(const ProjectSettings&, const ProjectSettings&) = default;
 };

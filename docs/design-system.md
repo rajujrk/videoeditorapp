@@ -458,6 +458,11 @@ An OpenFX video plug-in (the test invert) on a clip in the Effects tab — its p
 ![Video plug-ins, dark](images/video-plugins-dark.png)
 ![Video plug-ins, light](images/video-plugins-light.png)
 
+Colour management: an HDR · PQ project in the Color tab — the Project colour buttons and note, the waveform of the PQ signal scaled in nits (SDR media at graphics white, 203 nits) — an HDR export in the library with its HDR · PQ badge, and the HDR viewer button in the transport bar, dark and light:
+
+![Colour and HDR, dark](images/colour-hdr-dark.png)
+![Colour and HDR, light](images/colour-hdr-light.png)
+
 The Generate tab choosing a first and last picture for a video, after a sticker was placed over the picture, dark and light:
 
 ![Generate, dark](images/generate-dark.png)

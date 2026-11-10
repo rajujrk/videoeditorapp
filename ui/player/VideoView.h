@@ -5,6 +5,7 @@
 #include "gpu/EffectChain.h"
 #include "model/Project.h"
 
+#include <QPointer>
 #include <QQuickRhiItem>
 #include <QTimer>
 #include <QVariantList>
@@ -19,6 +20,7 @@
 
 namespace tve {
 class FrameSource;
+class FrameMirrors;
 }
 
 // Live, uncommitted picture changes (e.g. while an inspector slider is dragged), shared
@@ -69,7 +71,8 @@ private:
 
 // Shows composite frames from a FrameSource (the timeline, or a single file via `source`):
 // zero-copy CVPixelBuffer → Metal textures, YUV→RGB per layer, per-clip effects, the
-// compositor onto the project canvas, output effects, then aspect-fit into the item.
+// compositor onto the project canvas, output effects, the display transform (the project's
+// working colour to the display's), then aspect-fit into the item.
 class VideoView : public QQuickRhiItem {
     Q_OBJECT
     QML_ELEMENT
@@ -85,6 +88,17 @@ class VideoView : public QQuickRhiItem {
     // While true, a small copy of each new preview frame (at most ~15 a second) goes to
     // scopeFrame() for the scopes; off, it costs nothing.
     Q_PROPERTY(bool scopesEnabled READ scopesEnabled WRITE setScopesEnabled NOTIFY scopesEnabledChanged)
+    // A second view of another's frames (the HDR viewer): what `follows` shows, by its clock,
+    // with its live previews and output effects.
+    Q_PROPERTY(VideoView* follows READ follows WRITE setFollows NOTIFY followsChanged)
+    // Shows HDR as HDR: extended linear light for an EDR window (one whose
+    // `_qt_sg_hdr_format` is "scrgb", set here when the view is put in its window, before
+    // it is shown; give the view colorBufferFormat RGBA16F). Highlights are rolled off to
+    // what the display can show now; on an SDR display it shows as the player does.
+    Q_PROPERTY(bool hdrOutput READ hdrOutput WRITE setHdrOutput NOTIFY hdrOutputChanged)
+    // Whether the window really is EDR, and how much brighter than SDR white it can go now.
+    Q_PROPERTY(bool hdrActive READ hdrActive NOTIFY displayChanged)
+    Q_PROPERTY(double displayHeadroom READ displayHeadroom NOTIFY displayChanged)
 
 public:
     explicit VideoView(QQuickItem* parent = nullptr);
@@ -126,6 +140,16 @@ public:
     void setScopesEnabled(bool enabled);
     std::shared_ptr<ScopeFrame> scopeFrame() const { return m_scopeFrame; }
 
+    VideoView* follows() const { return m_follows; }
+    void setFollows(VideoView* leader);
+    bool hdrOutput() const { return m_hdrOutput; }
+    void setHdrOutput(bool on);
+    bool hdrActive() const { return m_hdrActive; }
+    double displayHeadroom() const { return m_displayHeadroom; }
+    void setDisplay(bool hdrActive, double headroom); // from the renderer
+    // The views following this one (render thread).
+    std::shared_ptr<tve::FrameMirrors> mirrors() const { return m_mirrors; }
+
     // Read by the renderer on the render thread during synchronize().
     std::shared_ptr<tve::FrameSource> frameSource() const { return m_frameSource; }
     std::shared_ptr<PreviewOverrides> previewOverrides() const { return m_previewOverrides; }
@@ -137,14 +161,20 @@ signals:
     void statsChanged();
     void effectsChanged();
     void scopesEnabledChanged();
+    void followsChanged();
+    void hdrOutputChanged();
+    void displayChanged();
 
 protected:
     QQuickRhiItemRenderer* createRenderer() override;
+    void itemChange(ItemChange change, const ItemChangeData& value) override;
 
 private:
     void sampleStats();
     tve::EffectInstance* findEffect(const QString& effectId);
     void markEffectsChanged();
+    void mirrorLeader();
+    void requestHdrWindow();
 
     QString m_source;
     QString m_error;
@@ -153,6 +183,12 @@ private:
     std::shared_ptr<PreviewOverrides> m_previewOverrides = std::make_shared<PreviewOverrides>();
     std::shared_ptr<ScopeFrame> m_scopeFrame = std::make_shared<ScopeFrame>();
     bool m_scopesEnabled = false;
+    std::shared_ptr<tve::FrameMirrors> m_mirrors;
+    QPointer<VideoView> m_follows;
+    QList<QMetaObject::Connection> m_followConnections;
+    bool m_hdrOutput = false;
+    bool m_hdrActive = false;
+    double m_displayHeadroom = 1.0;
     std::function<void()> m_stopFileSession; // set while playing a file via `source`
 
     std::vector<tve::EffectInstance> m_effects;

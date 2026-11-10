@@ -38,7 +38,8 @@ Histogram histogram(const ScopeImage& image)
         ++h.bins[0][std::size_t(level(r, 256))];
         ++h.bins[1][std::size_t(level(g, 256))];
         ++h.bins[2][std::size_t(level(b, 256))];
-        ++h.bins[3][std::size_t(level(scopeLuma(r, g, b), 256))];
+        const auto& w = image.lumaWeights;
+        ++h.bins[3][std::size_t(level(w[0] * r + w[1] * g + w[2] * b, 256))];
     }
     for (const auto& channel : h.bins)
         h.peak = std::max(h.peak, *std::ranges::max_element(channel));
@@ -57,7 +58,8 @@ ScopeGrid waveform(const ScopeImage& image, ScopeChannel channel, int columns, i
             const float v = channel == ScopeChannel::Red     ? r
                           : channel == ScopeChannel::Green   ? g
                           : channel == ScopeChannel::Blue    ? b
-                                                             : scopeLuma(r, g, b);
+                                                             : image.lumaWeights[0] * r + image.lumaWeights[1] * g
+                                                                   + image.lumaWeights[2] * b;
             const int column = std::min(columns - 1, x * columns / image.width);
             ++grid.counts[std::size_t(level(v, levels)) * std::size_t(columns) + std::size_t(column)];
         }

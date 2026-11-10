@@ -45,10 +45,10 @@ CVPixelBufferRef makeBuffer(int width, int height, OSType format, NSDictionary* 
 }
 
 // Format and size conversion (and scaling) between pixel buffers.
-class Transfer {
+class PixelTransfer {
 public:
-    Transfer() { VTPixelTransferSessionCreate(kCFAllocatorDefault, &m_session); }
-    ~Transfer()
+    PixelTransfer() { VTPixelTransferSessionCreate(kCFAllocatorDefault, &m_session); }
+    ~PixelTransfer()
     {
         if (m_session) {
             VTPixelTransferSessionInvalidate(m_session);
@@ -126,7 +126,7 @@ public:
 private:
     std::unique_ptr<MediaWriter> m_writer;
     CVPixelBufferRef m_nv12 = nullptr;
-    Transfer m_transfer;
+    PixelTransfer m_transfer;
     std::string m_part;
     bool m_done = false;
 };
@@ -253,7 +253,7 @@ bool upscaleVideo(const std::string& path, Ticks from, Ticks to, int scale, cons
             return false;
         }
         const OSType format = OSType([configuration.frameSupportedPixelFormats.firstObject unsignedIntValue]);
-        Transfer transfer;
+        PixelTransfer transfer;
         CVPixelBufferRef previousSource = nullptr, previousOutput = nullptr;
         bool ok = true;
         while (ok) {
@@ -358,7 +358,7 @@ bool smoothVideo(const std::string& path, Ticks from, Ticks to, int factor, cons
             return false;
         }
         const OSType format = OSType([configuration.frameSupportedPixelFormats.firstObject unsignedIntValue]);
-        Transfer transfer;
+        PixelTransfer transfer;
         NSMutableArray<NSNumber*>* phases = [NSMutableArray array];
         for (int k = 1; k < factor; ++k)
             [phases addObject:@(float(k) / float(factor))];
@@ -446,7 +446,7 @@ struct Picture {
     double a = 1, b = 0, tx = 0, ty = 0;
 };
 
-bool toPicture(Transfer& transfer, CVPixelBufferRef frame, Picture& out)
+bool toPicture(PixelTransfer& transfer, CVPixelBufferRef frame, Picture& out)
 {
     const int w = int(CVPixelBufferGetWidth(frame)), h = int(CVPixelBufferGetHeight(frame));
     CVPixelBufferRef bgra = makeBuffer(w, h, kCVPixelFormatType_32BGRA);
@@ -568,7 +568,7 @@ bool removeObject(const std::string& path, Ticks from, Ticks to, const std::vect
     Copy copy;
     if (!copy.open(output, info.width, info.height, info.frameRate, error))
         return false;
-    Transfer transfer;
+    PixelTransfer transfer;
     constexpr std::size_t kReach = 15; // frames looked at either side
     std::deque<Picture> window;        // frames around the one being filled
     std::size_t next = 0;              // index in `window` of the next frame to fill

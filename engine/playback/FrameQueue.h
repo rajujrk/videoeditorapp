@@ -29,6 +29,18 @@ public:
         return true;
     }
 
+    // Never blocks: when full, the oldest frame makes room. Returns false if stopped.
+    bool offer(Frame frame)
+    {
+        std::lock_guard lock(m_mutex);
+        if (m_stopped)
+            return false;
+        while (m_frames.size() >= m_capacity && !m_frames.empty())
+            m_frames.pop_front();
+        m_frames.push_back(std::move(frame));
+        return true;
+    }
+
     std::optional<Ticks> frontPts() const
     {
         std::lock_guard lock(m_mutex);

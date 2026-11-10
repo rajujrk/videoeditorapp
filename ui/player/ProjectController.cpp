@@ -127,6 +127,19 @@ QString mediaName(const std::string& path)
     return title.isEmpty() ? fileName(path) : title;
 }
 
+QString mediaColourLabel(const ColourSpace& colour)
+{
+    if (colour.transfer == Transfer::Pq)
+        return QStringLiteral("HDR · PQ");
+    if (colour.transfer == Transfer::Hlg)
+        return QStringLiteral("HDR · HLG");
+    if (colour.primaries == Primaries::DisplayP3)
+        return QStringLiteral("Display P3");
+    if (colour.primaries == Primaries::Rec2020)
+        return QStringLiteral("Rec.2020");
+    return {};
+}
+
 // A media file's streams and length, or nullopt (with `error` set) if it has neither
 // pictures nor sound.
 std::optional<MediaItem> probeMedia(const std::string& path, QString* error)
@@ -139,6 +152,7 @@ std::optional<MediaItem> probeMedia(const std::string& path, QString* error)
         item.frameRate = info.frameRate;
         item.duration = info.duration;
         item.alpha = info.hasAlpha;
+        item.colour = info.colour;
     } else {
         item.hasVideo = false;
     }
@@ -899,6 +913,16 @@ double ProjectController::frameRate() const
     return double(m_project.settings.frameRate.num) / m_project.settings.frameRate.den;
 }
 
+void ProjectController::setProjectColour(const QString& colour)
+{
+    const ProjectColour wanted = projectColourFrom(colour.toStdString());
+    if (wanted == m_project.settings.colour)
+        return;
+    ProjectSettings settings = m_project.settings;
+    settings.colour = wanted;
+    apply(std::make_unique<SetProjectSettingsCommand>(settings));
+}
+
 double ProjectController::duration() const
 {
     return seconds(m_project.duration());
@@ -1009,6 +1033,9 @@ QVariantList ProjectController::media() const
             {QStringLiteral("still"), item.still},
             {QStringLiteral("sticker"), item.lottie},
             {QStringLiteral("alpha"), item.alpha},
+            // "HDR · PQ", "HDR · HLG", "Display P3", "Rec.2020" or "" (SDR Rec.709).
+            {QStringLiteral("colour"), mediaColourLabel(item.colour)},
+            {QStringLiteral("hdr"), isHdr(item.colour.transfer)},
             {QStringLiteral("missing"), missing.contains(item.id)},
             {QStringLiteral("placeholder"), item.placeholder},
             {QStringLiteral("generated"),
@@ -3439,6 +3466,10 @@ std::optional<Exporter::Options> ProjectController::exportOptions(const QVariant
     settings.audioBitrate = format->container == Container::M4a ? 256'000 : 192'000;
     if (options.contains(QStringLiteral("audio")) && settings.hasVideo())
         settings.audio = options.value(QStringLiteral("audio")).toBool();
+    // An HDR project's HEVC stays HDR (unless asked for SDR); every other format is SDR.
+    if (isHdr(m_project.settings.colour) && settings.codec == VideoCodec::Hevc
+        && options.value(QStringLiteral("hdr"), true).toBool())
+        settings.colour = m_project.settings.colour;
     const bool gif = format->codec == VideoCodec::Gif && settings.hasVideo();
 
     // Size: exact, or a short side in the canvas's shape, or the canvas.
@@ -6221,14 +6252,16 @@ int ProjectController::applyRandomTransitions(double duration)
         return 0;
     std::mt19937 random{std::random_device{}()};
     std::uniform_int_distribution<std::size_t> pick(0, all.size() - 1);
-    std::size_t previous = all.size();
+    // Neighbours differ by id (a pack's transition can share one with another in the list).
+    const bool choice = std::ranges::any_of(all, [&](const auto& t) { return t.manifest.id != all.front().manifest.id; });
+    std::string previous;
     return applyTransitions(
         [&](std::size_t) {
             std::size_t chosen = pick(random);
-            while (all.size() > 1 && chosen == previous)
+            while (choice && all[chosen].manifest.id == previous)
                 chosen = pick(random);
-            previous = chosen;
-            return all[chosen].manifest.id;
+            previous = all[chosen].manifest.id;
+            return previous;
         },
         duration, "Random Transitions");
 }

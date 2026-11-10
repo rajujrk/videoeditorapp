@@ -9,7 +9,8 @@
 namespace tve {
 
 // A decoded picture held as an IOSurface-backed CVPixelBuffer (NV12 or P010), so the GPU
-// can sample it without a copy. Owns one retain on the buffer.
+// can sample it without a copy. Owns one retain on the buffer; a copy is another retain on
+// the same buffer (see share()).
 class DecodedFrame {
 public:
     DecodedFrame() = default;
@@ -27,8 +28,22 @@ public:
         }
         return *this;
     }
-    DecodedFrame(const DecodedFrame&) = delete;
-    DecodedFrame& operator=(const DecodedFrame&) = delete;
+    DecodedFrame(const DecodedFrame& other) : m_buffer(other.m_buffer), m_pts(other.m_pts)
+    {
+        if (m_buffer)
+            CVPixelBufferRetain(m_buffer);
+    }
+    DecodedFrame& operator=(const DecodedFrame& other)
+    {
+        if (this != &other) {
+            if (other.m_buffer)
+                CVPixelBufferRetain(other.m_buffer);
+            reset();
+            m_buffer = other.m_buffer;
+            m_pts = other.m_pts;
+        }
+        return *this;
+    }
 
     // Another reference to the same pixel buffer (no copy), e.g. to show one decoded
     // picture in several composite frames.

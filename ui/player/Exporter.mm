@@ -3,6 +3,7 @@
 #include "FrameCompositor.h"
 
 #include "decode/AudioDecoder.h"
+#include "gpu/ColourPass.h"
 #include "gpu/Compositor.h"
 #include "audio/dsp/Biquad.h"
 #include "playback/TimelineAudio.h"
@@ -28,8 +29,8 @@ QShader loadShader(const QString& name)
     return file.open(QIODevice::ReadOnly) ? QShader::fromSerialized(file.readAll()) : QShader();
 }
 
-// One NV12 plane: a render target of the plane's size and format, drawn from the finished
-// picture by export_yuv.frag.
+// One NV12 or P010 plane: a render target of the plane's size and format, drawn from the
+// finished picture by export_yuv.frag.
 struct PlanePass {
     std::unique_ptr<QRhiTexture> texture;
     std::unique_ptr<QRhiTextureRenderTarget> target;
@@ -79,7 +80,7 @@ struct PlanePass {
         return true;
     }
 
-    void draw(QRhi* rhi, QRhiCommandBuffer* cb, int plane)
+    void draw(QRhi* rhi, QRhiCommandBuffer* cb, int plane, bool hdr)
     {
         const QSize size = texture->pixelSize();
         struct {
@@ -87,8 +88,10 @@ struct PlanePass {
             float time;
             float flipY;
             std::int32_t plane;
-            float padding[3];
-        } u{{1.0f / float(size.width()), 1.0f / float(size.height())}, 0.0f, rhi->isYUpInNDC() ? 1.0f : 0.0f, plane, {}};
+            std::int32_t hdr;
+            float padding[2];
+        } u{{1.0f / float(size.width()), 1.0f / float(size.height())}, 0.0f, rhi->isYUpInNDC() ? 1.0f : 0.0f, plane,
+            hdr ? 1 : 0, {}};
         QRhiResourceUpdateBatch* updates = rhi->nextResourceUpdateBatch();
         updates->updateDynamicBuffer(uniforms.get(), 0, sizeof u, &u);
         cb->beginPass(target.get(), Qt::black, {1.0f, 0}, updates);
@@ -214,17 +217,24 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
         const QSize canvas(project->settings.width, project->settings.height);
         const QSize output(settings.width, settings.height);
         const bool rgba = tve::pictureInput(settings) == tve::PictureInput::Rgba;
+        const bool hdr = tve::pictureInput(settings) == tve::PictureInput::P010;
+        // From the project's working colour to the file's: HDR as it is (or PQ ↔ HLG), else
+        // SDR Rec.709 (an HDR project's highlights rolled off).
+        const tve::ColourConversion toFile =
+            tve::conversion(tve::workingSpace(project->settings.colour),
+                            tve::workingSpace(hdr ? settings.colour : tve::ProjectColour::Sdr));
+        tve::ColourPass fileColour(rhi.get());
         tve::Compositor scaler(rhi.get());
         const QShader vertex = loadShader(QStringLiteral(":/effects/common/fullscreen.vert.qsb"));
         const QShader fragment = loadShader(QStringLiteral(":/shaders/export_yuv.frag.qsb"));
         std::unique_ptr<QRhiSampler> sampler(rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
                                                              QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
-        // NV12 as two planes, or 8-bit RGBA as one.
+        // NV12 or P010 as two planes, or 8-bit RGBA as one.
         PlanePass luma;
         PlanePass chroma;
         if (!sampler->create() || !vertex.isValid() || !fragment.isValid()
-            || !luma.create(rhi.get(), rgba ? QRhiTexture::RGBA8 : QRhiTexture::R8, output)
-            || (!rgba && !chroma.create(rhi.get(), QRhiTexture::RG8, output / 2)))
+            || !luma.create(rhi.get(), rgba ? QRhiTexture::RGBA8 : hdr ? QRhiTexture::R16 : QRhiTexture::R8, output)
+            || (!rgba && !chroma.create(rhi.get(), hdr ? QRhiTexture::RG16 : QRhiTexture::RG8, output / 2)))
             return abandon(QStringLiteral("cannot set up the renderer"));
         // Another shape than the canvas: letterboxed, or (fill) scaled up to cover it and cropped.
         tve::ClipVisual placement;
@@ -264,6 +274,8 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
                 return abandon(QStringLiteral("the GPU stopped responding"));
             std::vector<CVMetalTextureRef> retained;
             QRhiTexture* picture = compositor.render(cb, current, canvas, float(tve::toSeconds(time)), nullptr, retained);
+            fileColour.begin();
+            picture = fileColour.apply(cb, picture, toFile);
             if (picture && (output != canvas || options.fill)) {
                 scaler.begin(cb, output);
                 scaler.draw(cb, picture, placement);
@@ -273,9 +285,9 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
             QRhiReadbackResult chromaData;
             if (picture && luma.bind(rhi.get(), picture, sampler.get(), vertex, fragment)
                 && (rgba || chroma.bind(rhi.get(), picture, sampler.get(), vertex, fragment))) {
-                luma.draw(rhi.get(), cb, rgba ? 2 : 0);
+                luma.draw(rhi.get(), cb, rgba ? 2 : 0, hdr);
                 if (!rgba)
-                    chroma.draw(rhi.get(), cb, 1);
+                    chroma.draw(rhi.get(), cb, 1, hdr);
                 QRhiResourceUpdateBatch* readback = rhi->nextResourceUpdateBatch();
                 readback->readBackTexture({luma.texture.get()}, &lumaData);
                 if (!rgba)
@@ -292,6 +304,12 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
             if (rgba) {
                 const auto rows = packedRows(lumaData, output.width() * 4, output.height());
                 if (!writer->writeVideoRgba(rows.data(), output.width() * 4))
+                    return abandon(QString::fromStdString(writer->lastError()));
+            } else if (hdr) {
+                const auto y = packedRows(lumaData, output.width() * 2, output.height());
+                const auto uv = packedRows(chromaData, output.width() * 2, output.height() / 2); // width/2 × 4 bytes
+                if (!writer->writeVideoP010(reinterpret_cast<const std::uint16_t*>(y.data()), output.width(),
+                                            reinterpret_cast<const std::uint16_t*>(uv.data()), output.width()))
                     return abandon(QString::fromStdString(writer->lastError()));
             } else {
                 const auto y = packedRows(lumaData, output.width(), output.height());

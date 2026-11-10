@@ -7,6 +7,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/channel_layout.h>
+#include <libavutil/mastering_display_metadata.h>
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
 }
@@ -89,6 +90,8 @@ PictureInput pictureInput(const MediaSettings& settings)
 {
     if (!settings.hasVideo())
         return PictureInput::None;
+    if (settings.codec == VideoCodec::Hevc && isHdr(settings.colour))
+        return PictureInput::P010;
     return settings.codec == VideoCodec::H264 || settings.codec == VideoCodec::Hevc ? PictureInput::Nv12
                                                                                     : PictureInput::Rgba;
 }
@@ -108,6 +111,8 @@ std::optional<std::string> validateSettings(const MediaSettings& s)
             return "a GIF can be at most 4096 pixels across";
         if (s.frameRate.num <= 0 || s.frameRate.den <= 0)
             return "the frame rate must be positive";
+        if (isHdr(s.colour) && s.codec != VideoCodec::Hevc)
+            return "HDR goes out as 10-bit HEVC";
     }
     if (!s.hasVideo() && !s.audio)
         return "a sound file needs its sound";
@@ -130,7 +135,8 @@ std::int64_t defaultVideoBitrate(const MediaSettings& settings)
     const double pixels = double(settings.width) * settings.height;
     switch (settings.codec) {
     case VideoCodec::H264: return std::int64_t(0.15 * pixels * fps);
-    case VideoCodec::Hevc: return std::int64_t(0.15 * pixels * fps * 2.0 / 3.0);
+    case VideoCodec::Hevc: // (HDR's 10-bit PQ or HLG a quarter more)
+        return std::int64_t(0.15 * pixels * fps * 2.0 / 3.0 * (isHdr(settings.colour) ? 1.25 : 1.0));
     case VideoCodec::ProRes:
         return std::int64_t(proResMegabits(settings.proRes) * 1e6 * (pixels / (1920.0 * 1080.0)) * (fps / 29.97));
     case VideoCodec::Gif: return std::int64_t(1.2 * pixels * fps);
@@ -165,6 +171,8 @@ struct MediaWriter::Impl {
     SwsContext* converter = nullptr; // RGBA to the software ProRes encoder's YUV
     std::int64_t videoPts = 0;
     std::int64_t audioPts = 0;
+    double maxCll = 0.0; // PQ: the content light levels so far (nits)
+    double maxFall = 0.0;
     int audioFrameSize = 1024;
     bool shortLastFrame = false;      // the encoder takes a smaller last frame (else: padded)
     std::vector<float> pendingAudio;  // interleaved, less than one encoder frame
@@ -250,7 +258,13 @@ struct MediaWriter::Impl {
     {
         const MediaSettings& s = settings;
         const AVCodec* codec = nullptr;
-        AVPixelFormat pixels = AV_PIX_FMT_NV12;
+        const bool hdr = s.codec == VideoCodec::Hevc && isHdr(s.colour);
+        AVPixelFormat pixels = hdr ? AV_PIX_FMT_P010LE : AV_PIX_FMT_NV12;
+        const AVColorPrimaries primaries = hdr ? AVCOL_PRI_BT2020 : AVCOL_PRI_BT709;
+        const AVColorTransferCharacteristic transfer = !hdr ? AVCOL_TRC_BT709
+                                                     : s.colour == ProjectColour::HdrPq ? AVCOL_TRC_SMPTE2084
+                                                                                        : AVCOL_TRC_ARIB_STD_B67;
+        const AVColorSpace matrix = hdr ? AVCOL_SPC_BT2020_NCL : AVCOL_SPC_BT709;
         switch (s.codec) {
         case VideoCodec::H264: codec = avcodec_find_encoder_by_name("h264_videotoolbox"); break;
         case VideoCodec::Hevc: codec = avcodec_find_encoder_by_name("hevc_videotoolbox"); break;
@@ -283,9 +297,9 @@ struct MediaWriter::Impl {
             video->pix_fmt = pixels;
             video->time_base = AVRational{s.frameRate.den, s.frameRate.num};
             video->framerate = AVRational{s.frameRate.num, s.frameRate.den};
-            video->color_primaries = AVCOL_PRI_BT709;
-            video->color_trc = AVCOL_TRC_BT709;
-            video->colorspace = AVCOL_SPC_BT709;
+            video->color_primaries = primaries;
+            video->color_trc = transfer;
+            video->colorspace = matrix;
             // RGB frames are full range (VideoToolbox refuses BGRA said to be video range).
             video->color_range = pixels == AV_PIX_FMT_BGRA ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
             if (format->oformat->flags & AVFMT_GLOBALHEADER)
@@ -298,6 +312,8 @@ struct MediaWriter::Impl {
                 av_opt_set_int(video->priv_data, "allow_sw", 1, 0); // fall back if the hardware is busy
                 if (s.codec == VideoCodec::Hevc)
                     video->codec_tag = MKTAG('h', 'v', 'c', '1'); // so QuickTime and Finder play it
+                if (hdr)
+                    av_opt_set(video->priv_data, "profile", "main10", 0);
             }
             if (s.codec == VideoCodec::ProRes)
                 av_opt_set(video->priv_data, "profile", proResName(s.proRes), 0);
@@ -311,6 +327,30 @@ struct MediaWriter::Impl {
             return fail(s.codec == VideoCodec::ProRes ? "no ProRes encoder" : "cannot open the picture encoder");
         videoStream = avformat_new_stream(format, nullptr);
         avcodec_parameters_from_context(videoStream->codecpar, video);
+        // HDR: the mastering display, in the file (and with each frame, for the encoder).
+        AVMasteringDisplayMetadata* mastering = nullptr;
+        if (hdr) {
+            AVCodecParameters* par = videoStream->codecpar;
+            AVPacketSideData* data = av_packet_side_data_new(&par->coded_side_data, &par->nb_coded_side_data,
+                                                             AV_PKT_DATA_MASTERING_DISPLAY_METADATA,
+                                                             sizeof(AVMasteringDisplayMetadata), 0);
+            if (!data)
+                return fail("out of memory");
+            mastering = reinterpret_cast<AVMasteringDisplayMetadata*>(data->data);
+            std::memset(mastering, 0, sizeof *mastering);
+            const auto q = [](double v) { return AVRational{int(std::lround(v * 50000)), 50000}; };
+            const double xy[3][2] = {{0.708, 0.292}, {0.170, 0.797}, {0.131, 0.046}}; // Rec.2020 R, G, B
+            for (int i = 0; i < 3; ++i) {
+                mastering->display_primaries[i][0] = q(xy[i][0]);
+                mastering->display_primaries[i][1] = q(xy[i][1]);
+            }
+            mastering->white_point[0] = q(0.3127);
+            mastering->white_point[1] = q(0.3290);
+            mastering->min_luminance = AVRational{1, 10000};
+            mastering->max_luminance = AVRational{int(kHdrPeakNits), 1};
+            mastering->has_primaries = 1;
+            mastering->has_luminance = 1;
+        }
         videoStream->time_base = video->time_base;
         videoStream->avg_frame_rate = video->framerate;
 
@@ -319,11 +359,17 @@ struct MediaWriter::Impl {
         videoFrame->width = s.width;
         videoFrame->height = s.height;
         videoFrame->color_range = video->color_range;
-        videoFrame->colorspace = AVCOL_SPC_BT709;
-        videoFrame->color_primaries = AVCOL_PRI_BT709;
-        videoFrame->color_trc = AVCOL_TRC_BT709;
+        videoFrame->colorspace = matrix;
+        videoFrame->color_primaries = primaries;
+        videoFrame->color_trc = transfer;
         if (av_frame_get_buffer(videoFrame, 0) < 0)
             return fail("out of memory");
+        if (mastering) {
+            AVMasteringDisplayMetadata* own = av_mastering_display_metadata_create_side_data(videoFrame);
+            if (!own)
+                return fail("out of memory");
+            *own = *mastering;
+        }
         if (video->pix_fmt == AV_PIX_FMT_YUV422P10LE || video->pix_fmt == AV_PIX_FMT_YUV444P10LE
             || video->pix_fmt == AV_PIX_FMT_YUVA444P10LE) {
             converter = sws_getContext(s.width, s.height, AV_PIX_FMT_RGBA, s.width, s.height, video->pix_fmt,
@@ -486,6 +532,50 @@ bool MediaWriter::writeVideo(const std::uint8_t* luma, int lumaStride, const std
     return d.encode(d.video, d.videoStream, d.videoFrame);
 }
 
+bool MediaWriter::writeVideoP010(const std::uint16_t* luma, int lumaStride, const std::uint16_t* chroma, int chromaStride)
+{
+    Impl& d = *m_impl;
+    if (d.finished)
+        return d.fail("the file is already finished");
+    if (pictureInput(d.settings) != PictureInput::P010)
+        return d.fail("this file does not take HDR pictures");
+    if (av_frame_make_writable(d.videoFrame) < 0)
+        return d.fail("out of memory");
+    const int w = d.settings.width;
+    const int h = d.settings.height;
+    AVFrame* frame = d.videoFrame;
+    for (int y = 0; y < h; ++y)
+        std::memcpy(frame->data[0] + std::ptrdiff_t(y) * frame->linesize[0], luma + std::ptrdiff_t(y) * lumaStride,
+                    std::size_t(w) * 2);
+    for (int y = 0; y < h / 2; ++y)
+        std::memcpy(frame->data[1] + std::ptrdiff_t(y) * frame->linesize[1], chroma + std::ptrdiff_t(y) * chromaStride,
+                    std::size_t(w) * 2);
+    // PQ: how bright it gets, from every fourth pixel each way (each 2 × 2 block's chroma).
+    if (d.settings.colour == ProjectColour::HdrPq) {
+        double sum = 0.0;
+        int count = 0;
+        for (int y = 0; y + 1 < h; y += 4) {
+            for (int x = 0; x + 1 < w; x += 4) {
+                const double yy = (double(luma[std::ptrdiff_t(y) * lumaStride + x] >> 6) - 64.0) / 876.0;
+                const std::uint16_t* c = chroma + std::ptrdiff_t(y / 2) * chromaStride + (x / 2) * 2;
+                const double cb = (double(c[0] >> 6) - 512.0) / 896.0;
+                const double cr = (double(c[1] >> 6) - 512.0) / 896.0;
+                const double r = yy + 1.4746 * cr;
+                const double g = yy - 0.16455 * cb - 0.57135 * cr;
+                const double b = yy + 1.8814 * cb;
+                const double nits = nitsFromPq(std::clamp(std::max({r, g, b}), 0.0, 1.0));
+                d.maxCll = std::max(d.maxCll, nits);
+                sum += nits;
+                ++count;
+            }
+        }
+        if (count > 0)
+            d.maxFall = std::max(d.maxFall, sum / count);
+    }
+    frame->pts = d.videoPts++;
+    return d.encode(d.video, d.videoStream, frame);
+}
+
 bool MediaWriter::writeVideoRgba(const std::uint8_t* rgba, int stride)
 {
     Impl& d = *m_impl;
@@ -549,6 +639,17 @@ bool MediaWriter::finish()
         return false;
     if ((d.video && !d.encode(d.video, d.videoStream, nullptr)) || (d.audio && !d.encode(d.audio, d.audioStream, nullptr)))
         return false;
+    // The content light levels, now known, go in the file's index (written below).
+    if (d.video && d.settings.codec == VideoCodec::Hevc && d.settings.colour == ProjectColour::HdrPq) {
+        AVCodecParameters* par = d.videoStream->codecpar;
+        AVPacketSideData* data = av_packet_side_data_new(&par->coded_side_data, &par->nb_coded_side_data,
+                                                         AV_PKT_DATA_CONTENT_LIGHT_LEVEL, sizeof(AVContentLightMetadata), 0);
+        if (!data)
+            return d.fail("out of memory");
+        auto* levels = reinterpret_cast<AVContentLightMetadata*>(data->data);
+        levels->MaxCLL = unsigned(std::lround(std::min(d.maxCll, 10000.0)));
+        levels->MaxFALL = unsigned(std::lround(std::min(d.maxFall, 10000.0)));
+    }
     if (int rc = av_write_trailer(d.format); rc < 0)
         return d.fail("cannot finish the file: " + avError(rc));
     if (int rc = avio_closep(&d.format->pb); rc < 0)
@@ -559,6 +660,11 @@ bool MediaWriter::finish()
 std::int64_t MediaWriter::videoFramesWritten() const
 {
     return m_impl->videoPts;
+}
+
+std::pair<double, double> MediaWriter::contentLightLevels() const
+{
+    return {m_impl->maxCll, m_impl->maxFall};
 }
 
 std::string MediaWriter::videoEncoder() const

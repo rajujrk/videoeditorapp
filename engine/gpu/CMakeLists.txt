@@ -13,12 +13,14 @@ add_library(tve_gpu STATIC
     ColorGrader.cpp
     MaskRenderer.h
     MaskRenderer.cpp
+    ColourPass.h
+    ColourPass.cpp
 )
 
 qt_add_shaders(tve_gpu "tve_gpu_shaders"
     PREFIX "/gpu"
     FILES shaders/composite.frag shaders/grade.frag shaders/mask.frag shaders/matte.frag shaders/cutout.frag
-          shaders/faces.frag shaders/steady.frag shaders/denoise.frag shaders/cursor.frag
+          shaders/faces.frag shaders/steady.frag shaders/denoise.frag shaders/cursor.frag shaders/colour.frag
 )
 add_library(tve::gpu ALIAS tve_gpu)
 

@@ -16,6 +16,7 @@ Rectangle {
     id: editor
     required property var project // ProjectController
     property alias player: playerPanel.player
+    readonly property var hdrViewer: playerPanel.hdrViewer // the HDR viewer window, while open
     signal homeRequested()
 
     color: Theme.color.canvas

@@ -3,11 +3,14 @@
 #include "EffectInfo.h"
 #include "FrameCompositor.h"
 
+#include "gpu/ColourPass.h"
 #include "gpu/Compositor.h"
 #include "gpu/EffectChain.h"
+#include "playback/FrameMirror.h"
 #include "playback/PlaybackSession.h"
 
 #include <QDateTime>
+#include <QQuickWindow>
 #include <QFile>
 #include <QMatrix4x4>
 #include <QUrl>
@@ -36,9 +39,11 @@ QShader loadShader(const QString& name)
 }
 
 // Rendering, per composite frame: the FrameCompositor draws the layers on the project
-// canvas, then the output effects (the global stack) run on it, and the result is
-// aspect-fitted into the item. The first two run when a new frame arrives or a
-// preview/effect setting changes; the fit runs on every vsync.
+// canvas, then the output effects (the global stack) run on it, the display transform takes
+// it from the project's working colour to the display's (SDR, or an EDR window's extended
+// linear light), and the result is aspect-fitted into the item. All but the fit run when a
+// new frame arrives or a preview/effect/display setting changes; the fit runs on every vsync.
+// The scopes read the picture before the display transform (in the working colour).
 class VideoRenderer final : public QQuickRhiItemRenderer {
 public:
     ~VideoRenderer() override
@@ -74,6 +79,10 @@ private:
     QShader m_presentFrag;
     std::unique_ptr<FrameCompositor> m_frameCompositor;
     std::unique_ptr<tve::EffectChain> m_outputChain;
+    std::unique_ptr<tve::ColourPass> m_display;
+    std::shared_ptr<tve::FrameMirrors> m_mirrors;
+    bool m_hdrActive = false;
+    double m_headroom = 1.0;
     quint64 m_effectsRevision = 0;
     std::shared_ptr<PreviewOverrides> m_overrides;
     quint64 m_overridesRevision = 0;
@@ -82,7 +91,8 @@ private:
     std::unique_ptr<QRhiShaderResourceBindings> m_presentBindings;
     std::unique_ptr<QRhiGraphicsPipeline> m_presentPipeline;
     QRhiTexture* m_presentInput = nullptr;
-    QRhiTexture* m_processed = nullptr;
+    QRhiTexture* m_processed = nullptr; // in the working colour
+    QRhiTexture* m_shown = nullptr;     // for the display
 
     std::array<FrameResources, 3> m_frames;
     std::size_t m_currentFrame = 0;
@@ -134,6 +144,7 @@ void VideoRenderer::initialize(QRhiCommandBuffer*)
     m_presentUniforms.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, 80));
     m_presentUniforms->create();
     m_outputChain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
+    m_display = std::make_unique<tve::ColourPass>(m_rhi);
 
     // A placeholder input gives the present pipeline its binding layout.
     m_placeholder.reset(m_rhi->newTexture(QRhiTexture::RGBA8, QSize(1, 1)));
@@ -193,6 +204,33 @@ void VideoRenderer::synchronize(QQuickRhiItem* item)
         m_overridesRevision = m_overrides->revision();
         m_needsProcessing = true;
     }
+    m_mirrors = view->mirrors();
+
+    // The display: an EDR window's swapchain, and how far above SDR white it reaches now
+    // (macOS changes it with the brightness).
+    bool active = false;
+    double headroom = 1.0;
+    if (QQuickWindow* window = view->window(); view->hdrOutput() && window && window->swapChain()) {
+        QRhiSwapChain* swapChain = window->swapChain();
+        active = swapChain->format() == QRhiSwapChain::HDRExtendedSrgbLinear;
+        if (active) {
+            const QRhiSwapChainHdrInfo info = swapChain->hdrInfo();
+            if (info.limitsType == QRhiSwapChainHdrInfo::ColorComponentValue)
+                headroom = info.limits.colorComponentValue.maxColorComponentValue;
+            else if (info.sdrWhiteLevel > 0.0f)
+                headroom = info.limits.luminanceInNits.maxLuminance / info.sdrWhiteLevel;
+            headroom = std::max(headroom, 1.0);
+        }
+    }
+    if (active != m_hdrActive || std::abs(headroom - m_headroom) > 0.01) {
+        m_hdrActive = active;
+        m_headroom = headroom;
+        m_needsProcessing = true;
+        QMetaObject::invokeMethod(view, [view = QPointer<VideoView>(view), active, headroom] {
+            if (view)
+                view->setDisplay(active, headroom);
+        }, Qt::QueuedConnection);
+    }
 }
 
 void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
@@ -201,6 +239,11 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
     QRhiTexture* canvas =
         m_frameCompositor->render(cb, *resources.frame, m_canvasSize, seconds, m_overrides.get(), resources.textures);
     m_processed = canvas ? m_outputChain->process(cb, canvas, seconds) : nullptr;
+    // The display transform (nothing for an SDR project on an SDR display).
+    m_display->begin();
+    const tve::ColourSpace display{tve::Primaries::Rec709, m_hdrActive ? tve::Transfer::Linear : tve::Transfer::Sdr};
+    m_shown = m_display->apply(cb, m_processed, tve::conversion(tve::workingSpace(resources.frame->colour), display,
+                                                               m_headroom));
 }
 
 void VideoRenderer::captureScope(QRhiCommandBuffer* cb)
@@ -261,6 +304,8 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
             seconds = float(tve::toSeconds(now));
             int skipped = 0;
             if (auto frame = queue.takeLatestDue(now, skipped)) {
+                if (m_mirrors)
+                    m_mirrors->offer(m_source.get(), *frame);
                 m_source->counters().skipped += skipped;
                 m_currentFrame = (m_currentFrame + 1) % m_frames.size();
                 release(m_frames[m_currentFrame]);
@@ -286,7 +331,7 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
 
     // Aspect-fit the canvas into the item.
     const QSize outputSize = renderTarget()->pixelSize();
-    const bool canPresent = m_hasFrame && m_processed && m_presentPipeline && bindPresentInput(m_processed);
+    const bool canPresent = m_hasFrame && m_shown && m_presentPipeline && bindPresentInput(m_shown);
     QRhiResourceUpdateBatch* updates = m_rhi->nextResourceUpdateBatch();
     if (canPresent) {
         float scale[4] = {1.0f, 1.0f, m_rhi->isYUpInNDC() ? 1.0f : 0.0f, 0.0f};
@@ -313,7 +358,7 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
 
 } // namespace
 
-VideoView::VideoView(QQuickItem* parent) : QQuickRhiItem(parent)
+VideoView::VideoView(QQuickItem* parent) : QQuickRhiItem(parent), m_mirrors(std::make_shared<tve::FrameMirrors>())
 {
     // Every built-in effect starts in the stack, disabled, at its default values.
     for (const tve::LoadedEffect& effect : tve::EffectLibrary::builtIn().effects())
@@ -444,6 +489,79 @@ tve::EffectInstance* VideoView::findEffect(const QString& effectId)
     const std::string id = effectId.toStdString();
     auto it = std::ranges::find(m_effects, id, &tve::EffectInstance::effectId);
     return it == m_effects.end() ? nullptr : &*it;
+}
+
+void VideoView::setFollows(VideoView* leader)
+{
+    if (leader == m_follows || leader == this)
+        return;
+    for (const auto& connection : m_followConnections)
+        disconnect(connection);
+    m_followConnections.clear();
+    m_follows = leader;
+    if (leader) {
+        m_followConnections << connect(leader, &VideoView::sourceChanged, this, &VideoView::mirrorLeader)
+                            << connect(leader, &VideoView::effectsChanged, this, [this] {
+                                   if (m_follows) {
+                                       m_effects = m_follows->effects();
+                                       markEffectsChanged();
+                                   }
+                               })
+                            << connect(leader, &QObject::destroyed, this, [this] { setFollows(nullptr); });
+        m_effects = leader->effects();
+        markEffectsChanged();
+    }
+    mirrorLeader();
+    emit followsChanged();
+}
+
+void VideoView::mirrorLeader()
+{
+    std::shared_ptr<tve::FrameSource> leading = m_follows ? m_follows->frameSource() : nullptr;
+    if (!leading) {
+        m_previewOverrides = std::make_shared<PreviewOverrides>();
+        setFrameSource(nullptr, {});
+        return;
+    }
+    auto mirror = std::make_shared<tve::MirrorSource>(leading);
+    m_follows->mirrors()->add(mirror);
+    m_previewOverrides = m_follows->previewOverrides();
+    setFrameSource(mirror, m_follows->streamDescription());
+}
+
+void VideoView::setHdrOutput(bool on)
+{
+    if (on == m_hdrOutput)
+        return;
+    m_hdrOutput = on;
+    // Extended linear light needs a float picture all the way to the window.
+    setColorBufferFormat(on ? TextureFormat::RGBA16F : TextureFormat::RGBA8);
+    requestHdrWindow();
+    emit hdrOutputChanged();
+    update();
+}
+
+void VideoView::setDisplay(bool hdrActive, double headroom)
+{
+    if (hdrActive == m_hdrActive && headroom == m_displayHeadroom)
+        return;
+    m_hdrActive = hdrActive;
+    m_displayHeadroom = headroom;
+    emit displayChanged();
+}
+
+void VideoView::itemChange(ItemChange change, const ItemChangeData& value)
+{
+    QQuickRhiItem::itemChange(change, value);
+    if (change == ItemSceneChange)
+        requestHdrWindow();
+}
+
+void VideoView::requestHdrWindow()
+{
+    // Read by Qt Quick when it makes the window's swapchain: only before it is first shown.
+    if (m_hdrOutput && window() && !window()->isExposed())
+        window()->setProperty("_qt_sg_hdr_format", QByteArrayLiteral("scrgb"));
 }
 
 void VideoView::markEffectsChanged()

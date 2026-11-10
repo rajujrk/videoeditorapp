@@ -9,6 +9,19 @@ Rectangle {
     required property var project // ProjectController
     property alias player: video
     property bool showStats: false
+    property bool hdrViewerOpen: false
+    readonly property var hdrViewer: hdrViewerLoader.item
+
+    // The HDR viewer, a window of its own, while open.
+    Loader {
+        id: hdrViewerLoader
+        active: panel.hdrViewerOpen
+        sourceComponent: HdrViewer {
+            leader: video
+            project: panel.project
+            onClosing: panel.hdrViewerOpen = false
+        }
+    }
 
     color: Theme.color.surfaceSunken
 
@@ -162,6 +175,16 @@ Rectangle {
                     checkable: true
                     checked: panel.project.useProxies
                     onToggled: panel.project.useProxies = checked
+                }
+                IconButton {
+                    objectName: "hdrViewerButton"
+                    iconName: "hdr"
+                    tip: panel.project.projectColour === "sdr"
+                         ? "HDR viewer: the picture in a window of its own, HDR on an HDR display (this project is SDR)"
+                         : "HDR viewer: the picture in a window of its own, HDR on an HDR display"
+                    checkable: true
+                    checked: panel.hdrViewerOpen
+                    onToggled: panel.hdrViewerOpen = checked
                 }
                 IconButton {
                     iconName: "stats"

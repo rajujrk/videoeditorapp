@@ -77,6 +77,37 @@ void ScopeView::setView(VideoView* view)
     emit viewChanged();
 }
 
+void ScopeView::setColour(const QString& colour)
+{
+    if (colour == m_colour)
+        return;
+    m_colour = colour;
+    analyse();
+    emit colourChanged();
+}
+
+QVariantList ScopeView::scale() const
+{
+    QVariantList marks;
+    const tve::ProjectColour colour = tve::projectColourFrom(m_colour.toStdString());
+    if (!tve::isHdr(colour)) {
+        for (int percent = 0; percent <= 100; percent += 25)
+            marks << QVariantMap{{QStringLiteral("label"), QString::number(percent)}, {QStringLiteral("level"), percent / 100.0}};
+        return marks;
+    }
+    // Nits where the signal puts them: PQ is absolute; HLG as on a 1000-nit display.
+    const bool pq = colour == tve::ProjectColour::HdrPq;
+    const std::vector<double> nits = pq ? std::vector<double>{0, 10, 100, 203, 1000, 4000, 10000}
+                                        : std::vector<double>{0, 10, 100, 203, 1000};
+    for (double n : nits) {
+        const double grey = n / tve::kReferenceWhiteNits;
+        const double level = pq ? tve::pqFromNits(n) : tve::encodeHlg({grey, grey, grey})[0];
+        marks << QVariantMap{{QStringLiteral("label"), n >= 10000 ? QStringLiteral("10k") : QString::number(n)},
+                             {QStringLiteral("level"), level}};
+    }
+    return marks;
+}
+
 void ScopeView::setMode(const QString& mode)
 {
     if (mode == m_mode)
@@ -114,6 +145,9 @@ void ScopeView::analyse()
         update();
         return;
     }
+    m_image.lumaWeights = tve::isHdr(tve::projectColourFrom(m_colour.toStdString()))
+                              ? std::array<float, 3>{0.2627f, 0.6780f, 0.0593f}
+                              : std::array<float, 3>{0.2126f, 0.7152f, 0.0722f};
     if (m_mode == QLatin1String("vectorscope")) {
         const tve::ScopeGrid grid = tve::vectorscope(m_image, 256);
         m_trace = QImage(256, 256, QImage::Format_RGB32);
@@ -197,7 +231,10 @@ void ScopeView::paint(QPainter* painter)
         return;
     }
 
-    const QRectF plotArea = area.adjusted(22, 6, -4, -6);
+    // Room on the left for the scale's labels (nits take four digits).
+    const bool nits = tve::isHdr(tve::projectColourFrom(m_colour.toStdString())) && m_mode != QLatin1String("histogram");
+    const double gutter = nits ? 30 : 22;
+    const QRectF plotArea = area.adjusted(gutter, 6, -4, -6);
     if (!m_trace.isNull())
         painter->drawImage(plotArea, m_trace);
     painter->setPen(QPen(kScale, 1));
@@ -208,12 +245,19 @@ void ScopeView::paint(QPainter* painter)
         }
         return;
     }
-    for (int percent = 0; percent <= 100; percent += 25) {
-        const double y = plotArea.bottom() - plotArea.height() * percent / 100.0;
+    for (const QVariant& entry : scale()) {
+        const QVariantMap mark = entry.toMap();
+        const double y = plotArea.bottom() - plotArea.height() * mark.value(QStringLiteral("level")).toDouble();
         painter->setPen(QPen(kScale, 1));
         painter->drawLine(QPointF(plotArea.left(), y), QPointF(plotArea.right(), y));
         painter->setPen(kLabel);
-        painter->drawText(QRectF(0, y - 6, 20, 12), Qt::AlignRight | Qt::AlignVCenter, QString::number(percent));
+        painter->drawText(QRectF(0, y - 6, gutter - 2, 12), Qt::AlignRight | Qt::AlignVCenter,
+                          mark.value(QStringLiteral("label")).toString());
+    }
+    if (nits) {
+        painter->setPen(kLabel);
+        painter->drawText(QRectF(plotArea.right() - 40, plotArea.top() + 1, 38, 12), Qt::AlignRight | Qt::AlignTop,
+                          QStringLiteral("nits"));
     }
     if (m_mode == QLatin1String("parade")) {
         for (int i = 1; i < 3; ++i) {

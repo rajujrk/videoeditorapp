@@ -1196,6 +1196,9 @@ std::optional<std::string> SetProjectSettingsCommand::redo(Project& project)
     if (s.frameRate.num <= 0 || s.frameRate.den <= 0)
         return "frame rate must be positive";
     m_previous = project.settings;
+    m_colourOnly = s.colour != m_previous.colour && s.width == m_previous.width && s.height == m_previous.height
+                && s.frameRate.num == m_previous.frameRate.num && s.frameRate.den == m_previous.frameRate.den
+                && s.sampleRate == m_previous.sampleRate;
     project.settings = m_settings;
     return std::nullopt;
 }

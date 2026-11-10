@@ -1,5 +1,7 @@
 #include "decode/VideoDecoder.h"
 
+#include "decode/ColourTags.h"
+
 #include <algorithm>
 #include <mutex>
 
@@ -99,6 +101,7 @@ struct VideoDecoder::Impl {
     CVPixelBufferPoolRef pool = nullptr;
     int poolWidth = 0;
     int poolHeight = 0;
+    int poolFormat = 0;
 
     int streamIndex = -1;
     AVRational timeBase{};
@@ -122,7 +125,7 @@ struct VideoDecoder::Impl {
 
     Ticks framePts() const;
     std::optional<DecodedFrame> takeFrame(Ticks pts);
-    CVPixelBufferRef convertToNv12();
+    CVPixelBufferRef convertToYuv();
     CVPixelBufferRef convertToBgra();
     bool ensurePool(int pixelFormat);
 };
@@ -139,28 +142,35 @@ Ticks VideoDecoder::Impl::framePts() const
 std::optional<DecodedFrame> VideoDecoder::Impl::takeFrame(Ticks pts)
 {
 
+    // Each picture says its colour space (the frame's own tags, else the stream's).
+    const ColourSpace tagged = frame->color_primaries != AVCOL_PRI_UNSPECIFIED || frame->color_trc != AVCOL_TRC_UNSPECIFIED
+                                   ? colourFromTags(frame->color_primaries, frame->color_trc)
+                                   : info.colour;
     if (frame->format == AV_PIX_FMT_VIDEOTOOLBOX) {
         info.hardwareAccelerated = true;
         auto buffer = reinterpret_cast<CVPixelBufferRef>(frame->data[3]);
         CVPixelBufferRetain(buffer);
+        tagBuffer(buffer, tagged);
         return DecodedFrame(buffer, pts);
     }
 
     info.hardwareAccelerated = false;
-    CVPixelBufferRef buffer = info.hasAlpha ? convertToBgra() : convertToNv12();
+    CVPixelBufferRef buffer = info.hasAlpha ? convertToBgra() : convertToYuv();
     if (!buffer)
         return std::nullopt;
+    tagBuffer(buffer, tagged);
     return DecodedFrame(buffer, pts);
 }
 
 bool VideoDecoder::Impl::ensurePool(int pixelFormat)
 {
-    if (!pool || poolWidth != frame->width || poolHeight != frame->height) {
+    if (!pool || poolWidth != frame->width || poolHeight != frame->height || poolFormat != pixelFormat) {
         if (pool)
             CVPixelBufferPoolRelease(pool);
         pool = createPool(frame->width, frame->height, pixelFormat);
         poolWidth = frame->width;
         poolHeight = frame->height;
+        poolFormat = pixelFormat;
     }
     return pool != nullptr;
 }
@@ -188,14 +198,17 @@ CVPixelBufferRef VideoDecoder::Impl::convertToBgra()
     return buffer;
 }
 
-CVPixelBufferRef VideoDecoder::Impl::convertToNv12()
+// NV12, or P010 for more than 8 bits a sample (HDR would band in 8).
+CVPixelBufferRef VideoDecoder::Impl::convertToYuv()
 {
-    if (!ensurePool(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange))
+    const bool tenBit = info.highBitDepth;
+    if (!ensurePool(tenBit ? kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange : kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange))
         return nullptr;
 
     const CFStringRef matrix = matrixAttachment(frame->colorspace, frame->height);
     sws = sws_getCachedContext(sws, frame->width, frame->height, static_cast<AVPixelFormat>(frame->format),
-                               frame->width, frame->height, AV_PIX_FMT_NV12, SWS_BILINEAR, nullptr, nullptr, nullptr);
+                               frame->width, frame->height, tenBit ? AV_PIX_FMT_P010LE : AV_PIX_FMT_NV12, SWS_BILINEAR,
+                               nullptr, nullptr, nullptr);
     if (!sws)
         return nullptr;
     const int* coefficients = sws_getCoefficients(swsColorspace(matrix));
@@ -257,6 +270,8 @@ std::unique_ptr<VideoDecoder> VideoDecoder::open(const std::string& path, std::s
     // software.
     const AVPixFmtDescriptor* sourceFormat = av_pix_fmt_desc_get(static_cast<AVPixelFormat>(stream->codecpar->format));
     d->info.hasAlpha = sourceFormat && (sourceFormat->flags & AV_PIX_FMT_FLAG_ALPHA);
+    d->info.highBitDepth = sourceFormat && sourceFormat->comp[0].depth > 8;
+    d->info.colour = colourFromTags(stream->codecpar->color_primaries, stream->codecpar->color_trc);
     for (int i = 0; !d->info.hasAlpha; ++i) {
         const AVCodecHWConfig* config = avcodec_get_hw_config(decoder, i);
         if (!config)

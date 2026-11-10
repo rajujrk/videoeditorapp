@@ -30,13 +30,15 @@ class Compositor;
 class EffectChain;
 class TransitionRenderer;
 class ColorGrader;
+class ColourPass;
 class MaskRenderer;
 }
 
 // Draws composite frames onto the project canvas on the GPU (Metal), for the preview and
 // for export alike:
 //   1. each layer: YUV → RGB at the layer's own resolution (zero-copy from its
-//      CVPixelBuffer), or a title's text; then that clip's effects
+//      CVPixelBuffer), or a title's text; converted from its own colour space into the
+//      project's working one (frame.colour); then that clip's colour and effects
 //   2. the compositor draws the layers onto the canvas (placement, crop, opacity, blend).
 //      A clip with canvas effects (shadows, borders, fills) is placed on a transparent
 //      canvas of its own first, those effects run there, and the result is drawn.
@@ -129,6 +131,7 @@ private:
     std::vector<std::array<std::unique_ptr<tve::Compositor>, 2>> m_transitionCanvases;
     std::unique_ptr<tve::TransitionRenderer> m_transitions;
     std::unique_ptr<tve::ColorGrader> m_grader;
+    std::unique_ptr<tve::ColourPass> m_colour;
     std::unique_ptr<tve::MaskRenderer> m_masks;
     // Per matted layer within a frame: the layer's and its matte's own canvases.
     std::vector<std::array<std::unique_ptr<tve::Compositor>, 2>> m_matteCanvases;
@@ -136,6 +139,7 @@ private:
     std::map<tve::Id, DrawingTexture> m_drawings;
     struct StillTexture {
         std::unique_ptr<QRhiTexture> texture;
+        tve::ColourSpace colour; // a Display P3 photo's, or SDR Rec.709
         std::uint64_t lastUsed = 0; // render count
     };
     std::map<std::string, StillTexture> m_stills;
