@@ -8,6 +8,7 @@
 #include "PackStore.h"
 #include "TemplateLibrary.h"
 #include "cloud/CloudFeatures.h"
+#include "Copilot.h"
 #include "cloud/CloudServices.h"
 #include "SoundLibrary.h"
 #include "SpeechModels.h"
@@ -241,6 +242,8 @@ class ProjectController : public QObject {
     // AI: keys, models, the job running and what was used; the languages captions translate
     // into; where spoken voices are kept.
     Q_PROPERTY(CloudServices* cloud READ cloud CONSTANT)
+    // The editing copilot (Claude with tools over the edit).
+    Q_PROPERTY(Copilot* copilot READ copilot CONSTANT)
     Q_PROPERTY(QStringList translationLanguages READ translationLanguages CONSTANT)
     Q_PROPERTY(QString voicesDirectory READ voicesDirectory NOTIFY projectChanged)
     Q_PROPERTY(QString generatedDirectory READ generatedDirectory NOTIFY projectChanged)
@@ -380,6 +383,7 @@ public:
     MediaImports* imports() const { return m_imports; }
     QString importsDirectory() const;
     CloudServices* cloud() const { return m_cloud; }
+    Copilot* copilot() const { return m_copilot; }
     QStringList translationLanguages() const;
     QString voicesDirectory() const;
     QString generatedDirectory() const;
@@ -1046,6 +1050,8 @@ private:
     SoundLibrary* m_soundLibrary = nullptr;
     MediaImports* m_imports = nullptr;
     CloudServices* m_cloud = nullptr;
+    Copilot* m_copilot = nullptr;
+    friend class Copilot;
     TemplateLibrary* m_templates = nullptr;
     PackStore* m_store = nullptr;
     AudioPluginHost* m_pluginHost = nullptr;

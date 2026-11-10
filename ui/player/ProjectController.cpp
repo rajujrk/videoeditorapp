@@ -802,6 +802,7 @@ ProjectController::ProjectController(QObject* parent)
     m_audioOutput->setSource(m_playback->audio(), &m_playback->clock());
     m_soundLibrary = new SoundLibrary(this);
     m_cloud = new CloudServices(this);
+    m_copilot = new Copilot(this);
     m_templates = new TemplateLibrary(this);
     m_store = new PackStore(this);
     m_pluginHost = new AudioPluginHost(this);
@@ -1230,6 +1231,8 @@ void ProjectController::resetProject(Project project, const QString& filePath)
     }
     m_project = std::move(project);
     m_stack = std::make_unique<CommandStack>(m_project);
+    if (m_copilot)
+        m_copilot->startOver(); // (its conversation was about the other project)
     m_filePath = filePath;
     m_selectedClip = kNoId;
     m_selectedClips.clear();

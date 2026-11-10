@@ -55,6 +55,7 @@ Rectangle {
         { icon: "media", label: "Media", phase: "" },
         { icon: "audio", label: "Audio", phase: "" },
         { icon: "generate", label: "Generate", phase: "" },
+        { icon: "assistant", label: "Copilot", phase: "" },
         { icon: "titles", label: "Titles", phase: "" },
         { icon: "transitions", label: "Transitions", phase: "" },
         { icon: "effects", label: "Effects", phase: "" },
@@ -170,6 +171,7 @@ Rectangle {
                 objectName: "librarySearch"
                 visible: library.tabs[library.currentTab].label !== "Captions" && library.tabs[library.currentTab].label !== "Transcript"
                          && library.tabs[library.currentTab].label !== "Generate" && library.tabs[library.currentTab].label !== "Templates"
+                         && library.tabs[library.currentTab].label !== "Copilot"
                          && library.tabs[library.currentTab].label !== "Store"
                 Layout.fillWidth: true
                 Layout.margins: Theme.space.m
@@ -287,6 +289,18 @@ Rectangle {
                 sourceComponent: StorePage {
                     objectName: "storePage"
                     project: library.project
+                }
+            }
+            Loader {
+                id: copilotPage
+                active: visible || item !== null
+                visible: library.tabs[library.currentTab].label === "Copilot"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                sourceComponent: CopilotPage {
+                    objectName: "copilotPage"
+                    project: library.project
+                    onSettingsRequested: library.cloudSettingsRequested()
                 }
             }
             Loader {
@@ -1141,7 +1155,7 @@ Rectangle {
             Item {
                 visible: !effectsGrid.visible && !looksGrid.visible && !transitionsGrid.visible && !titlesGrid.visible
                          && !mediaBin.visible && !stickersGrid.visible && !captionsPage.visible && !transcriptPage.visible
-                         && !audioPage.visible && !generatePage.visible && !templatesPage.visible
+                         && !audioPage.visible && !generatePage.visible && !copilotPage.visible && !templatesPage.visible
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 

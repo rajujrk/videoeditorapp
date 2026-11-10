@@ -1,6 +1,8 @@
 #pragma once
 
+#include <QJsonArray>
 #include <QJsonObject>
+#include <QList>
 #include <QObject>
 #include <QPointer>
 #include <QString>
@@ -59,6 +61,44 @@ protected:
     TextResult m_result;
 };
 
+// A conversation with tools (the editing copilot): the whole history each turn, appended to,
+// never edited (Claude's thinking blocks stay valid only in the conversation that made
+// them). `system` and `tools` stay the same for the conversation.
+struct AgentRequest {
+    QJsonArray system;   // text blocks
+    QJsonArray tools;    // client tools (sent with eager input streaming)
+    QJsonArray messages;
+    QString model;
+    QString effort = QStringLiteral("high");
+    int maxTokens = 64000;
+};
+
+// A tool Claude asked for, its input read strictly from the stream: `invalid` when it
+// isn't a JSON object (`raw` holds what came).
+struct ToolCall {
+    QString id;
+    QString name;
+    QJsonObject input;
+    bool invalid = false;
+    QString raw;
+};
+
+struct AgentResult {
+    TextResult turn;         // its text (after any fallback), stop reason and usage
+    QJsonArray content;      // the assistant's content, as it goes back into the history
+    QList<ToolCall> toolCalls;
+};
+
+class AgentTask : public TextTask {
+    Q_OBJECT
+public:
+    using TextTask::TextTask;
+    const AgentResult& agentResult() const { return m_agent; }
+
+protected:
+    AgentResult m_agent;
+};
+
 class TextProvider {
 public:
     virtual ~TextProvider() = default;
@@ -72,6 +112,8 @@ class ClaudeProvider final : public TextProvider {
 public:
     explicit ClaudeProvider(QNetworkAccessManager* network) : m_network(network) {}
     TextTask* send(const TextRequest& request, QObject* parent) override;
+    // One turn of a conversation with tools: what Claude says and the tools it asks for.
+    AgentTask* converse(const AgentRequest& request, QObject* parent);
 
     // List prices per million tokens (input, output) of the models we use or fall back to.
     static std::pair<double, double> prices(const QString& model);

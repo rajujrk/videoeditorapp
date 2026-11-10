@@ -17,6 +17,8 @@ qt_add_qml_module(tve_player
         ProxyManager.cpp
         ProjectController.h
         ProjectController.cpp
+        Copilot.h
+        Copilot.cpp
         KeyMap.h
         KeyMap.cpp
         SpeechModels.h

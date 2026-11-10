@@ -46,6 +46,7 @@ qt_add_qml_module(tve_shell
         HdrViewer.qml
         SphereOverlay.qml
         InterchangeDialog.qml
+        CopilotPage.qml
         TitleTemplates.js
     IMPORTS
         TechieVideoEditor.Theme

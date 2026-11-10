@@ -140,3 +140,28 @@ TEST_CASE("picture settings and effects round-trip; old files get defaults")
     CHECK(old.tracks[1].clips.front().visual == ClipVisual{});
     CHECK(old.tracks[1].clips.front().effects.empty());
 }
+
+TEST_CASE("edits made on a copy apply as one step, only to the project they were made for")
+{
+    Project project;
+    project.tracks.push_back(Track{.id = project.allocateId(), .kind = TrackKind::Video, .name = "Video 1"});
+    const Project before = project;
+    Project copy = project;
+    REQUIRE_FALSE(AddTitleCommand(copy.tracks[0].id, 0, kTicksPerSecond, ClipText{}).redo(copy));
+    REQUIRE_FALSE(AddTitleCommand(copy.tracks[0].id, kTicksPerSecond, kTicksPerSecond, ClipText{}).redo(copy));
+
+    ApplyEditsCommand apply(before, copy, "Copilot: 2 changes");
+    CHECK(apply.label() == "Copilot: 2 changes");
+    REQUIRE_FALSE(apply.redo(project));
+    CHECK(project == copy);
+    CHECK(project.tracks[0].clips.size() == 2);
+    CHECK(project.nextId() == copy.nextId()); // the ids it gave out stay given
+    apply.undo(project);
+    CHECK(project == before);
+
+    // Edited meanwhile: refused, nothing changed.
+    project.tracks[0].name = "Renamed";
+    const Project edited = project;
+    CHECK(apply.redo(project) == "the project changed since these edits were made");
+    CHECK(project == edited);
+}

@@ -429,6 +429,26 @@ private:
     TrackMix m_previous;
 };
 
+// Edits made elsewhere — on a copy of `before`, by the copilot — applied as one step: the
+// project becomes `after`. Refused when the project is no longer `before` (it was edited
+// since), so nothing made for another state is applied.
+class ApplyEditsCommand final : public Command {
+public:
+    ApplyEditsCommand(Project before, Project after, std::string label)
+        : m_before(std::move(before)), m_after(std::move(after)), m_label(std::move(label))
+    {
+    }
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+private:
+    Project m_before;
+    Project m_after;
+    std::string m_label;
+};
+
 // Changes the canvas size and frame rate, or the project's colour.
 class SetProjectSettingsCommand final : public Command {
 public:
