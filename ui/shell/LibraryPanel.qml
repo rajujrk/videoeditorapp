@@ -965,6 +965,7 @@ Rectangle {
                                           : mediaTile.modelData.width + "×" + mediaTile.modelData.height
                                             + " · " + mediaTile.modelData.frameRate.toFixed(mediaTile.modelData.frameRate % 1 ? 2 : 0) + " fps"
                                             + (mediaTile.modelData.alpha ? " · transparent" : "")
+                                            + (mediaTile.modelData.colour && !mediaTile.modelData.hdr ? " · " + mediaTile.modelData.colour : "")
                                             + (mediaTile.modelData.hasAudio ? " · sound" : "")
                                     font: Theme.type.caption
                                     color: Theme.color.textSecondary
@@ -998,6 +999,25 @@ Rectangle {
                             radius: Theme.radius.s
                             color: Theme.color.accent
                             Text { id: aiLabel; anchors.centerIn: parent; text: "AI"; font: Theme.type.caption; color: "#FFFFFF" }
+                        }
+
+                        // HDR media: marked, with how it is encoded (PQ or HLG).
+                        Rectangle {
+                            objectName: "hdrBadge:" + mediaTile.modelData.name
+                            visible: mediaTile.modelData.hdr === true
+                            anchors { right: parent.right; top: parent.top; margins: Theme.space.s }
+                            width: hdrLabel.implicitWidth + Theme.space.s
+                            height: hdrLabel.implicitHeight + Theme.space.xxs
+                            radius: Theme.radius.s
+                            color: Theme.color.overlay
+                            Text { id: hdrLabel; anchors.centerIn: parent; text: mediaTile.modelData.colour || "HDR"; font: Theme.type.caption; color: "#FFFFFF" }
+                            ToolTip {
+                                visible: hdrBadgeMouse.containsMouse
+                                text: library.project.projectColour === "sdr"
+                                      ? "HDR media: shown tone-mapped in this SDR project. Make the project HDR in Color to keep its highlights."
+                                      : "HDR media, in this HDR project as it is"
+                            }
+                            MouseArea { id: hdrBadgeMouse; anchors.fill: parent; hoverEnabled: true }
                         }
 
                         // Proxy: its state, and (on hover) making or removing one.

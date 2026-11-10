@@ -2,6 +2,8 @@ add_library(tve_engine STATIC
     decode/DecodedFrame.h
     decode/VideoDecoder.h
     decode/VideoDecoder.cpp
+    decode/ColourTags.h
+    decode/ColourTags.cpp
     decode/AudioDecoder.h
     decode/AudioDecoder.cpp
     decode/Thumbnail.h
@@ -39,6 +41,7 @@ add_library(tve_engine STATIC
     imports/ImportSources.mm
     playback/FrameQueue.h
     playback/FrameSource.h
+    playback/FrameMirror.h
     playback/PlaybackClock.h
     playback/PlaybackSession.h
     playback/PlaybackSession.cpp

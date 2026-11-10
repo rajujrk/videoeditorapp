@@ -20,12 +20,29 @@ void from_json(const nlohmann::json& j, FrameRate& r)
     j.at("den").get_to(r.den);
 }
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ProjectSettings, width, height, frameRate, sampleRate)
+NLOHMANN_JSON_SERIALIZE_ENUM(ProjectColour, {
+    {ProjectColour::Sdr, "sdr"},
+    {ProjectColour::HdrPq, "hdr-pq"},
+    {ProjectColour::HdrHlg, "hdr-hlg"},
+})
+NLOHMANN_JSON_SERIALIZE_ENUM(Primaries, {
+    {Primaries::Rec709, "709"},
+    {Primaries::DisplayP3, "p3"},
+    {Primaries::Rec2020, "2020"},
+})
+NLOHMANN_JSON_SERIALIZE_ENUM(Transfer, {
+    {Transfer::Sdr, "sdr"},
+    {Transfer::Linear, "linear"},
+    {Transfer::Pq, "pq"},
+    {Transfer::Hlg, "hlg"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColourSpace, primaries, transfer)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ProjectSettings, width, height, frameRate, sampleRate, colour)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GeneratedBy, provider, model, kind, prompt, reference, source, created)
 // Fields added after schema 1 shipped default when absent, so older files still load.
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MediaItem, id, path, duration, hasVideo, hasAudio, width, height,
                                                 frameRate, audioSampleRate, audioChannels, still, alpha, lottie,
-                                                fingerprint, generated, placeholder)
+                                                fingerprint, generated, placeholder, colour)
 NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
     {BlendMode::Normal, "normal"},
     {BlendMode::Multiply, "multiply"},

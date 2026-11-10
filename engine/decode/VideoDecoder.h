@@ -1,6 +1,7 @@
 #pragma once
 
 #include "decode/DecodedFrame.h"
+#include "model/Colour.h"
 #include "model/Time.h"
 
 #include <memory>
@@ -19,6 +20,11 @@ struct VideoStreamInfo {
     // The pictures have transparency (ProRes 4444, GIF, animated PNG or WebP…): decoded in
     // software to straight-alpha BGRA pixel buffers instead of NV12.
     bool hasAlpha = false;
+    // The colour space the stream is tagged with (untagged: SDR Rec.709). Every frame's
+    // pixel buffer carries it too (decode/ColourTags.h).
+    ColourSpace colour;
+    // More than 8 bits a sample: a software decode keeps them, as P010.
+    bool highBitDepth = false;
 };
 
 // Decodes the best video stream of a file. Uses VideoToolbox when the codec supports it

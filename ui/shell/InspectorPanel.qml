@@ -1439,6 +1439,44 @@ Rectangle {
                 function preview(changes) { inspector.project.previewClipColor(inspector.clipInfo.id, changes) }
                 function commit(changes) { inspector.project.setClipColor(inspector.clipInfo.id, changes) }
 
+                // The project's working colour: every clip is converted into it, graded in it,
+                // and exported in it.
+                Section {
+                    objectName: "projectColourSection"
+                    Layout.fillWidth: true
+                    title: "Project colour"
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xxs
+                        Repeater {
+                            model: [{ id: "sdr", label: "SDR · 709" }, { id: "hdr-pq", label: "HDR · PQ" },
+                                    { id: "hdr-hlg", label: "HDR · HLG" }]
+                            delegate: TextButton {
+                                required property var modelData
+                                objectName: "projectColour:" + modelData.id
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                                implicitWidth: 40
+                                text: modelData.label
+                                variant: inspector.project.projectColour === modelData.id ? "primary" : "secondary"
+                                onClicked: inspector.project.projectColour = modelData.id
+                            }
+                        }
+                    }
+                    Text {
+                        objectName: "projectColourNote"
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: inspector.project.projectColour === "sdr"
+                              ? "Rec.709. HDR media is tone-mapped into it; Display P3 and Rec.2020 media converted."
+                              : "Rec.2020 " + (inspector.project.projectColour === "hdr-pq" ? "PQ" : "HLG")
+                                + ": SDR media sits at graphics white (203 nits). The player shows it tone-mapped; the HDR viewer "
+                                + "(beside the player's statistics) shows it as HDR. HEVC exports stay HDR."
+                        font: Theme.type.caption
+                        color: Theme.color.textSecondary
+                    }
+                }
+
                 // Scopes of the preview (whatever is on screen, graded or not).
                 Section {
                     objectName: "scopesSection"
@@ -1470,6 +1508,7 @@ Rectangle {
                         Layout.preferredHeight: colorPage.scopeMode === "vectorscope" ? 220 : colorPage.scopeMode === "histogram" ? 120 : 170
                         view: inspector.player
                         mode: colorPage.scopeMode
+                        colour: inspector.project.projectColour
                     }
                 }
 

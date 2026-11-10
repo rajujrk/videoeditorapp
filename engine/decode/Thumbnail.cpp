@@ -1,5 +1,6 @@
 #include "decode/Thumbnail.h"
 
+#include "decode/ColourTags.h"
 #include "decode/VideoDecoder.h"
 
 #include <algorithm>
@@ -100,11 +101,18 @@ std::optional<RgbaImage> pictureOf(const DecodedFrame& frame, int height)
         return image;
     }
 
-    // BT.709 for HD and up, BT.601 below.
+    // BT.709 for HD and up, BT.601 below, unless the buffer says BT.2020.
     const bool hd = sourceH > 576;
-    const float kr = hd ? 0.2126f : 0.299f;
-    const float kb = hd ? 0.0722f : 0.114f;
+    bool bt2020 = false;
+    if (CFTypeRef matrix = CVBufferCopyAttachment(buffer, kCVImageBufferYCbCrMatrixKey, nullptr)) {
+        bt2020 = CFEqual(matrix, kCVImageBufferYCbCrMatrix_ITU_R_2020);
+        CFRelease(matrix);
+    }
+    const float kr = bt2020 ? 0.2627f : hd ? 0.2126f : 0.299f;
+    const float kb = bt2020 ? 0.0593f : hd ? 0.0722f : 0.114f;
     const float kg = 1.0f - kr - kb;
+    // Another colour space than SDR Rec.709: converted to it.
+    const ColourConversion toSdr = conversion(bufferColour(buffer), ColourSpace{});
 
     CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
     const auto* luma = static_cast<const std::uint8_t*>(CVPixelBufferGetBaseAddressOfPlane(buffer, 0));
@@ -141,9 +149,16 @@ std::optional<RgbaImage> pictureOf(const DecodedFrame& frame, int height)
             const float b = yv + 2.0f * (1.0f - kb) * cb;
             const float g = yv - (2.0f * kb * (1.0f - kb) * cb + 2.0f * kr * (1.0f - kr) * cr) / kg;
             std::uint8_t* px = image.pixels.data() + (std::size_t(y) * std::size_t(image.width) + std::size_t(x)) * 4;
-            px[0] = toByte(r);
-            px[1] = toByte(g);
-            px[2] = toByte(b);
+            if (toSdr.identity) {
+                px[0] = toByte(r);
+                px[1] = toByte(g);
+                px[2] = toByte(b);
+            } else {
+                const auto sdr = convert(toSdr, {double(r), double(g), double(b)});
+                px[0] = toByte(float(sdr[0]));
+                px[1] = toByte(float(sdr[1]));
+                px[2] = toByte(float(sdr[2]));
+            }
             px[3] = 255;
         }
     }

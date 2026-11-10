@@ -108,6 +108,9 @@ struct VideoLayer {
 struct CompositeFrame {
     Ticks time = 0;
     std::vector<VideoLayer> layers;
+    // The project's working colour: every layer is converted into it before its colour,
+    // effects and placement (SDR Rec.709 unless the project is HDR).
+    ProjectColour colour = ProjectColour::Sdr;
 
     Ticks pts() const { return time; }
 };

@@ -46,6 +46,8 @@ Popup {
 
     property string quality: "standard"
     readonly property var format: project.exportFormats[Math.max(0, formatPicker.currentIndex)]
+    readonly property bool hdrProject: project.projectColour !== "sdr" && format.video
+    readonly property bool hevc: format.id.indexOf("hevc") >= 0
 
     // The canvas, standard heights below it, two fixed shapes, then upscaled heights.
     readonly property var sizes: {
@@ -96,6 +98,7 @@ Popup {
         frameRate: rates[Math.max(0, ratePicker.currentIndex)].fps,
         quality: quality,
         audio: soundSwitch.checked,
+        hdr: hdrSwitch.checked,
         normalizeLoudness: loudnessSwitch.checked,
         loudnessTarget: loudnessPicker.currentValue,
         range: range.range === "each" ? "all" : range.range,
@@ -303,6 +306,32 @@ Popup {
                             presetPicker.currentIndex = 0
                         }
                     }
+                }
+            }
+
+            // An HDR project: HEVC keeps it HDR; everything else is tone-mapped to SDR.
+            Text { visible: dialog.hdrProject; text: "Colour"; font: Theme.type.label; color: Theme.color.textSecondary }
+            RowLayout {
+                visible: dialog.hdrProject
+                Layout.fillWidth: true
+                ToggleSwitch {
+                    id: hdrSwitch
+                    objectName: "exportHdr"
+                    visible: dialog.hevc
+                    checked: true
+                }
+                Text {
+                    objectName: "exportColourNote"
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: !dialog.hevc
+                          ? "SDR Rec.709: the HDR picture is tone-mapped (HDR goes out as HEVC)"
+                          : hdrSwitch.checked
+                          ? "HDR: 10-bit HEVC, Rec.2020 " + (dialog.project.projectColour === "hdr-pq" ? "PQ" : "HLG")
+                            + ", with its mastering display"
+                          : "SDR Rec.709: the HDR picture is tone-mapped"
+                    font: Theme.type.body
+                    color: Theme.color.textPrimary
                 }
             }
 

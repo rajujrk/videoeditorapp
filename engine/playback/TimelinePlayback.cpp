@@ -292,7 +292,7 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project, Ticks start)
     Ticks time = start;
 
     while (!m_stop && time < end) {
-        CompositeFrame composite{time, {}};
+        CompositeFrame composite{time, {}, project->settings.colour};
         std::set<Id> live;
         buildLayers(*project, project->tracks, time, composite.layers, 0, live);
         for (VideoLayer& layer : composite.layers)
