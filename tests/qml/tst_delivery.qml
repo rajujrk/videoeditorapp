@@ -76,8 +76,8 @@ Item {
         function test_presets_and_formats() {
             const f = createEditor()
             const p = f.project
-            compare(p.exportFormats.length, 13)
-            compare(p.exportPresets.length, 11)
+            compare(p.exportFormats.length, 14)
+            compare(p.exportPresets.length, 12)
             for (const preset of p.exportPresets) {
                 verify(preset.title.length > 0, preset.id)
                 verify(p.exportFormats.some((fmt) => fmt.id === preset.format), preset.id + " names a known format")
@@ -120,6 +120,12 @@ Item {
             verify(!findChild(content, "exportSize").visible) // sound only
             verify(String(dialog.file).endsWith(".wav"))
             verify(findChild(content, "exportEstimate").text.indexOf("MB") > 0)
+            presets.currentIndex = presets.model.findIndex((m) => m.id === "audio-mp3")
+            presets.activated(presets.currentIndex)
+            compare(dialog.options.format, "mp3")
+            verify(!findChild(content, "exportSize").visible) // sound only
+            verify(!findChild(content, "exportQuality:high").visible) // no picture bitrate to choose
+            verify(String(dialog.file).endsWith(".mp3"))
             // Picking a format by hand turns the preset back to Custom.
             const formats = findChild(content, "exportFormat")
             formats.currentIndex = formats.model.findIndex((m) => m.id === "mov-prores-422")
@@ -136,7 +142,8 @@ Item {
             const formats = [["mp4-hevc", "hevc.mp4", true, true], ["mov-h264", "h264.mov", true, true],
                              ["mov-prores-proxy", "proxy.mov", true, true], ["mov-prores-4444", "4444.mov", true, true],
                              ["gif", "anim.gif", true, false], ["m4a", "sound.m4a", false, true],
-                             ["wav-16", "sound16.wav", false, true], ["flac", "sound.flac", false, true]]
+                             ["wav-16", "sound16.wav", false, true], ["flac", "sound.flac", false, true],
+                             ["mp3", "sound.mp3", false, true]]
             for (const [format, name] of formats)
                 verify(p.exportVideo(out(name), { format: format, width: 320, height: 180 }), format + ": " + p.lastError)
             waitForJobs(p, formats.length)

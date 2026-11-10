@@ -7,6 +7,8 @@ import TechieVideoEditor.Theme
 TestCase {
     name: "ThemeContrast"
 
+    Item { id: probe } // (its palette: what Qt-drawn controls are coloured by)
+
     function linear(channel) {
         return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4)
     }
@@ -50,6 +52,16 @@ TestCase {
         Theme.dark = data.dark
         const ratio = contrast(Theme.color[data.fg], Theme.color[data.bg])
         verify(ratio >= data.min, data.tag + " is " + ratio.toFixed(2) + ":1, needs " + data.min + ":1")
+    }
+
+    // Controls Qt draws (combo boxes) follow the app's light or dark choice, not the Mac's.
+    function test_qt_colour_scheme_follows_the_theme() {
+        Theme.dark = false
+        compare(Qt.styleHints.colorScheme, Qt.ColorScheme.Light)
+        tryVerify(() => probe.palette.window.hslLightness > 0.5, 2000, "the palette stayed dark")
+        Theme.dark = true
+        compare(Qt.styleHints.colorScheme, Qt.ColorScheme.Dark)
+        tryVerify(() => probe.palette.window.hslLightness < 0.5, 2000, "the palette stayed light")
     }
 
     function cleanupTestCase() {

@@ -23,3 +23,13 @@ TEST_CASE("FFmpeg was built with VideoToolbox")
 {
     CHECK(std::string(avcodec_configuration()).find("--enable-videotoolbox") != std::string::npos);
 }
+
+// MP3 export: LAME (LGPL, like FFmpeg here), and with it no GPL or non-free parts.
+TEST_CASE("FFmpeg was built with LAME, and nothing GPL or non-free")
+{
+    const std::string configuration = avcodec_configuration();
+    CHECK(configuration.find("--enable-libmp3lame") != std::string::npos);
+    CHECK(configuration.find("--enable-gpl") == std::string::npos);
+    CHECK(configuration.find("--enable-nonfree") == std::string::npos);
+    CHECK(avcodec_find_encoder_by_name("libmp3lame"));
+}

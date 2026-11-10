@@ -11,11 +11,11 @@
 
 namespace tve {
 
-// What file it is. Mp4, Mov and Gif carry pictures; M4a, Wav and Flac only sound.
-enum class Container { Mp4, Mov, Gif, M4a, Wav, Flac };
+// What file it is. Mp4, Mov and Gif carry pictures; M4a, Wav, Flac and Mp3 only sound.
+enum class Container { Mp4, Mov, Gif, M4a, Wav, Flac, Mp3 };
 enum class VideoCodec { H264, Hevc, ProRes, Gif };
 enum class ProResProfile { Proxy, Lt, Standard, Hq, P4444 };
-enum class AudioCodec { Aac, Pcm16, Pcm24, Flac };
+enum class AudioCodec { Aac, Pcm16, Pcm24, Flac, Mp3 };
 // How pictures go in: NV12 planes (H.264, HEVC), P010 planes (HDR HEVC) or 8-bit RGBA rows
 // (ProRes, GIF).
 enum class PictureInput { None, Nv12, P010, Rgba };
@@ -31,11 +31,11 @@ struct MediaSettings {
     // channel in the file).
     bool alpha = false;
     std::int64_t videoBitrate = 0; // bits per second (H.264, HEVC); 0 picks one from size and frame rate
-    std::int64_t audioBitrate = 192'000; // AAC
+    std::int64_t audioBitrate = 192'000; // AAC and MP3
     bool audio = true; // false: no sound track (GIF never has one)
     AudioCodec audioCodec = AudioCodec::Aac;
     int keyframeInterval = 0;      // frames between keyframes; 0: about two seconds
-    std::vector<Chapter> chapters; // in order; MP4, MOV and M4A write them as the file's chapters
+    std::vector<Chapter> chapters; // in order; MP4, MOV and M4A write them as the file's chapters, MP3 as ID3 chapters
     // HDR (PQ or HLG): 10-bit HEVC (Main 10), Rec.2020, tagged so, with the mastering display
     // (Rec.2020 primaries, D65, 0.0001–1000 nits) and, for PQ, the content light levels
     // measured as it is written. SDR: Rec.709.
@@ -51,7 +51,7 @@ struct MediaSettings {
 // Nullopt if the container, codecs and size go together; otherwise why not.
 std::optional<std::string> validateSettings(const MediaSettings& settings);
 PictureInput pictureInput(const MediaSettings& settings);
-// "mp4", "mov", "gif", "m4a", "wav" or "flac".
+// "mp4", "mov", "gif", "m4a", "wav", "flac" or "mp3".
 const char* fileExtension(Container container);
 
 // Picture bits per second for size estimates (and the bitrate H.264/HEVC use when
@@ -59,13 +59,13 @@ const char* fileExtension(Container container);
 // thirds of that for HEVC (a quarter more for HDR); ProRes at its published rates scaled from
 // 1080p30; GIF a rough guess.
 std::int64_t defaultVideoBitrate(const MediaSettings& settings);
-// Sound bits per second (0 without sound): AAC's bitrate, PCM's exact rate, FLAC's typical one.
+// Sound bits per second (0 without sound): AAC's and MP3's bitrate, PCM's exact rate, FLAC's typical one.
 std::int64_t audioBitrate(const MediaSettings& settings);
 
 // Writes a video or sound file: H.264 or HEVC (VideoToolbox) in MP4 or MOV; ProRes in MOV
 // (VideoToolbox, or FFmpeg's encoder where VideoToolbox has none); an animated GIF (a palette
-// of its own for each frame, ordered dithering, looping); sound as AAC, 16- or 24-bit PCM or
-// FLAC at 48 kHz stereo; MP4, MOV and M4A with the index at the front (fast start) and any
+// of its own for each frame, ordered dithering, looping); sound as AAC, 16- or 24-bit PCM,
+// FLAC or MP3 (LAME, with its gapless header) at 48 kHz stereo; MP4, MOV and M4A with the index at the front (fast start) and any
 // chapters. Pictures go in one per frame period, in order; sound in any amount at a time.
 // Not thread-safe.
 class MediaWriter {

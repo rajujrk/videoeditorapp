@@ -338,6 +338,22 @@ tab open in the inspector (the timeline zoomed in), dark and light:
 ![A compound clip at twice the speed with transitions, dark](images/compound-speed-dark.png)
 ![A compound clip at twice the speed with transitions, light](images/compound-speed-light.png)
 
+A WebM VP9 video with alpha (a red disc) over a clip, with the transparent VP9 and HEVC files'
+thumbnails in the media bin, dark and light:
+
+![Transparent VP9 video over a clip, dark](images/alpha-video-dark.png)
+![Transparent VP9 video over a clip, light](images/alpha-video-light.png)
+
+The export dialog with the "Sound: MP3" preset (sound-only formats show no Quality row:
+it is a picture bitrate), dark and light:
+
+![Export as MP3, dark](images/export-mp3-dark.png)
+![Export as MP3, light](images/export-mp3-light.png)
+
+Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
+from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
+`Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.
+
 The export dialog with the Vertical 9:16 preset on a marker's range, and the render queue
 (a finished GIF, a paused ProRes master, two exports waiting), dark and light:
 

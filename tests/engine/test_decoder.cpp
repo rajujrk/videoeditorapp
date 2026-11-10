@@ -2,6 +2,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <filesystem>
 
 using namespace tve;
@@ -159,5 +160,55 @@ TEST_CASE("pictures with transparency keep it: straight-alpha BGRA frames")
         CHECK_FALSE(plain->info().hasAlpha);
         CHECK(CVPixelBufferGetPixelFormatType(plain->nextFrame()->pixelBuffer())
               == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange);
+    }
+}
+
+TEST_CASE("WebM VP9 with alpha and HEVC with alpha keep their transparency, through seeks")
+{
+    for (const char* name : {"test_alpha_vp9.webm", "test_alpha_hevc.mov"}) {
+        INFO(name);
+        const std::string path = samplePath(name);
+        if (!std::filesystem::exists(path))
+            SKIP("sample missing: " << path << " (run tools/make_test_media.sh)");
+        auto decoder = VideoDecoder::open(path);
+        REQUIRE(decoder);
+        CHECK(decoder->info().hasAlpha);
+        CHECK_FALSE(decoder->info().hardwareAccelerated);
+        CHECK(decoder->info().width == 320);
+        // The disc's centre and alpha at (x, 90), a corner's alpha, in a BGRA frame.
+        const auto look = [&](const DecodedFrame& frame, int x) {
+            CVPixelBufferRef buffer = frame.pixelBuffer();
+            REQUIRE(CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA);
+            CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+            const auto* bytes = static_cast<const std::uint8_t*>(CVPixelBufferGetBaseAddress(buffer));
+            const std::size_t row = CVPixelBufferGetBytesPerRow(buffer);
+            const auto pixel = [&](int px, int py) { return bytes + std::size_t(py) * row + std::size_t(px) * 4; };
+            const std::array<int, 4> centre{pixel(x, 90)[0], pixel(x, 90)[1], pixel(x, 90)[2], pixel(x, 90)[3]};
+            const int corner = pixel(5, 5)[3];
+            const int left = pixel(40, 90)[3];
+            CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+            CHECK(centre[3] > 240);  // opaque…
+            CHECK(centre[2] > 180);  // …red
+            CHECK(centre[1] < 80);
+            CHECK(corner < 16);      // clear around it
+            return left;
+        };
+        auto first = decoder->nextFrame();
+        REQUIRE(first);
+        CHECK(look(*first, 80) > 240); // at the start the disc (x = 30–130) covers x = 40…
+        // One second in, it has moved 80 pixels right: x = 40 is clear. (WebM's times are whole
+        // milliseconds: the frame on screen then may start a fraction of a frame before.)
+        REQUIRE(decoder->seek(kTicksPerSecond));
+        auto later = decoder->nextFrame();
+        REQUIRE(later);
+        CHECK(std::llabs(later->pts() - kTicksPerSecond) < kTicksPerSecond / 30);
+        CHECK(look(*later, 160) < 16);
+        // Back to the start and on frame by frame: every frame keeps its alpha.
+        REQUIRE(decoder->seekToStart());
+        for (int i = 0; i < 59; ++i) {
+            auto frame = decoder->nextFrame();
+            REQUIRE(frame);
+            CHECK(CVPixelBufferGetPixelFormatType(frame->pixelBuffer()) == kCVPixelFormatType_32BGRA);
+        }
     }
 }

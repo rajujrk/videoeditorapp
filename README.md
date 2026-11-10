@@ -4,7 +4,7 @@ A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
 **Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), templates in six shapes (17a), instant videos, highlight montages and smart shorts (17b), drawing, paths and overlay transitions (18a), and the pack store (18b) done — the Phase 4 slices are complete. Phase 5: audio plug-ins — Audio Units and VST3 (19a) — video plug-ins — OpenFX (19b) — colour management with HDR — PQ and HLG, an HDR viewer and 10-bit HEVC export (20a) — 360° video — reframing, looking around and 360° export (20b) — interchange — OpenTimelineIO and Final Cut Pro XML both ways, EDL out (21a) — the AI copilot — editing by asking Claude, every change shown first (21b) — voice cloning with consent (22a) — localization — the app in English and Tamil (22b) — and performance hardening — render files for heavy stretches, a half-resolution preview and measured budgets (22c) — done; the Phase 5 slices are complete. Since then: speed and transitions on compound clips (23a).** You can import video, audio and image files, arrange them on a multi-track timeline
+crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), templates in six shapes (17a), instant videos, highlight montages and smart shorts (17b), drawing, paths and overlay transitions (18a), and the pack store (18b) done — the Phase 4 slices are complete. Phase 5: audio plug-ins — Audio Units and VST3 (19a) — video plug-ins — OpenFX (19b) — colour management with HDR — PQ and HLG, an HDR viewer and 10-bit HEVC export (20a) — 360° video — reframing, looking around and 360° export (20b) — interchange — OpenTimelineIO and Final Cut Pro XML both ways, EDL out (21a) — the AI copilot — editing by asking Claude, every change shown first (21b) — voice cloning with consent (22a) — localization — the app in English and Tamil (22b) — and performance hardening — render files for heavy stretches, a half-resolution preview and measured budgets (22c) — done; the Phase 5 slices are complete. Since then: speed and transitions on compound clips (23a), transparent WebM VP9 and HEVC video (23b) and MP3 export (23c) — the known gaps are closed.** You can import video, audio and image files, arrange them on a multi-track timeline
 (move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
 position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
 volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
@@ -128,8 +128,8 @@ bouncing or wobbling in a two-second loop — with category chips, the search, a
 play on hover. Click one to put it at the playhead on a free track above the main one, small and
 in the middle; it loops for as long as its clip lasts and is placed, graded, masked and given
 effects like any picture. Stickers are Lottie animations drawn by ThorVG (MIT); Lottie files of
-your own (.json) import the same way. Video with transparency — ProRes 4444, GIF, animated PNG
-or WebP — now keeps it, so it plays over what is below (it decodes in software, and gets no
+your own (.json) import the same way. Video with transparency — ProRes 4444, WebM VP9 with
+alpha, Apple's HEVC with alpha, GIF, animated PNG or WebP — now keeps it, so it plays over what is below (it decodes in software, and gets no
 proxy). The stickers are generated by `tools/make_stickers.py` into `effects/stickers/`.
 
 **Captions.** The library's Captions tab turns the speech in your clips into captions, on this
@@ -615,9 +615,9 @@ temporary file and renamed, so a crash mid-save never leaves a half-written proj
 
 **Export.** Click Export (⌘E). Pick a preset — 1080p or 4K for the web, a small file,
 vertical 9:16 or square 1:1 for social apps (filled and cropped), a ProRes 422 HQ master, a
-ProRes Proxy editing copy, an animated GIF, or the sound alone as AAC, WAV or FLAC — or
+ProRes Proxy editing copy, an animated GIF, or the sound alone as AAC, WAV, FLAC or MP3 — or
 choose each setting: the format (MP4 with H.264 or HEVC; MOV with H.264 or ProRes Proxy,
-LT, 422, 422 HQ or 4444; GIF; M4A, 16- or 24-bit WAV, or FLAC), the size (the project's,
+LT, 422, 422 HQ or 4444; GIF; M4A, 16- or 24-bit WAV, FLAC, or 320 kbit/s MP3), the size (the project's,
 standard heights, vertical or square, or larger), the frame rate, the quality (H.264/HEVC),
 whether to include the sound, loudness normalization, and the range: the whole timeline, the
 selected clips, a marker's range, every marker range as a file of its own (named by the
@@ -629,8 +629,9 @@ Finder and clear. Every frame is rendered with the same engine as the preview (t
 titles, effects, compound clips, sound) on an offscreen GPU device; H.264 and HEVC are
 encoded by VideoToolbox from NV12 made on the GPU, ProRes by VideoToolbox (or FFmpeg's
 encoder where the system has none), GIFs with a palette per frame and ordered dithering.
-MP4, MOV and M4A get the chapter markers in the range as chapters. MP3 is not offered: the
-LGPL FFmpeg build has no MP3 encoder. Imported ProRes 422 and 4444 now preview and show
+MP4, MOV and M4A get the chapter markers in the range as chapters, and MP3 as ID3 chapters.
+MP3 is encoded by LAME (LGPL, built by vcpkg into FFmpeg), with its gapless header so players
+keep the exact length. Imported ProRes 422 and 4444 now preview and show
 thumbnails too. From the command line:
 
 ```bash
@@ -677,7 +678,7 @@ Set `TVE_AUDIO=null` to render audio without a sound card (used by the tests), o
 - CMake ≥ 3.25, Ninja, pkg-config, Qt 6.7+ (`brew install cmake ninja pkg-config qt`)
 - vcpkg (`git clone https://github.com/microsoft/vcpkg ~/vcpkg && ~/vcpkg/bootstrap-vcpkg.sh`)
 
-vcpkg builds FFmpeg (LGPL, with VideoToolbox), Catch2, nlohmann-json, miniaudio, ThorVG (MIT, for Lottie stickers), whisper.cpp with ggml (MIT, with its Metal backend, for speech to text),
+vcpkg builds FFmpeg (LGPL, with VideoToolbox and LAME 3.100 for MP3, LGPL), Catch2, nlohmann-json, miniaudio, ThorVG (MIT, for Lottie stickers), whisper.cpp with ggml (MIT, with its Metal backend, for speech to text),
 RNNoise 0.2 (BSD-3-Clause, model data CC0; through an overlay port in `cmake/ports/rnnoise` that fetches the model
 0.2 was released with — vcpkg's own port pairs it with a later one that barely reduces noise — and builds it with
 CMake, so it builds on arm64 without autotools) and ONNX Runtime (MIT, built from source; its first build takes a while)

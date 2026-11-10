@@ -3,12 +3,15 @@
 #include "decode/ColourTags.h"
 
 #include <algorithm>
+#include <cstring>
+#include <deque>
 #include <mutex>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/hwcontext.h>
+#include <libavutil/intreadwrite.h>
 #include <libavutil/pixdesc.h>
 #include <libavutil/spherical.h>
 #include <libswscale/swscale.h>
@@ -90,6 +93,58 @@ CVPixelBufferPoolRef createPool(int width, int height, int pixelFormat)
     return pool;
 }
 
+// The same layout with an alpha plane (the planes of a picture and its separate alpha).
+AVPixelFormat withAlphaPlane(int format)
+{
+    switch (format) {
+    case AV_PIX_FMT_YUV420P: return AV_PIX_FMT_YUVA420P;
+    case AV_PIX_FMT_YUV422P: return AV_PIX_FMT_YUVA422P;
+    case AV_PIX_FMT_YUV444P: return AV_PIX_FMT_YUVA444P;
+    case AV_PIX_FMT_YUV420P10LE: return AV_PIX_FMT_YUVA420P10LE;
+    case AV_PIX_FMT_YUV422P10LE: return AV_PIX_FMT_YUVA422P10LE;
+    case AV_PIX_FMT_YUV444P10LE: return AV_PIX_FMT_YUVA444P10LE;
+    default: return AV_PIX_FMT_NONE;
+    }
+}
+
+// An HEVC stream with more layers than its base one (its VPS says so): an alpha layer, as
+// Apple's "HEVC with alpha" writes, or a second view. The parameter sets are in the
+// extradata, as an hvcC record or as Annex B start codes.
+bool hevcHasLayers(const std::uint8_t* data, int size)
+{
+    const auto layersOf = [](const std::uint8_t* nal, int length) {
+        // NAL header (2 bytes), then vps_video_parameter_set_id (4 bits), two flags, and
+        // vps_max_layers_minus1 (6 bits).
+        if (length < 4 || ((nal[0] >> 1) & 0x3f) != 32)
+            return false;
+        return (((nal[2] & 0x03) << 4) | (nal[3] >> 4)) > 0;
+    };
+    if (!data || size < 4)
+        return false;
+    if (data[0] == 1 && size > 23) { // hvcC
+        int at = 23;
+        const int arrays = data[22];
+        for (int a = 0; a < arrays && at + 3 <= size; ++a) {
+            const int count = AV_RB16(data + at + 1);
+            at += 3;
+            for (int n = 0; n < count && at + 2 <= size; ++n) {
+                const int length = AV_RB16(data + at);
+                at += 2;
+                if (at + length > size)
+                    return false;
+                if (layersOf(data + at, length))
+                    return true;
+                at += length;
+            }
+        }
+        return false;
+    }
+    for (int i = 0; i + 3 < size; ++i) // Annex B
+        if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 && layersOf(data + i + 3, size - i - 3))
+            return true;
+    return false;
+}
+
 } // namespace
 
 struct VideoDecoder::Impl {
@@ -112,8 +167,17 @@ struct VideoDecoder::Impl {
     Ticks discardBefore = -1; // after a seek: drop frames that end at or before this time
     VideoStreamInfo info;
 
+    // VP9 with transparency (WebM): the alpha is a second VP9 stream, a picture per frame in
+    // its blocks' additional data, decoded alongside; its pictures' luma is the alpha.
+    AVCodecContext* alphaCodec = nullptr;
+    AVPacket* alphaPacket = nullptr;
+    std::deque<AVFrame*> alphaFrames; // decoded, waiting for their picture (matched by pts)
+
     ~Impl()
     {
+        clearAlpha();
+        av_packet_free(&alphaPacket);
+        avcodec_free_context(&alphaCodec);
         sws_freeContext(sws);
         if (pool)
             CVPixelBufferPoolRelease(pool);
@@ -129,7 +193,95 @@ struct VideoDecoder::Impl {
     CVPixelBufferRef convertToYuv();
     CVPixelBufferRef convertToBgra();
     bool ensurePool(int pixelFormat);
+    // The alpha stream: fed a packet's additional data, drained into alphaFrames.
+    void sendAlpha(const AVPacket* source);
+    void receiveAlpha();
+    const AVFrame* alphaFor(std::int64_t pts);
+    void clearAlpha();
+    // The pixel format of the stream's first picture (decoded, then back to the start).
+    AVPixelFormat firstPictureFormat();
 };
+
+void VideoDecoder::Impl::sendAlpha(const AVPacket* source)
+{
+    std::size_t size = 0;
+    const std::uint8_t* data = av_packet_get_side_data(source, AV_PKT_DATA_MATROSKA_BLOCKADDITIONAL, &size);
+    // The BlockAddID (8 bytes, big-endian) comes first; 1 is the alpha.
+    if (!data || size <= 8 || AV_RB64(data) != 1)
+        return;
+    if (av_new_packet(alphaPacket, int(size - 8)) < 0)
+        return;
+    std::memcpy(alphaPacket->data, data + 8, size - 8);
+    alphaPacket->pts = source->pts;
+    alphaPacket->dts = source->dts;
+    alphaPacket->flags = source->flags;
+    avcodec_send_packet(alphaCodec, alphaPacket);
+    av_packet_unref(alphaPacket);
+    receiveAlpha();
+}
+
+void VideoDecoder::Impl::receiveAlpha()
+{
+    while (true) {
+        AVFrame* decoded = av_frame_alloc();
+        if (!decoded || avcodec_receive_frame(alphaCodec, decoded) < 0) {
+            av_frame_free(&decoded);
+            return;
+        }
+        alphaFrames.push_back(decoded);
+        while (alphaFrames.size() > 64) { // (pictures that never came)
+            av_frame_free(&alphaFrames.front());
+            alphaFrames.pop_front();
+        }
+    }
+}
+
+const AVFrame* VideoDecoder::Impl::alphaFor(std::int64_t pts)
+{
+    // Earlier ones belong to pictures already gone (or dropped after a seek).
+    while (!alphaFrames.empty() && alphaFrames.front()->pts != AV_NOPTS_VALUE && alphaFrames.front()->pts < pts) {
+        av_frame_free(&alphaFrames.front());
+        alphaFrames.pop_front();
+    }
+    for (AVFrame* candidate : alphaFrames)
+        if (candidate->pts == pts)
+            return candidate;
+    return nullptr;
+}
+
+void VideoDecoder::Impl::clearAlpha()
+{
+    for (AVFrame*& f : alphaFrames)
+        av_frame_free(&f);
+    alphaFrames.clear();
+}
+
+AVPixelFormat VideoDecoder::Impl::firstPictureFormat()
+{
+    AVPixelFormat found = AV_PIX_FMT_NONE;
+    AVPacket* probe = av_packet_alloc();
+    AVFrame* picture = av_frame_alloc();
+    for (int packets = 0; probe && picture && found == AV_PIX_FMT_NONE && packets < 300; ++packets) {
+        const bool more = av_read_frame(format, probe) >= 0;
+        if (more && probe->stream_index != streamIndex) {
+            av_packet_unref(probe);
+            continue;
+        }
+        avcodec_send_packet(codec, more ? probe : nullptr);
+        av_packet_unref(probe);
+        if (avcodec_receive_frame(codec, picture) == 0) {
+            found = static_cast<AVPixelFormat>(picture->format);
+            av_frame_unref(picture);
+        }
+        if (!more)
+            break;
+    }
+    av_frame_free(&picture);
+    av_packet_free(&probe);
+    av_seek_frame(format, streamIndex, startTime, AVSEEK_FLAG_BACKWARD);
+    avcodec_flush_buffers(codec);
+    return found;
+}
 
 Ticks VideoDecoder::Impl::framePts() const
 {
@@ -180,8 +332,22 @@ CVPixelBufferRef VideoDecoder::Impl::convertToBgra()
 {
     if (!ensurePool(kCVPixelFormatType_32BGRA))
         return nullptr;
-    sws = sws_getCachedContext(sws, frame->width, frame->height, static_cast<AVPixelFormat>(frame->format),
-                               frame->width, frame->height, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
+    // A VP9 picture's separate alpha joins its planes as a fourth.
+    AVPixelFormat source = static_cast<AVPixelFormat>(frame->format);
+    const std::uint8_t* data[4] = {frame->data[0], frame->data[1], frame->data[2], frame->data[3]};
+    int lines[4] = {frame->linesize[0], frame->linesize[1], frame->linesize[2], frame->linesize[3]};
+    if (alphaCodec) {
+        const AVFrame* alpha = alphaFor(frame->pts);
+        const AVPixelFormat joined = withAlphaPlane(frame->format);
+        if (alpha && joined != AV_PIX_FMT_NONE && alpha->format == frame->format && alpha->width == frame->width
+            && alpha->height == frame->height) {
+            source = joined;
+            data[3] = alpha->data[0];
+            lines[3] = alpha->linesize[0];
+        }
+    }
+    sws = sws_getCachedContext(sws, frame->width, frame->height, source, frame->width, frame->height, AV_PIX_FMT_BGRA,
+                               SWS_BILINEAR, nullptr, nullptr, nullptr);
     if (!sws)
         return nullptr;
     const CFStringRef matrix = matrixAttachment(frame->colorspace, frame->height);
@@ -194,7 +360,7 @@ CVPixelBufferRef VideoDecoder::Impl::convertToBgra()
     CVPixelBufferLockBaseAddress(buffer, 0);
     std::uint8_t* planes[] = {static_cast<std::uint8_t*>(CVPixelBufferGetBaseAddress(buffer))};
     const int strides[] = {static_cast<int>(CVPixelBufferGetBytesPerRow(buffer))};
-    sws_scale(sws, frame->data, frame->linesize, 0, frame->height, planes, strides);
+    sws_scale(sws, data, lines, 0, frame->height, planes, strides);
     CVPixelBufferUnlockBaseAddress(buffer, 0);
     return buffer;
 }
@@ -263,14 +429,48 @@ std::unique_ptr<VideoDecoder> VideoDecoder::open(const std::string& path, std::s
     d->timeBase = stream->time_base;
     d->startTime = stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time;
 
+    // Transparency: VideoToolbox would hand back NV12 without it, so such pictures decode in
+    // software. The stream's format says so, or (its format saying only the picture) a VP9
+    // stream's alpha mode, or an HEVC stream's alpha layer, found by decoding its first
+    // picture when it has layers beyond the base one.
+    const AVPixFmtDescriptor* sourceFormat = av_pix_fmt_desc_get(static_cast<AVPixelFormat>(stream->codecpar->format));
+    d->info.hasAlpha = sourceFormat && (sourceFormat->flags & AV_PIX_FMT_FLAG_ALPHA);
+    const AVDictionaryEntry* alphaMode = av_dict_get(stream->metadata, "alpha_mode", nullptr, 0);
+    const bool vp9Alpha = decoder->id == AV_CODEC_ID_VP9 && alphaMode && std::strcmp(alphaMode->value, "1") == 0;
+    const bool layered = decoder->id == AV_CODEC_ID_HEVC && !d->info.hasAlpha
+                         && hevcHasLayers(stream->codecpar->extradata, stream->codecpar->extradata_size);
+    d->info.hasAlpha = d->info.hasAlpha || vp9Alpha;
+    if (vp9Alpha) {
+        const AVCodec* alphaDecoder = avcodec_find_decoder(AV_CODEC_ID_VP9);
+        d->alphaCodec = alphaDecoder ? avcodec_alloc_context3(alphaDecoder) : nullptr;
+        d->alphaPacket = av_packet_alloc();
+        if (!d->alphaCodec || !d->alphaPacket)
+            return fail("cannot configure decoder");
+        d->alphaCodec->pkt_timebase = stream->time_base;
+        // Slice threads only: each alpha picture comes out as its packet goes in, ready
+        // before (or with) the picture it belongs to.
+        d->alphaCodec->thread_count = 0;
+        d->alphaCodec->thread_type = FF_THREAD_SLICE;
+        if (avcodec_open2(d->alphaCodec, alphaDecoder, nullptr) < 0)
+            return fail("cannot open the transparency decoder");
+    }
+    if (layered) {
+        // Decoded in software to look (an alpha layer is not VideoToolbox's to keep).
+        d->codec = avcodec_alloc_context3(decoder);
+        if (!d->codec || avcodec_parameters_to_context(d->codec, stream->codecpar) < 0)
+            return fail("cannot configure decoder");
+        d->codec->pkt_timebase = stream->time_base;
+        d->codec->thread_count = 0;
+        if (int rc = avcodec_open2(d->codec, decoder, nullptr); rc < 0)
+            return fail("cannot open decoder: " + avError(rc));
+        const AVPixFmtDescriptor* first = av_pix_fmt_desc_get(d->firstPictureFormat());
+        d->info.hasAlpha = first && (first->flags & AV_PIX_FMT_FLAG_ALPHA);
+        avcodec_free_context(&d->codec); // set up again below, as for any stream
+    }
+
     d->codec = avcodec_alloc_context3(decoder);
     if (!d->codec || avcodec_parameters_to_context(d->codec, stream->codecpar) < 0)
         return fail("cannot configure decoder");
-
-    // Transparency: VideoToolbox would hand back NV12 without it, so such pictures decode in
-    // software.
-    const AVPixFmtDescriptor* sourceFormat = av_pix_fmt_desc_get(static_cast<AVPixelFormat>(stream->codecpar->format));
-    d->info.hasAlpha = sourceFormat && (sourceFormat->flags & AV_PIX_FMT_FLAG_ALPHA);
     d->info.highBitDepth = sourceFormat && sourceFormat->comp[0].depth > 8;
     d->info.colour = colourFromTags(stream->codecpar->color_primaries, stream->codecpar->color_trc);
     if (const AVPacketSideData* sphere = av_packet_side_data_get(stream->codecpar->coded_side_data,
@@ -347,10 +547,17 @@ std::optional<DecodedFrame> VideoDecoder::nextFrame()
         if (av_read_frame(d.format, d.packet) < 0) {
             d.inputDone = true;
             avcodec_send_packet(d.codec, nullptr); // drain buffered frames
+            if (d.alphaCodec) {
+                avcodec_send_packet(d.alphaCodec, nullptr);
+                d.receiveAlpha();
+            }
             continue;
         }
-        if (d.packet->stream_index == d.streamIndex)
+        if (d.packet->stream_index == d.streamIndex) {
+            if (d.alphaCodec)
+                d.sendAlpha(d.packet); // first: its picture is ready when the frame is
             avcodec_send_packet(d.codec, d.packet); // a corrupt packet is skipped, not fatal
+        }
         av_packet_unref(d.packet);
     }
 }
@@ -377,6 +584,10 @@ bool VideoDecoder::seekToKeyframe(Ticks target)
     if (av_seek_frame(d.format, d.streamIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0)
         return false;
     avcodec_flush_buffers(d.codec);
+    if (d.alphaCodec) {
+        avcodec_flush_buffers(d.alphaCodec);
+        d.clearAlpha();
+    }
     d.inputDone = false;
     d.lastPts = target;
     d.discardBefore = -1;

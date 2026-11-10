@@ -397,6 +397,8 @@ namespace {
     QT_TRANSLATE_NOOP("catalogue", "24-bit PCM WAV: the mix, uncompressed"),
     QT_TRANSLATE_NOOP("catalogue", "Sound: FLAC"),
     QT_TRANSLATE_NOOP("catalogue", "24-bit FLAC: the mix, lossless and smaller"),
+    QT_TRANSLATE_NOOP("catalogue", "Sound: MP3"),
+    QT_TRANSLATE_NOOP("catalogue", "MP3, 320 kbit/s: the mix only, for any player"),
     QT_TRANSLATE_NOOP("catalogue", "Star · Pulse"),
     QT_TRANSLATE_NOOP("catalogue", "Star · Spin"),
     QT_TRANSLATE_NOOP("catalogue", "Star · Bounce"),
