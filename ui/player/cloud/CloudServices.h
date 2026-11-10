@@ -96,6 +96,11 @@ public:
     // One turn of the copilot's conversation (job "copilot"; its turns follow one another in
     // the one job until endJob, or the turn fails or is cancelled).
     bool converse(const AgentRequest& request, std::function<void(const AgentResult&)> done);
+    // A copy of a voice from a consent recording (job "clone"), and deleting one; `done`
+    // gets the voice id or an error, then the voices are listed again.
+    bool cloneVoice(const QString& name, const QString& description, const QString& recording,
+                    std::function<void(QString voiceId, QString error)> done);
+    void deleteVoice(const QString& voiceId, std::function<void(QString error)> done);
     bool speak(const QString& text, const QString& voiceId, double speed, const QString& basePath,
                std::function<void(const SpeechResult&)> done);
     // Generates media: `start` makes the task (with this object's network).

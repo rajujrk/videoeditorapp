@@ -132,7 +132,46 @@ MockCloudServer::MockCloudServer(QObject* parent) : QObject(parent), m_server(ne
                 const qsizetype length = request.headers.value(QStringLiteral("content-length")).toLongLong();
                 if (buffer->size() - (headerEnd + 4) < length)
                     return; // more body to come
-                request.body = QJsonDocument::fromJson(buffer->mid(headerEnd + 4, length)).object();
+                const QByteArray raw = buffer->mid(headerEnd + 4, length);
+                const QString type = request.headers.value(QStringLiteral("content-type"));
+                if (type.startsWith(QLatin1String("multipart/form-data"))) {
+                    // Fields as strings; files described (name, filename, type, size).
+                    const QByteArray boundary = "--" + type.section(QStringLiteral("boundary="), 1).remove(QLatin1Char('"')).toUtf8();
+                    QJsonArray files;
+                    qsizetype at = raw.indexOf(boundary);
+                    while (at >= 0) {
+                        const qsizetype start = at + boundary.size() + 2;
+                        const qsizetype next = raw.indexOf(boundary, start);
+                        if (next < 0)
+                            break;
+                        const QByteArray part = raw.mid(start, next - start - 2);
+                        const qsizetype split = part.indexOf("\r\n\r\n");
+                        const QByteArray head = part.left(split);
+                        const QByteArray content = part.mid(split + 4);
+                        const auto value = [&](const char* key) {
+                            const qsizetype k = head.indexOf(key);
+                            if (k < 0)
+                                return QString();
+                            const qsizetype open = k + qstrlen(key);
+                            return QString::fromUtf8(head.mid(open, head.indexOf('"', open) - open));
+                        };
+                        const QString fieldName = value("name=\"");
+                        const QString filename = value("filename=\"");
+                        if (!filename.isEmpty()) {
+                            const qsizetype t = head.toLower().indexOf("content-type:");
+                            files.append(QJsonObject{{QStringLiteral("name"), fieldName},
+                                                     {QStringLiteral("filename"), filename},
+                                                     {QStringLiteral("type"), t < 0 ? QString() : QString::fromUtf8(head.mid(t + 13).split('\r').first().trimmed())},
+                                                     {QStringLiteral("size"), double(content.size())}});
+                        } else if (!fieldName.isEmpty()) {
+                            request.body.insert(fieldName, QString::fromUtf8(content));
+                        }
+                        at = next;
+                    }
+                    request.body.insert(QStringLiteral("files"), files);
+                } else {
+                    request.body = QJsonDocument::fromJson(raw).object();
+                }
                 buffer->clear();
                 m_requests.push_back(request);
                 serve(socket, request);
@@ -416,14 +455,44 @@ void MockCloudServer::elevenLabs(QTcpSocket* socket, const Request& request)
         respond(socket, 401, "application/json", R"({"detail":{"status":"invalid_api_key","message":"Invalid API key"}})");
         return;
     }
+    if (request.method == QLatin1String("POST") && request.path == QLatin1String("/v1/voices/add")) {
+        const QJsonArray files = request.body.value(QStringLiteral("files")).toArray();
+        if (request.body.value(QStringLiteral("name")).toString().isEmpty() || files.isEmpty()
+            || files.first().toObject().value(QStringLiteral("size")).toDouble() < 1000) {
+            respond(socket, 422, "application/json", R"({"detail":[{"loc":["body","files"],"msg":"A name and a recording are needed","type":"value_error"}]})");
+            return;
+        }
+        const QString id = QStringLiteral("mockclone%1").arg(m_clones.size() + 1);
+        m_clones.append(QJsonObject{{QStringLiteral("voice_id"), id},
+                                    {QStringLiteral("name"), request.body.value(QStringLiteral("name"))},
+                                    {QStringLiteral("category"), QStringLiteral("cloned")},
+                                    {QStringLiteral("description"), request.body.value(QStringLiteral("description"))},
+                                    {QStringLiteral("labels"), QJsonObject{}}});
+        respond(socket, 200, "application/json",
+                QJsonDocument(QJsonObject{{QStringLiteral("voice_id"), id}, {QStringLiteral("requires_verification"), false}}).toJson(QJsonDocument::Compact));
+        return;
+    }
+    if (request.method == QLatin1String("DELETE")) {
+        const QString id = request.path.section(QLatin1Char('/'), -1);
+        const qsizetype before = m_clones.size();
+        m_clones.removeIf([&](const QJsonObject& v) { return v.value(QStringLiteral("voice_id")).toString() == id; });
+        if (m_clones.size() == before) {
+            respond(socket, 400, "application/json", R"({"detail":{"status":"voice_not_found","message":"A voice with that id was not found"}})");
+            return;
+        }
+        respond(socket, 200, "application/json", R"({"status":"ok"})");
+        return;
+    }
     if (request.method == QLatin1String("GET")) {
-        const QJsonArray voices{
+        QJsonArray voices{
             QJsonObject{{QStringLiteral("voice_id"), QStringLiteral("mockvoice1")}, {QStringLiteral("name"), QStringLiteral("Avery")},
                         {QStringLiteral("labels"), QJsonObject{{QStringLiteral("gender"), QStringLiteral("female")},
                                                                {QStringLiteral("accent"), QStringLiteral("american")}}}},
             QJsonObject{{QStringLiteral("voice_id"), QStringLiteral("mockvoice2")}, {QStringLiteral("name"), QStringLiteral("Rowan")},
                         {QStringLiteral("labels"), QJsonObject{{QStringLiteral("gender"), QStringLiteral("male")},
                                                                {QStringLiteral("accent"), QStringLiteral("british")}}}}};
+        for (const QJsonObject& clone : m_clones)
+            voices.append(clone);
         respond(socket, 200, "application/json", QJsonDocument(QJsonObject{{QStringLiteral("voices"), voices}}).toJson(QJsonDocument::Compact));
         return;
     }

@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Labelled button. variant: "primary" (accent fill), "secondary" (outlined) or "ghost".
+// Labelled button. variant: "primary" (accent fill), "secondary" (outlined), "ghost", or
+// "danger" (a red fill, for what can't be undone).
 AbstractButton {
     id: button
     property string variant: "secondary"
@@ -23,12 +24,16 @@ AbstractButton {
     }
 
     readonly property color foreground: !enabled ? Theme.color.textDisabled
-                                      : variant === "primary" ? Theme.color.textOnAccent
+                                      : variant === "primary" || variant === "danger" ? Theme.color.textOnAccent
                                       : Theme.color.textPrimary
 
     background: Rectangle {
         radius: Theme.radius.m
         color: {
+            if (button.variant === "danger") {
+                if (!button.enabled) return Theme.color.surfaceHover
+                return button.pressed || button.hovered ? Qt.darker(Theme.color.danger, 1.15) : Theme.color.danger
+            }
             if (button.variant === "primary") {
                 if (!button.enabled) return Theme.color.surfaceHover
                 return button.pressed ? Theme.color.accentPressed

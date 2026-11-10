@@ -17,6 +17,7 @@ struct VoiceInfo {
     QString name;
     QString language; // e.g. "en-GB"; empty when the voice speaks many
     QString detail;   // "Enhanced", "Premade"…
+    bool cloned = false; // a copy of someone's voice (ElevenLabs' "cloned" category)
 };
 
 struct SpokenWord {
@@ -79,6 +80,12 @@ public:
     void refresh(std::function<void(QString error)> done) override;
     SpeechTask* speak(const QString& text, const QString& voiceId, double speed, const QString& basePath,
                       QObject* parent) override;
+    // Instant voice cloning: a copy of the voice in `recording` (a WAV), named `name`, in the
+    // person's ElevenLabs account. `done` gets the new voice's id, or an error.
+    void clone(const QString& name, const QString& description, const QString& recording,
+               std::function<void(QString voiceId, QString error)> done);
+    // Deletes a voice from the account; `done` gets an error or empty.
+    void remove(const QString& voiceId, std::function<void(QString error)> done);
     void setModel(const QString& model) { m_model = model; }
     QString model() const { return m_model; }
 

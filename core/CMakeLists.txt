@@ -19,6 +19,8 @@ add_library(tve_core STATIC
     model/Colour.cpp
     model/Sphere.h
     model/Sphere.cpp
+    model/Consent.h
+    model/Consent.cpp
     io/Interchange.h
     io/Interchange.cpp
     io/InterchangeOtio.cpp

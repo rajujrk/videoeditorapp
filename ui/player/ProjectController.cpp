@@ -803,6 +803,7 @@ ProjectController::ProjectController(QObject* parent)
     m_soundLibrary = new SoundLibrary(this);
     m_cloud = new CloudServices(this);
     m_copilot = new Copilot(this);
+    m_voiceCloning = new VoiceCloning(this);
     m_templates = new TemplateLibrary(this);
     m_store = new PackStore(this);
     m_pluginHost = new AudioPluginHost(this);

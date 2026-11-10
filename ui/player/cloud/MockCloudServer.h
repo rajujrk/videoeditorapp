@@ -19,7 +19,8 @@ class QTcpSocket;
 // makes pictures (OpenAI Images: a disc, on transparency when asked, unless "#opaque"),
 // video (Gemini interactions: a few seconds of moving colour; an extension needs the id of
 // one it made) and sound (ElevenLabs music and effects: a tone as long as asked); "#blocked"
-// is refused. With tools (the copilot) it follows a plan in the request: "#plan [{name,
+// is refused. ElevenLabs voice cloning (voices/add, a multipart form) adds a "cloned" voice
+// to the list; DELETE removes it. With tools (the copilot) it follows a plan in the request: "#plan [{name,
 // input}, …]" are its first tool calls (after a thinking block and a line of text), "#then
 // […]" the next round's; then a closing sentence (naming a failed call). "#invalid" streams
 // a tool input that isn't JSON; "#refuse" declines. A request without "#" takes its first
@@ -35,7 +36,7 @@ public:
         QString method;
         QString path;
         QMap<QString, QString> headers; // lower-case names
-        QJsonObject body;
+        QJsonObject body; // JSON; or a multipart form's fields, its files as [{name, filename, type, size}] under "files"
     };
     // The requests so far, oldest first.
     const QList<Request>& requests() const { return m_requests; }
@@ -55,4 +56,5 @@ private:
     QList<Request> m_requests;
     QMap<QString, int> m_overloads; // prompt → times refused as busy
     QStringList m_interactions;     // video interactions made
+    QList<QJsonObject> m_clones;    // voices copied (ElevenLabs voices/add)
 };

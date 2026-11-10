@@ -237,6 +237,7 @@ void CloudServices::rebuildVoices()
                                 {QStringLiteral("name"), voice.name},
                                 {QStringLiteral("language"), voice.language},
                                 {QStringLiteral("detail"), voice.detail},
+                                {QStringLiteral("cloned"), voice.cloned},
                                 {QStringLiteral("provider"), QStringLiteral("elevenlabs")}};
 }
 
@@ -358,6 +359,35 @@ bool CloudServices::converse(const AgentRequest& request, std::function<void(con
         done(agent);
     });
     return true;
+}
+
+bool CloudServices::cloneVoice(const QString& name, const QString& description, const QString& recording,
+                               std::function<void(QString, QString)> done)
+{
+    if (busy())
+        return false;
+    beginJob(QStringLiteral("clone"), QStringLiteral("ElevenLabs is copying the voice…"));
+    QPointer<CloudServices> self(this);
+    m_elevenLabs->clone(name, description, recording, [self, done = std::move(done)](QString voiceId, QString error) {
+        if (!self)
+            return;
+        self->endJob(error);
+        done(voiceId, error);
+        self->refreshVoices();
+    });
+    return true;
+}
+
+void CloudServices::deleteVoice(const QString& voiceId, std::function<void(QString)> done)
+{
+    QPointer<CloudServices> self(this);
+    m_elevenLabs->remove(voiceId, [self, done = std::move(done)](QString error) {
+        if (!self)
+            return;
+        done(error);
+        self->rebuildVoices();
+        emit self->voicesChanged();
+    });
 }
 
 bool CloudServices::speak(const QString& text, const QString& voiceId, double speed, const QString& basePath,

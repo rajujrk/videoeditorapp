@@ -468,6 +468,11 @@ Colour management: an HDR · PQ project in the Color tab — the Project colour 
 ![360° video, dark](images/sphere-360-dark.png)
 ![360° video, light](images/sphere-360-light.png)
 
+Copying a voice with consent: the statement written for the speaker to read — their name, the date, four fresh code words, a short passage — before recording, over Audio › Voice, dark and light:
+
+![Voice cloning, dark](images/voice-clone-dark.png)
+![Voice cloning, light](images/voice-clone-light.png)
+
 The Copilot tab: a request in words, Claude's answer, and the changes it proposes — listed, not yet applied, with Apply and Don't apply — dark and light:
 
 ![Copilot, dark](images/copilot-dark.png)
