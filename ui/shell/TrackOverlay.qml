@@ -70,7 +70,7 @@ Item {
     Text {
         visible: overlay.picking && !overlay.dragging
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: Theme.space.m }
-        text: "Drag a box around what to follow"
+        text: qsTr("Drag a box around what to follow")
         font: Theme.type.label
         color: "white"
         style: Text.Outline

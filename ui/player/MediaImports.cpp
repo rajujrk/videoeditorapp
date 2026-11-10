@@ -1,4 +1,5 @@
 #include "MediaImports.h"
+#include "Language.h"
 
 #include <QCoreApplication>
 #include <QDesktopServices>
@@ -164,7 +165,7 @@ void MediaImports::fetchNext()
     const QString itemId = m_queue.takeFirst();
     QPointer<MediaImports> self(this);
     source(m_source)->fetch(itemId.toStdString(), m_folder.toStdString(), [self](std::string path, std::string error) {
-        QMetaObject::invokeMethod(qApp, [self, path = QString::fromStdString(path), error = QString::fromStdString(error)] {
+        QMetaObject::invokeMethod(qApp, [self, path = QString::fromStdString(path), error = coreText(error)] {
             if (!self)
                 return;
             if (path.isEmpty())

@@ -15,8 +15,8 @@ ScrollView {
     property string filter: "" // "" or "installed"
     readonly property var shown: store.packs.filter((p) => filter === "" || p.installedVersion > 0)
 
-    readonly property var kindNames: ({ sounds: "Music & sounds", templates: "Templates", stickers: "Stickers",
-                                        effects: "Effects", transitions: "Transitions" })
+    readonly property var kindNames: ({ sounds: qsTr("Music & sounds"), templates: qsTr("Templates"), stickers: qsTr("Stickers"),
+                                        effects: qsTr("Effects"), transitions: qsTr("Transitions") })
 
     contentWidth: availableWidth
     clip: true
@@ -32,7 +32,7 @@ ScrollView {
             Layout.leftMargin: Theme.space.m
             Layout.rightMargin: Theme.space.m
             Layout.topMargin: Theme.space.s
-            text: "Packs of templates, music, stickers and effects. Each is checked against our signature before it is installed."
+            text: qsTr("Packs of templates, music, stickers and effects. Each is checked against our signature before it is installed.")
             font: Theme.type.body
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
@@ -45,7 +45,7 @@ ScrollView {
             Layout.fillWidth: true
             Layout.leftMargin: Theme.space.m
             Layout.rightMargin: Theme.space.m
-            text: "This copy of the app trusts no signing key yet, so it can't check packs. Whoever publishes them adds theirs (tools/packs/README.md)."
+            text: qsTr("This copy of the app trusts no signing key yet, so it can't check packs. Whoever publishes them adds theirs (tools/packs/README.md).")
             font: Theme.type.caption
             color: Theme.color.warning
             wrapMode: Text.WordWrap
@@ -57,7 +57,7 @@ ScrollView {
             Layout.rightMargin: Theme.space.m
             spacing: Theme.space.xs
             Repeater {
-                model: [{ id: "", label: "All" }, { id: "installed", label: "Installed" }]
+                model: [{ id: "", label: qsTr("All") }, { id: "installed", label: qsTr("Installed") }]
                 delegate: AbstractButton {
                     id: chip
                     required property var modelData
@@ -86,7 +86,7 @@ ScrollView {
             TextButton {
                 objectName: "storeRefresh"
                 visible: !page.store.busy
-                text: page.store.checked ? "Check again" : "Check for packs"
+                text: page.store.checked ? qsTr("Check again") : qsTr("Check for packs")
                 variant: "ghost"
                 enabled: page.store.hasTrustedKey
                 onClicked: page.store.refresh()
@@ -94,7 +94,7 @@ ScrollView {
             TextButton {
                 objectName: "storeStop"
                 visible: page.store.busy
-                text: "Stop"
+                text: qsTr("Stop")
                 variant: "ghost"
                 onClicked: page.store.cancel()
             }
@@ -108,7 +108,7 @@ ScrollView {
             visible: text !== ""
             text: page.store.lastError !== "" ? page.store.lastError
                 : page.store.status !== "" ? page.store.status
-                : page.store.checked ? "Catalogue of " + (page.store.published || "today") + " · checked" : ""
+                : page.store.checked ? qsTr("Catalogue of %1 · checked").arg(page.store.published || qsTr("today")) : ""
             font: Theme.type.caption
             color: page.store.lastError !== "" ? Theme.color.danger : Theme.color.textSecondary
             wrapMode: Text.WordWrap
@@ -119,7 +119,7 @@ ScrollView {
             Layout.fillWidth: true
             Layout.leftMargin: Theme.space.m
             Layout.rightMargin: Theme.space.m
-            text: "Effects and transitions from packs change the next time you open the app."
+            text: qsTr("Effects and transitions from packs change the next time you open the app.")
             font: Theme.type.caption
             color: Theme.color.warning
             wrapMode: Text.WordWrap
@@ -191,7 +191,7 @@ ScrollView {
                         TextButton {
                             objectName: "packInstall:" + card.modelData.id
                             visible: card.modelData.state === "available" || card.modelData.state === "update"
-                            text: card.modelData.state === "update" ? "Update" : "Get"
+                            text: card.modelData.state === "update" ? qsTr("Update") : qsTr("Get")
                             variant: "primary"
                             enabled: !page.store.busy
                             onClicked: page.store.install(card.modelData.id)
@@ -199,7 +199,7 @@ ScrollView {
                         TextButton {
                             objectName: "packRemove:" + card.modelData.id
                             visible: card.modelData.installedVersion > 0 && card.modelData.state !== "installing"
-                            text: "Remove"
+                            text: qsTr("Remove")
                             variant: "ghost"
                             enabled: !page.store.busy
                             onClicked: page.store.remove(card.modelData.id)
@@ -244,7 +244,7 @@ ScrollView {
                         }
                         Text {
                             visible: card.modelData.state === "installed"
-                            text: "Installed"
+                            text: qsTr("Installed")
                             font: Theme.type.caption
                             color: Theme.color.success
                         }
@@ -252,7 +252,7 @@ ScrollView {
                     Text {
                         Layout.fillWidth: true
                         visible: card.modelData.license !== ""
-                        text: "Licence: " + card.modelData.license
+                        text: qsTr("Licence: %1").arg(card.modelData.license)
                         font: Theme.type.caption
                         color: Theme.color.textDisabled
                         wrapMode: Text.WordWrap
@@ -267,7 +267,7 @@ ScrollView {
             Layout.fillWidth: true
             Layout.leftMargin: Theme.space.m
             Layout.rightMargin: Theme.space.m
-            text: page.filter === "installed" ? "No packs installed yet." : page.store.checked ? "The catalogue has no packs yet." : ""
+            text: page.filter === "installed" ? qsTr("No packs installed yet.") : page.store.checked ? qsTr("The catalogue has no packs yet.") : ""
             font: Theme.type.body
             color: Theme.color.textDisabled
             wrapMode: Text.WordWrap
@@ -278,7 +278,7 @@ ScrollView {
             objectName: "storeSource"
             Layout.fillWidth: true
             expanded: false
-            title: "Catalogue address"
+            title: qsTr("Catalogue address")
             TextField {
                 id: address
                 objectName: "storeAddress"
@@ -297,7 +297,7 @@ ScrollView {
             TextButton {
                 objectName: "storeAddressDefault"
                 visible: page.store.catalogueUrl !== page.store.defaultCatalogueUrl
-                text: "Use the default"
+                text: qsTr("Use the default")
                 variant: "ghost"
                 onClicked: page.store.catalogueUrl = ""
             }

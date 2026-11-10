@@ -1,4 +1,5 @@
 #include "model/Consent.h"
+#include "model/Translate.h"
 
 #include <algorithm>
 #include <array>
@@ -147,14 +148,14 @@ ConsentCheck checkConsent(const ConsentStatement& statement, const std::string& 
     check.match = wanted.empty() ? 0.0 : double(row[said.size()]) / double(wanted.size());
 
     if (duration < 15 * kTicksPerSecond)
-        check.why = "The recording is too short: read the whole statement, at an easy pace.";
+        check.why = TVE_TR("core", "The recording is too short: read the whole statement, at an easy pace.");
     else if (!check.missing.empty()) {
         std::string list;
         for (std::size_t i = 0; i < check.missing.size(); ++i)
             list += (i == 0 ? "" : i + 1 == check.missing.size() ? " and " : ", ") + ("“" + check.missing[i] + "”");
         check.why = "These weren't heard in the recording: " + list + ". Record the statement again, clearly.";
     } else if (check.match < 0.8)
-        check.why = "The recording doesn't say the statement as it is written. Record it again, reading every word.";
+        check.why = TVE_TR("core", "The recording doesn't say the statement as it is written. Record it again, reading every word.");
     check.passed = check.why.empty();
     return check;
 }

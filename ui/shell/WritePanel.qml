@@ -12,9 +12,10 @@ Popup {
     readonly property bool writing: cloud.job === "write"
 
     property string kind: "titles"
-    readonly property var kinds: [{ id: "titles", label: "Titles" }, { id: "description", label: "Description" },
-                                  { id: "script", label: "Script" }]
-    readonly property var tones: ["Any tone", "Friendly", "Professional", "Playful", "Bold", "Calm"]
+    readonly property var kinds: [{ id: "titles", label: qsTr("Titles") }, { id: "description", label: qsTr("Description") },
+                                  { id: "script", label: qsTr("Script") }]
+    readonly property var tones: ["Any tone", "Friendly", "Professional", "Playful", "Bold", "Calm"] // sent as is
+readonly property var toneNames: [qsTr("Any tone"), qsTr("Friendly"), qsTr("Professional"), qsTr("Playful"), qsTr("Bold"), qsTr("Calm")]
     // The answer's lines (titles).
     readonly property var lines: draft.text.split("\n").map((l) => l.trim()).filter((l) => l !== "")
 
@@ -41,8 +42,8 @@ Popup {
 
         RowLayout {
             Layout.fillWidth: true
-            Text { Layout.fillWidth: true; text: "Write with AI"; font: Theme.type.title; color: Theme.color.textPrimary }
-            IconButton { objectName: "closeWrite"; iconName: "close"; tip: "Close"; onClicked: panel.close() }
+            Text { Layout.fillWidth: true; text: qsTr("Write with AI"); font: Theme.type.title; color: Theme.color.textPrimary }
+            IconButton { objectName: "closeWrite"; iconName: "close"; tip: qsTr("Close"); onClicked: panel.close() }
         }
 
         Row {
@@ -79,13 +80,13 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.space.s
-            ComboBox { id: tone; objectName: "writeTone"; model: panel.tones; enabled: !panel.writing }
+            ComboBox { id: tone; objectName: "writeTone"; model: panel.toneNames; enabled: !panel.writing }
             TextField {
                 id: notes
                 objectName: "writeNotes"
                 Layout.fillWidth: true
                 enabled: !panel.writing
-                placeholderText: "Anything else: the audience, words to use…"
+                placeholderText: qsTr("Anything else: the audience, words to use…")
                 color: Theme.color.textPrimary
                 placeholderTextColor: Theme.color.textDisabled
                 selectByMouse: true
@@ -101,7 +102,7 @@ Popup {
                 id: writeButton
                 objectName: "writeButton"
                 visible: !panel.writing
-                text: panel.lines.length > 0 ? "Write again" : "Write"
+                text: panel.lines.length > 0 ? qsTr("Write again") : qsTr("Write")
                 variant: "primary"
                 enabled: panel.cloud.hasClaudeKey && panel.cloud.job === ""
                 onClicked: panel.write()
@@ -109,7 +110,7 @@ Popup {
             TextButton {
                 objectName: "cancelWrite"
                 visible: panel.writing
-                text: "Stop"
+                text: qsTr("Stop")
                 variant: "secondary"
                 onClicked: panel.cloud.cancel()
             }
@@ -118,7 +119,7 @@ Popup {
         Text {
             objectName: "writeStatus"
             Layout.fillWidth: true
-            text: !panel.cloud.hasClaudeKey ? "Add your Claude API key in AI settings (the speech bubble at the top) to write."
+            text: !panel.cloud.hasClaudeKey ? qsTr("Add your Claude API key in AI settings (the speech bubble at the top) to write.")
                 : panel.cloud.status
             visible: text !== ""
             font: Theme.type.caption
@@ -140,7 +141,7 @@ Popup {
                 selectByMouse: true
                 font: Theme.type.body
                 color: Theme.color.textPrimary
-                placeholderText: "What Claude writes appears here."
+                placeholderText: qsTr("What Claude writes appears here.")
                 background: Rectangle { radius: Theme.radius.m; color: Theme.color.surfaceSunken; border.color: Theme.color.borderSubtle }
             }
         }
@@ -168,9 +169,9 @@ Popup {
                     Text { Layout.fillWidth: true; text: titleRow.modelData; font: Theme.type.body; color: Theme.color.textPrimary; elide: Text.ElideRight }
                     TextButton {
                         objectName: "addWrittenTitle:" + titleRow.index
-                        text: "Add as title"
+                        text: qsTr("Add as title")
                         variant: "ghost"
-                        tip: "A title clip at the playhead"
+                        tip: qsTr("A title clip at the playhead")
                         onClicked: panel.project.addTitle({ text: titleRow.modelData })
                     }
                 }
@@ -178,7 +179,7 @@ Popup {
             Text {
                 anchors.centerIn: parent
                 visible: parent.count === 0
-                text: "Titles appear here, ready to add."
+                text: qsTr("Titles appear here, ready to add.")
                 font: Theme.type.body
                 color: Theme.color.textSecondary
             }
@@ -189,14 +190,14 @@ Popup {
             Text {
                 objectName: "writeUsage"
                 Layout.fillWidth: true
-                text: "This session: about $" + panel.cloud.usage.cost.toFixed(2) + " · "
-                      + panel.cloud.claudeModels.find((m) => m.id === panel.cloud.claudeModel).label
+                text: qsTr("This session: about $%1 · %2").arg(Fmt.num(panel.cloud.usage.cost, 2))
+                      .arg(panel.cloud.claudeModels.find((m) => m.id === panel.cloud.claudeModel).label)
                 font: Theme.type.caption
                 color: Theme.color.textSecondary
             }
             TextButton {
                 objectName: "copyDraft"
-                text: "Copy"
+                text: qsTr("Copy")
                 variant: "secondary"
                 enabled: draft.text !== "" && !panel.writing
                 onClicked: { draft.selectAll(); draft.copy(); draft.deselect() }

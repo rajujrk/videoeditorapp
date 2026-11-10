@@ -29,14 +29,14 @@ Item {
             Layout.fillWidth: true
             Text {
                 Layout.fillWidth: true
-                text: "Add your Claude key in AI settings to edit with the copilot."
+                text: qsTr("Add your Claude key in AI settings to edit with the copilot.")
                 font: Theme.type.body
                 color: Theme.color.textSecondary
                 wrapMode: Text.WordWrap
             }
             TextButton {
                 objectName: "copilotSettings"
-                text: "AI settings…"
+                text: qsTr("AI settings…")
                 variant: "secondary"
                 onClicked: page.settingsRequested()
             }
@@ -59,10 +59,8 @@ Item {
                 height: visible ? implicitHeight + Theme.space.m : 0
                 width: conversation.width
                 wrapMode: Text.WordWrap
-                text: "Ask for changes in your own words: trims and cuts, titles, transitions, effects, colour, captions. "
-                      + "You'll see what it would change before anything happens.\n\nEach request sends Anthropic a "
-                      + "description of the project — its clips' names and timing, titles and captions, and what is said in "
-                      + "transcribed media — not the pictures or sound."
+                text: qsTr("Ask for changes in your own words: trims and cuts, titles, transitions, effects, colour, captions. You'll see what it would change before anything happens.")
+                      + "\n\n" + qsTr("Each request sends Anthropic a description of the project — its clips' names and timing, titles and captions, and what is said in transcribed media — not the pictures or sound.")
                 font: Theme.type.body
                 color: Theme.color.textSecondary
             }
@@ -98,9 +96,9 @@ Item {
                         visible: entry.kind === "changes"
                         objectName: "copilotChangesTitle:" + entry.index
                         Layout.fillWidth: true
-                        text: entry.modelData.state === "applied" ? "Applied"
-                            : entry.modelData.state === "discarded" ? "Not applied"
-                            : (entry.modelData.changes || []).length === 1 ? "1 change, not applied yet" : (entry.modelData.changes || []).length + " changes, not applied yet"
+                        text: entry.modelData.state === "applied" ? qsTr("Applied")
+                            : entry.modelData.state === "discarded" ? qsTr("Not applied")
+                            : (entry.modelData.changes || []).length === 1 ? qsTr("1 change, not applied yet") : qsTr("%1 changes, not applied yet").arg(Fmt.num((entry.modelData.changes || []).length))
                         font: Theme.type.label
                         color: entry.modelData.state === "proposed" ? Theme.color.accentText : Theme.color.textSecondary
                     }
@@ -122,15 +120,15 @@ Item {
                         Item { Layout.fillWidth: true }
                         TextButton {
                             objectName: entry.kind === "changes" ? "copilotDiscard" : ""
-                            text: "Don't apply"
+                            text: qsTr("Don't apply")
                             variant: "ghost"
                             onClicked: page.copilot.discardChanges()
                         }
                         TextButton {
                             objectName: entry.kind === "changes" ? "copilotApply" : ""
-                            text: "Apply"
+                            text: qsTr("Apply")
                             variant: "primary"
-                            tip: "Make these changes to the project, as one step you can undo"
+                            tip: qsTr("Make these changes to the project, as one step you can undo")
                             onClicked: page.copilot.applyChanges()
                         }
                     }
@@ -145,12 +143,12 @@ Item {
             Text {
                 objectName: "copilotStatus"
                 Layout.fillWidth: true
-                text: page.cloud.status || "Asking Claude…"
+                text: page.cloud.status || qsTr("Asking Claude…")
                 font: Theme.type.caption
                 color: Theme.color.textSecondary
                 elide: Text.ElideRight
             }
-            TextButton { objectName: "copilotStop"; text: "Stop"; variant: "ghost"; onClicked: page.copilot.cancel() }
+            TextButton { objectName: "copilotStop"; text: qsTr("Stop"); variant: "ghost"; onClicked: page.copilot.cancel() }
         }
 
         TextArea {
@@ -162,7 +160,7 @@ Item {
             enabled: page.cloud.hasClaudeKey && !page.copilot.busy
             font: Theme.type.body
             color: Theme.color.textPrimary
-            placeholderText: "What should change? (⌘↩ to send)"
+            placeholderText: qsTr("What should change? (⌘↩ to send)")
             background: Rectangle { radius: Theme.radius.m; color: Theme.color.surfaceSunken; border.color: Theme.color.borderSubtle }
             Keys.onReturnPressed: (event) => {
                 if (event.modifiers & Qt.ControlModifier || event.modifiers & Qt.MetaModifier)
@@ -175,7 +173,7 @@ Item {
             Layout.fillWidth: true
             TextButton {
                 objectName: "copilotStartOver"
-                text: "New conversation"
+                text: qsTr("New conversation")
                 variant: "ghost"
                 enabled: page.copilot.messages.length > 0 && !page.copilot.busy
                 onClicked: page.copilot.startOver()
@@ -183,7 +181,7 @@ Item {
             Item { Layout.fillWidth: true }
             TextButton {
                 objectName: "copilotSend"
-                text: "Ask"
+                text: qsTr("Ask")
                 iconName: "assistant"
                 variant: "primary"
                 enabled: request.text.trim() !== "" && page.cloud.hasClaudeKey && !page.copilot.busy

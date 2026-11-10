@@ -2,6 +2,7 @@
 
 #include "decode/AudioDecoder.h"
 #include "decode/VideoDecoder.h"
+#include "model/Translate.h"
 
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
@@ -149,7 +150,7 @@ public:
             return list;
         @autoreleasepool {
             PHFetchOptions* everything = mediaOptions();
-            list.push_back({"all", "All photos and videos", int([PHAsset fetchAssetsWithOptions:everything].count)});
+            list.push_back({"all", TVE_TR("core", "All photos and videos"), int([PHAsset fetchAssetsWithOptions:everything].count)});
             const auto add = [&](PHFetchResult<PHAssetCollection*>* found) {
                 for (PHAssetCollection* album in found) {
                     const NSUInteger count = [PHAsset fetchAssetsInAssetCollection:album options:mediaOptions()].count;
@@ -231,7 +232,7 @@ public:
         @autoreleasepool {
             PHAsset* asset = find(itemId);
             if (!asset) {
-                done({}, "The item is no longer in the Photos library.");
+                done({}, TVE_TR("core", "The item is no longer in the Photos library."));
                 return;
             }
             // The picture as Photos shows it (edits included), named after the original.
@@ -247,7 +248,7 @@ public:
             }
             PHAssetResource* chosen = edited ? edited : original;
             if (!chosen) {
-                done({}, "Photos has no file for the item.");
+                done({}, TVE_TR("core", "Photos has no file for the item."));
                 return;
             }
             const fs::path originalName(fileName(original ? original : chosen));
@@ -329,7 +330,7 @@ public:
         if (!m_library)
             return list;
         @autoreleasepool {
-            list.push_back({"all", "Songs", int(playable(m_library.allMediaItems).size())});
+            list.push_back({"all", TVE_TR("core", "Songs"), int(playable(m_library.allMediaItems).size())});
             for (ITLibPlaylist* playlist in m_library.allPlaylists) {
                 if (!playlist.visible || playlist.primary || playlist.kind == ITLibPlaylistKindFolder)
                     continue;
@@ -402,7 +403,7 @@ public:
             }
         }
         if (path.empty() || !fs::exists(path))
-            done({}, "The song's file is not on this Mac.");
+            done({}, TVE_TR("core", "The song's file is not on this Mac."));
         else
             done(path, {});
     }
@@ -664,7 +665,7 @@ public:
             file = [fileWith(itemId) retain];
         });
         if (!file) {
-            done({}, "The device or the file is no longer there.");
+            done({}, TVE_TR("core", "The device or the file is no longer there."));
             return;
         }
         std::error_code ec;
@@ -679,7 +680,7 @@ public:
         [file requestDownloadWithOptions:options
                               completion:^(NSString* filename, NSError* error) {
                                   if (error || !filename)
-                                      (*callback)({}, error ? str(error.localizedDescription) : "The file did not download.");
+                                      (*callback)({}, error ? str(error.localizedDescription) : TVE_TR("core", "The file did not download."));
                                   else
                                       (*callback)((fs::path(target) / str(filename)).string(), {});
                                   delete callback;
@@ -785,7 +786,7 @@ public:
         const fs::path source = fs::path(m_root) / itemId;
         std::error_code ec;
         if (itemId.find("..") != std::string::npos || !fs::is_regular_file(source, ec)) {
-            done({}, "The file is no longer there.");
+            done({}, TVE_TR("core", "The file is no longer there."));
             return;
         }
         if (!m_copies) {

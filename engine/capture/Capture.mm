@@ -1,4 +1,5 @@
 #include "capture/Capture.h"
+#include "model/Translate.h"
 
 #import <AVFoundation/AVFoundation.h>
 #import <CoreMedia/CoreMedia.h>
@@ -120,7 +121,7 @@ SCShareableContent* shareableContent(std::string* error) // retained, or nil
     dispatch_semaphore_wait(done, DISPATCH_TIME_FOREVER);
     dispatch_release(done);
     if (!content && error)
-        *error = why.empty() ? std::string("The screen cannot be recorded (check Screen Recording in System Settings).") : why;
+        *error = why.empty() ? std::string(TVE_TR("core", "The screen cannot be recorded (check Screen Recording in System Settings).")) : why;
     return content;
 }
 
@@ -157,7 +158,7 @@ public:
         [content release];
         if (!filter) {
             if (error)
-                *error = "That screen or window is gone.";
+                *error = TVE_TR("core", "That screen or window is gone.");
             return false;
         }
         m_scale = filter.pointPixelScale > 0 ? filter.pointPixelScale : 2.0;
@@ -203,7 +204,7 @@ public:
         dispatch_release(done);
         if (!started) {
             if (error)
-                *error = why.empty() ? std::string("The screen recording could not start.") : why;
+                *error = why.empty() ? std::string(TVE_TR("core", "The screen recording could not start.")) : why;
             release();
             return false;
         }
@@ -271,14 +272,14 @@ public:
         AVCaptureDevice* device = [AVCaptureDevice deviceWithUniqueID:@(m_id.c_str())];
         if (!device) {
             if (error)
-                *error = "That camera is not connected.";
+                *error = TVE_TR("core", "That camera is not connected.");
             return false;
         }
         NSError* failure = nil;
         AVCaptureDeviceInput* input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&failure];
         if (!input) {
             if (error)
-                *error = failure ? failure.localizedDescription.UTF8String : "The camera cannot be opened.";
+                *error = failure ? failure.localizedDescription.UTF8String : TVE_TR("core", "The camera cannot be opened.");
             return false;
         }
         m_session = [[AVCaptureSession alloc] init];
@@ -297,7 +298,7 @@ public:
         [m_session startRunning];
         if (!m_session.running) {
             if (error)
-                *error = "The camera did not start.";
+                *error = TVE_TR("core", "The camera did not start.");
             stop();
             return false;
         }

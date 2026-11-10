@@ -1,5 +1,6 @@
 #include "ProxyManager.h"
 
+#include "Language.h"
 #include "encode/Proxy.h"
 
 #include <QCryptographicHash>
@@ -156,7 +157,7 @@ void ProxyManager::startNext()
             if (job.state == State::Making) { // not removed meanwhile
                 job.state = ok ? State::Ready : error.empty() ? State::None : State::Failed;
                 job.progress = ok ? 1.0 : 0.0;
-                job.error = QString::fromStdString(error);
+                job.error = coreText(error);
             }
             emit changed(source, ok && job.state == State::Ready);
             startNext();

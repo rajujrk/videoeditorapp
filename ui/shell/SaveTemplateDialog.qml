@@ -52,8 +52,8 @@ Popup {
         spacing: Theme.space.s
         RowLayout {
             Layout.fillWidth: true
-            Text { Layout.fillWidth: true; text: "Save as template"; font: Theme.type.title; color: Theme.color.textPrimary }
-            IconButton { iconName: "close"; tip: "Close"; onClicked: dialog.close() }
+            Text { Layout.fillWidth: true; text: qsTr("Save as template"); font: Theme.type.title; color: Theme.color.textPrimary }
+            IconButton { iconName: "close"; tip: qsTr("Close"); onClicked: dialog.close() }
         }
         RowLayout {
             Layout.fillWidth: true
@@ -62,7 +62,7 @@ Popup {
                 id: name
                 objectName: "templateName"
                 Layout.fillWidth: true
-                placeholderText: "Template name"
+                placeholderText: qsTr("Template name")
                 color: Theme.color.textPrimary
                 placeholderTextColor: Theme.color.textDisabled
                 selectByMouse: true
@@ -85,7 +85,7 @@ Popup {
         Text {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            text: "Replaceable clips become numbered slots; their media is left out. Everything else the project uses is copied into the template."
+            text: qsTr("Replaceable clips become numbered slots; their media is left out. Everything else the project uses is copied into the template.")
             font: Theme.type.caption
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
@@ -124,13 +124,13 @@ Popup {
                         }
                         Text {
                             Layout.preferredWidth: 90
-                            text: row.modelData.kind === "picture" ? "Replaceable" : row.modelData.kind === "title" ? "Editable" : "Music"
+                            text: row.modelData.kind === "picture" ? qsTr("Replaceable") : row.modelData.kind === "title" ? qsTr("Editable") : qsTr("Music")
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: row.modelData.label + "  ·  " + row.modelData.track + " · " + row.modelData.start.toFixed(1) + " s"
+                            text: row.modelData.label + "  ·  " + row.modelData.track + " · " + Fmt.seconds(row.modelData.start)
                             font: Theme.type.label
                             color: Theme.color.textPrimary
                             elide: Text.ElideRight
@@ -142,7 +142,7 @@ Popup {
         Text {
             objectName: "saveTemplateMessage"
             visible: dialog.saved !== ""
-            text: "Saved: it is under Mine in Templates."
+            text: qsTr("Saved: it is under Mine in Templates.")
             font: Theme.type.label
             color: Theme.color.textSecondary
         }
@@ -151,7 +151,7 @@ Popup {
             Item { Layout.fillWidth: true }
             TextButton {
                 objectName: "saveTemplate"
-                text: "Save template"
+                text: qsTr("Save template")
                 variant: "primary"
                 enabled: dialog.slotIds.length > 0
                 onClicked: dialog.saved = dialog.project.saveAsTemplate(name.text, category.currentValue, dialog.slotIds,

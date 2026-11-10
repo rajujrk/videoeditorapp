@@ -1,6 +1,7 @@
 #include "analysis/Tracking.h"
 
 #include "decode/VideoDecoder.h"
+#include "model/Translate.h"
 
 #import <Foundation/Foundation.h>
 #import <Vision/Vision.h>
@@ -80,13 +81,13 @@ std::optional<std::vector<TrackSample>> trackRegion(const std::string& path, Tic
                                                     bool surface, const AnalysisProgress& progress, std::string* error)
 {
     if (box.width <= 0.0 || box.height <= 0.0) {
-        fail(error, "Draw a box around what to follow first.");
+        fail(error, TVE_TR("core", "Draw a box around what to follow first."));
         return std::nullopt;
     }
     auto decoder = VideoDecoder::open(path, error);
     if (!decoder || !decoder->seek(from)) {
         if (error && error->empty())
-            *error = "This file has no pictures to follow.";
+            *error = TVE_TR("core", "This file has no pictures to follow.");
         return std::nullopt;
     }
     std::vector<TrackSample> samples;
@@ -116,7 +117,7 @@ std::optional<std::vector<TrackSample>> trackRegion(const std::string& path, Tic
                     }
                     if (!last) {
                         [handler release];
-                        fail(error, "No flat rectangle (a screen, a sign, a page) was found in the box.");
+                        fail(error, TVE_TR("core", "No flat rectangle (a screen, a sign, a page) was found in the box."));
                         return std::nullopt;
                     }
                 }
@@ -169,7 +170,7 @@ std::optional<std::vector<TrackSample>> trackRegion(const std::string& path, Tic
     [last release];
     [handler release];
     if (samples.empty()) {
-        fail(error, "Nothing to follow there.");
+        fail(error, TVE_TR("core", "Nothing to follow there."));
         return std::nullopt;
     }
     return samples;

@@ -16,8 +16,8 @@ ApplicationWindow {
     minimumWidth: 1180
     minimumHeight: 700
     visible: true
-    title: screen === "editor" ? project.name + (project.modified ? " (edited)" : "") + " — TechieVideoEditor"
-                               : "TechieVideoEditor"
+    title: screen === "editor" ? (project.modified ? qsTr("%1 (edited) — TechieVideoEditor") : qsTr("%1 — TechieVideoEditor")).arg(project.name)
+                               : qsTr("TechieVideoEditor")
     color: Theme.color.canvas
 
     // Stock controls (Slider, Switch, ComboBox, ToolTip…) pick their colors up from here.
@@ -86,10 +86,10 @@ ApplicationWindow {
 
     FileDialog {
         id: openDialog
-        title: "Open project"
+        title: qsTr("Open project")
         fileMode: FileDialog.OpenFile
-        nameFilters: ["TechieVideoEditor projects (*.tve)",
-                      "Timelines from other editors (*.otio *.fcpxml *.fcpxmld)", "All files (*)"]
+        nameFilters: [qsTr("TechieVideoEditor projects (*.tve)"),
+                      qsTr("Timelines from other editors (*.otio *.fcpxml *.fcpxmld)"), qsTr("All files (*)")]
         onAccepted: {
             if (project.open(selectedFile))
                 root.screen = "editor"

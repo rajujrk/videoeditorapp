@@ -62,7 +62,7 @@ Popup {
             Icon { name: "mic"; size: Theme.size.icon; color: Theme.color.textPrimary }
             Text {
                 Layout.fillWidth: true
-                text: "Record voice-over"
+                text: qsTr("Record voice-over")
                 font: Theme.type.title
                 color: Theme.color.textPrimary
             }
@@ -70,7 +70,7 @@ Popup {
                 objectName: "voiceOverClose"
                 iconName: "plus"
                 rotation: 45
-                tip: panel.stage === "idle" ? "Close (Esc)" : "Stop recording first"
+                tip: panel.stage === "idle" ? qsTr("Close (Esc)") : qsTr("Stop recording first")
                 enabled: panel.stage === "idle"
                 onClicked: panel.close()
             }
@@ -86,14 +86,14 @@ Popup {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 text: panel.project.microphoneAccess === "denied"
-                      ? "TechieVideoEditor isn't allowed to use the microphone. Turn it on in System Settings › Privacy & Security › Microphone, then open this panel again."
-                      : "Waiting for permission to use the microphone…"
+                      ? qsTr("TechieVideoEditor isn't allowed to use the microphone. Turn it on in System Settings › Privacy & Security › Microphone, then open this panel again.")
+                      : qsTr("Waiting for permission to use the microphone…")
                 font: Theme.type.body
                 color: Theme.color.textSecondary
             }
             TextButton {
                 visible: panel.project.microphoneAccess === "denied"
-                text: "Open Privacy Settings"
+                text: qsTr("Open Privacy Settings")
                 variant: "secondary"
                 onClicked: panel.project.openMicrophoneSettings()
             }
@@ -106,7 +106,7 @@ Popup {
             columnSpacing: Theme.space.m
             rowSpacing: Theme.space.s
 
-            Text { text: "Microphone"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { text: qsTr("Microphone"); font: Theme.type.label; color: Theme.color.textSecondary }
             ComboBox {
                 id: devicePicker
                 objectName: "inputDevicePicker"
@@ -117,7 +117,7 @@ Popup {
                 onActivated: (index) => panel.project.inputDevice = panel.project.inputDevices[index]
             }
 
-            Text { text: "Level"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { text: qsTr("Level"); font: Theme.type.label; color: Theme.color.textSecondary }
             Rectangle {
                 objectName: "inputLevelMeter"
                 Layout.fillWidth: true
@@ -142,14 +142,14 @@ Popup {
             spacing: Theme.space.xs
             ToggleSwitch {
                 objectName: "muteWhileRecording"
-                text: "Mute the timeline while recording"
+                text: qsTr("Mute the timeline while recording")
                 enabled: panel.stage !== "recording"
                 checked: panel.project.muteWhileRecording
                 onToggled: panel.project.muteWhileRecording = checked
             }
             ToggleSwitch {
                 objectName: "countIn"
-                text: "Count down 3 seconds first"
+                text: qsTr("Count down 3 seconds first")
                 enabled: panel.stage === "idle"
                 checked: panel.countIn
                 onToggled: panel.countIn = checked
@@ -175,8 +175,8 @@ Popup {
                          : panel.record()
 
                 ToolTip {
-                    text: panel.stage === "recording" ? "Stop and add to the timeline (Space)"
-                        : panel.stage === "countdown" ? "Cancel" : "Record from the playhead"
+                    text: panel.stage === "recording" ? qsTr("Stop and add to the timeline (Space)")
+                        : panel.stage === "countdown" ? qsTr("Cancel") : qsTr("Record from the playhead")
                     visible: recordButton.hovered
                     delay: 600
                 }
@@ -226,8 +226,8 @@ Popup {
                     }
                     Text {
                         objectName: "recordingStatus"
-                        text: panel.stage === "recording" ? "Recording"
-                            : panel.stage === "countdown" ? "Starting in " + panel.count + "…" : "Ready"
+                        text: panel.stage === "recording" ? qsTr("Recording")
+                            : panel.stage === "countdown" ? qsTr("Starting in %1…").arg(panel.count) : qsTr("Ready")
                         font: Theme.type.heading
                         color: panel.stage === "recording" ? Theme.color.danger : Theme.color.textPrimary
                     }
@@ -235,9 +235,9 @@ Popup {
                 Text {
                     objectName: "recordingTime"
                     text: panel.stage === "recording"
-                          ? panel.project.timecode(panel.project.recordingTime).substring(0, 8)
-                            + " from " + panel.project.timecode(panel.project.recordingStart).substring(0, 8)
-                          : "From the playhead at " + panel.project.timecode(panel.project.playhead).substring(0, 8)
+                          ? qsTr("%1 from %2").arg(panel.project.timecode(panel.project.recordingTime).substring(0, 8))
+                            .arg(panel.project.timecode(panel.project.recordingStart).substring(0, 8))
+                          : qsTr("From the playhead at %1").arg(panel.project.timecode(panel.project.playhead).substring(0, 8))
                     font: Theme.type.mono
                     color: Theme.color.textSecondary
                 }
@@ -248,7 +248,7 @@ Popup {
             visible: panel.project.voiceOverActive
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            text: "The take goes on the first audio track with room for it, or a new Voice-over track."
+            text: qsTr("The take goes on the first audio track with room for it, or a new Voice-over track.")
             font: Theme.type.caption
             color: Theme.color.textSecondary
         }

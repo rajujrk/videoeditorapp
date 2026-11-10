@@ -52,7 +52,7 @@ Popup {
     contentItem: ColumnLayout {
         spacing: Theme.space.m
 
-        Text { text: "Record screen and camera"; font: Theme.type.title; color: Theme.color.textPrimary }
+        Text { text: qsTr("Record screen and camera"); font: Theme.type.title; color: Theme.color.textPrimary }
 
         // Permissions
         ColumnLayout {
@@ -61,37 +61,37 @@ Popup {
             Text {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
-                text: "To record the screen, allow TechieVideoEditor in System Settings › Privacy & Security › Screen & System Audio Recording."
+                text: qsTr("To record the screen, allow TechieVideoEditor in System Settings › Privacy & Security › Screen & System Audio Recording.")
                 font: Theme.type.body
                 color: Theme.color.textSecondary
                 wrapMode: Text.WordWrap
             }
             TextButton {
                 objectName: "allowScreen"
-                text: "Allow screen recording"
+                text: qsTr("Allow screen recording")
                 variant: "secondary"
                 onClicked: { panel.project.requestScreenAccess(); panel.refresh() }
             }
         }
 
-        Text { text: "Screen"; font: Theme.type.label; color: Theme.color.textSecondary }
+        Text { text: qsTr("Screen"); font: Theme.type.label; color: Theme.color.textSecondary }
         ComboBox {
             id: screenChoice
             objectName: "screenChoice"
             Layout.fillWidth: true
             enabled: !panel.project.screenRecording
-            model: ["No screen"].concat(panel.screens.map((s) => s.title))
+            model: [qsTr("No screen")].concat(panel.screens.map((s) => s.title))
             onActivated: (index) => panel.screenIndex = index - 1
         }
         ToggleSwitch {
             objectName: "systemSound"
-            text: "System sound"
+            text: qsTr("System sound")
             enabled: panel.screenIndex >= 0 && !panel.project.screenRecording
             checked: panel.systemSound
             onToggled: panel.systemSound = checked
         }
 
-        Text { text: "Camera"; font: Theme.type.label; color: Theme.color.textSecondary }
+        Text { text: qsTr("Camera"); font: Theme.type.label; color: Theme.color.textSecondary }
         RowLayout {
             Layout.fillWidth: true
             ComboBox {
@@ -99,7 +99,7 @@ Popup {
                 objectName: "cameraChoice"
                 Layout.fillWidth: true
                 enabled: !panel.project.screenRecording
-                model: ["No camera"].concat(panel.cameras.map((c) => c.name))
+                model: [qsTr("No camera")].concat(panel.cameras.map((c) => c.name))
                 onActivated: (index) => {
                     panel.cameraIndex = index - 1
                     if (panel.cameraIndex >= 0 && panel.project.cameraAccess !== "granted")
@@ -111,14 +111,14 @@ Popup {
             visible: panel.cameraIndex >= 0 && panel.screenIndex >= 0
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            text: "The camera goes small in the corner over the screen (picture in picture)."
+            text: qsTr("The camera goes small in the corner over the screen (picture in picture).")
             font: Theme.type.body
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
         }
         ToggleSwitch {
             objectName: "recordMicrophone"
-            text: "Microphone" + (panel.project.inputDevice ? " (" + panel.project.inputDevice + ")" : "")
+            text: panel.project.inputDevice ? qsTr("Microphone (%1)").arg(panel.project.inputDevice) : qsTr("Microphone")
             enabled: !panel.project.screenRecording
             checked: panel.microphone
             onToggled: panel.microphone = checked
@@ -139,7 +139,7 @@ Popup {
             TextButton {
                 objectName: "startScreenRecording"
                 visible: !panel.project.screenRecording
-                text: "Record"
+                text: qsTr("Record")
                 variant: "primary"
                 enabled: panel.screenIndex >= 0 || panel.cameraIndex >= 0
                 onClicked: panel.record()
@@ -147,7 +147,7 @@ Popup {
             TextButton {
                 objectName: "stopScreenRecording"
                 visible: panel.project.screenRecording
-                text: "Stop"
+                text: qsTr("Stop")
                 variant: "primary"
                 onClicked: {
                     panel.project.stopScreenRecording()

@@ -3,6 +3,7 @@
 // the main track, with the other tracks' clips connected to it in lanes (above it for
 // video, below it for sound). Read with libxml2 (the system's), never fetching anything.
 #include "io/Interchange.h"
+#include "model/Translate.h"
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -201,7 +202,7 @@ std::string writeFcpxml(const Timeline& timeline, Notes& notes)
         const int lane = track.audio ? -(++audioLane) : ++videoLane;
         for (const Item& it : track.items) {
             if (it.transitionIn)
-                notes.add("Transitions off the main track (left out in Final Cut XML)");
+                notes.add(TVE_TR("core", "Transitions off the main track (left out in Final Cut XML)"));
             if (it.kind == Item::Kind::Title && track.audio)
                 continue;
             SpineElement& e = holder(it.start);
@@ -220,7 +221,7 @@ std::string writeFcpxml(const Timeline& timeline, Notes& notes)
         coloured = coloured || m.color != MarkerColor::Blue;
     }
     if (coloured)
-        notes.addLine("Marker colours (Final Cut's markers have none)");
+        notes.addLine(TVE_TR("core", "Marker colours (Final Cut's markers have none)"));
 
     std::ostringstream body;
     for (std::size_t i = 0; i < spine.size(); ++i) {
@@ -361,7 +362,7 @@ struct Reader {
         for (xmlNode* child : elements(node)) {
             const std::string name = reinterpret_cast<const char*>(child->name);
             if (name.rfind("adjust-", 0) == 0 || name.rfind("filter-", 0) == 0)
-                notes.add("Effects, transforms and volume (left out)");
+                notes.add(TVE_TR("core", "Effects, transforms and volume (left out)"));
         }
     }
 
@@ -394,7 +395,7 @@ struct Reader {
                 const Ticks t0 = parseTime(attr(points.front(), "time")), t1 = parseTime(attr(points.back(), "time"));
                 const Ticks v0 = parseTime(attr(points.front(), "value")), v1 = parseTime(attr(points.back(), "value"));
                 if (points.size() > 2)
-                    notes.add("Variable speed (as its average)");
+                    notes.add(TVE_TR("core", "Variable speed (as its average)"));
                 if (t1 > t0) {
                     const double rate = double(v1 - v0) / double(t1 - t0);
                     const auto valueAt = [&](Ticks t) { return v0 + Ticks(std::llround(double(t - t0) * rate)); };
@@ -407,7 +408,7 @@ struct Reader {
             }
         }
         if (first(node, "conform-rate"))
-            notes.addLine("Frame rate conforming (played at the file's own rate)");
+            notes.addLine(TVE_TR("core", "Frame rate conforming (played at the file's own rate)"));
         return true;
     }
 
@@ -423,12 +424,12 @@ struct Reader {
         bool known = true;
         if (is(node, "asset-clip") || is(node, "video") || is(node, "audio") || is(node, "clip")) {
             if (!media(node, it)) {
-                notes.add("Clips whose media isn't in the file (left as space)");
+                notes.add(TVE_TR("core", "Clips whose media isn't in the file (left as space)"));
                 known = false;
             } else if (lane < 0) {
                 // Below the spine: its sound (pictures there would be under the main track).
                 if (!it.hasAudio) {
-                    notes.add("Pictures below the main storyline (left out)");
+                    notes.add(TVE_TR("core", "Pictures below the main storyline (left out)"));
                     known = false;
                 }
                 audio = true;
@@ -438,7 +439,7 @@ struct Reader {
             }
         } else if (is(node, "title")) {
             if (lane < 0) {
-                notes.add("Titles below the main storyline (left out)");
+                notes.add(TVE_TR("core", "Titles below the main storyline (left out)"));
                 known = false;
             }
             it.kind = Item::Kind::Title;
@@ -450,10 +451,10 @@ struct Reader {
         } else if (is(node, "gap")) {
             known = false;
         } else {
-            notes.add(is(node, "ref-clip") ? "Compound clips (left as space)"
-                    : is(node, "sync-clip") ? "Synchronized clips (left as space)"
-                    : is(node, "mc-clip") ? "Multicam clips (left as space)"
-                                            : "Items this app doesn't know (left as space)");
+            notes.add(is(node, "ref-clip") ? TVE_TR("core", "Compound clips (left as space)")
+                    : is(node, "sync-clip") ? TVE_TR("core", "Synchronized clips (left as space)")
+                    : is(node, "mc-clip") ? TVE_TR("core", "Multicam clips (left as space)")
+                                            : TVE_TR("core", "Items this app doesn't know (left as space)"));
             known = false;
         }
         if (known && it.duration > 0) {
@@ -494,7 +495,7 @@ struct Reader {
     void storyline(xmlNode* spine, Ticks origin, int lane)
     {
         if (lane != 0)
-            notes.addLine("Secondary storylines (as connected clips; their transitions left out)");
+            notes.addLine(TVE_TR("core", "Secondary storylines (as connected clips; their transitions left out)"));
         std::optional<std::pair<Ticks, Ticks>> pending; // a transition's offset and duration
         std::optional<std::string> pendingKind;
         Ticks zero = -1;
@@ -571,7 +572,7 @@ Timeline readFcpxml(const std::string& text, const std::string& base, Notes& not
     };
     find(root);
     if (projects > 1)
-        notes.addLine("The file's other projects (only the first is opened)");
+        notes.addLine(TVE_TR("core", "The file's other projects (only the first is opened)"));
     xmlNode* sequence = project ? first(project, "sequence") : nullptr;
     xmlNode* spine = sequence ? first(sequence, "spine") : nullptr;
     if (!spine)

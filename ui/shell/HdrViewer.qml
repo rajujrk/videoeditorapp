@@ -12,7 +12,7 @@ Window {
     required property var leader // the player's VideoView
     required property var project
     objectName: "hdrViewer"
-    title: "HDR Viewer — " + project.name
+    title: qsTr("HDR Viewer — %1").arg(project.name)
     width: 960
     height: 600
     minimumWidth: 320
@@ -39,12 +39,12 @@ Window {
             font: Theme.type.caption
             color: "white" // SDR white in linear light too
             text: viewer.project.projectColour === "sdr"
-                  ? "An SDR project: shown as in the player. Make the project HDR in Color to work in HDR."
+                  ? qsTr("An SDR project: shown as in the player. Make the project HDR in Color to work in HDR.")
                   : hdrView.hdrActive
-                  ? (viewer.project.projectColour === "hdr-pq" ? "HDR · PQ" : "HDR · HLG")
-                    + " — this display shows up to " + hdrView.displayHeadroom.toFixed(1)
-                    + "× SDR white now; brighter highlights are rolled off"
-                  : "This display shows SDR: the picture is tone-mapped. Move the window to an HDR (XDR) display."
+                  ? qsTr("%1 — this display shows up to %2× SDR white now; brighter highlights are rolled off")
+                    .arg(viewer.project.projectColour === "hdr-pq" ? qsTr("HDR · PQ") : qsTr("HDR · HLG"))
+                    .arg(Fmt.num(hdrView.displayHeadroom, 1))
+                  : qsTr("This display shows SDR: the picture is tone-mapped. Move the window to an HDR (XDR) display.")
         }
     }
 }

@@ -1,5 +1,6 @@
 #include "TemplateLibrary.h"
 
+#include "Language.h"
 #include "PackStore.h"
 #include "StillRenderer.h"
 #include "TitleRenderer.h"
@@ -9,6 +10,7 @@
 #include "io/ProjectSerializer.h"
 #include "model/Template.h"
 
+#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QDirIterator>
@@ -167,7 +169,7 @@ std::optional<Project> buildRecipe(const QJsonObject& recipe, const TemplateShap
     const SoundRecipe* sound = findSound(soundId.toStdString());
     if (!sound) {
         if (error)
-            *error = QStringLiteral("The template's music is missing.");
+            *error = QCoreApplication::translate("TemplateLibrary", "The template's music is missing.");
         return std::nullopt;
     }
     const double tempo = QJsonDocument::fromJson(QByteArray::fromStdString(sound->json)).object().value(QStringLiteral("tempo")).toDouble(120);
@@ -248,7 +250,7 @@ std::optional<Project> buildUser(const QString& id, const TemplateShape* shape, 
     const QJsonObject file = readJson(folder + QStringLiteral("/template.json"));
     if (file.value(QStringLiteral("format")).toString() != QLatin1String("tve-template")) {
         if (error)
-            *error = QStringLiteral("The template could not be read.");
+            *error = QCoreApplication::translate("TemplateLibrary", "The template could not be read.");
         return std::nullopt;
     }
     try {
@@ -267,7 +269,7 @@ std::optional<Project> buildUser(const QString& id, const TemplateShape* shape, 
         return project;
     } catch (const std::exception& e) {
         if (error)
-            *error = QStringLiteral("The template could not be read: %1").arg(QString::fromUtf8(e.what()));
+            *error = QCoreApplication::translate("TemplateLibrary", "The template could not be read: %1").arg(coreText(e.what()));
         return std::nullopt;
     }
 }
@@ -313,7 +315,7 @@ QString TemplateLibrary::builtInMusic(const QString& soundId, double* tempo, QSt
     const SoundRecipe* sound = findSound(soundId.toStdString());
     if (!sound) {
         if (error)
-            *error = QStringLiteral("Unknown music %1").arg(soundId);
+            *error = tr("Unknown music %1").arg(soundId);
         return {};
     }
     if (tempo)
@@ -327,7 +329,7 @@ QString TemplateLibrary::builtInMusic(const QString& soundId, double* tempo, QSt
         auto samples = renderSound(*sound, &why);
         if (!samples || !writeSoundFile(path.toStdString(), *samples, &why)) {
             if (error)
-                *error = QString::fromStdString(why);
+                *error = coreText(why);
             return {};
         }
     }
@@ -449,15 +451,15 @@ void TemplateLibrary::toggleFavorite(const QString& id)
 bool TemplateLibrary::remove(const QString& id)
 {
     if (id.startsWith(QLatin1String(kPackPrefix))) {
-        m_error = QStringLiteral("This template came with a pack; remove the pack in the Store.");
+        m_error = tr("This template came with a pack; remove the pack in the Store.");
         return false;
     }
     if (!id.startsWith(QLatin1String(kUserPrefix))) {
-        m_error = QStringLiteral("Built-in templates cannot be deleted.");
+        m_error = tr("Built-in templates cannot be deleted.");
         return false;
     }
     if (!QDir(userFolder(id)).removeRecursively()) {
-        m_error = QStringLiteral("The template could not be deleted.");
+        m_error = tr("The template could not be deleted.");
         return false;
     }
     m_favorites.removeAll(id);
@@ -472,7 +474,7 @@ std::optional<Project> TemplateLibrary::build(const QString& id, const QString& 
         shape = templateShape(shapeId.toStdString());
         if (!shape) {
             if (error)
-                *error = QStringLiteral("Unknown shape %1").arg(shapeId);
+                *error = tr("Unknown shape %1").arg(shapeId);
             return std::nullopt;
         }
     }
@@ -481,7 +483,7 @@ std::optional<Project> TemplateLibrary::build(const QString& id, const QString& 
     const auto recipe = recipes().find(id);
     if (recipe == recipes().end()) {
         if (error)
-            *error = QStringLiteral("Unknown template %1").arg(id);
+            *error = tr("Unknown template %1").arg(id);
         return std::nullopt;
     }
     if (!shape)
@@ -506,10 +508,10 @@ std::shared_ptr<const Project> TemplateLibrary::previewProject(const QString& id
 QString TemplateLibrary::save(const Project& source, const QString& name, const QString& category, const std::vector<Id>& slotClips,
                               const std::vector<Id>& texts, Id music, QString* error)
 {
-    const QString title = name.trimmed().isEmpty() ? QStringLiteral("My template") : name.trimmed();
+    const QString title = name.trimmed().isEmpty() ? tr("My template") : name.trimmed();
     if (slotClips.empty()) {
         if (error)
-            *error = QStringLiteral("Choose at least one clip to be replaceable.");
+            *error = tr("Choose at least one clip to be replaceable.");
         return {};
     }
     QString base = title;
@@ -530,13 +532,13 @@ QString TemplateLibrary::save(const Project& source, const QString& name, const 
     std::ranges::sort(ordered);
     if (ordered.empty()) {
         if (error)
-            *error = QStringLiteral("None of the chosen clips can be replaced.");
+            *error = tr("None of the chosen clips can be replaced.");
         QDir(folder).removeRecursively();
         return {};
     }
     for (std::size_t i = 0; i < ordered.size(); ++i) {
         Clip& clip = *project.locateClip(ordered[i].second)->clip;
-        const QString label = QStringLiteral("Slot %1").arg(i + 1);
+        const QString label = tr("Slot %1").arg(i + 1);
         const QString path = placeholder(media, int(i), label, project.settings.width, project.settings.height);
         MediaItem item = stillItem(project, path);
         clip.mediaId = item.id;
@@ -590,12 +592,12 @@ QString TemplateLibrary::save(const Project& source, const QString& name, const 
                            {QStringLiteral("version"), 1},
                            {QStringLiteral("name"), title},
                            {QStringLiteral("category"), category.isEmpty() ? QStringLiteral("mine") : category},
-                           {QStringLiteral("description"), QStringLiteral("Made from a project")},
+                           {QStringLiteral("description"), tr("Made from a project")},
                            {QStringLiteral("project"), QJsonDocument::fromJson(QByteArray::fromStdString(projectToJson(project).dump())).object()}};
     QSaveFile out(folder + QStringLiteral("/template.json"));
     if (!out.open(QIODevice::WriteOnly) || out.write(QJsonDocument(file).toJson()) < 0 || !out.commit()) {
         if (error)
-            *error = QStringLiteral("The template could not be written.");
+            *error = tr("The template could not be written.");
         QDir(folder).removeRecursively();
         return {};
     }

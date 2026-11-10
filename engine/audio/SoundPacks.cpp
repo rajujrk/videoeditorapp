@@ -1,6 +1,7 @@
 #include "audio/SoundPacks.h"
 
 #include "encode/WavWriter.h"
+#include "model/Translate.h"
 
 #include <CommonCrypto/CommonDigest.h>
 #include <nlohmann/json.hpp>
@@ -78,7 +79,7 @@ bool writeSoundFile(const std::string& path, const std::vector<float>& samples, 
         return false;
     if (!writer->write(samples.data(), std::int64_t(samples.size() / 2)) || !writer->finish()) {
         if (error)
-            *error = "The sound could not be written.";
+            *error = TVE_TR("core", "The sound could not be written.");
         fs::remove(partial, ec);
         return false;
     }
@@ -94,19 +95,19 @@ std::optional<SoundPack> loadSoundPack(const std::string& folder, std::string* e
     std::ifstream file(root / "manifest.json");
     if (!file) {
         if (error)
-            *error = "The pack has no manifest.";
+            *error = TVE_TR("core", "The pack has no manifest.");
         return std::nullopt;
     }
     const json manifest = json::parse(file, nullptr, false);
     if (!manifest.is_object() || manifest.value("format", std::string()) != "tve-sound-pack"
         || !manifest.contains("sounds") || !manifest["sounds"].is_array()) {
         if (error)
-            *error = "The manifest is not a sound pack's.";
+            *error = TVE_TR("core", "The manifest is not a sound pack's.");
         return std::nullopt;
     }
     if (manifest.value("version", 0) != 1) {
         if (error)
-            *error = "The pack is a newer version than this app reads.";
+            *error = TVE_TR("core", "The pack is a newer version than this app reads.");
         return std::nullopt;
     }
     SoundPack pack;
@@ -116,7 +117,7 @@ std::optional<SoundPack> loadSoundPack(const std::string& folder, std::string* e
     pack.folder = root.lexically_normal().string();
     if (pack.id.empty()) {
         if (error)
-            *error = "The pack has no id.";
+            *error = TVE_TR("core", "The pack has no id.");
         return std::nullopt;
     }
     for (const json& entry : manifest["sounds"]) {
@@ -205,7 +206,7 @@ bool writeSoundPack(const std::string& folder, const std::string& id, const std:
     std::ofstream out(root / "manifest.json");
     out << manifest.dump(2) << '\n';
     if (!out && error)
-        *error = "The manifest could not be written.";
+        *error = TVE_TR("core", "The manifest could not be written.");
     return bool(out);
 }
 

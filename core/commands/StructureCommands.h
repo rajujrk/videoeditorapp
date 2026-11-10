@@ -19,7 +19,7 @@ class AddMarkerCommand final : public Command {
 public:
     explicit AddMarkerCommand(Marker marker) : m_marker(std::move(marker)) {}
 
-    std::string label() const override { return "Add Marker"; }
+    std::string label() const override { return TVE_TR("core", "Add Marker"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -34,7 +34,7 @@ class SetMarkerCommand final : public Command {
 public:
     explicit SetMarkerCommand(Marker marker) : m_marker(std::move(marker)) {}
 
-    std::string label() const override { return "Change Marker"; }
+    std::string label() const override { return TVE_TR("core", "Change Marker"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -47,7 +47,7 @@ class RemoveMarkerCommand final : public Command {
 public:
     explicit RemoveMarkerCommand(Id markerId) : m_markerId(markerId) {}
 
-    std::string label() const override { return "Remove Marker"; }
+    std::string label() const override { return TVE_TR("core", "Remove Marker"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -63,7 +63,7 @@ class GroupClipsCommand final : public Command {
 public:
     explicit GroupClipsCommand(std::vector<Id> clipIds) : m_clipIds(std::move(clipIds)) {}
 
-    std::string label() const override { return "Group"; }
+    std::string label() const override { return TVE_TR("core", "Group"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -80,7 +80,7 @@ class UngroupCommand final : public Command {
 public:
     explicit UngroupCommand(Id groupId) : m_groupId(groupId) {}
 
-    std::string label() const override { return "Ungroup"; }
+    std::string label() const override { return TVE_TR("core", "Ungroup"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -103,7 +103,7 @@ public:
     CreateCompoundCommand(std::vector<Id> clipIds, std::string name)
         : m_clipIds(std::move(clipIds)), m_name(std::move(name)) {}
 
-    std::string label() const override { return "Create Compound Clip"; }
+    std::string label() const override { return TVE_TR("core", "Create Compound Clip"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -126,7 +126,7 @@ class BreakCompoundCommand final : public Command {
 public:
     explicit BreakCompoundCommand(Id clipId) : m_clipId(clipId) {}
 
-    std::string label() const override { return "Break Apart"; }
+    std::string label() const override { return TVE_TR("core", "Break Apart"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -143,7 +143,7 @@ private:
 class SetCaptionsCommand final : public Command {
 public:
     // `style`: how the captions look (its text and words are replaced); the caption style when absent.
-    SetCaptionsCommand(std::vector<CaptionBlock> captions, std::string label = "Set Captions",
+    SetCaptionsCommand(std::vector<CaptionBlock> captions, std::string label = TVE_TR("core", "Set Captions"),
                        std::optional<ClipText> style = std::nullopt, std::optional<ClipVisual> visual = std::nullopt)
         : m_captions(std::move(captions)), m_label(std::move(label)), m_style(std::move(style)), m_visual(std::move(visual)) {}
 
@@ -167,7 +167,7 @@ private:
 // may come in any order and overlap. A redo after an undo gives the pieces the same ids.
 class RemoveRangesCommand final : public Command {
 public:
-    RemoveRangesCommand(Id trackId, std::vector<std::pair<Ticks, Ticks>> ranges, std::string label = "Remove Ranges")
+    RemoveRangesCommand(Id trackId, std::vector<std::pair<Ticks, Ticks>> ranges, std::string label = TVE_TR("core", "Remove Ranges"))
         : m_trackId(trackId), m_ranges(std::move(ranges)), m_label(std::move(label)) {}
 
     std::string label() const override { return m_label; }

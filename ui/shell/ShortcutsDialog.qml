@@ -28,7 +28,7 @@ Popup {
         search.text = ""
     }
 
-    readonly property var groups: ["Playback", "Editing", "Structure", "File"]
+    readonly property var groups: [QT_TR_NOOP("Playback"), QT_TR_NOOP("Editing"), QT_TR_NOOP("Structure"), QT_TR_NOOP("File")]
     function titleOf(id) {
         const found = KeyMap.actions.find((a) => a.id === id)
         return found ? found.title : id
@@ -85,13 +85,13 @@ Popup {
         spacing: Theme.space.m
 
         Text {
-            text: "Keyboard shortcuts"
+            text: qsTr("Keyboard shortcuts")
             font: Theme.type.title
             color: Theme.color.textPrimary
         }
         Text {
             Layout.fillWidth: true
-            text: "Click a shortcut, then press the new keys (Esc cancels). Changes are kept for every project."
+            text: qsTr("Click a shortcut, then press the new keys (Esc cancels). Changes are kept for every project.")
             font: Theme.type.body
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
@@ -100,7 +100,7 @@ Popup {
             id: search
             objectName: "shortcutSearch"
             Layout.fillWidth: true
-            placeholderText: "Search actions"
+            placeholderText: qsTr("Search actions")
             onTextChanged: dialog.filter = text.toLowerCase()
         }
 
@@ -119,20 +119,20 @@ Popup {
                     objectName: "shortcutConflict"
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1 // wraps in what the buttons leave
-                    text: KeyMap.keyText(dialog.pendingKey) + " is used by “" + dialog.titleOf(dialog.pendingOwner)
-                          + "”. Move it to “" + dialog.titleOf(dialog.recording) + "”?"
+                    text: qsTr("%1 is used by “%2”. Move it to “%3”?").arg(KeyMap.keyText(dialog.pendingKey))
+                          .arg(dialog.titleOf(dialog.pendingOwner)).arg(dialog.titleOf(dialog.recording))
                     font: Theme.type.body
                     color: Theme.color.textPrimary
                     wrapMode: Text.WordWrap
                 }
                 TextButton {
                     objectName: "shortcutReplace"
-                    text: "Replace"
+                    text: qsTr("Replace")
                     variant: "primary"
                     onClicked: dialog.replace()
                 }
                 TextButton {
-                    text: "Cancel"
+                    text: qsTr("Cancel")
                     variant: "secondary"
                     onClicked: {
                         dialog.pendingKey = ""
@@ -175,7 +175,7 @@ Popup {
                         spacing: Theme.space.xxs
 
                         Text {
-                            text: group.modelData
+                            text: qsTr(group.modelData)
                             font: Theme.type.label
                             color: Theme.color.textSecondary
                         }
@@ -199,7 +199,7 @@ Popup {
                                     objectName: "shortcutReset:" + row.modelData.id
                                     visible: row.modelData.custom
                                     iconName: "undo"
-                                    tip: "Back to " + (row.modelData.defaults.length ? row.modelData.defaults.join(" or ") : "none")
+                                    tip: row.modelData.defaults.length ? qsTr("Back to %1").arg(row.modelData.defaults.join(qsTr(" or "))) : qsTr("Back to none")
                                     onClicked: KeyMap.reset(row.modelData.id)
                                 }
                                 IconButton {
@@ -207,7 +207,7 @@ Popup {
                                     // Only on the row under the pointer: a column of crosses would crowd the list.
                                     visible: row.modelData.sequences.length > 0 && rowHover.hovered
                                     iconName: "close"
-                                    tip: "No shortcut"
+                                    tip: qsTr("No shortcut")
                                     onClicked: KeyMap.clear(row.modelData.id)
                                 }
                                 AbstractButton {
@@ -225,10 +225,10 @@ Popup {
                                     }
                                     contentItem: Text {
                                         id: keyText
-                                        text: row.listening ? "Press keys…"
+                                        text: row.listening ? qsTr("Press keys…")
                                             : row.modelData.sequences.length ? row.modelData.text
                                               + (row.modelData.sequences.length > 1 ? " +" + (row.modelData.sequences.length - 1) : "")
-                                            : "None"
+                                            : qsTr("None")
                                         font: Theme.type.body // the key symbols (⌘ ⇧ ⌥) draw small in the mono face
                                         color: row.modelData.sequences.length || row.listening ? Theme.color.textPrimary
                                                                                               : Theme.color.textDisabled
@@ -247,7 +247,7 @@ Popup {
             Layout.fillWidth: true
             TextButton {
                 objectName: "shortcutsResetAll"
-                text: "Reset all"
+                text: qsTr("Reset all")
                 variant: "ghost"
                 enabled: KeyMap.actions.some((a) => a.custom)
                 onClicked: KeyMap.resetAll()
@@ -255,7 +255,7 @@ Popup {
             Item { Layout.fillWidth: true }
             TextButton {
                 objectName: "shortcutsDone"
-                text: "Done"
+                text: qsTr("Done")
                 variant: "primary"
                 enabled: dialog.recording === ""
                 onClicked: dialog.close()

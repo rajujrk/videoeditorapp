@@ -14,7 +14,7 @@ AbstractButton {
     focusPolicy: Qt.TabFocus
 
     ToolTip {
-        text: toggle.keyState === "key" ? "Remove this keyframe" : "Add a keyframe at the playhead"
+        text: toggle.keyState === "key" ? qsTr("Remove this keyframe") : qsTr("Add a keyframe at the playhead")
         visible: toggle.hovered
         delay: 600
     }

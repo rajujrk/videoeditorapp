@@ -2,6 +2,7 @@
 // 01:00:00:00, each with its file in comments ("FROM CLIP NAME", "SOURCE FILE") as editors
 // that relink by them expect; dissolves as D events, speed as M2 lines, markers as LOC lines.
 #include "io/Interchange.h"
+#include "model/Translate.h"
 
 #include <cmath>
 #include <cstdio>
@@ -61,7 +62,7 @@ std::string writeEdl(const Timeline& timeline, Notes& notes)
         if (!track.audio && !main)
             main = &track;
         else if (!track.items.empty())
-            notes.addLine("Tracks other than the main video track (an EDL holds one)");
+            notes.addLine(TVE_TR("core", "Tracks other than the main video track (an EDL holds one)"));
     }
     std::ostringstream edl;
     edl << "TITLE: " << clean(timeline.name) << "\nFCM: NON-DROP FRAME\n";
@@ -78,7 +79,7 @@ std::string writeEdl(const Timeline& timeline, Notes& notes)
     };
     for (const Item* it = main && !main->items.empty() ? &main->items.front() : nullptr; it && it <= &main->items.back(); ++it) {
         if (it->kind != Item::Kind::Media) {
-            notes.add("Titles (an EDL holds media only)");
+            notes.add(TVE_TR("core", "Titles (an EDL holds media only)"));
             previous = nullptr;
             continue;
         }
@@ -136,13 +137,13 @@ std::string writeEdl(const Timeline& timeline, Notes& notes)
         previous = it;
     }
     if (event > 0)
-        notes.addLine("Source timecodes count from each file's start");
+        notes.addLine(TVE_TR("core", "Source timecodes count from each file's start"));
     for (const Marker& m : timeline.markers)
         edl << "\n* LOC: " << tc(record + f(m.time)) << " " << colourName(m.color) << " " << clean(m.note) << "\n";
     // Transitions on clips after a title or gap have no outgoing clip in the EDL.
     for (const Item& it : main ? main->items : std::vector<Item>{})
         if (it.transitionIn && &it != &main->items.front() && (&it - 1)->kind != Item::Kind::Media)
-            notes.add("Transitions from titles (left out of the EDL)");
+            notes.add(TVE_TR("core", "Transitions from titles (left out of the EDL)"));
     return edl.str();
 }
 

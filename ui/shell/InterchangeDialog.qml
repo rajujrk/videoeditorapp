@@ -21,14 +21,14 @@ Popup {
     property string message
 
     readonly property var formats: [
-        { id: "otio", label: "OpenTimelineIO", extension: "otio",
-          note: "For DaVinci Resolve, Premiere Pro, Avid and most other editors" },
-        { id: "fcpxml", label: "Final Cut Pro XML", extension: "fcpxml", note: "For Final Cut Pro (and DaVinci Resolve)" },
-        { id: "edl", label: "EDL", extension: "edl", note: "The main video track as a CMX 3600 edit list, for any editor" }
+        { id: "otio", label: qsTr("OpenTimelineIO"), extension: "otio",
+          note: qsTr("For DaVinci Resolve, Premiere Pro, Avid and most other editors") },
+        { id: "fcpxml", label: qsTr("Final Cut Pro XML"), extension: "fcpxml", note: qsTr("For Final Cut Pro (and DaVinci Resolve)") },
+        { id: "edl", label: qsTr("EDL"), extension: "edl", note: qsTr("The main video track as a CMX 3600 edit list, for any editor") }
     ]
     readonly property var chosen: formats.find((f) => f.id === format)
 
-    function baseName() { return (project.name || "Untitled").replace(/[\\/:*?"<>|]/g, "-") }
+    function baseName() { return (project.name || qsTr("Untitled")).replace(/[\\/:*?"<>|]/g, "-") }
     function withExtension(url, extension) { return String(url).replace(/\.[^./]*$/, "") + "." + extension }
     function prepare() {
         stage = "export"
@@ -62,7 +62,7 @@ Popup {
 
     FileDialog {
         id: fileDialog
-        title: "Export timeline"
+        title: qsTr("Export timeline")
         fileMode: FileDialog.SaveFile
         defaultSuffix: dialog.chosen.extension
         nameFilters: [dialog.chosen.label + " (*." + dialog.chosen.extension + ")"]
@@ -83,10 +83,10 @@ Popup {
 
         Text {
             objectName: "interchangeTitle"
-            text: dialog.stage === "opened" ? "Opened " + dialog.openedName
-                : dialog.stage === "done" ? "Timeline exported"
-                : dialog.stage === "failed" ? "Export failed"
-                : "Export timeline"
+            text: dialog.stage === "opened" ? qsTr("Opened %1").arg(dialog.openedName)
+                : dialog.stage === "done" ? qsTr("Timeline exported")
+                : dialog.stage === "failed" ? qsTr("Export failed")
+                : qsTr("Export timeline")
             font: Theme.type.title
             color: Theme.color.textPrimary
         }
@@ -99,8 +99,7 @@ Popup {
             Text {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                text: "The edit for another editor: the clips and their timing, speed, cross dissolves, gaps, markers, "
-                      + "and titles as placeholders. Colour, effects and keyframes stay here."
+                text: qsTr("The edit for another editor: the clips and their timing, speed, cross dissolves, gaps, markers, and titles as placeholders. Colour, effects and keyframes stay here.")
                 font: Theme.type.body
                 color: Theme.color.textSecondary
             }
@@ -139,7 +138,7 @@ Popup {
                     color: Theme.color.textPrimary
                     elide: Text.ElideMiddle
                 }
-                TextButton { text: "Choose…"; variant: "secondary"; onClicked: fileDialog.open() }
+                TextButton { text: qsTr("Choose…"); variant: "secondary"; onClicked: fileDialog.open() }
             }
         }
 
@@ -162,8 +161,8 @@ Popup {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 text: dialog.notes.length === 0
-                      ? (dialog.stage === "opened" ? "Everything in it came over." : "Everything carried over.")
-                      : (dialog.stage === "opened" ? "These didn't come over as they were:" : "These didn't carry over as they are here:")
+                      ? (dialog.stage === "opened" ? qsTr("Everything in it came over.") : qsTr("Everything carried over."))
+                      : (dialog.stage === "opened" ? qsTr("These didn't come over as they were:") : qsTr("These didn't carry over as they are here:"))
                 font: Theme.type.body
                 color: Theme.color.textPrimary
             }
@@ -195,7 +194,7 @@ Popup {
                 visible: dialog.stage === "opened"
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                text: "It is a new project: save it to keep it. Media that isn't on this Mac can be found again from the library."
+                text: qsTr("It is a new project: save it to keep it. Media that isn't on this Mac can be found again from the library.")
                 font: Theme.type.caption
                 color: Theme.color.textSecondary
             }
@@ -207,14 +206,14 @@ Popup {
             Item { Layout.fillWidth: true }
             TextButton {
                 objectName: "interchangeClose"
-                text: dialog.stage === "export" ? "Cancel" : "Done"
+                text: dialog.stage === "export" ? qsTr("Cancel") : qsTr("Done")
                 variant: dialog.stage === "export" ? "ghost" : "primary"
                 onClicked: dialog.close()
             }
             TextButton {
                 objectName: "interchangeExportButton"
                 visible: dialog.stage === "export"
-                text: "Export"
+                text: qsTr("Export")
                 iconName: "export"
                 variant: "primary"
                 onClicked: dialog.start()

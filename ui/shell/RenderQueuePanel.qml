@@ -18,10 +18,10 @@ Popup {
 
     function stateText(job) {
         if (job.state === "running")
-            return (panel.project.exportPaused ? "Paused · " : "") + Math.round(job.progress * 100) + " %"
-        return job.state === "waiting" ? "Waiting"
-             : job.state === "done" ? "Done"
-             : job.state === "cancelled" ? "Cancelled" : "Failed: " + job.error
+            return panel.project.exportPaused ? qsTr("Paused · %1").arg(Fmt.percent(job.progress)) : Fmt.percent(job.progress)
+        return job.state === "waiting" ? qsTr("Waiting")
+             : job.state === "done" ? qsTr("Done")
+             : job.state === "cancelled" ? qsTr("Cancelled") : qsTr("Failed: %1").arg(job.error)
     }
     function folderOf(path) { return "file://" + path.substring(0, path.lastIndexOf("/")) }
 
@@ -38,14 +38,14 @@ Popup {
             Layout.fillWidth: true
             Text {
                 Layout.fillWidth: true
-                text: "Render queue"
+                text: qsTr("Render queue")
                 font: Theme.type.heading
                 color: Theme.color.textPrimary
             }
             TextButton {
                 objectName: "clearFinishedExports"
                 visible: panel.anyFinished
-                text: "Clear finished"
+                text: qsTr("Clear finished")
                 variant: "ghost"
                 onClicked: panel.project.clearFinishedExports()
             }
@@ -54,7 +54,7 @@ Popup {
         Text {
             visible: panel.jobs.length === 0
             Layout.fillWidth: true
-            text: "Nothing exported yet. Exports wait here and run one after another while you keep editing."
+            text: qsTr("Nothing exported yet. Exports wait here and run one after another while you keep editing.")
             font: Theme.type.body
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
@@ -112,28 +112,28 @@ Popup {
                             objectName: "pauseExport"
                             visible: row.job.state === "running"
                             iconName: panel.project.exportPaused ? "play" : "pause"
-                            tip: panel.project.exportPaused ? "Resume" : "Pause"
+                            tip: panel.project.exportPaused ? qsTr("Resume") : qsTr("Pause")
                             onClicked: panel.project.exportPaused ? panel.project.resumeExport() : panel.project.pauseExport()
                         }
                         IconButton {
                             objectName: "cancelExport"
                             visible: row.job.state === "running" || row.job.state === "waiting"
                             iconName: "close"
-                            tip: row.job.state === "running" ? "Cancel (removes the partial file)" : "Take out of the queue"
+                            tip: row.job.state === "running" ? qsTr("Cancel (removes the partial file)") : qsTr("Take out of the queue")
                             onClicked: panel.project.cancelExport(row.job.id)
                         }
                         IconButton {
                             objectName: "revealExport"
                             visible: row.job.state === "done"
                             iconName: "folder"
-                            tip: "Show in Finder"
+                            tip: qsTr("Show in Finder")
                             onClicked: Qt.openUrlExternally(panel.folderOf(row.job.path))
                         }
                         IconButton {
                             objectName: "removeExport"
                             visible: row.job.state !== "running" && row.job.state !== "waiting"
                             iconName: "delete"
-                            tip: "Remove from the list (the file stays)"
+                            tip: qsTr("Remove from the list (the file stays)")
                             onClicked: panel.project.removeExportJob(row.job.id)
                         }
                     }

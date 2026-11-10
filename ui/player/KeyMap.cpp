@@ -1,5 +1,7 @@
 #include "KeyMap.h"
+#include "Language.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -32,28 +34,29 @@ const QStringList& reservedKeys()
 
 KeyMap::KeyMap(QObject* parent) : QObject(parent)
 {
+    connect(Language::instance(), &Language::changed, this, &KeyMap::changed); // titles in the language
     const auto add = [&](const char* id, const char* title, const char* group, QStringList defaults) {
         m_actions.push_back({QString::fromLatin1(id), QString::fromUtf8(title), QString::fromUtf8(group), defaults, defaults});
     };
-    add("play", "Play / pause", "Playback", {QStringLiteral("Space")});
-    add("frameBack", "Previous frame", "Playback", {QStringLiteral("Left")});
-    add("frameForward", "Next frame", "Playback", {QStringLiteral("Right")});
-    add("goToStart", "Go to start", "Playback", {QStringLiteral("Home")});
-    add("goToEnd", "Go to end", "Playback", {QStringLiteral("End")});
-    add("previousMarker", "Previous marker", "Playback", {QStringLiteral("Alt+Left")});
-    add("nextMarker", "Next marker", "Playback", {QStringLiteral("Alt+Right")});
-    add("split", "Split at the playhead", "Editing", {QStringLiteral("S")});
-    add("delete", "Delete the selection", "Editing", {QStringLiteral("Del"), QStringLiteral("Backspace")});
-    add("undo", "Undo", "Editing", {QStringLiteral("Ctrl+Z")});
-    add("redo", "Redo", "Editing", {QStringLiteral("Ctrl+Shift+Z")});
-    add("addMarker", "Add a marker", "Structure", {QStringLiteral("M")});
-    add("group", "Group the selected clips", "Structure", {QStringLiteral("Ctrl+G")});
-    add("ungroup", "Ungroup", "Structure", {QStringLiteral("Ctrl+Shift+G")});
-    add("compound", "Make or break apart a compound clip", "Structure", {QStringLiteral("Ctrl+Alt+G")});
-    add("save", "Save the project", "File", {QStringLiteral("Ctrl+S")});
-    add("import", "Import media", "File", {QStringLiteral("Ctrl+I")});
-    add("export", "Export", "File", {QStringLiteral("Ctrl+E")});
-    add("shortcuts", "Keyboard shortcuts", "File", {QStringLiteral("Ctrl+/")});
+    add("play", QT_TRANSLATE_NOOP("KeyMap", "Play / pause"), "Playback", {QStringLiteral("Space")});
+    add("frameBack", QT_TRANSLATE_NOOP("KeyMap", "Previous frame"), "Playback", {QStringLiteral("Left")});
+    add("frameForward", QT_TRANSLATE_NOOP("KeyMap", "Next frame"), "Playback", {QStringLiteral("Right")});
+    add("goToStart", QT_TRANSLATE_NOOP("KeyMap", "Go to start"), "Playback", {QStringLiteral("Home")});
+    add("goToEnd", QT_TRANSLATE_NOOP("KeyMap", "Go to end"), "Playback", {QStringLiteral("End")});
+    add("previousMarker", QT_TRANSLATE_NOOP("KeyMap", "Previous marker"), "Playback", {QStringLiteral("Alt+Left")});
+    add("nextMarker", QT_TRANSLATE_NOOP("KeyMap", "Next marker"), "Playback", {QStringLiteral("Alt+Right")});
+    add("split", QT_TRANSLATE_NOOP("KeyMap", "Split at the playhead"), "Editing", {QStringLiteral("S")});
+    add("delete", QT_TRANSLATE_NOOP("KeyMap", "Delete the selection"), "Editing", {QStringLiteral("Del"), QStringLiteral("Backspace")});
+    add("undo", QT_TRANSLATE_NOOP("KeyMap", "Undo"), "Editing", {QStringLiteral("Ctrl+Z")});
+    add("redo", QT_TRANSLATE_NOOP("KeyMap", "Redo"), "Editing", {QStringLiteral("Ctrl+Shift+Z")});
+    add("addMarker", QT_TRANSLATE_NOOP("KeyMap", "Add a marker"), "Structure", {QStringLiteral("M")});
+    add("group", QT_TRANSLATE_NOOP("KeyMap", "Group the selected clips"), "Structure", {QStringLiteral("Ctrl+G")});
+    add("ungroup", QT_TRANSLATE_NOOP("KeyMap", "Ungroup"), "Structure", {QStringLiteral("Ctrl+Shift+G")});
+    add("compound", QT_TRANSLATE_NOOP("KeyMap", "Make or break apart a compound clip"), "Structure", {QStringLiteral("Ctrl+Alt+G")});
+    add("save", QT_TRANSLATE_NOOP("KeyMap", "Save the project"), "File", {QStringLiteral("Ctrl+S")});
+    add("import", QT_TRANSLATE_NOOP("KeyMap", "Import media"), "File", {QStringLiteral("Ctrl+I")});
+    add("export", QT_TRANSLATE_NOOP("KeyMap", "Export"), "File", {QStringLiteral("Ctrl+E")});
+    add("shortcuts", QT_TRANSLATE_NOOP("KeyMap", "Keyboard shortcuts"), "File", {QStringLiteral("Ctrl+/")});
     for (Action& action : m_actions) {
         for (QString& key : action.defaults)
             key = normalized(key);
@@ -99,7 +102,7 @@ QVariantList KeyMap::actions() const
     QVariantList list;
     for (const Action& action : m_actions) {
         list << QVariantMap{{QStringLiteral("id"), action.id},
-                            {QStringLiteral("title"), action.title},
+                            {QStringLiteral("title"), QCoreApplication::translate("KeyMap", action.title.toUtf8().constData())},
                             {QStringLiteral("group"), action.group},
                             {QStringLiteral("sequences"), action.keys},
                             {QStringLiteral("defaults"), action.defaults},
@@ -162,12 +165,12 @@ bool KeyMap::assign(const QString& id, const QString& sequence)
 {
     Action* action = find(id);
     if (!action) {
-        fail(QStringLiteral("Unknown action: ") + id);
+        fail(tr("Unknown action: %1").arg(id));
         return false;
     }
     const QString key = normalized(sequence);
     if (key.isEmpty()) {
-        fail(QStringLiteral("That is not a single key or key combination"));
+        fail(tr("That is not a single key or key combination"));
         return false;
     }
     if (reservedKeys().contains(key)) {
@@ -256,12 +259,12 @@ void KeyMap::save()
     QDir().mkpath(QFileInfo(m_file).path());
     QSaveFile file(m_file);
     if (!file.open(QIODevice::WriteOnly)) {
-        fail(QStringLiteral("Cannot save the shortcuts to ") + m_file);
+        fail(tr("Cannot save the shortcuts to %1").arg(m_file));
         return;
     }
     file.write(QJsonDocument(QJsonObject{{QStringLiteral("version"), 1}, {QStringLiteral("bindings"), bindings}}).toJson());
     if (!file.commit())
-        fail(QStringLiteral("Cannot save the shortcuts to ") + m_file);
+        fail(tr("Cannot save the shortcuts to %1").arg(m_file));
 }
 
 void KeyMap::fail(const QString& message)

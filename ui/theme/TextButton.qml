@@ -3,7 +3,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // Labelled button. variant: "primary" (accent fill), "secondary" (outlined), "ghost", or
-// "danger" (a red fill, for what can't be undone).
+// "danger" (a red fill, for what can't be undone). Squeezed narrower than its label (a row of
+// buttons, a longer language), the label ends in "…" and the tooltip shows all of it.
 AbstractButton {
     id: button
     property string variant: "secondary"
@@ -18,8 +19,8 @@ AbstractButton {
     // Each button owns its tooltip. (Qt's attached ToolTip is one shared popup: if its
     // button is destroyed while showing it, it stays open and swallows the next click.)
     ToolTip {
-        text: button.tip
-        visible: button.tip !== "" && button.hovered
+        text: button.tip !== "" ? button.tip : button.text
+        visible: (button.tip !== "" || label.truncated) && button.hovered
         delay: 600
     }
 
@@ -52,6 +53,7 @@ AbstractButton {
         RowLayout {
             id: row
             anchors.centerIn: parent
+            width: Math.min(Math.ceil(implicitWidth), parent.width - Theme.space.s * 2)
             spacing: Theme.space.s
 
             Icon {
@@ -61,9 +63,13 @@ AbstractButton {
                 color: button.foreground
             }
             Text {
+                id: label
+                Layout.fillWidth: true
+                Layout.maximumWidth: Math.ceil(implicitWidth)
                 text: button.text
                 font: Theme.type.heading
                 color: button.foreground
+                elide: Text.ElideRight
             }
         }
     }

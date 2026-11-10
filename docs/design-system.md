@@ -493,6 +493,13 @@ A voice added at the playhead with captions timed to its words, dark and light:
 ![Voice, dark](images/ai-voice-dark.png)
 ![Voice, light](images/ai-voice-light.png)
 
+The app in Tamil: the Home screen with the Language menu at the foot of the rail, and the editor with a Tamil title, the Audio library and the Video tab, dark and light. Labels are written for a language whose words run longer: a button squeezed narrower than its label ends it in "…" and shows all of it as its tooltip; paragraphs wrap; numbers, dates and timecode come from the language's locale (`Fmt` in the theme module):
+
+![Tamil, Home, dark](images/tamil-home-dark.png)
+![Tamil, Home, light](images/tamil-home-light.png)
+![Tamil, editor, dark](images/tamil-editor-dark.png)
+![Tamil, editor, light](images/tamil-editor-light.png)
+
 ### Icons
 
 56 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
@@ -507,3 +514,4 @@ and naming (`kebab-case.svg`); no third-party icon sets.
 3. Interactive elements need hover, pressed, disabled and keyboard-focus states.
 4. Anything not built yet uses `PlaceholderBox` or a disabled control whose tooltip names the phase.
 5. Never reproduce another product's layout, icons, illustrations or wording.
+6. Every string the person reads goes through `qsTr` (or `tr`, `TVE_TR` in the core) as a whole sentence with `%1` for what varies — never pieced together, so each language can order it its own way. Numbers go through `Fmt`. Leave room for longer words: let text wrap or elide.

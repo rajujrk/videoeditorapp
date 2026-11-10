@@ -4,6 +4,7 @@
 #include "cloud/CloudVoices.h"
 #include "decode/AudioDecoder.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -62,9 +63,9 @@ QString errorMessage(const QByteArray& body)
 QString describe(const QString& provider, int status, const QByteArray& body, const QNetworkReply* reply)
 {
     if (status == 0)
-        return QStringLiteral("Could not reach %1: %2").arg(provider, reply ? reply->errorString() : QString());
+        return QCoreApplication::translate("CloudMedia", "Could not reach %1: %2").arg(provider, reply ? reply->errorString() : QString());
     if (status == 401 || status == 403)
-        return QStringLiteral("The %1 API key was not accepted. Check it in AI settings.").arg(provider);
+        return QCoreApplication::translate("CloudMedia", "The %1 API key was not accepted. Check it in AI settings.").arg(provider);
     if (status == 429)
         return QStringLiteral("%1 is busy or your quota is used up; try again later.").arg(provider);
     const QString message = errorMessage(body);
@@ -157,7 +158,7 @@ MediaTask* image(QNetworkAccessManager* network, const QString& prompt, const Im
     auto* task = new MediaTask(network, parent);
     const QString key = cloudkeys::read(QStringLiteral("openai"));
     if (key.isEmpty()) {
-        task->fail(QStringLiteral("Add your OpenAI API key in AI settings first."));
+        task->fail(QCoreApplication::translate("CloudMedia", "Add your OpenAI API key in AI settings first."));
         return task;
     }
     QJsonObject body{{QStringLiteral("model"), options.model},
@@ -176,7 +177,7 @@ MediaTask* image(QNetworkAccessManager* network, const QString& prompt, const Im
         for (const QString& input : options.inputs) {
             const QString url = dataUrl(input);
             if (url.isEmpty()) {
-                task->fail(QStringLiteral("Could not read %1").arg(QFileInfo(input).fileName()));
+                task->fail(QCoreApplication::translate("CloudMedia", "Could not read %1").arg(QFileInfo(input).fileName()));
                 return task;
             }
             images.append(QJsonObject{{QStringLiteral("image_url"), url}});
@@ -200,7 +201,7 @@ MediaTask* image(QNetworkAccessManager* network, const QString& prompt, const Im
                                                                      .toObject().value(QStringLiteral("b64_json")).toString().toLatin1());
                    result.path = basePath + QStringLiteral(".png");
                    if (png.isEmpty() || !save(result.path, png)) {
-                       result.error = QStringLiteral("OpenAI sent no picture.");
+                       result.error = QCoreApplication::translate("CloudMedia", "OpenAI sent no picture.");
                        return result;
                    }
                    result.ok = true;
@@ -217,7 +218,7 @@ MediaTask* video(QNetworkAccessManager* network, const QString& prompt, const Vi
     auto* task = new MediaTask(network, parent);
     const QString key = cloudkeys::read(QStringLiteral("google"));
     if (key.isEmpty()) {
-        task->fail(QStringLiteral("Add your Google AI (Gemini API) key in AI settings first."));
+        task->fail(QCoreApplication::translate("CloudMedia", "Add your Google AI (Gemini API) key in AI settings first."));
         return task;
     }
     QJsonObject body{{QStringLiteral("model"), QLatin1String(kVideoModel)},
@@ -227,7 +228,7 @@ MediaTask* video(QNetworkAccessManager* network, const QString& prompt, const Vi
     QString task_ = QStringLiteral("text_to_video");
     if (options.mode == QLatin1String("extend")) {
         if (options.previous.isEmpty()) {
-            task->fail(QStringLiteral("Only videos made here can be extended."));
+            task->fail(QCoreApplication::translate("CloudMedia", "Only videos made here can be extended."));
             return task;
         }
         // A video made earlier goes on from where it ended.
@@ -241,7 +242,7 @@ MediaTask* video(QNetworkAccessManager* network, const QString& prompt, const Vi
             QString mime;
             QByteArray bytes;
             if (dataUrl(path, &mime, &bytes).isEmpty()) {
-                task->fail(QStringLiteral("Could not read %1").arg(QFileInfo(path).fileName()));
+                task->fail(QCoreApplication::translate("CloudMedia", "Could not read %1").arg(QFileInfo(path).fileName()));
                 return task;
             }
             input.append(QJsonObject{{QStringLiteral("type"), QStringLiteral("image")},
@@ -269,7 +270,7 @@ MediaTask* video(QNetworkAccessManager* network, const QString& prompt, const Vi
                    const QJsonObject answer = QJsonDocument::fromJson(data).object();
                    if (const QString state = answer.value(QStringLiteral("status")).toString();
                        !state.isEmpty() && state != QLatin1String("completed")) {
-                       result.error = QStringLiteral("Google did not finish the video (%1).").arg(state);
+                       result.error = QCoreApplication::translate("CloudMedia", "Google did not finish the video (%1).").arg(state);
                        return result;
                    }
                    // The video in the model's output.
@@ -283,7 +284,7 @@ MediaTask* video(QNetworkAccessManager* network, const QString& prompt, const Vi
                    }
                    result.path = basePath + QStringLiteral(".mp4");
                    if (video.isEmpty() || !save(result.path, video)) {
-                       result.error = QStringLiteral("Google sent no video (it may have been blocked by its safety filters).");
+                       result.error = QCoreApplication::translate("CloudMedia", "Google sent no video (it may have been blocked by its safety filters).");
                        return result;
                    }
                    result.ok = true;
@@ -302,7 +303,7 @@ MediaTask* elevenLabsAudio(QNetworkAccessManager* network, const QString& endpoi
     auto* task = new MediaTask(network, parent);
     const QString key = cloudkeys::read(QStringLiteral("elevenlabs"));
     if (key.isEmpty()) {
-        task->fail(QStringLiteral("Add your ElevenLabs API key in AI settings first."));
+        task->fail(QCoreApplication::translate("CloudMedia", "Add your ElevenLabs API key in AI settings first."));
         return task;
     }
     QUrl url(ElevenLabsVoices::baseUrl() + endpoint);
@@ -322,7 +323,7 @@ MediaTask* elevenLabsAudio(QNetworkAccessManager* network, const QString& endpoi
                    }
                    result.path = basePath + audioExtension(data);
                    if (data.isEmpty() || !save(result.path, data)) {
-                       result.error = QStringLiteral("ElevenLabs sent no sound.");
+                       result.error = QCoreApplication::translate("CloudMedia", "ElevenLabs sent no sound.");
                        return result;
                    }
                    result.ok = true;

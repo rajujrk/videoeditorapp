@@ -1,3 +1,4 @@
+#include "Language.h"
 #include "ProjectController.h"
 #include "ThumbnailProvider.h"
 #include "MediaImports.h"
@@ -146,7 +147,10 @@ int main(int argc, char* argv[])
                 (QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/plugin-cache.json")).toLocal8Bit());
     // Installed packs' effects and transitions join the built-in ones.
     tve::EffectLibrary::usePackFolders(PackStore::installedFolders());
+    // The language (and its numbers and dates) before anything is shown.
+    Language::instance()->apply();
     QQmlApplicationEngine engine;
+    Language::create(&engine, nullptr);
     engine.addImageProvider(QString::fromLatin1(ThumbnailProvider::kId), new ThumbnailProvider);
     engine.addImageProvider(QString::fromLatin1(ImportThumbnailProvider::kId), new ImportThumbnailProvider);
     engine.addImageProvider(QString::fromLatin1(TemplatePreviewProvider::kId), new TemplatePreviewProvider);

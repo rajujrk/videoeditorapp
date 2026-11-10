@@ -96,9 +96,9 @@ class ProjectController : public QObject {
     Q_PROPERTY(double selectedTransition READ selectedTransition WRITE setSelectedTransition NOTIFY selectionChanged)
     Q_PROPERTY(QVariantMap selectedTransitionInfo READ selectedTransitionInfo NOTIFY selectedClipInfoChanged)
     // The transition library: [{id, title, categories, params}].
-    Q_PROPERTY(QVariantList availableTransitions READ availableTransitions CONSTANT)
+    Q_PROPERTY(QVariantList availableTransitions READ availableTransitions NOTIFY languageChanged)
     // Overlay transitions (light leaks, film burns, paint strokes): [{id, title, blend}].
-    Q_PROPERTY(QVariantList overlayTransitions READ overlayTransitions CONSTANT)
+    Q_PROPERTY(QVariantList overlayTransitions READ overlayTransitions NOTIFY languageChanged)
     // Colour: a copied grade waiting to be pasted, and saved colour presets (by name, in
     // colorPresetDirectory: Application Support/…/Color Presets; TVE_COLOR_PRESET_DIR overrides).
     Q_PROPERTY(bool hasCopiedGrade READ hasCopiedGrade NOTIFY colorClipboardChanged)
@@ -110,19 +110,19 @@ class ProjectController : public QObject {
     Q_PROPERTY(bool pickingKeyColor READ pickingKeyColor WRITE setPickingKeyColor NOTIFY editingChanged)
     // Split-screen and picture-in-picture layouts: [{id, title, slots: [[x0, y0, x1, y1]]}],
     // regions of the canvas from the top clip down.
-    Q_PROPERTY(QVariantList layouts READ layouts CONSTANT)
+    Q_PROPERTY(QVariantList layouts READ layouts NOTIFY languageChanged)
     // Looks (filters) from the built-in library: [{id, title, category}]; its LUTs alone:
     // [{name, path}] (paths start ":/", for chooseLut).
-    Q_PROPERTY(QVariantList looks READ looks CONSTANT)
-    Q_PROPERTY(QVariantList lutLibrary READ lutLibrary CONSTANT)
+    Q_PROPERTY(QVariantList looks READ looks NOTIFY languageChanged)
+    Q_PROPERTY(QVariantList lutLibrary READ lutLibrary NOTIFY languageChanged)
     // Ready-made speed ramps: [{id, title, points: [{at, speed}]}].
-    Q_PROPERTY(QVariantList speedRampPresets READ speedRampPresets CONSTANT)
+    Q_PROPERTY(QVariantList speedRampPresets READ speedRampPresets NOTIFY languageChanged)
     // Font families offered for titles.
     Q_PROPERTY(QStringList titleFonts READ titleFonts CONSTANT)
     // Built-in stickers: [{id, title, category, path}].
     Q_PROPERTY(QVariantList stickers READ stickers NOTIFY stickersChanged)
     // Title text animations: [{id, title, loop}] (loops keep moving; the others arrive or leave).
-    Q_PROPERTY(QVariantList textAnimations READ textAnimations CONSTANT)
+    Q_PROPERTY(QVariantList textAnimations READ textAnimations NOTIFY languageChanged)
 
     // Autosave: unsaved work is written to `autosaveDirectory` a moment after edits settle
     // (default: Application Support/…/Autosave; TVE_AUTOSAVE_DIR overrides). Work left
@@ -171,7 +171,7 @@ class ProjectController : public QObject {
     // Apple's upscaling model: {status: "unsupported", "download", "downloading" or "ready", progress}.
     Q_PROPERTY(QVariantMap upscaleModel READ upscaleModel NOTIFY upscaleModelChanged)
     Q_PROPERTY(QVariantMap modelDownload READ modelDownload NOTIFY speechModelsChanged)
-    Q_PROPERTY(QVariantList captionLanguages READ captionLanguages CONSTANT)
+    Q_PROPERTY(QVariantList captionLanguages READ captionLanguages NOTIFY languageChanged)
     // How many captions the caption track holds, and how they follow the speech ("none",
     // "highlight", "pop", "karaoke", "reveal").
     Q_PROPERTY(int captionCount READ captionCount NOTIFY projectChanged)
@@ -189,13 +189,13 @@ class ProjectController : public QObject {
     // progress, error, duration (seconds)} in queue order.
     Q_PROPERTY(QVariantList exportJobs READ exportJobs NOTIFY exportChanged)
     // {id, title, description, format, …} from export_presets.json.
-    Q_PROPERTY(QVariantList exportPresets READ exportPresets CONSTANT)
+    Q_PROPERTY(QVariantList exportPresets READ exportPresets NOTIFY languageChanged)
     // {id, label, extension, video, quality}: the file formats export can write.
-    Q_PROPERTY(QVariantList exportFormats READ exportFormats CONSTANT)
+    Q_PROPERTY(QVariantList exportFormats READ exportFormats NOTIFY languageChanged)
 
     // Output meters (0..1 peak per channel) and the audio device.
     // Audio effect packages for the Audio tab, by category: {id, title, categories, params}.
-    Q_PROPERTY(QVariantList audioEffects READ audioEffects CONSTANT)
+    Q_PROPERTY(QVariantList audioEffects READ audioEffects NOTIFY languageChanged)
     // The audio plug-ins on this Mac (Audio Units and VST3), found in the background the first
     // time this is read in the app (shared by every editor; again on rescanAudioPlugins()): [{id, name, vendor, format "AU"/"VST3", version, problem}].
     Q_PROPERTY(QVariantList audioPlugins READ audioPlugins NOTIFY audioPluginsChanged)
@@ -259,7 +259,7 @@ class ProjectController : public QObject {
     Q_PROPERTY(PackStore* store READ store CONSTANT)
     Q_PROPERTY(QVariantMap templateInfo READ templateInfo NOTIFY projectChanged)
     // Made for you: the styles of instant videos and montages [{id, name, description, look}].
-    Q_PROPERTY(QVariantList autoEditStyles READ autoEditStyles CONSTANT)
+    Q_PROPERTY(QVariantList autoEditStyles READ autoEditStyles NOTIFY languageChanged)
 
 public:
     explicit ProjectController(QObject* parent = nullptr);
@@ -419,6 +419,9 @@ public:
     // one imported is refused unless `force`; one of another kind (no pictures for a video…)
     // always is.
     Q_INVOKABLE bool relinkMedia(double mediaId, const QUrl& file, bool force = false);
+    // Whether the last relinkMedia was refused only because the content differs (so `force`
+    // would take it).
+    Q_INVOKABLE bool relinkRefusedAsDifferent() const { return m_relinkDifferent; }
     // Finds the missing media's files in `folder` (and the folders in it) by name and content,
     // and relinks them all in one undo step; returns how many.
     Q_INVOKABLE int relinkFromFolder(const QUrl& folder);
@@ -897,6 +900,8 @@ public:
     const tve::Project& project() const { return m_project; }
 
 signals:
+    // The app's language changed: the lists with names in it are read again.
+    void languageChanged();
     // A timeline from another editor was opened; `notes` say what didn't carry over.
     void timelineOpened(const QStringList& notes, const QString& fileName);
     void viewChanged();
@@ -996,6 +1001,7 @@ private:
     QPointer<VideoView> m_view;
     QString m_filePath;
     QString m_lastError;
+    bool m_relinkDifferent = false;
     tve::Id m_selectedClip = tve::kNoId;
     std::vector<tve::Id> m_selectedClips; // includes m_selectedClip
     tve::Id m_selectedTransition = tve::kNoId;

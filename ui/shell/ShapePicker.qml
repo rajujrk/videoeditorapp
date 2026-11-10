@@ -34,17 +34,17 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Text { Layout.fillWidth: true; text: picker.template.name || ""; font: Theme.type.title; color: Theme.color.textPrimary }
-            IconButton { iconName: "close"; tip: "Close"; onClicked: picker.close() }
+            IconButton { iconName: "close"; tip: qsTr("Close"); onClicked: picker.close() }
         }
         Text {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            text: (picker.template.description || "") + " " + (picker.template.slots || 0) + " slots to fill."
+            text: (picker.template.description || "") + " " + qsTr("%1 slots to fill.").arg(Fmt.num(picker.template.slots || 0))
             font: Theme.type.body
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
         }
-        Text { text: "Shape"; font: Theme.type.label; color: Theme.color.textSecondary }
+        Text { text: qsTr("Shape"); font: Theme.type.label; color: Theme.color.textSecondary }
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.space.s
@@ -90,7 +90,7 @@ Popup {
         Text {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            text: "This starts a new project in place of the current one; save that first if you want to keep it."
+            text: qsTr("This starts a new project in place of the current one; save that first if you want to keep it.")
             font: Theme.type.caption
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
@@ -100,14 +100,14 @@ Popup {
             TextButton {
                 objectName: "deleteTemplate"
                 visible: picker.template.builtIn === false
-                text: "Delete template"
+                text: qsTr("Delete template")
                 variant: "ghost"
                 onClicked: if (picker.project.templates.remove(picker.template.id)) picker.close()
             }
             Item { Layout.fillWidth: true }
             TextButton {
                 objectName: "useTemplate"
-                text: "Use template"
+                text: qsTr("Use template")
                 variant: "primary"
                 onClicked: if (picker.project.newFromTemplate(picker.template.id, picker.shape)) picker.close()
             }

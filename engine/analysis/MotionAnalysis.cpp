@@ -2,6 +2,7 @@
 
 #include "decode/Thumbnail.h"
 #include "decode/VideoDecoder.h"
+#include "model/Translate.h"
 
 #include <nlohmann/json.hpp>
 
@@ -43,7 +44,7 @@ std::optional<MotionAnalysis> analyzeMotion(const std::string& path, const Analy
     auto decoder = VideoDecoder::open(path, error);
     if (!decoder) {
         if (error && error->empty())
-            *error = "This file has no pictures to look at.";
+            *error = TVE_TR("core", "This file has no pictures to look at.");
         return std::nullopt;
     }
     const double total = std::max(1e-3, toSeconds(decoder->info().duration));
@@ -71,7 +72,7 @@ std::optional<MotionAnalysis> analyzeMotion(const std::string& path, const Analy
     }
     if (analysis.times.empty()) {
         if (error)
-            *error = "This file has no pictures to look at.";
+            *error = TVE_TR("core", "This file has no pictures to look at.");
         return std::nullopt;
     }
     return analysis;

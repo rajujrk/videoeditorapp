@@ -113,8 +113,8 @@ ScrollView {
             Layout.fillWidth: true
             spacing: Theme.space.xs
             Repeater {
-                model: [{ id: "picture", label: "Picture" }, { id: "sticker", label: "Sticker" }, { id: "video", label: "Video" },
-                        { id: "music", label: "Music" }, { id: "sfx", label: "Sound effect" }]
+                model: [{ id: "picture", label: qsTr("Picture") }, { id: "sticker", label: qsTr("Sticker") }, { id: "video", label: qsTr("Video") },
+                        { id: "music", label: qsTr("Music") }, { id: "sfx", label: qsTr("Sound effect") }]
                 delegate: Chip {
                     required property var modelData
                     objectName: "generateKind:" + modelData.id
@@ -132,15 +132,17 @@ ScrollView {
             Layout.fillWidth: true
             Text {
                 Layout.fillWidth: true
-                text: "Add your " + (page.provider === "Google" ? "Google AI (Gemini API)" : page.provider) + " key in AI settings to make "
-                      + (page.kind === "video" ? "video." : page.kind === "music" || page.kind === "sfx" ? "sound." : "pictures.")
+                text: (page.kind === "video" ? qsTr("Add your %1 key in AI settings to make video.")
+                     : page.kind === "music" || page.kind === "sfx" ? qsTr("Add your %1 key in AI settings to make sound.")
+                     : qsTr("Add your %1 key in AI settings to make pictures."))
+                      .arg(page.provider === "Google" ? qsTr("Google AI (Gemini API)") : page.provider)
                 font: Theme.type.body
                 color: Theme.color.textSecondary
                 wrapMode: Text.WordWrap
             }
             TextButton {
                 objectName: "openAiSettings"
-                text: "AI settings…"
+                text: qsTr("AI settings…")
                 iconName: "assistant"
                 variant: "secondary"
                 onClicked: page.settingsRequested()
@@ -153,8 +155,8 @@ ScrollView {
             Layout.fillWidth: true
             spacing: Theme.space.xs
             Repeater {
-                model: [{ id: "text", label: "From words" }, { id: "image", label: "From a picture" },
-                        { id: "frames", label: "First and last picture" }, { id: "extend", label: "Extend a video" }]
+                model: [{ id: "text", label: qsTr("From words") }, { id: "image", label: qsTr("From a picture") },
+                        { id: "frames", label: qsTr("First and last picture") }, { id: "extend", label: qsTr("Extend a video") }]
                 delegate: Chip {
                     required property var modelData
                     objectName: "videoMode:" + modelData.id
@@ -175,11 +177,11 @@ ScrollView {
             enabled: !page.running
             font: Theme.type.body
             color: Theme.color.textPrimary
-            placeholderText: page.kind === "sticker" ? "A sticker of… (one object, it is cut out)"
-                           : page.kind === "video" ? (page.videoMode === "extend" ? "What happens next (optional)" : "Describe the shot: what, where, how the camera moves")
-                           : page.kind === "music" ? "The mood, genre, instruments and tempo (no artist or song names)"
-                           : page.kind === "sfx" ? "The sound: what makes it, where, how long"
-                           : "Describe the picture"
+            placeholderText: page.kind === "sticker" ? qsTr("A sticker of… (one object, it is cut out)")
+                           : page.kind === "video" ? (page.videoMode === "extend" ? qsTr("What happens next (optional)") : qsTr("Describe the shot: what, where, how the camera moves"))
+                           : page.kind === "music" ? qsTr("The mood, genre, instruments and tempo (no artist or song names)")
+                           : page.kind === "sfx" ? qsTr("The sound: what makes it, where, how long")
+                           : qsTr("Describe the picture")
             background: Rectangle { radius: Theme.radius.m; color: Theme.color.surfaceSunken; border.color: Theme.color.borderSubtle }
         }
 
@@ -189,7 +191,7 @@ ScrollView {
             Layout.fillWidth: true
             spacing: Theme.space.xs
             Repeater {
-                model: [{ id: "square", label: "Square" }, { id: "landscape", label: "Landscape" }, { id: "portrait", label: "Portrait" }]
+                model: [{ id: "square", label: qsTr("Square") }, { id: "landscape", label: qsTr("Landscape") }, { id: "portrait", label: qsTr("Portrait") }]
                 delegate: Chip {
                     required property var modelData
                     objectName: "imageShape:" + modelData.id
@@ -200,7 +202,7 @@ ScrollView {
                 }
             }
             Repeater {
-                model: [{ id: "low", label: "Draft" }, { id: "medium", label: "Good" }, { id: "high", label: "Best" }]
+                model: [{ id: "low", label: qsTr("Draft") }, { id: "medium", label: qsTr("Good") }, { id: "high", label: qsTr("Best") }]
                 delegate: Chip {
                     required property var modelData
                     objectName: "imageQuality:" + modelData.id
@@ -221,7 +223,7 @@ ScrollView {
                 delegate: Chip {
                     required property string modelData
                     objectName: "videoAspect:" + modelData
-                    label: modelData === "16:9" ? "Wide 16:9" : "Tall 9:16"
+                    label: modelData === "16:9" ? qsTr("Wide 16:9") : qsTr("Tall 9:16")
                     checked: page.aspect === modelData
                     onClicked: page.aspect = modelData
                 }
@@ -242,10 +244,11 @@ ScrollView {
         Text {
             visible: pickFlow.visible
             Layout.fillWidth: true
-            text: page.kind === "video" && page.videoMode === "extend" ? "The video to extend"
-                : page.kind === "video" && page.videoMode === "frames" ? "The first picture, then the last"
-                : page.kind === "video" ? "The picture to start from"
-                : "Work from pictures in the media bin (optional)"
+            text: page.kind === "video" && page.videoMode === "extend" ? qsTr("The video to extend")
+                : page.kind === "video" && page.videoMode === "frames" ? qsTr("The first picture, then the last")
+                : page.kind === "video" ? qsTr("The picture to start from")
+                : qsTr("Work from pictures in the media bin (optional)")
+            wrapMode: Text.WordWrap
             font: Theme.type.label
             color: Theme.color.textSecondary
         }
@@ -268,7 +271,7 @@ ScrollView {
             }
             Text {
                 visible: (page.kind === "video" && page.videoMode === "extend" ? page.madeVideos : page.stills).length === 0
-                text: page.kind === "video" && page.videoMode === "extend" ? "No videos made here yet." : "No pictures in the media bin."
+                text: page.kind === "video" && page.videoMode === "extend" ? qsTr("No videos made here yet.") : qsTr("No pictures in the media bin.")
                 font: Theme.type.caption
                 color: Theme.color.textDisabled
             }
@@ -278,7 +281,7 @@ ScrollView {
         RowLayout {
             visible: page.kind === "music" || page.kind === "sfx"
             Layout.fillWidth: true
-            Text { text: "Length"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { text: qsTr("Length"); font: Theme.type.label; color: Theme.color.textSecondary }
             Slider {
                 id: length
                 objectName: "soundLength"
@@ -288,10 +291,10 @@ ScrollView {
                 stepSize: page.kind === "music" ? 5 : 0.5
                 value: page.kind === "music" ? 30 : 3
             }
-            Text { text: page.kind === "music" ? page.clock(Math.round(length.value)) : length.value.toFixed(1) + " s"; font: Theme.type.label; color: Theme.color.textPrimary }
+            Text { text: page.kind === "music" ? page.clock(Math.round(length.value)) : Fmt.seconds(length.value); font: Theme.type.label; color: Theme.color.textPrimary }
         }
-        ToggleSwitch { id: instrumental; objectName: "musicInstrumental"; visible: page.kind === "music"; text: "Instrumental"; checked: true }
-        ToggleSwitch { id: loop; objectName: "soundLoop"; visible: page.kind === "sfx"; text: "Loops smoothly"; checked: false }
+        ToggleSwitch { id: instrumental; objectName: "musicInstrumental"; visible: page.kind === "music"; text: qsTr("Instrumental"); checked: true }
+        ToggleSwitch { id: loop; objectName: "soundLoop"; visible: page.kind === "sfx"; text: qsTr("Loops smoothly"); checked: false }
 
         RowLayout {
             Layout.fillWidth: true
@@ -300,7 +303,7 @@ ScrollView {
                 objectName: "generateButton"
                 Layout.fillWidth: true
                 visible: !page.running
-                text: page.kind === "sticker" ? "Make the sticker" : page.kind === "video" && page.videoMode === "extend" ? "Extend" : "Generate"
+                text: page.kind === "sticker" ? qsTr("Make the sticker") : page.kind === "video" && page.videoMode === "extend" ? qsTr("Extend") : qsTr("Generate")
                 iconName: "generate"
                 variant: "primary"
                 enabled: page.ready
@@ -310,7 +313,7 @@ ScrollView {
                 objectName: "stopGenerating"
                 Layout.fillWidth: true
                 visible: page.running
-                text: "Stop"
+                text: qsTr("Stop")
                 variant: "secondary"
                 onClicked: page.cloud.cancel()
             }
@@ -328,10 +331,10 @@ ScrollView {
         Text {
             objectName: "generateTerms"
             Layout.fillWidth: true
-            text: page.provider === "OpenAI" ? "Made by OpenAI with your key; under OpenAI's terms the pictures are yours to use."
-                : page.provider === "Google" ? "Made by Google's Gemini Omni Flash with your key. Videos carry Google's invisible SynthID watermark."
-                : page.kind === "music" ? "Made by ElevenLabs with your key. Paid plans allow commercial use except film, TV, radio and studio games (Enterprise Music only); don't name artists, songs or lyrics."
-                : "Made by ElevenLabs with your key; how you may use it depends on your ElevenLabs plan."
+            text: page.provider === "OpenAI" ? qsTr("Made by OpenAI with your key; under OpenAI's terms the pictures are yours to use.")
+                : page.provider === "Google" ? qsTr("Made by Google's Gemini Omni Flash with your key. Videos carry Google's invisible SynthID watermark.")
+                : page.kind === "music" ? qsTr("Made by ElevenLabs with your key. Paid plans allow commercial use except film, TV, radio and studio games (Enterprise Music only); don't name artists, songs or lyrics.")
+                : qsTr("Made by ElevenLabs with your key; how you may use it depends on your ElevenLabs plan.")
             font: Theme.type.caption
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
@@ -339,7 +342,7 @@ ScrollView {
 
         // Made here
         Divider { Layout.fillWidth: true; implicitHeight: 1; visible: page.made.length > 0 }
-        Text { visible: page.made.length > 0; text: "Made here"; font: Theme.type.heading; color: Theme.color.textPrimary }
+        Text { visible: page.made.length > 0; text: qsTr("Made here"); font: Theme.type.heading; color: Theme.color.textPrimary }
         Repeater {
             model: page.made
             delegate: Rectangle {
@@ -391,7 +394,7 @@ ScrollView {
                         Text {
                             Layout.fillWidth: true
                             text: madeRow.modelData.name + " · " + madeRow.modelData.generated.model
-                                  + (madeRow.modelData.generated.source ? " · from " + madeRow.modelData.generated.source : "")
+                                  + (madeRow.modelData.generated.source ? qsTr(" · from %1").arg(madeRow.modelData.generated.source) : "")
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                             elide: Text.ElideRight
@@ -400,15 +403,15 @@ ScrollView {
                     TextButton {
                         objectName: "addMade:" + madeRow.modelData.name
                         visible: madeRow.modelData.hasVideo
-                        text: "Add"
+                        text: qsTr("Add")
                         variant: "ghost"
-                        tip: "Add to the end of the main track"
+                        tip: qsTr("Add to the end of the main track")
                         onClicked: page.project.addClip(madeRow.modelData.id)
                     }
                     TextButton {
                         objectName: "extendMade:" + madeRow.modelData.name
                         visible: madeRow.modelData.generated.kind === "video" && madeRow.modelData.generated.reference !== ""
-                        text: "Extend"
+                        text: qsTr("Extend")
                         variant: "ghost"
                         enabled: !page.running
                         onClicked: { page.kind = "video"; page.videoMode = "extend"; page.picked = [madeRow.modelData.id] }

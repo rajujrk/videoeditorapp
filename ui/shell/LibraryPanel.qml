@@ -20,9 +20,9 @@ Rectangle {
     onCurrentTabChanged: searchField.text = ""
 
     readonly property var effectCategories: [
-        { id: "", label: "All" }, { id: "blur", label: "Blur" }, { id: "color", label: "Colour" },
-        { id: "stylize", label: "Stylize" }, { id: "distort", label: "Distort" }, { id: "glitch", label: "Glitch" },
-        { id: "light", label: "Light" }, { id: "frame", label: "Frame" }, { id: "overlay", label: "Overlay" }
+        { id: "", label: qsTr("All") }, { id: "blur", label: qsTr("Blur") }, { id: "color", label: qsTr("Colour") },
+        { id: "stylize", label: qsTr("Stylize") }, { id: "distort", label: qsTr("Distort") }, { id: "glitch", label: qsTr("Glitch") },
+        { id: "light", label: qsTr("Light") }, { id: "frame", label: qsTr("Frame") }, { id: "overlay", label: qsTr("Overlay") }
     ]
     function matchesSearch(title) {
         const text = searchField.text.trim().toLowerCase()
@@ -33,38 +33,42 @@ Rectangle {
 
     // Title templates (original designs, TitleTemplates.js): {name, category, style}; the
     // Titles tab's category ("" for all).
-    readonly property var titleStyles: TitleTemplates.templates
+    // Each with its title (the name, translated) and its sample text in the app's language.
+    readonly property var titleStyles: TitleTemplates.templates.map((t) => Object.assign({}, t, {
+        title: qsTranslate("TitleTemplates", t.name),
+        style: Object.assign({}, t.style, { text: qsTranslate("TitleTemplates", t.style.text) })
+    }))
     property string titleCategory: ""
     // The Stickers tab's category ("" for all).
     property string stickerCategory: ""
     readonly property var stickerCategories: [
-        { id: "", label: "All" }, { id: "shapes", label: "Shapes" }, { id: "marks", label: "Arrows & marks" },
-        { id: "nature", label: "Nature" }, { id: "emoji", label: "Emoji" }, { id: "party", label: "Party" }
+        { id: "", label: qsTr("All") }, { id: "shapes", label: qsTr("Shapes") }, { id: "marks", label: qsTr("Arrows & marks") },
+        { id: "nature", label: qsTr("Nature") }, { id: "emoji", label: qsTr("Emoji") }, { id: "party", label: qsTr("Party") }
     ]
     // The Transitions tab's category ("" for all).
     property string transitionCategory: ""
     readonly property var transitionCategories: [
-        { id: "", label: "All" }, { id: "basic", label: "Basic" }, { id: "slide", label: "Slide" },
-        { id: "wipe", label: "Wipe" }, { id: "shape", label: "Shape" }, { id: "zoom", label: "Zoom" },
-        { id: "3d", label: "3D" }, { id: "distort", label: "Distort" }, { id: "luma", label: "Luma" },
-        { id: "stylize", label: "Stylize" }, { id: "blur", label: "Blur" }, { id: "light", label: "Light" },
-        { id: "overlays", label: "Overlays" }
+        { id: "", label: qsTr("All") }, { id: "basic", label: qsTr("Basic") }, { id: "slide", label: qsTr("Slide") },
+        { id: "wipe", label: qsTr("Wipe") }, { id: "shape", label: qsTr("Shape") }, { id: "zoom", label: qsTr("Zoom") },
+        { id: "3d", label: qsTr("3D") }, { id: "distort", label: qsTr("Distort") }, { id: "luma", label: qsTr("Luma") },
+        { id: "stylize", label: qsTr("Stylize") }, { id: "blur", label: qsTr("Blur") }, { id: "light", label: qsTr("Light") },
+        { id: "overlays", label: qsTr("Overlays") }
     ]
 
     readonly property var tabs: [
-        { icon: "media", label: "Media", phase: "" },
-        { icon: "audio", label: "Audio", phase: "" },
-        { icon: "generate", label: "Generate", phase: "" },
-        { icon: "assistant", label: "Copilot", phase: "" },
-        { icon: "titles", label: "Titles", phase: "" },
-        { icon: "transitions", label: "Transitions", phase: "" },
-        { icon: "effects", label: "Effects", phase: "" },
-        { icon: "filters", label: "Filters", phase: "" },
-        { icon: "stickers", label: "Stickers", phase: "" },
-        { icon: "captions", label: "Captions", phase: "" },
-        { icon: "transcript", label: "Transcript", phase: "" },
-        { icon: "templates", label: "Templates", phase: "" },
-        { icon: "store", label: "Store", phase: "" }
+        { icon: "media", key: "Media", label: qsTr("Media"), phase: "" },
+        { icon: "audio", key: "Audio", label: qsTr("Audio"), phase: "" },
+        { icon: "generate", key: "Generate", label: qsTr("Generate"), phase: "" },
+        { icon: "assistant", key: "Copilot", label: qsTr("Copilot"), phase: "" },
+        { icon: "titles", key: "Titles", label: qsTr("Titles"), phase: "" },
+        { icon: "transitions", key: "Transitions", label: qsTr("Transitions"), phase: "" },
+        { icon: "effects", key: "Effects", label: qsTr("Effects"), phase: "" },
+        { icon: "filters", key: "Filters", label: qsTr("Filters"), phase: "" },
+        { icon: "stickers", key: "Stickers", label: qsTr("Stickers"), phase: "" },
+        { icon: "captions", key: "Captions", label: qsTr("Captions"), phase: "" },
+        { icon: "transcript", key: "Transcript", label: qsTr("Transcript"), phase: "" },
+        { icon: "templates", key: "Templates", label: qsTr("Templates"), phase: "" },
+        { icon: "store", key: "Store", label: qsTr("Store"), phase: "" }
     ]
 
     RowLayout {
@@ -98,7 +102,7 @@ Rectangle {
                     id: tab
                     required property var modelData
                     required property int index
-                    objectName: "libraryTab:" + modelData.label
+                    objectName: "libraryTab:" + modelData.key
                     Layout.alignment: Qt.AlignHCenter
                     implicitWidth: Theme.size.tabRail - Theme.space.s
                     implicitHeight: 48
@@ -147,21 +151,21 @@ Rectangle {
                 IconButton {
                     objectName: "importButton"
                     iconName: "import"
-                    tip: "Import media (⌘I)"
+                    tip: qsTr("Import media (⌘I)")
                     visible: library.currentTab === 0
                     onClicked: library.importRequested()
                 }
                 IconButton {
                     objectName: "importFromButton"
                     iconName: "chevron-down"
-                    tip: "Import from Photos, Music or a device"
+                    tip: qsTr("Import from Photos, Music or a device")
                     visible: library.currentTab === 0
                     onClicked: importFromMenu.popup(this, 0, height)
                     Menu {
                         id: importFromMenu
-                        MenuItem { objectName: "importFrom:photos"; text: "From Photos…"; onTriggered: library.importFromRequested("photos") }
-                        MenuItem { objectName: "importFrom:music"; text: "From Music…"; onTriggered: library.importFromRequested("music") }
-                        MenuItem { objectName: "importFrom:devices"; text: "From an iPhone, camera or card…"; onTriggered: library.importFromRequested("devices") }
+                        MenuItem { objectName: "importFrom:photos"; text: qsTr("From Photos…"); onTriggered: library.importFromRequested("photos") }
+                        MenuItem { objectName: "importFrom:music"; text: qsTr("From Music…"); onTriggered: library.importFromRequested("music") }
+                        MenuItem { objectName: "importFrom:devices"; text: qsTr("From an iPhone, camera or card…"); onTriggered: library.importFromRequested("devices") }
                     }
                 }
             }
@@ -169,13 +173,13 @@ Rectangle {
             SearchField {
                 id: searchField
                 objectName: "librarySearch"
-                visible: library.tabs[library.currentTab].label !== "Captions" && library.tabs[library.currentTab].label !== "Transcript"
-                         && library.tabs[library.currentTab].label !== "Generate" && library.tabs[library.currentTab].label !== "Templates"
-                         && library.tabs[library.currentTab].label !== "Copilot"
-                         && library.tabs[library.currentTab].label !== "Store"
+                visible: library.tabs[library.currentTab].key !== "Captions" && library.tabs[library.currentTab].key !== "Transcript"
+                         && library.tabs[library.currentTab].key !== "Generate" && library.tabs[library.currentTab].key !== "Templates"
+                         && library.tabs[library.currentTab].key !== "Copilot"
+                         && library.tabs[library.currentTab].key !== "Store"
                 Layout.fillWidth: true
                 Layout.margins: Theme.space.m
-                placeholderText: "Search " + library.tabs[library.currentTab].label.toLowerCase()
+                placeholderText: qsTr("Search %1").arg(library.tabs[library.currentTab].label.toLowerCase())
             }
 
             // Transitions tab: category chips, and random transitions on every cut.
@@ -215,9 +219,9 @@ Rectangle {
                 }
                 TextButton {
                     objectName: "randomTransitions"
-                    text: "Random on every cut"
+                    text: qsTr("Random on every cut")
                     variant: "ghost"
-                    tip: "Put a different random transition on each cut between clips"
+                    tip: qsTr("Put a different random transition on each cut between clips")
                     onClicked: library.project.applyRandomTransitions()
                 }
             }
@@ -262,7 +266,7 @@ Rectangle {
             TranscriptPage {
                 id: transcriptPage
                 objectName: "transcriptPage"
-                visible: library.tabs[library.currentTab].label === "Transcript"
+                visible: library.tabs[library.currentTab].key === "Transcript"
                 project: library.project
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -272,7 +276,7 @@ Rectangle {
             Loader {
                 id: templatesPage
                 active: visible || item !== null
-                visible: library.tabs[library.currentTab].label === "Templates"
+                visible: library.tabs[library.currentTab].key === "Templates"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 sourceComponent: TemplatesPage {
@@ -283,7 +287,7 @@ Rectangle {
             Loader {
                 id: storePage
                 active: visible || item !== null
-                visible: library.tabs[library.currentTab].label === "Store"
+                visible: library.tabs[library.currentTab].key === "Store"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 sourceComponent: StorePage {
@@ -294,7 +298,7 @@ Rectangle {
             Loader {
                 id: copilotPage
                 active: visible || item !== null
-                visible: library.tabs[library.currentTab].label === "Copilot"
+                visible: library.tabs[library.currentTab].key === "Copilot"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 sourceComponent: CopilotPage {
@@ -306,7 +310,7 @@ Rectangle {
             Loader {
                 id: generatePage
                 active: visible || item !== null
-                visible: library.tabs[library.currentTab].label === "Generate"
+                visible: library.tabs[library.currentTab].key === "Generate"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 sourceComponent: GeneratePage {
@@ -319,7 +323,7 @@ Rectangle {
             AudioPage {
                 id: audioPage
                 objectName: "audioPage"
-                visible: library.tabs[library.currentTab].label === "Audio"
+                visible: library.tabs[library.currentTab].key === "Audio"
                 project: library.project
                 searchText: searchField.text
                 Layout.fillWidth: true
@@ -329,7 +333,7 @@ Rectangle {
             CaptionsPage {
                 id: captionsPage
                 objectName: "captionsPage"
-                visible: library.tabs[library.currentTab].label === "Captions"
+                visible: library.tabs[library.currentTab].key === "Captions"
                 project: library.project
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -340,7 +344,7 @@ Rectangle {
             GridView {
                 id: stickersGrid
                 objectName: "stickersGrid"
-                visible: library.tabs[library.currentTab].label === "Stickers"
+                visible: library.tabs[library.currentTab].key === "Stickers"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: Theme.space.m
@@ -367,7 +371,7 @@ Rectangle {
                         onClicked: library.project.addSticker(stickerTile.modelData.id)
                         ToolTip.visible: hovered
                         ToolTip.delay: 600
-                        ToolTip.text: stickerTile.modelData.title + " — click to add at the playhead"
+                        ToolTip.text: qsTr("%1 — click to add at the playhead").arg(stickerTile.modelData.title)
                         background: Rectangle {
                             radius: Theme.radius.m
                             color: stickerButton.hovered ? Theme.color.surfaceHover : Theme.color.surfaceRaised
@@ -419,7 +423,7 @@ Rectangle {
                         }
                         contentItem: Text {
                             id: titleChipLabel
-                            text: titleChip.modelData.label
+                            text: qsTranslate("TitleTemplates", titleChip.modelData.label)
                             font: Theme.type.caption
                             color: titleChip.checked ? Theme.color.accentText : Theme.color.textSecondary
                             horizontalAlignment: Text.AlignHCenter
@@ -470,7 +474,7 @@ Rectangle {
             GridView {
                 id: effectsGrid
                 objectName: "effectsGrid"
-                visible: library.tabs[library.currentTab].label === "Effects"
+                visible: library.tabs[library.currentTab].key === "Effects"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: Theme.space.m
@@ -502,7 +506,7 @@ Rectangle {
                         ToolTip {
                             visible: parent.hovered
                             delay: 600
-                            text: "Add to the selected clip"
+                            text: qsTr("Add to the selected clip")
                         }
 
                         background: Rectangle {
@@ -550,7 +554,7 @@ Rectangle {
                                     Text {
                                         id: overlayBadge
                                         anchors.centerIn: parent
-                                        text: "Overlay"
+                                        text: qsTr("Overlay")
                                         font: Theme.type.caption
                                         color: "white"
                                     }
@@ -575,14 +579,14 @@ Rectangle {
             GridView {
                 id: looksGrid
                 objectName: "looksGrid"
-                visible: library.tabs[library.currentTab].label === "Filters"
+                visible: library.tabs[library.currentTab].key === "Filters"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: Theme.space.m
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: [{ id: "", title: "Adjustment layer", category: "Layer" }].concat(library.project.looks)
+                model: [{ id: "", title: qsTr("Adjustment layer"), category: "Layer" }].concat(library.project.looks)
 
                 delegate: Item {
                     id: lookTile
@@ -604,8 +608,8 @@ Rectangle {
                         ToolTip {
                             visible: parent.hovered
                             delay: 600
-                            text: lookTile.adjustment ? "Add an adjustment layer at the playhead: its look, grade and effects change everything below it"
-                                                      : "Put this look on the selected clip"
+                            text: lookTile.adjustment ? qsTr("Add an adjustment layer at the playhead: its look, grade and effects change everything below it")
+                                                      : qsTr("Put this look on the selected clip")
                         }
                         background: Rectangle {
                             radius: Theme.radius.m
@@ -658,7 +662,7 @@ Rectangle {
             GridView {
                 id: titlesGrid
                 objectName: "titlesGrid"
-                visible: library.tabs[library.currentTab].label === "Titles"
+                visible: library.tabs[library.currentTab].key === "Titles"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: Theme.space.m
@@ -731,7 +735,7 @@ Rectangle {
                             Text {
                                 Layout.leftMargin: Theme.space.s
                                 Layout.bottomMargin: Theme.space.s
-                                text: titleTile.modelData.name
+                                text: titleTile.modelData.title
                                 font: Theme.type.label
                                 color: Theme.color.textPrimary
                                 elide: Text.ElideRight
@@ -755,7 +759,7 @@ Rectangle {
                     ToolTip {
                         visible: titleMouse.containsMouse && !titleMouse.drag.active
                         delay: 800
-                        text: "Click to add at the playhead, or drag onto a track"
+                        text: qsTr("Click to add at the playhead, or drag onto a track")
                     }
                 }
             }
@@ -765,7 +769,7 @@ Rectangle {
             GridView {
                 id: transitionsGrid
                 objectName: "transitionsGrid"
-                visible: library.tabs[library.currentTab].label === "Transitions"
+                visible: library.tabs[library.currentTab].key === "Transitions"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: Theme.space.m
@@ -864,8 +868,8 @@ Rectangle {
                     ToolTip {
                         visible: transitionMouse.containsMouse && !transitionMouse.drag.active
                         delay: 800
-                        text: transitionTile.overlay ? "Click to lay it over the cut nearest the playhead, on a track above"
-                                                     : "Click to add at the cut nearest the playhead, or drag onto a cut"
+                        text: transitionTile.overlay ? qsTr("Click to lay it over the cut nearest the playhead, on a track above")
+                                                     : qsTr("Click to add at the cut nearest the playhead, or drag onto a cut")
                     }
                 }
             }
@@ -948,8 +952,8 @@ Rectangle {
                                             anchors.centerIn: parent
                                             objectName: "mediaDuration:" + mediaTile.modelData.name
                                             // A still has no length of its own.
-                                            text: mediaTile.modelData.missing ? "Missing"
-                                                  : mediaTile.modelData.sticker ? "Sticker" : mediaTile.modelData.still ? "Image"
+                                            text: mediaTile.modelData.missing ? qsTr("Missing")
+                                                  : mediaTile.modelData.sticker ? qsTr("Sticker") : mediaTile.modelData.still ? qsTr("Image")
                                                   : library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
                                             font: Theme.type.caption
                                             color: "#FFFFFF"
@@ -971,16 +975,16 @@ Rectangle {
                                     Layout.bottomMargin: Theme.space.xxs
                                     elide: Text.ElideRight
                                     text: !mediaTile.modelData.hasVideo
-                                          ? "Audio only"
+                                          ? qsTr("Audio only")
                                           : mediaTile.modelData.sticker
-                                          ? "Animated sticker"
+                                          ? qsTr("Animated sticker")
                                           : mediaTile.modelData.still
-                                          ? mediaTile.modelData.width + "×" + mediaTile.modelData.height + " · image"
+                                          ? qsTr("%1×%2 · image").arg(mediaTile.modelData.width).arg(mediaTile.modelData.height)
                                           : mediaTile.modelData.width + "×" + mediaTile.modelData.height
-                                            + " · " + mediaTile.modelData.frameRate.toFixed(mediaTile.modelData.frameRate % 1 ? 2 : 0) + " fps"
-                                            + (mediaTile.modelData.alpha ? " · transparent" : "")
+                                            + " · " + qsTr("%1 fps").arg(Fmt.num(mediaTile.modelData.frameRate, mediaTile.modelData.frameRate % 1 ? 2 : 0))
+                                            + (mediaTile.modelData.alpha ? qsTr(" · transparent") : "")
                                             + (mediaTile.modelData.colour && !mediaTile.modelData.hdr ? " · " + mediaTile.modelData.colour : "")
-                                            + (mediaTile.modelData.hasAudio ? " · sound" : "")
+                                            + (mediaTile.modelData.hasAudio ? qsTr(" · sound") : "")
                                     font: Theme.type.caption
                                     color: Theme.color.textSecondary
                                 }
@@ -1000,8 +1004,8 @@ Rectangle {
                             visible: tileMouse.containsMouse && !tileMouse.drag.active
                             delay: 800
                             text: (mediaTile.modelData.generated
-                                   ? "Made by " + mediaTile.modelData.generated.model + ": “" + mediaTile.modelData.generated.prompt + "”\n" : "")
-                                  + "Double-click to add to the timeline, or drag onto a track"
+                                   ? qsTr("Made by %1: “%2”").arg(mediaTile.modelData.generated.model).arg(mediaTile.modelData.generated.prompt) + "\n" : "")
+                                  + qsTr("Double-click to add to the timeline, or drag onto a track")
                         }
                         // Generated media: marked, its prompt and maker kept.
                         Rectangle {
@@ -1012,7 +1016,7 @@ Rectangle {
                             height: aiLabel.implicitHeight + Theme.space.xxs
                             radius: Theme.radius.s
                             color: Theme.color.accent
-                            Text { id: aiLabel; anchors.centerIn: parent; text: "AI"; font: Theme.type.caption; color: "#FFFFFF" }
+                            Text { id: aiLabel; anchors.centerIn: parent; text: qsTr("AI"); font: Theme.type.caption; color: "#FFFFFF" }
                         }
 
                         // 360° media: marked.
@@ -1042,8 +1046,8 @@ Rectangle {
                             ToolTip {
                                 visible: hdrBadgeMouse.containsMouse
                                 text: library.project.projectColour === "sdr"
-                                      ? "HDR media: shown tone-mapped in this SDR project. Make the project HDR in Color to keep its highlights."
-                                      : "HDR media, in this HDR project as it is"
+                                      ? qsTr("HDR media: shown tone-mapped in this SDR project. Make the project HDR in Color to keep its highlights.")
+                                      : qsTr("HDR media, in this HDR project as it is")
                             }
                             MouseArea { id: hdrBadgeMouse; anchors.fill: parent; hoverEnabled: true }
                         }
@@ -1063,16 +1067,16 @@ Rectangle {
                             Text {
                                 id: proxyLabel
                                 anchors.centerIn: parent
-                                text: mediaTile.proxy.state === "making" ? "Proxy " + Math.round(mediaTile.proxy.progress * 100) + "%"
-                                    : mediaTile.proxy.state === "queued" ? "Proxy queued"
-                                    : mediaTile.proxy.state === "failed" ? "Proxy failed" : "Proxy"
+                                text: mediaTile.proxy.state === "making" ? qsTr("Proxy %1").arg(Fmt.percent(mediaTile.proxy.progress))
+                                    : mediaTile.proxy.state === "queued" ? qsTr("Proxy queued")
+                                    : mediaTile.proxy.state === "failed" ? qsTr("Proxy failed") : qsTr("Proxy")
                                 font: Theme.type.caption
                                 color: "#FFFFFF"
                             }
                             ToolTip {
                                 visible: proxyBadgeMouse.containsMouse
-                                text: mediaTile.proxy.state === "ready" ? "A lighter copy plays in the preview; export uses the original"
-                                    : mediaTile.proxy.state === "failed" ? mediaTile.proxy.error : "Making a lighter copy for the preview"
+                                text: mediaTile.proxy.state === "ready" ? qsTr("A lighter copy plays in the preview; export uses the original")
+                                    : mediaTile.proxy.state === "failed" ? mediaTile.proxy.error : qsTr("Making a lighter copy for the preview")
                             }
                             MouseArea { id: proxyBadgeMouse; anchors.fill: parent; hoverEnabled: true }
                         }
@@ -1093,7 +1097,7 @@ Rectangle {
                                 color: parent.hovered ? Theme.color.accent : Theme.color.overlay
                             }
                             contentItem: Text {
-                                text: mediaTile.proxy.state === "ready" ? "Remove proxy" : "Make proxy"
+                                text: mediaTile.proxy.state === "ready" ? qsTr("Remove proxy") : qsTr("Make proxy")
                                 font: Theme.type.caption
                                 color: "#FFFFFF"
                             }
@@ -1110,7 +1114,7 @@ Rectangle {
                     Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "import"; size: 28 }
                     Text {
                         width: parent.width
-                        text: "Import or drop video files here"
+                        text: qsTr("Import or drop video files here")
                         font: Theme.type.heading
                         color: Theme.color.textPrimary
                         horizontalAlignment: Text.AlignHCenter
@@ -1118,7 +1122,7 @@ Rectangle {
                     }
                     TextButton {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Import media…"
+                        text: qsTr("Import media…")
                         iconName: "import"
                         variant: "primary"
                         onClicked: library.importRequested()
@@ -1128,11 +1132,11 @@ Rectangle {
                         width: Math.min(parent.width, implicitWidth)
                         spacing: Theme.space.xxs
                         Repeater {
-                            model: [{ id: "photos", label: "Photos" }, { id: "music", label: "Music" }, { id: "devices", label: "A device" }]
+                            model: [{ id: "photos", label: qsTr("Photos") }, { id: "music", label: qsTr("Music") }, { id: "devices", label: qsTr("A device") }]
                             delegate: TextButton {
                                 required property var modelData
                                 objectName: "emptyImportFrom:" + modelData.id
-                                text: "From " + modelData.label
+                                text: qsTr("From %1").arg(modelData.label)
                                 variant: "ghost"
                                 onClicked: library.importFromRequested(modelData.id)
                             }

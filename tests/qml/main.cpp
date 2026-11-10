@@ -12,6 +12,7 @@
 #include <QtQml/qqmlextensionplugin.h>
 #include <QtQuickTest/quicktest.h>
 
+#include "Language.h"
 #include "ThumbnailProvider.h"
 #include "MediaImports.h"
 #include "TemplateLibrary.h"
@@ -459,6 +460,8 @@ public slots:
 
     void qmlEngineAvailable(QQmlEngine* engine)
     {
+        Language::create(engine, nullptr); // (retranslated when a test changes the language)
+        Language::instance()->apply();
         engine->rootContext()->setContextProperty(QStringLiteral("scratchDir"), QDir(scratch.path()).canonicalPath());
         engine->rootContext()->setContextProperty(QStringLiteral("testFiles"), &files);
         engine->rootContext()->setContextProperty(QStringLiteral("packSite"), packSite);
@@ -473,6 +476,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("templateCacheDir"), qEnvironmentVariable("TVE_TEMPLATE_CACHE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("voicesDir"), qEnvironmentVariable("TVE_VOICE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("consentDir"), qEnvironmentVariable("TVE_CONSENT_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("languageFile"), qEnvironmentVariable("TVE_LANGUAGE_FILE"));
         engine->rootContext()->setContextProperty(QStringLiteral("keyStoreDir"), qEnvironmentVariable("TVE_KEY_STORE"));
         engine->rootContext()->setContextProperty(QStringLiteral("importFixturesDir"), qEnvironmentVariable("TVE_TEST_IMPORTS_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("importsDir"), qEnvironmentVariable("TVE_IMPORT_DIR"));
@@ -576,6 +580,15 @@ int main(int argc, char** argv)
     QTemporaryDir voices;
     qputenv("TVE_VOICE_DIR", QDir(voices.path()).canonicalPath().toLocal8Bit());
     // Voice cloning: consent records in a scratch folder; the code words fixed.
+    // The language setting in a scratch file (the app's own isn't touched).
+    QTemporaryDir languageSettings;
+    qputenv("TVE_LANGUAGE_FILE", (languageSettings.path() + QStringLiteral("/language.json")).toLocal8Bit());
+    {
+        // English, whatever this Mac speaks (tst_language switches it).
+        QFile file(languageSettings.path() + QStringLiteral("/language.json"));
+        if (file.open(QIODevice::WriteOnly))
+            file.write(R"({"language": "en"})");
+    }
     QTemporaryDir consents;
     qputenv("TVE_CONSENT_DIR", QDir(consents.path()).canonicalPath().toLocal8Bit());
     qputenv("TVE_CONSENT_SEED", "7");

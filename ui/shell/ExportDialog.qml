@@ -26,7 +26,7 @@ Popup {
     padding: Theme.space.l
     closePolicy: Popup.CloseOnEscape | (stage === "exporting" ? 0 : Popup.CloseOnPressOutside)
 
-    function baseName() { return (project.name || "Untitled").replace(/[\\/:*?"<>|]/g, "-") }
+    function baseName() { return (project.name || qsTr("Untitled")).replace(/[\\/:*?"<>|]/g, "-") }
     function prepare() {
         stage = "settings"
         message = ""
@@ -56,37 +56,37 @@ Popup {
         const h = project.canvasHeight
         const short = Math.min(w, h)
         const even = (v) => Math.max(2, Math.round(v / 2) * 2)
-        const at = (side, label) => ({ label: label + " · " + even(w * side / short) + " × " + even(h * side / short),
+        const at = (side, label) => ({ label: qsTr("%1 · %2 × %3").arg(label).arg(even(w * side / short)).arg(even(h * side / short)),
                                         width: even(w * side / short), height: even(h * side / short), fill: false })
-        const list = [{ label: "Project · " + w + " × " + h, width: w, height: h, fill: false }]
+        const list = [{ label: qsTr("Project · %1 × %2").arg(w).arg(h), width: w, height: h, fill: false }]
         const heights = [[2160, "4K"], [1440, "1440p"], [1080, "1080p"], [720, "720p"], [540, "540p"], [480, "480p"], [360, "360p"]]
         for (const target of heights)
             if (target[0] < short)
                 list.push(at(target[0], target[1]))
-        list.push({ label: "Vertical 9:16 · 1080 × 1920", width: 1080, height: 1920, fill: true })
-        list.push({ label: "Square 1:1 · 1080 × 1080", width: 1080, height: 1080, fill: true })
+        list.push({ label: qsTr("Vertical 9:16 · 1080 × 1920"), width: 1080, height: 1920, fill: true })
+        list.push({ label: qsTr("Square 1:1 · 1080 × 1080"), width: 1080, height: 1080, fill: true })
         for (const target of heights)
             if (target[0] > short)
-                list.push(at(target[0], target[1] + " (upscaled)"))
+                list.push(at(target[0], qsTr("%1 (upscaled)").arg(target[1])))
         return list
     }
     readonly property var size: sizes[Math.max(0, sizePicker.currentIndex)]
-    readonly property var rates: [{ label: "Project · " + Math.round(project.frameRate) + " fps", fps: 0 },
-                                  { label: "24 fps", fps: 24 }, { label: "25 fps", fps: 25 }, { label: "30 fps", fps: 30 },
-                                  { label: "50 fps", fps: 50 }, { label: "60 fps", fps: 60 }, { label: "15 fps (GIF)", fps: 15 }]
+    readonly property var rates: [{ label: qsTr("Project · %1 fps").arg(Fmt.num(project.frameRate)), fps: 0 },
+                                  { label: qsTr("24 fps"), fps: 24 }, { label: qsTr("25 fps"), fps: 25 }, { label: qsTr("30 fps"), fps: 30 },
+                                  { label: qsTr("50 fps"), fps: 50 }, { label: qsTr("60 fps"), fps: 60 }, { label: qsTr("15 fps (GIF)"), fps: 15 }]
     // Whole timeline, the selection, each marker with a length, all of them as files, custom.
     readonly property var ranges: {
-        const list = [{ label: "Whole timeline", range: "all" }]
+        const list = [{ label: qsTr("Whole timeline"), range: "all" }]
         if (project.selectedClips.length > 0)
-            list.push({ label: "Selected clips", range: "selection" })
+            list.push({ label: qsTr("Selected clips"), range: "selection" })
         const marked = project.markers.filter((m) => m.duration > 0)
         for (const m of marked)
-            list.push({ label: "Marker · " + (m.note || "range") + " (" + project.timecode(m.time).substring(3, 8) + "–"
-                               + project.timecode(m.time + m.duration).substring(3, 8) + ")",
+            list.push({ label: qsTr("Marker · %1 (%2–%3)").arg(m.note || qsTr("range")).arg(project.timecode(m.time).substring(3, 8))
+                                .arg(project.timecode(m.time + m.duration).substring(3, 8)),
                         range: "marker", markerId: m.id })
         if (marked.length > 1)
-            list.push({ label: "Each marker range · " + marked.length + " files", range: "each", count: marked.length })
-        list.push({ label: "Custom…", range: "custom" })
+            list.push({ label: qsTr("Each marker range · %1 files").arg(Fmt.num(marked.length)), range: "each", count: marked.length })
+        list.push({ label: qsTr("Custom…"), range: "custom" })
         return list
     }
     readonly property var range: ranges[Math.max(0, Math.min(rangePicker.currentIndex, ranges.length - 1))]
@@ -184,7 +184,7 @@ Popup {
 
     FileDialog {
         id: fileDialog
-        title: "Export"
+        title: qsTr("Export")
         fileMode: FileDialog.SaveFile
         defaultSuffix: dialog.format.extension
         nameFilters: [dialog.format.label + " (*." + dialog.format.extension + ")"]
@@ -204,10 +204,10 @@ Popup {
         spacing: Theme.space.m
 
         Text {
-            text: dialog.stage === "done" ? "Export finished"
-                : dialog.stage === "failed" ? "Export failed"
-                : dialog.stage === "exporting" ? (dialog.job && dialog.job.state === "waiting" ? "Waiting in the queue…" : "Exporting…")
-                : "Export"
+            text: dialog.stage === "done" ? qsTr("Export finished")
+                : dialog.stage === "failed" ? qsTr("Export failed")
+                : dialog.stage === "exporting" ? (dialog.job && dialog.job.state === "waiting" ? qsTr("Waiting in the queue…") : qsTr("Exporting…"))
+                : qsTr("Export")
             font: Theme.type.title
             color: Theme.color.textPrimary
         }
@@ -220,7 +220,7 @@ Popup {
             columnSpacing: Theme.space.m
             rowSpacing: Theme.space.s
 
-            Text { text: "Preset"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { text: qsTr("Preset"); font: Theme.type.label; color: Theme.color.textSecondary }
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
@@ -228,7 +228,7 @@ Popup {
                     id: presetPicker
                     objectName: "exportPreset"
                     Layout.fillWidth: true
-                    model: [{ id: "", title: "Custom", description: "Choose each setting below" }].concat(dialog.project.exportPresets)
+                    model: [{ id: "", title: qsTr("Custom"), description: qsTr("Choose each setting below") }].concat(dialog.project.exportPresets)
                     textRole: "title"
                     onActivated: dialog.applyPreset(model[currentIndex])
                 }
@@ -242,21 +242,21 @@ Popup {
                 }
             }
 
-            Text { text: "Save as"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { text: qsTr("Save as"); font: Theme.type.label; color: Theme.color.textSecondary }
             RowLayout {
                 Layout.fillWidth: true
                 Text {
                     objectName: "exportFileName"
                     Layout.fillWidth: true
-                    text: dialog.range.range === "each" ? "One file per marker, in that folder" : dialog.fileName(dialog.file)
+                    text: dialog.range.range === "each" ? qsTr("One file per marker, in that folder") : dialog.fileName(dialog.file)
                     font: Theme.type.body
                     color: Theme.color.textPrimary
                     elide: Text.ElideMiddle
                 }
-                TextButton { text: "Choose…"; variant: "secondary"; onClicked: fileDialog.open() }
+                TextButton { text: qsTr("Choose…"); variant: "secondary"; onClicked: fileDialog.open() }
             }
 
-            Text { text: "Format"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { text: qsTr("Format"); font: Theme.type.label; color: Theme.color.textSecondary }
             ComboBox {
                 id: formatPicker
                 objectName: "exportFormat"
@@ -269,7 +269,7 @@ Popup {
                 }
             }
 
-            Text { visible: dialog.format.video; text: "Size"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { visible: dialog.format.video; text: qsTr("Size"); font: Theme.type.label; color: Theme.color.textSecondary }
             ComboBox {
                 id: sizePicker
                 objectName: "exportSize"
@@ -280,7 +280,7 @@ Popup {
                 onActivated: presetPicker.currentIndex = 0
             }
 
-            Text { visible: dialog.format.video; text: "Frame rate"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { visible: dialog.format.video; text: qsTr("Frame rate"); font: Theme.type.label; color: Theme.color.textSecondary }
             ComboBox {
                 id: ratePicker
                 objectName: "exportFrameRate"
@@ -291,12 +291,12 @@ Popup {
                 onActivated: presetPicker.currentIndex = 0
             }
 
-            Text { visible: dialog.format.quality; text: "Quality"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { visible: dialog.format.quality; text: qsTr("Quality"); font: Theme.type.label; color: Theme.color.textSecondary }
             RowLayout {
                 visible: dialog.format.quality
                 spacing: Theme.space.xs
                 Repeater {
-                    model: [{ id: "high", label: "High" }, { id: "standard", label: "Standard" }, { id: "small", label: "Small" }]
+                    model: [{ id: "high", label: qsTr("High") }, { id: "standard", label: qsTr("Standard") }, { id: "small", label: qsTr("Small") }]
                     delegate: TextButton {
                         required property var modelData
                         objectName: "exportQuality:" + modelData.id
@@ -311,7 +311,7 @@ Popup {
             }
 
             // An HDR project: HEVC keeps it HDR; everything else is tone-mapped to SDR.
-            Text { visible: dialog.hdrProject; text: "Colour"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { visible: dialog.hdrProject; text: qsTr("Colour"); font: Theme.type.label; color: Theme.color.textSecondary }
             RowLayout {
                 visible: dialog.hdrProject
                 Layout.fillWidth: true
@@ -326,11 +326,11 @@ Popup {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     text: !dialog.hevc
-                          ? "SDR Rec.709: the HDR picture is tone-mapped (HDR goes out as HEVC)"
+                          ? qsTr("SDR Rec.709: the HDR picture is tone-mapped (HDR goes out as HEVC)")
                           : hdrSwitch.checked
-                          ? "HDR: 10-bit HEVC, Rec.2020 " + (dialog.project.projectColour === "hdr-pq" ? "PQ" : "HLG")
-                            + ", with its mastering display"
-                          : "SDR Rec.709: the HDR picture is tone-mapped"
+                          ? (dialog.project.projectColour === "hdr-pq" ? qsTr("HDR: 10-bit HEVC, Rec.2020 PQ, with its mastering display")
+                                                                         : qsTr("HDR: 10-bit HEVC, Rec.2020 HLG, with its mastering display"))
+                          : qsTr("SDR Rec.709: the HDR picture is tone-mapped")
                     font: Theme.type.body
                     color: Theme.color.textPrimary
                 }
@@ -343,13 +343,13 @@ Popup {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 text: dialog.format.extension === "mp4"
-                      ? "360° video: equirectangular, marked so (spherical metadata) for 360° players and sites"
-                      : "The equirectangular picture, not marked as 360° (only MP4 is)"
+                      ? qsTr("360° video: equirectangular, marked so (spherical metadata) for 360° players and sites")
+                      : qsTr("The equirectangular picture, not marked as 360° (only MP4 is)")
                 font: Theme.type.body
                 color: Theme.color.textPrimary
             }
 
-            Text { visible: dialog.format.sound && dialog.format.video; text: "Sound"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { visible: dialog.format.sound && dialog.format.video; text: qsTr("Sound"); font: Theme.type.label; color: Theme.color.textSecondary }
             RowLayout {
                 visible: dialog.format.sound && dialog.format.video
                 Layout.fillWidth: true
@@ -360,13 +360,13 @@ Popup {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: soundSwitch.checked ? "Include the mix as the sound track" : "No sound track"
+                    text: soundSwitch.checked ? qsTr("Include the mix as the sound track") : qsTr("No sound track")
                     font: Theme.type.body
                     color: Theme.color.textPrimary
                 }
             }
 
-            Text { visible: dialog.format.sound; text: "Loudness"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { visible: dialog.format.sound; text: qsTr("Loudness"); font: Theme.type.label; color: Theme.color.textSecondary }
             RowLayout {
                 visible: dialog.format.sound
                 Layout.fillWidth: true
@@ -375,7 +375,7 @@ Popup {
                     objectName: "exportNormalize"
                     enabled: soundSwitch.checked || !dialog.format.video
                     ToolTip.visible: hovered
-                    ToolTip.text: "Measure the mix and set its volume to the target (peaks limited to −1 dBFS)"
+                    ToolTip.text: qsTr("Measure the mix and set its volume to the target (peaks limited to −1 dBFS)")
                 }
                 ComboBox {
                     id: loudnessPicker
@@ -384,12 +384,12 @@ Popup {
                     enabled: loudnessSwitch.checked && loudnessSwitch.enabled
                     textRole: "label"
                     valueRole: "lufs"
-                    model: [{ label: "−14 LUFS (online)", lufs: -14 }, { label: "−16 LUFS (podcast)", lufs: -16 },
-                            { label: "−23 LUFS (EBU R128)", lufs: -23 }]
+                    model: [{ label: qsTr("−14 LUFS (online)"), lufs: -14 }, { label: qsTr("−16 LUFS (podcast)"), lufs: -16 },
+                            { label: qsTr("−23 LUFS (EBU R128)"), lufs: -23 }]
                 }
             }
 
-            Text { text: "Range"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { text: qsTr("Range"); font: Theme.type.label; color: Theme.color.textSecondary }
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: Theme.space.xs
@@ -403,31 +403,30 @@ Popup {
                 RowLayout {
                     visible: dialog.range.range === "custom"
                     spacing: Theme.space.s
-                    Text { text: "From"; font: Theme.type.body; color: Theme.color.textPrimary }
+                    Text { text: qsTr("From"); font: Theme.type.body; color: Theme.color.textPrimary }
                     TextField {
                         id: fromField
                         objectName: "exportFrom"
                         implicitWidth: 80
                         validator: DoubleValidator { bottom: 0 }
                     }
-                    Text { text: "to"; font: Theme.type.body; color: Theme.color.textPrimary }
+                    Text { text: qsTr("to"); font: Theme.type.body; color: Theme.color.textPrimary }
                     TextField {
                         id: toField
                         objectName: "exportTo"
                         implicitWidth: 80
                         validator: DoubleValidator { bottom: 0 }
                     }
-                    Text { text: "seconds"; font: Theme.type.body; color: Theme.color.textSecondary }
+                    Text { text: qsTr("seconds"); font: Theme.type.body; color: Theme.color.textSecondary }
                 }
             }
 
-            Text { text: "Estimate"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { text: qsTr("Estimate"); font: Theme.type.label; color: Theme.color.textSecondary }
             Text {
                 objectName: "exportEstimate"
-                text: dialog.rangeSeconds <= 0 ? "Nothing to export in that range"
-                    : dialog.project.timecode(dialog.rangeSeconds).substring(0, 8) + " · about "
-                      + (dialog.estimatedMegabytes < 10 ? dialog.estimatedMegabytes.toFixed(1)
-                                                        : Math.round(dialog.estimatedMegabytes)) + " MB"
+                text: dialog.rangeSeconds <= 0 ? qsTr("Nothing to export in that range")
+                    : qsTr("%1 · about %2 MB").arg(dialog.project.timecode(dialog.rangeSeconds).substring(0, 8))
+                      .arg(Fmt.num(dialog.estimatedMegabytes, dialog.estimatedMegabytes < 10 ? 1 : 0))
                 font: Theme.type.body
                 color: Theme.color.textPrimary
             }
@@ -467,8 +466,8 @@ Popup {
             }
             Text {
                 text: !dialog.job ? ""
-                    : dialog.job.state === "waiting" ? "Starts when the exports before it are done"
-                    : (dialog.project.exportPaused ? "Paused · " : "") + Math.round(dialog.job.progress * 100) + " %"
+                    : dialog.job.state === "waiting" ? qsTr("Starts when the exports before it are done")
+                    : (dialog.project.exportPaused ? qsTr("Paused · ") : "") + Math.round(dialog.job.progress * 100) + " %"
                 font: Theme.type.mono
                 color: Theme.color.textPrimary
             }
@@ -479,7 +478,7 @@ Popup {
             visible: dialog.stage === "done" || dialog.stage === "failed"
             objectName: "exportResult"
             Layout.fillWidth: true
-            text: dialog.stage === "done" ? "Saved " + dialog.fileName(dialog.file) + "." : dialog.message
+            text: dialog.stage === "done" ? qsTr("Saved %1.").arg(dialog.fileName(dialog.file)) : dialog.message
             font: Theme.type.body
             color: dialog.stage === "failed" ? Theme.color.danger : Theme.color.textPrimary
             wrapMode: Text.WordWrap
@@ -492,15 +491,15 @@ Popup {
             TextButton {
                 objectName: "exportKeepEditing"
                 visible: dialog.stage === "exporting"
-                text: "Keep editing"
+                text: qsTr("Keep editing")
                 variant: "ghost"
-                tip: "Close this; the export goes on (the render queue in the top bar shows it)"
+                tip: qsTr("Close this; the export goes on (the render queue in the top bar shows it)")
                 onClicked: dialog.close()
             }
             Item { Layout.fillWidth: true }
             TextButton {
                 visible: dialog.stage === "done"
-                text: "Show in Finder"
+                text: qsTr("Show in Finder")
                 variant: "secondary"
                 onClicked: {
                     const s = String(dialog.file)
@@ -509,7 +508,7 @@ Popup {
             }
             TextButton {
                 objectName: "exportCancelButton"
-                text: dialog.stage === "exporting" ? "Cancel export" : dialog.stage === "settings" ? "Cancel" : "Done"
+                text: dialog.stage === "exporting" ? qsTr("Cancel export") : dialog.stage === "settings" ? qsTr("Cancel") : qsTr("Done")
                 variant: "secondary"
                 onClicked: dialog.stage === "exporting" ? dialog.project.cancelExport(dialog.jobId) : dialog.close()
             }
@@ -517,17 +516,17 @@ Popup {
                 objectName: "exportQueueButton"
                 visible: dialog.stage === "settings"
                 enabled: dialog.rangeSeconds > 0
-                text: dialog.range.range === "each" ? "Queue " + dialog.range.count + " files" : "Add to queue"
+                text: dialog.range.range === "each" ? qsTr("Queue %1 files").arg(Fmt.num(dialog.range.count)) : qsTr("Add to queue")
                 iconName: "queue"
                 variant: "secondary"
-                tip: "Export after the exports already queued, while you keep editing"
+                tip: qsTr("Export after the exports already queued, while you keep editing")
                 onClicked: dialog.start(false)
             }
             TextButton {
                 objectName: "exportStartButton"
                 visible: dialog.stage === "settings" && dialog.range.range !== "each"
                 enabled: dialog.rangeSeconds > 0
-                text: "Export"
+                text: qsTr("Export")
                 iconName: "export"
                 variant: "primary"
                 onClicked: dialog.start(true)

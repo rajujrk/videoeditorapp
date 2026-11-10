@@ -58,14 +58,14 @@ Popup {
         target: panel.project
         function onAutoEditFinished(kind, ok, message) {
             panel.working = false
-            panel.result = ok ? "Done" + (message ? " · " + message : "") : ""
+            panel.result = !ok ? "" : message ? qsTr("Done · %1").arg(message) : qsTr("Done")
         }
         // Stopped or failed while measuring.
         function onAnalysisFinished(ok, message) { if (!ok) panel.working = false }
     }
     FolderDialog {
         id: exportFolder
-        title: "Export each short into"
+        title: qsTr("Export each short into")
         onAccepted: panel.project.exportMarkerRanges(selectedFolder)
     }
 
@@ -109,8 +109,8 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Repeater {
-                model: [{ id: "instant", label: "Instant video" }, { id: "montage", label: "Highlight montage" },
-                        { id: "shorts", label: "Smart shorts" }]
+                model: [{ id: "instant", label: qsTr("Instant video") }, { id: "montage", label: qsTr("Highlight montage") },
+                        { id: "shorts", label: qsTr("Smart shorts") }]
                 delegate: Chip {
                     required property var modelData
                     objectName: "autoMode:" + modelData.id
@@ -121,20 +121,20 @@ Popup {
                 }
             }
             Item { Layout.fillWidth: true }
-            IconButton { iconName: "close"; tip: "Close"; enabled: !panel.working; onClicked: panel.close() }
+            IconButton { iconName: "close"; tip: qsTr("Close"); enabled: !panel.working; onClicked: panel.close() }
         }
         Text {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            text: panel.mode === "instant" ? "Pictures and the best moments of videos, cut to the beat of a style's music."
-                : panel.mode === "montage" ? "The best moments of your videos — loud, lively or spoken — cut to the beat."
-                : "Tall shorts of the best moments of one long video, following the subject, each ready to export on its own."
+            text: panel.mode === "instant" ? qsTr("Pictures and the best moments of videos, cut to the beat of a style's music.")
+                : panel.mode === "montage" ? qsTr("The best moments of your videos — loud, lively or spoken — cut to the beat.")
+                : qsTr("Tall shorts of the best moments of one long video, following the subject, each ready to export on its own.")
             font: Theme.type.body
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
         }
 
-        Text { text: panel.mode === "shorts" ? "The video" : "From"; font: Theme.type.label; color: Theme.color.textSecondary }
+        Text { text: panel.mode === "shorts" ? qsTr("The video") : qsTr("From"); font: Theme.type.label; color: Theme.color.textSecondary }
         Flow {
             Layout.fillWidth: true
             spacing: Theme.space.xs
@@ -151,14 +151,14 @@ Popup {
             }
             Text {
                 visible: panel.media.length === 0
-                text: "Import some " + (panel.mode === "instant" ? "pictures or videos" : "videos") + " first."
+                text: panel.mode === "instant" ? qsTr("Import some pictures or videos first.") : qsTr("Import some videos first.")
                 font: Theme.type.caption
                 color: Theme.color.textDisabled
             }
         }
 
         // Style and shape (instant video and montage)
-        Text { visible: panel.mode !== "shorts"; text: "Style"; font: Theme.type.label; color: Theme.color.textSecondary }
+        Text { visible: panel.mode !== "shorts"; text: qsTr("Style"); font: Theme.type.label; color: Theme.color.textSecondary }
         GridLayout {
             visible: panel.mode !== "shorts"
             Layout.fillWidth: true
@@ -229,20 +229,20 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.space.xs
-            Text { text: panel.mode === "shorts" ? "Each about" : "About"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { text: panel.mode === "shorts" ? qsTr("Each about") : qsTr("About"); font: Theme.type.label; color: Theme.color.textSecondary }
             Repeater {
                 model: panel.mode === "shorts" ? [15, 30, 60] : [15, 30, 60, 120]
                 delegate: Chip {
                     required property int modelData
                     objectName: "autoSeconds:" + modelData
-                    label: modelData < 60 ? modelData + " s" : (modelData / 60) + " min"
+                    label: modelData < 60 ? qsTr("%1 s").arg(Fmt.num(modelData)) : qsTr("%1 min").arg(Fmt.num(modelData / 60))
                     checked: panel.seconds === modelData
                     enabled: !panel.working
                     onClicked: panel.seconds = modelData
                 }
             }
             Item { Layout.fillWidth: true }
-            Text { visible: panel.mode === "shorts"; text: "How many"; font: Theme.type.label; color: Theme.color.textSecondary }
+            Text { visible: panel.mode === "shorts"; text: qsTr("How many"); font: Theme.type.label; color: Theme.color.textSecondary }
             SpinBox {
                 id: countBox
                 objectName: "shortsCount"
@@ -260,7 +260,7 @@ Popup {
             objectName: "autoTitle"
             visible: panel.mode !== "shorts"
             Layout.fillWidth: true
-            placeholderText: "An opening title (optional)"
+            placeholderText: qsTr("An opening title (optional)")
             color: Theme.color.textPrimary
             placeholderTextColor: Theme.color.textDisabled
             selectByMouse: true
@@ -276,15 +276,15 @@ Popup {
             id: captions
             objectName: "shortsCaptions"
             visible: panel.mode === "shorts"
-            text: panel.hasWords ? "Captions from its transcript" : "Captions (transcribe the video first, in the Transcript tab)"
+            text: panel.hasWords ? qsTr("Captions from its transcript") : qsTr("Captions (transcribe the video first, in the Transcript tab)")
             checked: true
             enabled: panel.hasWords && !panel.working
         }
         ToggleSwitch {
             id: rank
             objectName: "autoRank"
-            text: panel.canRank ? "Let Claude choose the order" + (panel.mode === "shorts" ? " and titles" : "")
-                                : "Let Claude choose (add a Claude key in AI settings)"
+            text: panel.canRank ? (panel.mode === "shorts" ? qsTr("Let Claude choose the order and titles") : qsTr("Let Claude choose the order"))
+                                : qsTr("Let Claude choose (add a Claude key in AI settings)")
             checked: false
             enabled: panel.canRank && !panel.working
         }
@@ -292,7 +292,7 @@ Popup {
         Text {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            text: "This starts a new project in place of the current one; save that first if you want to keep it."
+            text: qsTr("This starts a new project in place of the current one; save that first if you want to keep it.")
             font: Theme.type.caption
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
@@ -303,8 +303,8 @@ Popup {
             Text {
                 objectName: "autoStatus"
                 Layout.fillWidth: true
-                text: panel.working ? (panel.project.analysisTask || panel.project.cloud.status || "Working…")
-                                      + (panel.project.analyzing ? " " + Math.round(panel.project.analysisProgress * 100) + " %" : "")
+                text: panel.working ? (panel.project.analysisTask || panel.project.cloud.status || qsTr("Working…"))
+                                      + (panel.project.analyzing ? " " + Fmt.percent(panel.project.analysisProgress) : "")
                                     : panel.result
                 font: Theme.type.caption
                 color: Theme.color.textSecondary
@@ -313,21 +313,21 @@ Popup {
             TextButton {
                 objectName: "exportShorts"
                 visible: !panel.working && panel.mode === "shorts" && panel.result !== ""
-                text: "Export each short…"
+                text: qsTr("Export each short…")
                 variant: "secondary"
                 onClicked: exportFolder.open()
             }
             TextButton {
                 objectName: "cancelAutoEdit"
                 visible: panel.working
-                text: "Stop"
+                text: qsTr("Stop")
                 variant: "ghost"
                 onClicked: { panel.project.cancelAnalysis(); panel.project.cloud.cancel() }
             }
             TextButton {
                 objectName: "makeAutoEdit"
                 visible: !panel.working
-                text: panel.mode === "shorts" ? "Make shorts" : "Make it"
+                text: panel.mode === "shorts" ? qsTr("Make shorts") : qsTr("Make it")
                 variant: "primary"
                 enabled: panel.chosen.length > 0
                 onClicked: panel.make()

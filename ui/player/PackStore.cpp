@@ -308,11 +308,11 @@ void PackStore::fetch(const QUrl& url, qint64 limit, bool job, Done done)
         if (m_cancelled)
             return done({}, QString());
         if (status == 404)
-            return done({}, QStringLiteral("Nothing at %1").arg(url.toDisplayString()));
+            return done({}, tr("Nothing at %1").arg(url.toDisplayString()));
         if (reply->error() != QNetworkReply::NoError)
-            return done({}, QStringLiteral("Couldn't reach the store: %1").arg(reply->errorString()));
+            return done({}, tr("Couldn't reach the store: %1").arg(reply->errorString()));
         if (!allowed(reply->url()))
-            return done({}, QStringLiteral("The store sent us to an address it may not use"));
+            return done({}, tr("The store sent us to an address it may not use"));
         done(*data, QString());
     });
 }
@@ -325,16 +325,16 @@ bool PackStore::refresh()
     const QUrl url(m_catalogueUrl);
     if (m_keys.empty()) {
         end(QStringLiteral("refresh"), false,
-            QStringLiteral("No signing key is trusted yet, so no catalogue can be checked (see tools/packs/README.md)"));
+            tr("No signing key is trusted yet, so no catalogue can be checked (see tools/packs/README.md)"));
         return false;
     }
     if (!allowed(url)) {
-        end(QStringLiteral("refresh"), false, QStringLiteral("The catalogue address must start with https://"));
+        end(QStringLiteral("refresh"), false, tr("The catalogue address must start with https://"));
         return false;
     }
     m_job = QStringLiteral("refresh");
     m_cancelled = false;
-    setStatus(QStringLiteral("Checking the catalogue…"));
+    setStatus(tr("Checking the catalogue…"));
     fetch(url, qint64(tve::kMostCatalogueBytes), true, [this, url](const QByteArray& catalogue, const QString& error) {
         if (!error.isEmpty() || m_cancelled)
             return end(QStringLiteral("refresh"), false, error);
@@ -349,16 +349,16 @@ bool PackStore::refresh()
             });
             if (!signedByUs)
                 return end(QStringLiteral("refresh"), false,
-                           QStringLiteral("The catalogue's signature isn't one we trust, so it was not used"));
+                           tr("The catalogue's signature isn't one we trust, so it was not used"));
             std::string why;
             auto read = tve::readCatalogue(data, &why);
             if (!read)
-                return end(QStringLiteral("refresh"), false, QStringLiteral("The catalogue can't be read: ") + text(why));
+                return end(QStringLiteral("refresh"), false, tr("The catalogue can't be read: %1").arg(text(why)));
             // Never an older catalogue than one already seen (a replayed one could hide updates).
             const QString key = url.toString();
             if (const auto seen = m_sequences.find(key); seen != m_sequences.end() && read->sequence < seen->second)
                 return end(QStringLiteral("refresh"), false,
-                           QStringLiteral("The catalogue is older than one seen before, so it was not used"));
+                           tr("The catalogue is older than one seen before, so it was not used"));
             m_sequences[key] = read->sequence;
             saveSettings();
             m_catalogue = std::move(read);
@@ -395,7 +395,7 @@ void PackStore::fetchPreviews()
 bool PackStore::install(const QString& id)
 {
     if (busy()) {
-        m_error = QStringLiteral("Wait for the store to finish what it is doing");
+        m_error = tr("Wait for the store to finish what it is doing");
         emit changed();
         return false;
     }
@@ -405,7 +405,7 @@ bool PackStore::install(const QString& id)
             if (text(e.id) == id)
                 entry = &e;
     if (!entry) {
-        end(QStringLiteral("install"), false, QStringLiteral("The catalogue has no pack %1").arg(id));
+        end(QStringLiteral("install"), false, tr("The catalogue has no pack %1").arg(id));
         return false;
     }
     m_error.clear();
@@ -415,26 +415,26 @@ bool PackStore::install(const QString& id)
     m_download->entry = *entry;
     m_download->manifestUrl = catalogueBase().resolved(relativeUrl(entry->manifest));
     m_download->update = m_installed.contains(id);
-    setStatus(QStringLiteral("Getting %1…").arg(text(entry->title)));
+    setStatus(tr("Getting %1…").arg(text(entry->title)));
     fetch(m_download->manifestUrl, 4 << 20, true, [this](const QByteArray& data, const QString& error) {
         if (!error.isEmpty() || m_cancelled)
             return end(QStringLiteral("install"), false, error);
         Download& d = *m_download;
         if (tve::bytesSha256(data.toStdString()) != d.entry.manifestSha256)
-            return end(QStringLiteral("install"), false, QStringLiteral("The pack's manifest is not the one the catalogue lists"));
+            return end(QStringLiteral("install"), false, tr("The pack's manifest is not the one the catalogue lists"));
         std::string why;
         auto manifest = tve::readPackManifest(data.toStdString(), &why);
         if (!manifest)
-            return end(QStringLiteral("install"), false, QStringLiteral("The pack's manifest can't be read: ") + text(why));
+            return end(QStringLiteral("install"), false, tr("The pack's manifest can't be read: %1").arg(text(why)));
         if (manifest->id != d.entry.id || manifest->version != d.entry.version)
-            return end(QStringLiteral("install"), false, QStringLiteral("The pack's manifest is for another pack or version"));
+            return end(QStringLiteral("install"), false, tr("The pack's manifest is for another pack or version"));
         d.manifest = std::move(*manifest);
         for (const tve::PackFile& file : d.manifest.files)
             d.total += file.size;
         d.staging = packsDirectory() + QStringLiteral("/.staging/") + m_job;
         removeInside(d.staging);
         if (!QDir().mkpath(d.staging))
-            return end(QStringLiteral("install"), false, QStringLiteral("Can't write to ") + packsDirectory());
+            return end(QStringLiteral("install"), false, tr("Can't write to %1").arg(packsDirectory()));
         downloadNext();
     });
     return true;
@@ -467,10 +467,10 @@ void PackStore::downloadNext()
         return finishInstall();
 
     const tve::PackFile& file = d.manifest.files[d.index];
-    setStatus(QStringLiteral("Downloading %1 — %2 of %3").arg(title).arg(d.index + 1).arg(d.manifest.files.size()));
+    setStatus(tr("Downloading %1 — %2 of %3").arg(title).arg(d.index + 1).arg(d.manifest.files.size()));
     d.file = std::make_unique<QFile>(d.staging + QLatin1Char('/') + text(file.path));
     if (!d.file->open(QIODevice::WriteOnly | QIODevice::Truncate))
-        return end(QStringLiteral("install"), false, QStringLiteral("Can't write to ") + packsDirectory());
+        return end(QStringLiteral("install"), false, tr("Can't write to %1").arg(packsDirectory()));
     d.hash = std::make_unique<QCryptographicHash>(QCryptographicHash::Sha256);
     d.current = 0;
     QNetworkRequest request(d.manifestUrl.resolved(relativeUrl(file.path)));
@@ -506,9 +506,9 @@ void PackStore::downloadNext()
                                                                                 || QString::fromLatin1(d.hash->result().toHex()) != text(sha))))
             return end(QStringLiteral("install"), false, QStringLiteral("%1 is not the file the pack lists").arg(text(path)));
         if (reply->error() != QNetworkReply::NoError)
-            return end(QStringLiteral("install"), false, QStringLiteral("Download failed: %1").arg(reply->errorString()));
+            return end(QStringLiteral("install"), false, tr("Download failed: %1").arg(reply->errorString()));
         if (!allowed(reply->url()))
-            return end(QStringLiteral("install"), false, QStringLiteral("The store sent us to an address it may not use"));
+            return end(QStringLiteral("install"), false, tr("The store sent us to an address it may not use"));
         d.done += size;
         d.current = 0;
         ++d.index;
@@ -523,20 +523,20 @@ void PackStore::finishInstall()
         QSaveFile manifest(d.staging + QStringLiteral("/pack.json"));
         const QByteArray json = QByteArray::fromStdString(tve::packManifestJson(d.manifest));
         if (!manifest.open(QIODevice::WriteOnly) || manifest.write(json) != json.size() || !manifest.commit())
-            return end(QStringLiteral("install"), false, QStringLiteral("Can't write to ") + packsDirectory());
+            return end(QStringLiteral("install"), false, tr("Can't write to %1").arg(packsDirectory()));
     }
     if (auto why = tve::checkPackFolder(d.staging.toStdString(), d.manifest))
-        return end(QStringLiteral("install"), false, QStringLiteral("The pack didn't download whole: ") + text(*why));
+        return end(QStringLiteral("install"), false, tr("The pack didn't download whole: %1").arg(text(*why)));
     // The checked pack takes the place of the one installed.
     const QString target = packsDirectory() + QLatin1Char('/') + m_job;
     const QString old = packsDirectory() + QStringLiteral("/.old/") + m_job;
     removeInside(old);
     QDir().mkpath(QFileInfo(old).absolutePath());
     if (QFileInfo::exists(target) && !QDir().rename(target, old))
-        return end(QStringLiteral("install"), false, QStringLiteral("Can't replace the installed pack"));
+        return end(QStringLiteral("install"), false, tr("Can't replace the installed pack"));
     if (!QDir().rename(d.staging, target)) {
         QDir().rename(old, target);
-        return end(QStringLiteral("install"), false, QStringLiteral("Can't install the pack in ") + packsDirectory());
+        return end(QStringLiteral("install"), false, tr("Can't install the pack in %1").arg(packsDirectory()));
     }
     removeInside(old);
     std::vector<std::string> contents = tve::packContents(d.manifest);
@@ -547,7 +547,7 @@ void PackStore::finishInstall()
     loadInstalled();
     if (std::ranges::any_of(contents, [](const std::string& k) { return k == "effects" || k == "transitions"; }))
         m_restartNeeded = true;
-    const QString message = (d.update ? QStringLiteral("Updated %1") : QStringLiteral("Installed %1")).arg(text(d.entry.title));
+    const QString message = (d.update ? tr("Updated %1") : tr("Installed %1")).arg(text(d.entry.title));
     emit contentChanged(kinds(contents));
     end(QStringLiteral("install"), true, message);
 }
@@ -559,7 +559,7 @@ bool PackStore::remove(const QString& id)
         return false;
     const std::vector<std::string> contents = tve::packContents(installed->second);
     if (!removeInside(packsDirectory() + QLatin1Char('/') + id)) {
-        m_error = QStringLiteral("Can't remove the pack from ") + packsDirectory();
+        m_error = tr("Can't remove the pack from %1").arg(packsDirectory());
         emit changed();
         return false;
     }

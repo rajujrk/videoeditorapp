@@ -35,7 +35,7 @@ Rectangle {
 
     color: Theme.color.surface
 
-    readonly property var tabs: ["Video", "Speed", "Audio", "Color", "Effects", "Analyze"]
+    readonly property var tabs: [QT_TR_NOOP("Video"), QT_TR_NOOP("Speed"), QT_TR_NOOP("Audio"), QT_TR_NOOP("Color"), QT_TR_NOOP("Effects"), QT_TR_NOOP("Analyze")]
 
     ColumnLayout {
         anchors.fill: parent
@@ -74,7 +74,7 @@ Rectangle {
                         }
                         contentItem: Text {
                             text: tab.modelData === "Effects" && inspector.player.enabledEffectCount > 0
-                                  ? "Effects · " + inspector.player.enabledEffectCount : tab.modelData
+                                  ? qsTr("Effects · %1").arg(Fmt.num(inspector.player.enabledEffectCount)) : qsTr(tab.modelData)
                             font: Theme.type.label
                             color: tab.checked ? Theme.color.textPrimary : Theme.color.textSecondary
                             horizontalAlignment: Text.AlignHCenter
@@ -99,14 +99,14 @@ Rectangle {
                 Layout.topMargin: Theme.space.s
                 Icon { name: "transitions"; color: Theme.color.accentText }
                 Text {
-                    text: "Transition"
+                    text: qsTr("Transition")
                     font: Theme.type.heading
                     color: Theme.color.textPrimary
                     Layout.fillWidth: true
                 }
                 TextButton {
                     objectName: "removeTransitionButton"
-                    text: "Remove"
+                    text: qsTr("Remove")
                     variant: "ghost"
                     iconName: "delete"
                     onClicked: inspector.project.removeTransition(inspector.transitionInfo.clipId)
@@ -116,9 +116,9 @@ Rectangle {
             TextButton {
                 objectName: "applyTransitionToAll"
                 Layout.fillWidth: true
-                text: "Apply to all cuts"
+                text: qsTr("Apply to all cuts")
                 variant: "secondary"
-                tip: "Put this transition, this long, on every cut between clips"
+                tip: qsTr("Put this transition, this long, on every cut between clips")
                 onClicked: inspector.project.applyTransitionToAll(inspector.transitionInfo.transitionId,
                                                                   inspector.transitionInfo.requestedDuration
                                                                   || inspector.transitionInfo.duration)
@@ -136,10 +136,10 @@ Rectangle {
             }
 
             Section {
-                title: "Timing"
+                title: qsTr("Timing")
                 AudioSlider {
                     objectName: "transitionDuration"
-                    label: "Duration"
+                    label: qsTr("Duration")
                     from: 0.1
                     to: 5
                     value: inspector.transitionInfo.requestedDuration || 1
@@ -150,18 +150,17 @@ Rectangle {
                     visible: inspector.showsTransition
                              && inspector.transitionInfo.duration < inspector.transitionInfo.requestedDuration - 0.01
                     Layout.fillWidth: true
-                    text: "Plays for " + (inspector.transitionInfo.duration || 0).toFixed(1)
-                          + " s: each side is limited to half its clip."
+                    text: qsTr("Plays for %1 s: each side is limited to half its clip.").arg(Fmt.num(inspector.transitionInfo.duration || 0, 1))
                     font: Theme.type.label
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap
                 }
-                Text { text: "Position"; font: Theme.type.label; color: Theme.color.textSecondary }
+                Text { text: qsTr("Position"); font: Theme.type.label; color: Theme.color.textSecondary }
                 RowLayout {
                     spacing: Theme.space.xs
                     Repeater {
-                        model: [{ id: "endsAtCut", label: "Before cut" }, { id: "center", label: "Centered" },
-                                { id: "startsAtCut", label: "After cut" }]
+                        model: [{ id: "endsAtCut", label: qsTr("Before cut") }, { id: "center", label: qsTr("Centered") },
+                                { id: "startsAtCut", label: qsTr("After cut") }]
                         delegate: TextButton {
                             required property var modelData
                             objectName: "alignment:" + modelData.id
@@ -174,7 +173,7 @@ Rectangle {
             }
 
             Section {
-                title: "Settings"
+                title: qsTr("Settings")
                 visible: (inspector.transitionInfo.params || []).length > 0
                 Repeater {
                     model: inspector.transitionInfo.params || []
@@ -207,8 +206,8 @@ Rectangle {
                     visible: !inspector.clipIsVideo
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
-                    text: inspector.clipInfo.id === undefined ? "Select a video clip to adjust its picture."
-                                                             : "Audio clips have no picture."
+                    text: inspector.clipInfo.id === undefined ? qsTr("Select a video clip to adjust its picture.")
+                                                             : qsTr("Audio clips have no picture.")
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap
@@ -231,7 +230,7 @@ Rectangle {
                         }
                         TextButton {
                             objectName: "resetVisualButton"
-                            text: "Reset"
+                            text: qsTr("Reset")
                             variant: "ghost"
                             onClicked: inspector.project.resetClipVisual(inspector.clipInfo.id)
                         }
@@ -240,7 +239,7 @@ Rectangle {
                     // Keyframes: add/remove at the playhead, step between them, easing.
                     Section {
                         objectName: "keyframesSection"
-                        title: "Keyframes"
+                        title: qsTr("Keyframes")
                         Layout.fillWidth: true
                         RowLayout {
                             Layout.fillWidth: true
@@ -248,24 +247,24 @@ Rectangle {
                             IconButton {
                                 objectName: "previousKeyframe"
                                 iconName: "skip-back"
-                                tip: "Previous keyframe"
+                                tip: qsTr("Previous keyframe")
                                 enabled: inspector.keyframeCount > 0
                                 onClicked: inspector.project.seekKeyframe(inspector.clipInfo.id, -1)
                             }
                             TextButton {
                                 objectName: "keyframeButton"
                                 Layout.fillWidth: true
-                                text: inspector.keyHere ? "Remove" : "Add keyframe"
+                                text: inspector.keyHere ? qsTr("Remove") : qsTr("Add keyframe")
                                 iconName: "keyframe"
-                                tip: inspector.keyHere ? "Remove every keyframe at the playhead"
-                                                       : "Keep position, scale, rotation and opacity as they are at the playhead"
+                                tip: inspector.keyHere ? qsTr("Remove every keyframe at the playhead")
+                                                       : qsTr("Keep position, scale, rotation and opacity as they are at the playhead")
                                 onClicked: inspector.keyHere ? inspector.project.removeKeyframes(inspector.clipInfo.id)
                                                              : inspector.project.addKeyframes(inspector.clipInfo.id)
                             }
                             IconButton {
                                 objectName: "nextKeyframe"
                                 iconName: "skip-forward"
-                                tip: "Next keyframe"
+                                tip: qsTr("Next keyframe")
                                 enabled: inspector.keyframeCount > 0
                                 onClicked: inspector.project.seekKeyframe(inspector.clipInfo.id, 1)
                             }
@@ -273,13 +272,13 @@ Rectangle {
                         RowLayout {
                             visible: inspector.keyHere
                             Layout.fillWidth: true
-                            Text { text: "Easing"; font: Theme.type.label; color: Theme.color.textSecondary }
+                            Text { text: qsTr("Easing"); font: Theme.type.label; color: Theme.color.textSecondary }
                             ComboBox {
                                 objectName: "keyframeEasing"
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1 // shares the row instead of asking for its longest item
                                 readonly property var names: ["linear", "easeIn", "easeOut", "easeInOut", "hold", "curve"]
-                                model: ["Linear", "Ease in", "Ease out", "Ease in and out", "Hold", "Custom curve"]
+                                model: [qsTr("Linear"), qsTr("Ease in"), qsTr("Ease out"), qsTr("Ease in and out"), qsTr("Hold"), qsTr("Custom curve")]
                                 currentIndex: Math.max(0, names.indexOf(inspector.clipInfo.keyframeEasing || "linear"))
                                 onActivated: (index) => inspector.project.setKeyframeEasing(inspector.clipInfo.id, names[index])
                             }
@@ -300,9 +299,9 @@ Rectangle {
                             Repeater {
                                 // Curves the named easings cannot make: past the target and back, a
                                 // wind-up before moving, and a quick snap.
-                                model: [{ id: "overshoot", label: "Overshoot", curve: [0.34, 1.56, 0.64, 1] },
-                                        { id: "anticipate", label: "Anticipate", curve: [0.36, 0, 0.66, -0.56] },
-                                        { id: "snap", label: "Snap", curve: [0.9, 0, 0.1, 1] }]
+                                model: [{ id: "overshoot", label: qsTr("Overshoot"), curve: [0.34, 1.56, 0.64, 1] },
+                                        { id: "anticipate", label: qsTr("Anticipate"), curve: [0.36, 0, 0.66, -0.56] },
+                                        { id: "snap", label: qsTr("Snap"), curve: [0.9, 0, 0.1, 1] }]
                                 delegate: TextButton {
                                     required property var modelData
                                     objectName: "curvePreset:" + modelData.id
@@ -323,19 +322,19 @@ Rectangle {
                             Layout.preferredWidth: 1 // wraps to the panel instead of widening it
                             wrapMode: Text.WordWrap
                             text: inspector.keyframeCount === 0
-                                  ? "Add a keyframe, move the playhead and change a value: the clip animates between them. ◆ beside a value animates just that one."
-                                  : inspector.keyframeCount + (inspector.keyframeCount === 1 ? " keyframe" : " keyframes")
-                                    + ". Changing an animated value sets its keyframe at the playhead."
+                                  ? qsTr("Add a keyframe, move the playhead and change a value: the clip animates between them. ◆ beside a value animates just that one.")
+                                  : inspector.keyframeCount === 1 ? qsTr("1 keyframe. Changing an animated value sets its keyframe at the playhead.")
+                                  : qsTr("%1 keyframes. Changing an animated value sets its keyframe at the playhead.").arg(Fmt.num(inspector.keyframeCount))
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                         }
                         TextButton {
                             objectName: "clearKeyframesButton"
                             Layout.alignment: Qt.AlignTop
-                            text: "Clear"
+                            text: qsTr("Clear")
                             variant: "ghost"
                             visible: inspector.keyframeCount > 0
-                            tip: "Stop animating: every property keeps its value at the playhead"
+                            tip: qsTr("Stop animating: every property keeps its value at the playhead")
                             onClicked: inspector.project.clearKeyframes(inspector.clipInfo.id)
                         }
                         }
@@ -346,13 +345,13 @@ Rectangle {
                         id: drawingSection
                         objectName: "drawingSection"
                         visible: inspector.clipInfo.isDrawing === true
-                        title: "Drawing"
+                        title: qsTr("Drawing")
                         readonly property var drawing: inspector.clipInfo.isDrawing === true ? inspector.clipInfo.drawing
                                                                                              : ({ paths: [], drawIn: 0, drawOut: 0, oneByOne: true })
 
                         AudioSlider {
                             objectName: "drawIn"
-                            label: "Draw on over"
+                            label: qsTr("Draw on over")
                             from: 0
                             to: 5
                             value: drawingSection.drawing.drawIn
@@ -361,7 +360,7 @@ Rectangle {
                         }
                         AudioSlider {
                             objectName: "drawOut"
-                            label: "Take off over"
+                            label: qsTr("Take off over")
                             from: 0
                             to: 5
                             value: drawingSection.drawing.drawOut
@@ -370,11 +369,11 @@ Rectangle {
                         }
                         ToggleSwitch {
                             objectName: "drawOneByOne"
-                            text: "One path after another"
+                            text: qsTr("One path after another")
                             checked: drawingSection.drawing.oneByOne
                             onToggled: inspector.project.setDrawing(inspector.clipInfo.id, { oneByOne: checked })
                         }
-                        Text { text: "Paths"; font: Theme.type.label; color: Theme.color.textSecondary }
+                        Text { text: qsTr("Paths"); font: Theme.type.label; color: Theme.color.textSecondary }
                         Repeater {
                             model: drawingSection.drawing.paths
                             delegate: RowLayout {
@@ -398,7 +397,7 @@ Rectangle {
                                 IconButton {
                                     objectName: "removePath:" + index
                                     iconName: "delete"
-                                    tip: "Remove this path"
+                                    tip: qsTr("Remove this path")
                                     // A drawing keeps at least one path; delete the clip to remove it all.
                                     enabled: drawingSection.drawing.paths.length > 1
                                     onClicked: inspector.project.removeDrawnPath(inspector.clipInfo.id, index)
@@ -407,7 +406,7 @@ Rectangle {
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: "Draw more with the Draw button under the player, while this drawing is selected."
+                            text: qsTr("Draw more with the Draw button under the player, while this drawing is selected.")
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                             wrapMode: Text.WordWrap
@@ -419,7 +418,7 @@ Rectangle {
                         id: textSection
                         objectName: "titleTextSection"
                         visible: inspector.clipInfo.isTitle === true
-                        title: "Text"
+                        title: qsTr("Text")
                         readonly property var text: inspector.clipInfo.text || ({})
                         function change(fields) { inspector.project.setClipText(inspector.clipInfo.id, fields) }
 
@@ -431,7 +430,7 @@ Rectangle {
                             wrapMode: TextEdit.Wrap
                             font: Theme.type.body
                             color: Theme.color.textPrimary
-                            placeholderText: "Type your title"
+                            placeholderText: qsTr("Type your title")
                             background: Rectangle {
                                 radius: Theme.radius.s
                                 color: Theme.color.surfaceSunken
@@ -459,7 +458,7 @@ Rectangle {
                         RowLayout {
                             spacing: Theme.space.xs
                             Repeater {
-                                model: [{ key: "bold", label: "Bold" }, { key: "italic", label: "Italic" }]
+                                model: [{ key: "bold", label: qsTr("Bold") }, { key: "italic", label: qsTr("Italic") }]
                                 delegate: TextButton {
                                     required property var modelData
                                     objectName: "titleStyle:" + modelData.key
@@ -480,7 +479,7 @@ Rectangle {
                                 delegate: TextButton {
                                     required property string modelData
                                     objectName: "titleAlign:" + modelData
-                                    text: modelData === "left" ? "Left" : modelData === "center" ? "Center" : "Right"
+                                    text: modelData === "left" ? qsTr("Left") : modelData === "center" ? qsTr("Center") : qsTr("Right")
                                     variant: (textSection.text.alignment || "center") === modelData ? "primary" : "secondary"
                                     onClicked: textSection.change({ alignment: modelData })
                                 }
@@ -489,7 +488,7 @@ Rectangle {
 
                         AudioSlider {
                             objectName: "titleSize"
-                            label: "Size"
+                            label: qsTr("Size")
                             from: 0.01
                             to: 0.5
                             value: textSection.text.size || 0.08
@@ -497,7 +496,7 @@ Rectangle {
                             onCommitted: (v) => textSection.change({ size: v })
                         }
 
-                        Text { text: "Color"; font: Theme.type.label; color: Theme.color.textSecondary }
+                        Text { text: qsTr("Color"); font: Theme.type.label; color: Theme.color.textSecondary }
                         Swatches {
                             objectName: "titleColor"
                             current: textSection.text.color || [1, 1, 1, 1]
@@ -506,7 +505,7 @@ Rectangle {
 
                         AudioSlider {
                             objectName: "titleLetterSpacing"
-                            label: "Letter spacing"
+                            label: qsTr("Letter spacing")
                             from: -0.2
                             to: 1
                             value: textSection.text.letterSpacing || 0
@@ -514,7 +513,7 @@ Rectangle {
                         }
                         AudioSlider {
                             objectName: "titleLineSpacing"
-                            label: "Line spacing"
+                            label: qsTr("Line spacing")
                             from: 0.5
                             to: 3
                             value: textSection.text.lineSpacing || 1
@@ -523,7 +522,7 @@ Rectangle {
                         }
                         AudioSlider {
                             objectName: "titleOutline"
-                            label: "Outline"
+                            label: qsTr("Outline")
                             from: 0
                             to: 0.3
                             value: textSection.text.outlineWidth || 0
@@ -537,7 +536,7 @@ Rectangle {
                         }
                         ToggleSwitch {
                             objectName: "titleShadow"
-                            text: "Shadow"
+                            text: qsTr("Shadow")
                             checked: textSection.text.shadow === true
                             onToggled: textSection.change({ shadow: checked })
                         }
@@ -550,18 +549,18 @@ Rectangle {
                         visible: inspector.clipInfo.isTitle === true
                         Layout.fillWidth: true
                         expanded: (textSection.text.shape || {}).kind !== undefined && textSection.text.shape.kind !== "none"
-                        title: "Shape"
+                        title: qsTr("Shape")
                         readonly property var shape: textSection.text.shape || ({ kind: "none", color: [0, 0, 0, 0.6], padding: 0.4, tail: 0.25 })
                         function change(fields) { textSection.change({ shape: Object.assign({}, shape, fields) }) }
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: "Behind the text"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            Text { text: qsTr("Behind the text"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
                             ComboBox {
                                 objectName: "titleShapeKind"
                                 readonly property var kinds: ["none", "box", "rounded", "pill", "speech", "thought", "banner",
                                                               "underline", "circle", "arrow", "tag"]
-                                model: ["None", "Box", "Rounded box", "Pill", "Speech bubble", "Thought bubble", "Banner",
-                                        "Underline", "Circle", "Arrow", "Tag"]
+                                model: [qsTr("None"), qsTr("Box"), qsTr("Rounded box"), qsTr("Pill"), qsTr("Speech bubble"), qsTr("Thought bubble"), qsTr("Banner"),
+                                        qsTr("Underline"), qsTr("Circle"), qsTr("Arrow"), qsTr("Tag")]
                                 currentIndex: Math.max(0, kinds.indexOf(shapeSection.shape.kind))
                                 onActivated: (index) => shapeSection.change({ kind: kinds[index] })
                             }
@@ -576,7 +575,7 @@ Rectangle {
                         AudioSlider {
                             objectName: "titleShapeOpacity"
                             visible: shapeSection.shape.kind !== "none"
-                            label: "Opacity"
+                            label: qsTr("Opacity")
                             from: 0
                             to: 1
                             value: shapeSection.shape.color[3]
@@ -587,7 +586,7 @@ Rectangle {
                         AudioSlider {
                             objectName: "titleShapePadding"
                             visible: shapeSection.shape.kind !== "none"
-                            label: "Padding"
+                            label: qsTr("Padding")
                             from: 0
                             to: 2
                             value: shapeSection.shape.padding
@@ -596,7 +595,7 @@ Rectangle {
                         AudioSlider {
                             objectName: "titleShapeTail"
                             visible: shapeSection.shape.kind === "speech" || shapeSection.shape.kind === "thought"
-                            label: "Tail"
+                            label: qsTr("Tail")
                             from: 0
                             to: 1
                             value: shapeSection.shape.tail
@@ -612,7 +611,7 @@ Rectangle {
                         visible: inspector.clipInfo.isTitle === true
                         Layout.fillWidth: true
                         expanded: (textSection.text.path || []).length > 0
-                        title: "On a path"
+                        title: qsTr("On a path")
                         readonly property var drawn: {
                             inspector.project.undoText // new paths
                             return inspector.clipInfo.isTitle === true ? inspector.project.pathsToFollow(inspector.clipInfo.id) : []
@@ -622,13 +621,13 @@ Rectangle {
                             spacing: Theme.space.xs
                             TextButton {
                                 objectName: "titlePath:none"
-                                text: "None"
+                                text: qsTr("None")
                                 variant: (textSection.text.path || []).length === 0 ? "primary" : "secondary"
                                 onClicked: textSection.change({ path: [] })
                             }
                             Repeater {
-                                model: [{ id: "arc", label: "Arc" }, { id: "dip", label: "Dip" }, { id: "wave", label: "Wave" },
-                                        { id: "circle", label: "Circle" }]
+                                model: [{ id: "arc", label: qsTr("Arc") }, { id: "dip", label: qsTr("Dip") }, { id: "wave", label: qsTr("Wave") },
+                                        { id: "circle", label: qsTr("Circle") }]
                                 delegate: TextButton {
                                     required property var modelData
                                     objectName: "titlePath:" + modelData.id
@@ -651,7 +650,7 @@ Rectangle {
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: "The text runs along the path on one line; draw your own with the Draw button."
+                            text: qsTr("The text runs along the path on one line; draw your own with the Draw button.")
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                             wrapMode: Text.WordWrap
@@ -664,17 +663,17 @@ Rectangle {
                         objectName: "titleAnimationSection"
                         visible: inspector.clipInfo.isTitle === true
                         Layout.fillWidth: true
-                        title: "Animation"
+                        title: qsTr("Animation")
                         readonly property var units: ["whole", "line", "word", "character"]
-                        readonly property var unitNames: ["Whole", "Lines", "Words", "Letters"]
+                        readonly property var unitNames: [qsTr("Whole"), qsTr("Lines"), qsTr("Words"), qsTr("Letters")]
                         Repeater {
-                            model: [{ key: "animationIn", label: "In", loop: false }, { key: "animationOut", label: "Out", loop: false },
-                                    { key: "animationLoop", label: "Loop", loop: true }]
+                            model: [{ key: "animationIn", label: qsTr("In"), loop: false }, { key: "animationOut", label: qsTr("Out"), loop: false },
+                                    { key: "animationLoop", label: qsTr("Loop"), loop: true }]
                             delegate: ColumnLayout {
                                 id: motionRow
                                 required property var modelData
                                 readonly property var animation: textSection.text[modelData.key] || ({ preset: "" })
-                                readonly property var presets: [{ id: "", title: "None" }].concat(
+                                readonly property var presets: [{ id: "", title: qsTr("None") }].concat(
                                     inspector.project.textAnimations.filter((p) => p.loop === modelData.loop))
                                 function change(fields) {
                                     const m = {}
@@ -707,7 +706,7 @@ Rectangle {
                                 AudioSlider {
                                     objectName: "titleAnimationDuration:" + motionRow.modelData.key
                                     visible: motionRow.animation.preset !== ""
-                                    label: motionRow.modelData.loop ? "Cycle" : "Duration"
+                                    label: motionRow.modelData.loop ? qsTr("Cycle") : qsTr("Duration")
                                     from: 0.1
                                     to: motionRow.modelData.loop ? 5 : 3
                                     value: motionRow.animation.duration || 0.8
@@ -718,7 +717,7 @@ Rectangle {
                                     objectName: "titleAnimationStagger:" + motionRow.modelData.key
                                     visible: motionRow.animation.preset !== "" && !motionRow.modelData.loop
                                              && motionRow.animation.unit !== "whole" && motionRow.animation.preset !== "typewriter"
-                                    label: "Stagger"
+                                    label: qsTr("Stagger")
                                     from: 0
                                     to: 1
                                     value: motionRow.animation.stagger === undefined ? 0.6 : motionRow.animation.stagger
@@ -729,11 +728,11 @@ Rectangle {
                         }
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: "Scroll"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            Text { text: qsTr("Scroll"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
                             ComboBox {
                                 objectName: "titleScroll"
                                 readonly property var modes: ["none", "rollUp", "crawlLeft"]
-                                model: ["None", "Roll up (credits)", "Crawl left (ticker)"]
+                                model: [qsTr("None"), qsTr("Roll up (credits)"), qsTr("Crawl left (ticker)")]
                                 currentIndex: Math.max(0, modes.indexOf(textSection.text.scroll || "none"))
                                 onActivated: (index) => textSection.change({ scroll: modes[index] })
                             }
@@ -745,8 +744,7 @@ Rectangle {
                         visible: inspector.clipInfo.isAdjustment === true
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
-                        text: "An adjustment layer changes everything below it while it lasts. Give it a look "
-                              + "(Filters), a grade (Color) or effects (Effects); its opacity sets how strongly."
+                        text: qsTr("An adjustment layer changes everything below it while it lasts. Give it a look (Filters), a grade (Color) or effects (Effects); its opacity sets how strongly.")
                         font: Theme.type.body
                         color: Theme.color.textSecondary
                     }
@@ -761,66 +759,65 @@ Rectangle {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
                             text: inspector.project.spherical
-                                  ? "A 360° project: the clip is the whole sphere. Direction, tilt and roll turn it — where its front is."
-                                  : "Reframed: a flat view of the sphere. Drag in the player to look around, scroll to zoom; "
-                                    + "keyframe the direction to move the view."
+                                  ? qsTr("A 360° project: the clip is the whole sphere. Direction, tilt and roll turn it — where its front is.")
+                                  : qsTr("Reframed: a flat view of the sphere. Drag in the player to look around, scroll to zoom; keyframe the direction to move the view.")
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                         }
-                        VisualSlider { key: "yaw"; objectName: "visual:yaw"; label: "Direction"; from: -180; to: 180
+                        VisualSlider { key: "yaw"; objectName: "visual:yaw"; label: qsTr("Direction"); from: -180; to: 180
                                        value: inspector.visual.yaw || 0; format: (v) => Math.round(v) + "°" }
-                        VisualSlider { key: "pitch"; objectName: "visual:pitch"; label: "Tilt"; from: -90; to: 90
+                        VisualSlider { key: "pitch"; objectName: "visual:pitch"; label: qsTr("Tilt"); from: -90; to: 90
                                        value: inspector.visual.pitch || 0; format: (v) => Math.round(v) + "°" }
-                        VisualSlider { key: "roll"; objectName: "visual:roll"; label: "Roll"; from: -180; to: 180
+                        VisualSlider { key: "roll"; objectName: "visual:roll"; label: qsTr("Roll"); from: -180; to: 180
                                        value: inspector.visual.roll || 0; format: (v) => Math.round(v) + "°" }
-                        VisualSlider { key: "fov"; objectName: "visual:fov"; label: "Field of view"; from: 20; to: 150
+                        VisualSlider { key: "fov"; objectName: "visual:fov"; label: qsTr("Field of view"); from: 20; to: 150
                                        visible: !inspector.project.spherical
                                        value: inspector.visual.fov === undefined ? 90 : inspector.visual.fov
                                        format: (v) => Math.round(v) + "°" }
                         TextButton {
                             objectName: "sphereProjectButton"
                             Layout.fillWidth: true
-                            text: inspector.project.spherical ? "Make a flat (16:9) project" : "Make a 360° project"
+                            text: inspector.project.spherical ? qsTr("Make a flat (16:9) project") : qsTr("Make a 360° project")
                             variant: "secondary"
                             tip: inspector.project.spherical
-                                 ? "Reframe every 360° clip into a flat 16:9 video"
-                                 : "Work on the whole sphere and export 360° video"
+                                 ? qsTr("Reframe every 360° clip into a flat 16:9 video")
+                                 : qsTr("Work on the whole sphere and export 360° video")
                             onClicked: inspector.project.setSphericalProject(!inspector.project.spherical)
                         }
                     }
                     Section {
                         visible: inspector.clipInfo.isAdjustment !== true
-                        title: "Transform"
-                        VisualSlider { key: "x"; objectName: "visual:x"; label: "Position X"; from: -1; to: 1; value: inspector.visual.x || 0
+                        title: qsTr("Transform")
+                        VisualSlider { key: "x"; objectName: "visual:x"; label: qsTr("Position X"); from: -1; to: 1; value: inspector.visual.x || 0
                                        format: (v) => Math.round(v * inspector.project.canvasWidth) + " px" }
-                        VisualSlider { key: "y"; objectName: "visual:y"; label: "Position Y"; from: -1; to: 1; value: inspector.visual.y || 0
+                        VisualSlider { key: "y"; objectName: "visual:y"; label: qsTr("Position Y"); from: -1; to: 1; value: inspector.visual.y || 0
                                        format: (v) => Math.round(v * inspector.project.canvasHeight) + " px" }
-                        VisualSlider { key: "scale"; objectName: "visual:scale"; label: "Scale"; from: 0.05; to: 4
+                        VisualSlider { key: "scale"; objectName: "visual:scale"; label: qsTr("Scale"); from: 0.05; to: 4
                                        value: inspector.visual.scale === undefined ? 1 : inspector.visual.scale
                                        format: (v) => Math.round(v * 100) + "%" }
-                        VisualSlider { key: "rotation"; objectName: "visual:rotation"; label: "Rotation"; from: -180; to: 180
+                        VisualSlider { key: "rotation"; objectName: "visual:rotation"; label: qsTr("Rotation"); from: -180; to: 180
                                        value: inspector.visual.rotation || 0; format: (v) => v.toFixed(1) + "°" }
                     }
                     Section {
                         visible: inspector.clipInfo.isAdjustment !== true
-                        title: "Crop"
-                        VisualSlider { key: "cropLeft"; label: "Left"; from: 0; to: 0.45; value: inspector.visual.cropLeft || 0; format: (v) => Math.round(v * 100) + "%" }
-                        VisualSlider { key: "cropRight"; label: "Right"; from: 0; to: 0.45; value: inspector.visual.cropRight || 0; format: (v) => Math.round(v * 100) + "%" }
-                        VisualSlider { key: "cropTop"; label: "Top"; from: 0; to: 0.45; value: inspector.visual.cropTop || 0; format: (v) => Math.round(v * 100) + "%" }
-                        VisualSlider { key: "cropBottom"; label: "Bottom"; from: 0; to: 0.45; value: inspector.visual.cropBottom || 0; format: (v) => Math.round(v * 100) + "%" }
+                        title: qsTr("Crop")
+                        VisualSlider { key: "cropLeft"; label: qsTr("Left"); from: 0; to: 0.45; value: inspector.visual.cropLeft || 0; format: (v) => Math.round(v * 100) + "%" }
+                        VisualSlider { key: "cropRight"; label: qsTr("Right"); from: 0; to: 0.45; value: inspector.visual.cropRight || 0; format: (v) => Math.round(v * 100) + "%" }
+                        VisualSlider { key: "cropTop"; label: qsTr("Top"); from: 0; to: 0.45; value: inspector.visual.cropTop || 0; format: (v) => Math.round(v * 100) + "%" }
+                        VisualSlider { key: "cropBottom"; label: qsTr("Bottom"); from: 0; to: 0.45; value: inspector.visual.cropBottom || 0; format: (v) => Math.round(v * 100) + "%" }
                     }
                     Section {
-                        title: "Compositing"
-                        VisualSlider { key: "opacity"; objectName: "visual:opacity"; label: "Opacity"; from: 0; to: 1
+                        title: qsTr("Compositing")
+                        VisualSlider { key: "opacity"; objectName: "visual:opacity"; label: qsTr("Opacity"); from: 0; to: 1
                                        value: inspector.visual.opacity === undefined ? 1 : inspector.visual.opacity
                                        format: (v) => Math.round(v * 100) + "%" }
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: "Blend mode"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            Text { text: qsTr("Blend mode"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
                             ComboBox {
                                 objectName: "blendMode"
                                 readonly property var modes: ["normal", "multiply", "screen", "overlay", "add", "darken", "lighten"]
-                                model: ["Normal", "Multiply", "Screen", "Overlay", "Add", "Darken", "Lighten"]
+                                model: [qsTr("Normal"), qsTr("Multiply"), qsTr("Screen"), qsTr("Overlay"), qsTr("Add", "blend mode"), qsTr("Darken"), qsTr("Lighten")]
                                 currentIndex: Math.max(0, modes.indexOf(inspector.visual.blend || "normal"))
                                 onActivated: (index) => inspector.project.setClipVisual(inspector.clipInfo.id, { blend: modes[index] })
                             }
@@ -834,7 +831,7 @@ Rectangle {
                         objectName: "masksSection"
                         visible: inspector.clipInfo.isAdjustment !== true
                         Layout.fillWidth: true
-                        title: "Masks"
+                        title: qsTr("Masks")
                         readonly property var masks: inspector.masks
                         readonly property int active: inspector.project.activeMask
                         readonly property var mask: inspector.activeMaskData
@@ -844,9 +841,9 @@ Rectangle {
                             Layout.fillWidth: true
                             spacing: Theme.space.xs
                             Repeater {
-                                model: [{ id: "rectangle", label: "Rectangle" }, { id: "ellipse", label: "Ellipse" },
-                                        { id: "line", label: "Line" }, { id: "star", label: "Star" },
-                                        { id: "heart", label: "Heart" }, { id: "pen", label: "Pen" }]
+                                model: [{ id: "rectangle", label: qsTr("Rectangle") }, { id: "ellipse", label: qsTr("Ellipse") },
+                                        { id: "line", label: qsTr("Line") }, { id: "star", label: qsTr("Star") },
+                                        { id: "heart", label: qsTr("Heart") }, { id: "pen", label: qsTr("Pen") }]
                                 delegate: TextButton {
                                     required property var modelData
                                     objectName: "addMask:" + modelData.id
@@ -861,8 +858,7 @@ Rectangle {
                             visible: maskSection.masks.length === 0
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
-                            text: "Add a shape to show only part of the picture. Pen masks take any outline: "
-                                  + "click on the player to add points."
+                            text: qsTr("Add a shape to show only part of the picture. Pen masks take any outline: click on the player to add points.")
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                         }
@@ -891,7 +887,7 @@ Rectangle {
                                     contentItem: Text {
                                         id: chipText
                                         text: (maskChip.index + 1) + " · " + maskChip.mask.shape.charAt(0).toUpperCase()
-                                              + maskChip.mask.shape.slice(1) + (maskChip.mask.invert ? " (inverted)" : "")
+                                              + maskChip.mask.shape.slice(1) + (maskChip.mask.invert ? qsTr(" (inverted)") : "")
                                         font: Theme.type.label
                                         color: Theme.color.textPrimary
                                         horizontalAlignment: Text.AlignHCenter
@@ -907,34 +903,34 @@ Rectangle {
                             spacing: Theme.space.xs
                             readonly property bool shaped: maskSection.mask !== null && maskSection.mask.shape !== "pen"
 
-                            MaskSlider { key: "x"; label: "Centre X"; from: -0.5; to: 1.5; visible: parent.shaped
+                            MaskSlider { key: "x"; label: qsTr("Centre X"); from: -0.5; to: 1.5; visible: parent.shaped
                                          format: (v) => Math.round(v * 100) + "%" }
-                            MaskSlider { key: "y"; label: "Centre Y"; from: -0.5; to: 1.5; visible: parent.shaped
+                            MaskSlider { key: "y"; label: qsTr("Centre Y"); from: -0.5; to: 1.5; visible: parent.shaped
                                          format: (v) => Math.round(v * 100) + "%" }
-                            MaskSlider { key: "width"; label: "Width"; from: 0.01; to: 2
+                            MaskSlider { key: "width"; label: qsTr("Width"); from: 0.01; to: 2
                                          visible: parent.shaped && maskSection.mask.shape !== "line"
                                          format: (v) => Math.round(v * 100) + "%" }
-                            MaskSlider { key: "height"; label: "Height"; from: 0.01; to: 2
+                            MaskSlider { key: "height"; label: qsTr("Height"); from: 0.01; to: 2
                                          visible: parent.shaped && maskSection.mask.shape !== "line"
                                          format: (v) => Math.round(v * 100) + "%" }
-                            MaskSlider { key: "rotation"; label: "Rotation"; from: -180; to: 180; visible: parent.shaped
+                            MaskSlider { key: "rotation"; label: qsTr("Rotation"); from: -180; to: 180; visible: parent.shaped
                                          format: (v) => v.toFixed(1) + "°" }
-                            MaskSlider { key: "roundness"; label: "Roundness"; from: 0; to: 1
+                            MaskSlider { key: "roundness"; label: qsTr("Roundness"); from: 0; to: 1
                                          visible: maskSection.mask !== null && maskSection.mask.shape === "rectangle"
                                          format: (v) => Math.round(v * 100) + "%" }
-                            MaskSlider { key: "feather"; label: "Feather"; from: 0; to: 0.5
+                            MaskSlider { key: "feather"; label: qsTr("Feather"); from: 0; to: 0.5
                                          format: (v) => Math.round(v * 200) + "%" }
                             Text {
                                 visible: maskSection.mask !== null && maskSection.mask.shape === "pen"
                                 Layout.fillWidth: true
                                 wrapMode: Text.WordWrap
-                                text: "Drag the points on the player; click between them to add one, double-click one to remove it."
+                                text: qsTr("Drag the points on the player; click between them to add one, double-click one to remove it.")
                                 font: Theme.type.caption
                                 color: Theme.color.textSecondary
                             }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Text { text: "Invert"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                                Text { text: qsTr("Invert"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
                                 ToggleSwitch {
                                     objectName: "maskInvert"
                                     checked: maskSection.mask !== null && maskSection.mask.invert
@@ -943,7 +939,7 @@ Rectangle {
                             }
                             TextButton {
                                 objectName: "removeMaskButton"
-                                text: "Remove mask"
+                                text: qsTr("Remove mask")
                                 variant: "ghost"
                                 onClicked: inspector.project.removeMask(inspector.clipInfo.id, maskSection.active)
                             }
@@ -957,14 +953,14 @@ Rectangle {
                         visible: inspector.clipInfo.isAdjustment !== true && inspector.clipInfo.isTitle !== true
                         Layout.fillWidth: true
                         expanded: key.enabled === true
-                        title: "Chroma key"
+                        title: qsTr("Chroma key")
                         readonly property var key: inspector.chromaKey
                         readonly property var keyColor: key.color || [0, 0.69, 0.25]
                         function commit(changes) { inspector.project.setChromaKey(inspector.clipInfo.id, changes) }
 
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: "Remove a colour"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            Text { text: qsTr("Remove a colour"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
                             ToggleSwitch {
                                 objectName: "chromaKeyEnabled"
                                 checked: keySection.key.enabled === true
@@ -984,30 +980,30 @@ Rectangle {
                             }
                             TextButton {
                                 objectName: "keyGreen"
-                                text: "Green"
+                                text: qsTr("Green")
                                 variant: "ghost"
                                 onClicked: keySection.commit({ enabled: true, color: [0, 0.69, 0.25] })
                             }
                             TextButton {
                                 objectName: "keyBlue"
-                                text: "Blue"
+                                text: qsTr("Blue")
                                 variant: "ghost"
                                 onClicked: keySection.commit({ enabled: true, color: [0.05, 0.28, 0.85] })
                             }
                             Item { Layout.fillWidth: true }
                             TextButton {
                                 objectName: "pickKeyColor"
-                                text: inspector.project.pickingKeyColor ? "Click the player…" : "Pick"
+                                text: inspector.project.pickingKeyColor ? qsTr("Click the player…") : qsTr("Pick")
                                 variant: inspector.project.pickingKeyColor ? "primary" : "secondary"
-                                tip: "Click a colour on the player to remove it"
+                                tip: qsTr("Click a colour on the player to remove it")
                                 onClicked: inspector.project.pickingKeyColor = !inspector.project.pickingKeyColor
                             }
                         }
-                        KeySlider { key: "tolerance"; objectName: "keyTolerance"; label: "Tolerance"; from: 0; to: 0.6
+                        KeySlider { key: "tolerance"; objectName: "keyTolerance"; label: qsTr("Tolerance"); from: 0; to: 0.6
                                     format: (v) => Math.round(v * 100 / 0.6) + "%" }
-                        KeySlider { key: "softness"; objectName: "keySoftness"; label: "Edge softness"; from: 0; to: 0.4
+                        KeySlider { key: "softness"; objectName: "keySoftness"; label: qsTr("Edge softness"); from: 0; to: 0.4
                                     format: (v) => Math.round(v * 100 / 0.4) + "%" }
-                        KeySlider { key: "spill"; objectName: "keySpill"; label: "Spill removal"; from: 0; to: 1
+                        KeySlider { key: "spill"; objectName: "keySpill"; label: qsTr("Spill removal"); from: 0; to: 1
                                     format: (v) => Math.round(v * 100) + "%" }
                     }
 
@@ -1017,14 +1013,14 @@ Rectangle {
                         visible: inspector.clipInfo.isAdjustment !== true
                         Layout.fillWidth: true
                         expanded: (inspector.clipInfo.matte || "none") !== "none"
-                        title: "Track matte"
+                        title: qsTr("Track matte")
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: "Shape from above"; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            Text { text: qsTr("Shape from above"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
                             ComboBox {
                                 objectName: "matteMode"
                                 readonly property var modes: ["none", "alpha", "invertedAlpha", "luma", "invertedLuma"]
-                                model: ["None", "Alpha", "Alpha inverted", "Luma", "Luma inverted"]
+                                model: [qsTr("None"), qsTr("Alpha"), qsTr("Alpha inverted"), qsTr("Luma"), qsTr("Luma inverted")]
                                 currentIndex: Math.max(0, modes.indexOf(inspector.clipInfo.matte || "none"))
                                 onActivated: (index) => inspector.project.setMatte(inspector.clipInfo.id, modes[index])
                             }
@@ -1032,8 +1028,7 @@ Rectangle {
                         Text {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
-                            text: "The clip on the track just above becomes the shape (by its transparency or brightness) "
-                                  + "and is not shown itself."
+                            text: qsTr("The clip on the track just above becomes the shape (by its transparency or brightness) and is not shown itself.")
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                         }
@@ -1045,7 +1040,7 @@ Rectangle {
                         visible: inspector.clipInfo.isAdjustment !== true
                         Layout.fillWidth: true
                         expanded: false
-                        title: "Split screen"
+                        title: qsTr("Split screen")
                         Flow {
                             Layout.fillWidth: true
                             spacing: Theme.space.s
@@ -1096,8 +1091,7 @@ Rectangle {
                         Text {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
-                            text: "Uses the clips at the playhead on separate tracks, top track first. "
-                                  + "Picture in picture shrinks the top one into the corner."
+                            text: qsTr("Uses the clips at the playhead on separate tracks, top track first. Picture in picture shrinks the top one into the corner.")
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                         }
@@ -1111,7 +1105,7 @@ Rectangle {
                     visible: inspector.clipInfo.id === undefined
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
-                    text: "Select a clip to change its speed."
+                    text: qsTr("Select a clip to change its speed.")
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap
@@ -1122,11 +1116,11 @@ Rectangle {
                              || inspector.clipInfo.isStill === true || inspector.clipInfo.isCompound === true
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
-                    text: (inspector.clipInfo.isTitle === true ? "Titles"
-                           : inspector.clipInfo.isSticker === true ? "Stickers"
-                           : inspector.clipInfo.isCompound === true ? "Compound clips"
-                           : inspector.clipInfo.isStill === true ? "Images" : "Adjustment layers")
-                          + " have no speed; trim them to change how long they last."
+                    text: inspector.clipInfo.isTitle === true ? qsTr("Titles have no speed; trim them to change how long they last.")
+                        : inspector.clipInfo.isSticker === true ? qsTr("Stickers have no speed; trim them to change how long they last.")
+                        : inspector.clipInfo.isCompound === true ? qsTr("Compound clips have no speed; trim them to change how long they last.")
+                        : inspector.clipInfo.isStill === true ? qsTr("Images have no speed; trim them to change how long they last.")
+                        : qsTr("Adjustment layers have no speed; trim them to change how long they last.")
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap
@@ -1138,14 +1132,14 @@ Rectangle {
                              && inspector.clipInfo.isAdjustment !== true && inspector.clipInfo.isStill !== true
                              && inspector.clipInfo.isCompound !== true
                     Layout.topMargin: Theme.space.s
-                    title: "Speed"
+                    title: qsTr("Speed")
                     readonly property bool still: inspector.clipInfo.freeze === true
                     readonly property bool ramped: (inspector.clipInfo.speedRamp || []).length > 0
 
                     Text {
                         visible: speedSection.still
                         Layout.fillWidth: true
-                        text: "A freeze frame holds one frame; trim it to change how long."
+                        text: qsTr("A freeze frame holds one frame; trim it to change how long.")
                         font: Theme.type.label
                         color: Theme.color.textSecondary
                         wrapMode: Text.WordWrap
@@ -1154,7 +1148,7 @@ Rectangle {
                     AudioSlider {
                         objectName: "speedSlider"
                         visible: !speedSection.still
-                        label: speedSection.ramped ? "Average speed" : "Speed"
+                        label: speedSection.ramped ? qsTr("Average speed") : qsTr("Speed")
                         from: -1
                         to: 1
                         value: Math.log10(inspector.clipInfo.speed || 1)
@@ -1181,7 +1175,7 @@ Rectangle {
                     ToggleSwitch {
                         objectName: "reverseSwitch"
                         visible: !speedSection.still
-                        text: "Reverse"
+                        text: qsTr("Reverse")
                         checked: inspector.clipInfo.reversed === true
                         onToggled: inspector.project.setClipSpeed(inspector.clipInfo.id, inspector.clipInfo.speed || 1, checked)
                     }
@@ -1189,19 +1183,19 @@ Rectangle {
                         objectName: "keepPitchSwitch"
                         visible: !speedSection.still && inspector.clipInfo.hasSound === true
                         enabled: inspector.clipInfo.reversed !== true
-                        text: "Keep pitch"
+                        text: qsTr("Keep pitch")
                         checked: inspector.clipInfo.keepPitch === true
                         ToolTip.visible: hovered
-                        ToolTip.text: enabled ? "Faster or slower, the sound keeps its pitch (off: it rises and falls like tape)"
-                                              : "Reversed sound always follows the speed"
+                        ToolTip.text: enabled ? qsTr("Faster or slower, the sound keeps its pitch (off: it rises and falls like tape)")
+                                              : qsTr("Reversed sound always follows the speed")
                         onToggled: inspector.project.setKeepPitch(inspector.clipInfo.id, checked)
                     }
                     TextButton {
                         objectName: "freezeFrameButton"
                         visible: inspector.clipIsVideo
-                        text: "Freeze frame at playhead"
+                        text: qsTr("Freeze frame at playhead")
                         iconName: "pause"
-                        tip: "Insert a 2-second still of the frame under the playhead"
+                        tip: qsTr("Insert a 2-second still of the frame under the playhead")
                         onClicked: inspector.project.freezeFrame(2)
                     }
                 }
@@ -1212,7 +1206,7 @@ Rectangle {
                     objectName: "speedRampSection"
                     visible: speedSection.visible && !speedSection.still
                     Layout.fillWidth: true
-                    title: "Speed ramp"
+                    title: qsTr("Speed ramp")
                     readonly property var points: inspector.clipInfo.speedRamp || []
                     readonly property bool ramped: points.length > 0
 
@@ -1248,7 +1242,7 @@ Rectangle {
                             objectName: "removeRampPoint"
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
-                            text: "Remove point"
+                            text: qsTr("Remove point")
                             variant: "secondary"
                             enabled: rampEditor.selected > 0 && rampEditor.selected < rampSection.points.length - 1
                             onClicked: {
@@ -1261,9 +1255,9 @@ Rectangle {
                             objectName: "removeRampButton"
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
-                            text: "Remove ramp"
+                            text: qsTr("Remove ramp")
                             variant: "secondary"
-                            tip: "Back to a constant speed (the ramp's average), keeping the clip's length"
+                            tip: qsTr("Back to a constant speed (the ramp's average), keeping the clip's length")
                             onClicked: inspector.project.removeSpeedRamp(inspector.clipInfo.id)
                         }
                     }
@@ -1272,9 +1266,9 @@ Rectangle {
                         Layout.preferredWidth: 1
                         wrapMode: Text.WordWrap
                         text: rampSection.ramped
-                              ? "Plays the same footage in " + (inspector.clipInfo.duration || 0).toFixed(1) + " s (average "
-                                + (inspector.clipInfo.speed || 1).toFixed(2) + "×). Drag points; double-click the graph to add one. A constant speed above replaces the ramp."
-                              : "Pick a ramp to change the speed through the clip. It plays the same footage, so its length follows."
+                              ? qsTr("Plays the same footage in %1 s (average %2×). Drag points; double-click the graph to add one. A constant speed above replaces the ramp.")
+                              .arg(Fmt.num(inspector.clipInfo.duration || 0, 1)).arg(Fmt.num(inspector.clipInfo.speed || 1, 2))
+                              : qsTr("Pick a ramp to change the speed through the clip. It plays the same footage, so its length follows.")
                         font: Theme.type.caption
                         color: Theme.color.textSecondary
                     }
@@ -1287,8 +1281,8 @@ Rectangle {
                     visible: inspector.clipInfo.id === undefined || !inspector.clipInfo.hasAudio
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
-                    text: inspector.clipInfo.id === undefined ? "Select a clip to adjust its sound."
-                                                             : "This clip has no sound."
+                    text: inspector.clipInfo.id === undefined ? qsTr("Select a clip to adjust its sound.")
+                                                             : qsTr("This clip has no sound.")
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap
@@ -1297,7 +1291,7 @@ Rectangle {
                     visible: inspector.clipInfo.hasAudio === true && inspector.clipInfo.audioEnabled === false
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
-                    text: "This clip's sound was detached to an audio track. Select the audio clip to adjust it."
+                    text: qsTr("This clip's sound was detached to an audio track. Select the audio clip to adjust it.")
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap
@@ -1318,11 +1312,11 @@ Rectangle {
                     }
 
                     Section {
-                        title: "Volume"
+                        title: qsTr("Volume")
                         AudioSlider {
                             objectName: "volumeSlider"
                             animKey: "volume"
-                            label: "Gain"
+                            label: qsTr("Gain")
                             from: -60
                             to: 12
                             value: inspector.clipInfo.gainDb || 0
@@ -1331,10 +1325,10 @@ Rectangle {
                         }
                     }
                     Section {
-                        title: "Fades"
+                        title: qsTr("Fades")
                         AudioSlider {
                             objectName: "fadeInSlider"
-                            label: "Fade in"
+                            label: qsTr("Fade in")
                             from: 0
                             to: Math.max(0.01, Math.min(10, (inspector.clipInfo.duration || 0) - (inspector.clipInfo.fadeOut || 0)))
                             value: inspector.clipInfo.fadeIn || 0
@@ -1343,7 +1337,7 @@ Rectangle {
                         }
                         AudioSlider {
                             objectName: "fadeOutSlider"
-                            label: "Fade out"
+                            label: qsTr("Fade out")
                             from: 0
                             to: Math.max(0.01, Math.min(10, (inspector.clipInfo.duration || 0) - (inspector.clipInfo.fadeIn || 0)))
                             value: inspector.clipInfo.fadeOut || 0
@@ -1354,9 +1348,9 @@ Rectangle {
                     TextButton {
                         objectName: "detachAudioButton"
                         visible: inspector.clipInfo.trackKind === "video"
-                        text: "Detach audio"
+                        text: qsTr("Detach audio")
                         iconName: "audio"
-                        tip: "Move this clip's sound to an audio track"
+                        tip: qsTr("Move this clip's sound to an audio track")
                         onClicked: inspector.project.detachAudio(inspector.clipInfo.id)
                     }
                 }
@@ -1366,9 +1360,9 @@ Rectangle {
                     objectName: "audioEffectsSection"
                     visible: inspector.clipInfo.hasSound === true
                     Layout.fillWidth: true
-                    title: "Audio effects"
-                    readonly property var categoryNames: ({ eq: "EQ", dynamics: "Dynamics", space: "Room", echo: "Echo",
-                                                            modulation: "Modulation", pitch: "Pitch", voice: "Voice", cleanup: "Clean-up" })
+                    title: qsTr("Audio effects")
+                    readonly property var categoryNames: ({ eq: qsTr("EQ"), dynamics: qsTr("Dynamics"), space: qsTr("Room"), echo: qsTr("Echo"),
+                                                            modulation: qsTr("Modulation"), pitch: qsTr("Pitch"), voice: qsTr("Voice"), cleanup: qsTr("Clean-up") })
                     RowLayout {
                         Layout.fillWidth: true
                         ComboBox {
@@ -1381,12 +1375,12 @@ Rectangle {
                             model: inspector.project.audioEffects.map((e) => Object.assign(
                                 { label: (audioEffectsSection.categoryNames[e.categories[0]] || e.categories[0]) + " · " + e.title }, e))
                                 .concat(inspector.project.audioPlugins.filter((p) => p.problem === "").map((p) => ({
-                                    id: p.id, label: "Plug-in · " + p.name + " (" + [p.vendor, p.format].filter((x) => x).join(", ") + ")"
+                                    id: p.id, label: qsTr("Plug-in · %1 (%2)").arg(p.name).arg([p.vendor, p.format].filter((x) => x).join(", "))
                                 })))
                         }
                         TextButton {
                             objectName: "addAudioEffectButton"
-                            text: "Add"
+                            text: qsTr("Add")
                             iconName: "plus"
                             onClicked: inspector.project.addAudioEffect(inspector.clipInfo.id, audioEffectPicker.currentValue)
                         }
@@ -1395,8 +1389,8 @@ Rectangle {
                         visible: (inspector.clipInfo.audioEffects || []).length === 0
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
-                        text: "Effects run in order, after the volume and fades. Echoes and reverb ring on past the clip's end."
-                              + (inspector.project.scanningPlugins ? " Looking for plug-ins…" : "")
+                        text: qsTr("Effects run in order, after the volume and fades. Echoes and reverb ring on past the clip's end.")
+                              + (inspector.project.scanningPlugins ? " " + qsTr("Looking for plug-ins…") : "")
                         font: Theme.type.caption
                         color: Theme.color.textSecondary
                     }
@@ -1426,7 +1420,7 @@ Rectangle {
                     objectName: "loudnessSection"
                     visible: inspector.clipInfo.hasSound === true
                     Layout.fillWidth: true
-                    title: "Loudness"
+                    title: qsTr("Loudness")
                     readonly property var loudness: inspector.clipInfo.loudness || null
                     RowLayout {
                         Layout.fillWidth: true
@@ -1436,14 +1430,14 @@ Rectangle {
                             Layout.fillWidth: true
                             textRole: "label"
                             valueRole: "lufs"
-                            model: [{ label: "−14 LUFS · online", lufs: -14 }, { label: "−16 LUFS · podcast", lufs: -16 },
-                                    { label: "−23 LUFS · broadcast", lufs: -23 }]
+                            model: [{ label: qsTr("−14 LUFS · online"), lufs: -14 }, { label: qsTr("−16 LUFS · podcast"), lufs: -16 },
+                                    { label: qsTr("−23 LUFS · broadcast"), lufs: -23 }]
                         }
                         TextButton {
                             objectName: "normalizeLoudnessButton"
-                            text: inspector.project.measuringLoudness ? "Measuring…" : "Normalize"
+                            text: inspector.project.measuringLoudness ? qsTr("Measuring…") : qsTr("Normalize")
                             enabled: !inspector.project.measuringLoudness
-                            tip: "Measure this clip and set its volume to reach the target"
+                            tip: qsTr("Measure this clip and set its volume to reach the target")
                             onClicked: inspector.project.normalizeLoudness(inspector.clipInfo.id, loudnessTarget.currentValue)
                         }
                     }
@@ -1453,8 +1447,8 @@ Rectangle {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: loudnessSection.loudness === null ? ""
-                              : "Measured " + loudnessSection.loudness.measured.toFixed(1) + " LUFS; the volume now brings it to "
-                                + loudnessSection.loudness.target.toFixed(0) + " LUFS."
+                              : qsTr("Measured %1 LUFS; the volume now brings it to %2 LUFS.").arg(Fmt.num(loudnessSection.loudness.measured, 1))
+                              .arg(Fmt.num(loudnessSection.loudness.target))
                         font: Theme.type.caption
                         color: Theme.color.textSecondary
                     }
@@ -1471,7 +1465,7 @@ Rectangle {
                 property int hslBand: 0
                 property string hueCurve: "hueVsSat"
                 readonly property var bandColors: ["#E5484D", "#F2994A", "#F5D90A", "#46A758", "#12A594", "#3E63DD", "#8E4EC6", "#D6409F"]
-                readonly property var bandNames: ["Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta"]
+                readonly property var bandNames: [qsTr("Red"), qsTr("Orange"), qsTr("Yellow"), qsTr("Green"), qsTr("Aqua"), qsTr("Blue"), qsTr("Purple"), qsTr("Magenta")]
                 readonly property var band: (grade.hsl || [])[hslBand] || ({ hue: 0, saturation: 0, luminance: 0 })
 
                 function preview(changes) { inspector.project.previewClipColor(inspector.clipInfo.id, changes) }
@@ -1482,13 +1476,13 @@ Rectangle {
                 Section {
                     objectName: "projectColourSection"
                     Layout.fillWidth: true
-                    title: "Project colour"
+                    title: qsTr("Project colour")
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Theme.space.xxs
                         Repeater {
-                            model: [{ id: "sdr", label: "SDR · 709" }, { id: "hdr-pq", label: "HDR · PQ" },
-                                    { id: "hdr-hlg", label: "HDR · HLG" }]
+                            model: [{ id: "sdr", label: qsTr("SDR · 709") }, { id: "hdr-pq", label: qsTr("HDR · PQ") },
+                                    { id: "hdr-hlg", label: qsTr("HDR · HLG") }]
                             delegate: TextButton {
                                 required property var modelData
                                 objectName: "projectColour:" + modelData.id
@@ -1506,10 +1500,9 @@ Rectangle {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: inspector.project.projectColour === "sdr"
-                              ? "Rec.709. HDR media is tone-mapped into it; Display P3 and Rec.2020 media converted."
-                              : "Rec.2020 " + (inspector.project.projectColour === "hdr-pq" ? "PQ" : "HLG")
-                                + ": SDR media sits at graphics white (203 nits). The player shows it tone-mapped; the HDR viewer "
-                                + "(beside the player's statistics) shows it as HDR. HEVC exports stay HDR."
+                              ? qsTr("Rec.709. HDR media is tone-mapped into it; Display P3 and Rec.2020 media converted.")
+                              : qsTr("Rec.2020 %1: SDR media sits at graphics white (203 nits). The player shows it tone-mapped; the HDR viewer (beside the player's statistics) shows it as HDR. HEVC exports stay HDR.")
+                                .arg(inspector.project.projectColour === "hdr-pq" ? "PQ" : "HLG")
                         font: Theme.type.caption
                         color: Theme.color.textSecondary
                     }
@@ -1520,13 +1513,13 @@ Rectangle {
                     objectName: "scopesSection"
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.s
-                    title: "Scopes"
+                    title: qsTr("Scopes")
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Theme.space.xxs
                         Repeater {
-                            model: [{ id: "waveform", label: "Waveform" }, { id: "parade", label: "Parade" },
-                                    { id: "vectorscope", label: "Vector" }, { id: "histogram", label: "Histogram" }]
+                            model: [{ id: "waveform", label: qsTr("Waveform") }, { id: "parade", label: qsTr("Parade") },
+                                    { id: "vectorscope", label: qsTr("Vector") }, { id: "histogram", label: qsTr("Histogram") }]
                             delegate: TextButton {
                                 required property var modelData
                                 objectName: "scopeMode:" + modelData.id
@@ -1554,8 +1547,8 @@ Rectangle {
                     visible: !colorPage.gradable
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
-                    text: inspector.clipInfo.isTitle === true ? "Titles take their colour from their text style."
-                                                             : "Select a video clip to grade it."
+                    text: inspector.clipInfo.isTitle === true ? qsTr("Titles take their colour from their text style.")
+                                                             : qsTr("Select a video clip to grade it.")
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap
@@ -1570,26 +1563,26 @@ Rectangle {
                         objectName: "copyGradeButton"
                         Layout.fillWidth: true
                         Layout.preferredWidth: 1
-                        text: "Copy"
+                        text: qsTr("Copy")
                         variant: "secondary"
-                        tip: "Copy this clip's grade"
+                        tip: qsTr("Copy this clip's grade")
                         onClicked: inspector.project.copyGrade(inspector.clipInfo.id)
                     }
                     TextButton {
                         objectName: "pasteGradeButton"
                         Layout.fillWidth: true
                         Layout.preferredWidth: 1
-                        text: "Paste"
+                        text: qsTr("Paste")
                         variant: "secondary"
                         enabled: inspector.project.hasCopiedGrade
-                        tip: "Give this clip the copied grade"
+                        tip: qsTr("Give this clip the copied grade")
                         onClicked: inspector.project.pasteGrade(inspector.clipInfo.id)
                     }
                     TextButton {
                         objectName: "resetColorButton"
                         Layout.fillWidth: true
                         Layout.preferredWidth: 1
-                        text: "Reset"
+                        text: qsTr("Reset")
                         variant: "ghost"
                         enabled: colorPage.grade.neutral === false
                         onClicked: inspector.project.resetClipColor(inspector.clipInfo.id)
@@ -1601,11 +1594,11 @@ Rectangle {
                     objectName: "lookSection"
                     visible: colorPage.gradable
                     Layout.fillWidth: true
-                    title: "Look"
+                    title: qsTr("Look")
                     Text {
                         objectName: "lookName"
                         Layout.fillWidth: true
-                        text: inspector.clipInfo.look ? inspector.clipInfo.look.title : "No look. Pick one in the Filters library."
+                        text: inspector.clipInfo.look ? inspector.clipInfo.look.title : qsTr("No look. Pick one in the Filters library.")
                         font: Theme.type.body
                         color: inspector.clipInfo.look ? Theme.color.textPrimary : Theme.color.textSecondary
                         wrapMode: Text.WordWrap
@@ -1613,7 +1606,7 @@ Rectangle {
                     AudioSlider {
                         objectName: "lookIntensity"
                         visible: !!inspector.clipInfo.look
-                        label: "Intensity"
+                        label: qsTr("Intensity")
                         from: 0
                         to: 1
                         value: inspector.clipInfo.look ? inspector.clipInfo.look.intensity : 1
@@ -1624,7 +1617,7 @@ Rectangle {
                     TextButton {
                         objectName: "removeLookButton"
                         visible: !!inspector.clipInfo.look
-                        text: "Remove look"
+                        text: qsTr("Remove look")
                         variant: "secondary"
                         onClicked: inspector.project.removeLook(inspector.clipInfo.id)
                     }
@@ -1633,27 +1626,27 @@ Rectangle {
                 Section {
                     visible: colorPage.gradable
                     Layout.fillWidth: true
-                    title: "Basic"
-                    GradeSlider { key: "exposure"; label: "Exposure"; from: -4; to: 4
+                    title: qsTr("Basic")
+                    GradeSlider { key: "exposure"; label: qsTr("Exposure"); from: -4; to: 4
                                   format: (v) => (v > 0 ? "+" : "") + v.toFixed(2) + " EV" }
-                    GradeSlider { key: "contrast"; label: "Contrast" }
-                    GradeSlider { key: "saturation"; label: "Saturation" }
-                    GradeSlider { key: "temperature"; label: "Temperature" }
-                    GradeSlider { key: "tint"; label: "Tint" }
+                    GradeSlider { key: "contrast"; label: qsTr("Contrast") }
+                    GradeSlider { key: "saturation"; label: qsTr("Saturation") }
+                    GradeSlider { key: "temperature"; label: qsTr("Temperature") }
+                    GradeSlider { key: "tint"; label: qsTr("Tint") }
                 }
 
                 Section {
                     visible: colorPage.gradable
                     Layout.fillWidth: true
-                    title: "Wheels"
+                    title: qsTr("Wheels")
                     GridLayout {
                         Layout.fillWidth: true
                         columns: 2
                         columnSpacing: Theme.space.m
                         rowSpacing: Theme.space.s
                         Repeater {
-                            model: [{ key: "lift", title: "Lift (shadows)" }, { key: "gamma", title: "Gamma (midtones)" },
-                                    { key: "gain", title: "Gain (highlights)" }, { key: "offset", title: "Offset" }]
+                            model: [{ key: "lift", title: qsTr("Lift (shadows)") }, { key: "gamma", title: qsTr("Gamma (midtones)") },
+                                    { key: "gain", title: qsTr("Gain (highlights)") }, { key: "offset", title: qsTr("Offset") }]
                             delegate: ColorWheelControl {
                                 required property var modelData
                                 objectName: "wheel:" + modelData.key
@@ -1671,13 +1664,13 @@ Rectangle {
                 Section {
                     visible: colorPage.gradable
                     Layout.fillWidth: true
-                    title: "Curves"
+                    title: qsTr("Curves")
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Theme.space.xs
                         Repeater {
-                            model: [{ key: "master", label: "Master" }, { key: "red", label: "Red" },
-                                    { key: "green", label: "Green" }, { key: "blue", label: "Blue" }]
+                            model: [{ key: "master", label: qsTr("Master") }, { key: "red", label: qsTr("Red") },
+                                    { key: "green", label: qsTr("Green") }, { key: "blue", label: qsTr("Blue") }]
                             delegate: TextButton {
                                 required property var modelData
                                 objectName: "curveChannel:" + modelData.key
@@ -1704,13 +1697,13 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
                             wrapMode: Text.WordWrap
-                            text: "Drag points; double-click to add one, or an inner point to remove it."
+                            text: qsTr("Drag points; double-click to add one, or an inner point to remove it.")
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                         }
                         TextButton {
                             objectName: "resetCurveButton"
-                            text: "Reset curve"
+                            text: qsTr("Reset curve")
                             variant: "ghost"
                             enabled: (colorPage.grade[colorPage.channel] || []).length > 0
                             onClicked: { const m = {}; m[colorPage.channel] = []; colorPage.commit(m) }
@@ -1723,7 +1716,7 @@ Rectangle {
                     objectName: "hslSection"
                     visible: colorPage.gradable
                     Layout.fillWidth: true
-                    title: "HSL"
+                    title: qsTr("HSL")
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Theme.space.xs
@@ -1762,8 +1755,8 @@ Rectangle {
                         color: Theme.color.textPrimary
                     }
                     Repeater {
-                        model: [{ key: "hue", label: "Hue" }, { key: "saturation", label: "Saturation" },
-                                { key: "luminance", label: "Luminance" }]
+                        model: [{ key: "hue", label: qsTr("Hue") }, { key: "saturation", label: qsTr("Saturation") },
+                                { key: "luminance", label: qsTr("Luminance") }]
                         delegate: AudioSlider {
                             required property var modelData
                             objectName: "hsl:" + modelData.key
@@ -1792,13 +1785,13 @@ Rectangle {
                     objectName: "hueCurvesSection"
                     visible: colorPage.gradable
                     Layout.fillWidth: true
-                    title: "Hue curves"
+                    title: qsTr("Hue curves")
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Theme.space.xxs
                         Repeater {
-                            model: [{ key: "hueVsSat", label: "Hue · Sat" }, { key: "hueVsHue", label: "Hue · Hue" },
-                                    { key: "lumaVsSat", label: "Luma · Sat" }]
+                            model: [{ key: "hueVsSat", label: qsTr("Hue · Sat") }, { key: "hueVsHue", label: qsTr("Hue · Hue") },
+                                    { key: "lumaVsSat", label: qsTr("Luma · Sat") }]
                             delegate: TextButton {
                                 required property var modelData
                                 objectName: "hueCurve:" + modelData.key
@@ -1825,14 +1818,14 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
                             wrapMode: Text.WordWrap
-                            text: colorPage.hueCurve === "hueVsHue" ? "Above the line turns those hues forward, below turns them back (up to 60°)."
-                                : "Above the line adds saturation there, below takes it away."
+                            text: colorPage.hueCurve === "hueVsHue" ? qsTr("Above the line turns those hues forward, below turns them back (up to 60°).")
+                                : qsTr("Above the line adds saturation there, below takes it away.")
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                         }
                         TextButton {
                             objectName: "resetHueCurveButton"
-                            text: "Reset"
+                            text: qsTr("Reset")
                             variant: "ghost"
                             enabled: (colorPage.grade[colorPage.hueCurve] || []).length > 0
                             onClicked: { const m = {}; m[colorPage.hueCurve] = []; colorPage.commit(m) }
@@ -1843,13 +1836,13 @@ Rectangle {
                 Section {
                     visible: colorPage.gradable
                     Layout.fillWidth: true
-                    title: "LUT"
+                    title: qsTr("LUT")
                     Text {
                         objectName: "lutName"
                         Layout.fillWidth: true
                         elide: Text.ElideMiddle
-                        text: colorPage.grade.lutName ? colorPage.grade.lutName + (colorPage.grade.lutMissing ? " (missing)" : "")
-                                                      : "No LUT. Choose a .cube or .3dl file."
+                        text: colorPage.grade.lutName ? colorPage.grade.lutName + (colorPage.grade.lutMissing ? qsTr(" (missing)") : "")
+                                                      : qsTr("No LUT. Choose a .cube or .3dl file.")
                         font: Theme.type.body
                         color: colorPage.grade.lutMissing ? Theme.color.danger
                              : colorPage.grade.lutName ? Theme.color.textPrimary : Theme.color.textSecondary
@@ -1861,7 +1854,7 @@ Rectangle {
                             objectName: "chooseLutButton"
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
-                            text: colorPage.grade.lutName ? "Change LUT…" : "Choose LUT…"
+                            text: colorPage.grade.lutName ? qsTr("Change LUT…") : qsTr("Choose LUT…")
                             variant: "secondary"
                             onClicked: lutDialog.open()
                         }
@@ -1869,7 +1862,7 @@ Rectangle {
                             objectName: "removeLutButton"
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
-                            text: "Remove"
+                            text: qsTr("Remove")
                             variant: "secondary"
                             enabled: !!colorPage.grade.lutName
                             onClicked: inspector.project.removeLut(inspector.clipInfo.id)
@@ -1878,24 +1871,24 @@ Rectangle {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Theme.space.xs
-                        Text { text: "Built-in"; font: Theme.type.label; color: Theme.color.textSecondary }
+                        Text { text: qsTr("Built-in"); font: Theme.type.label; color: Theme.color.textSecondary }
                         ComboBox {
                             objectName: "lutLibraryPicker"
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
                             model: inspector.project.lutLibrary
                             textRole: "name"
-                            displayText: "Choose…"
+                            displayText: qsTr("Choose…")
                             onActivated: (index) => inspector.project.chooseLut(inspector.clipInfo.id,
                                                                                 "qrc" + model[index].path)
                         }
                     }
-                    GradeSlider { key: "lutIntensity"; label: "Intensity"; from: 0; to: 1
+                    GradeSlider { key: "lutIntensity"; label: qsTr("Intensity"); from: 0; to: 1
                                   visible: !!colorPage.grade.lutName; format: (v) => Math.round(v * 100) + "%" }
                     FileDialog {
                         id: lutDialog
-                        title: "Choose a LUT"
-                        nameFilters: ["LUTs (*.cube *.3dl)", "All files (*)"]
+                        title: qsTr("Choose a LUT")
+                        nameFilters: [qsTr("LUTs (*.cube *.3dl)"), qsTr("All files (*)")]
                         onAccepted: inspector.project.chooseLut(inspector.clipInfo.id, selectedFile)
                     }
                 }
@@ -1903,7 +1896,7 @@ Rectangle {
                 Section {
                     visible: colorPage.gradable
                     Layout.fillWidth: true
-                    title: "Presets"
+                    title: qsTr("Presets")
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Theme.space.xs
@@ -1914,11 +1907,11 @@ Rectangle {
                             Layout.preferredWidth: 1
                             model: inspector.project.colorPresets
                             enabled: count > 0
-                            displayText: count > 0 ? currentText : "No presets yet"
+                            displayText: count > 0 ? currentText : qsTr("No presets yet")
                         }
                         TextButton {
                             objectName: "applyColorPreset"
-                            text: "Apply"
+                            text: qsTr("Apply")
                             variant: "secondary"
                             enabled: presetPicker.count > 0
                             onClicked: inspector.project.applyColorPreset(inspector.clipInfo.id, presetPicker.currentText)
@@ -1926,7 +1919,7 @@ Rectangle {
                         IconButton {
                             objectName: "deleteColorPreset"
                             iconName: "delete"
-                            tip: "Delete this preset"
+                            tip: qsTr("Delete this preset")
                             enabled: presetPicker.count > 0
                             onClicked: inspector.project.deleteColorPreset(presetPicker.currentText)
                         }
@@ -1939,11 +1932,11 @@ Rectangle {
                             objectName: "colorPresetName"
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
-                            placeholderText: "Preset name"
+                            placeholderText: qsTr("Preset name")
                         }
                         TextButton {
                             objectName: "saveColorPreset"
-                            text: "Save"
+                            text: qsTr("Save")
                             variant: "secondary"
                             enabled: presetName.text.trim() !== ""
                             onClicked: {
@@ -1964,7 +1957,7 @@ Rectangle {
                     visible: !inspector.clipIsVideo
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
-                    text: "Select a video clip to add effects to it."
+                    text: qsTr("Select a video clip to add effects to it.")
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap
@@ -1983,12 +1976,12 @@ Rectangle {
                         // Our own effects, then the OpenFX plug-ins on this Mac (found in the background).
                         model: inspector.player.availableEffects.map((e) => ({ id: e.id, label: e.title }))
                             .concat(inspector.project.videoPlugins.filter((p) => p.problem === "").map((p) => ({
-                                id: p.id, label: "Plug-in · " + p.name + (p.group ? " (" + p.group + ")" : "")
+                                id: p.id, label: p.group ? qsTr("Plug-in · %1 (%2)").arg(p.name).arg(p.group) : qsTr("Plug-in · %1").arg(p.name)
                             })))
                     }
                     TextButton {
                         objectName: "addEffectButton"
-                        text: "Add"
+                        text: qsTr("Add")
                         iconName: "plus"
                         onClicked: inspector.project.addClipEffect(inspector.clipInfo.id, effectPicker.currentValue)
                     }
@@ -1997,7 +1990,7 @@ Rectangle {
                 Text {
                     visible: inspector.clipIsVideo && (inspector.clipInfo.effects || []).length === 0
                     Layout.fillWidth: true
-                    text: "No effects on this clip yet. Pick one above, or click an effect in the library."
+                    text: qsTr("No effects on this clip yet. Pick one above, or click an effect in the library.")
                     font: Theme.type.label
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap

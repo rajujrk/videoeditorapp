@@ -1,5 +1,6 @@
 #include "cloud/CloudKeys.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -57,7 +58,7 @@ bool store(const QString& provider, const QString& key, QString* error)
     const QString trimmed = key.trimmed();
     if (trimmed.isEmpty()) {
         if (error)
-            *error = QStringLiteral("The key is empty.");
+            *error = QCoreApplication::translate("CloudKeys", "The key is empty.");
         return false;
     }
     if (!testStore().isEmpty()) {
@@ -79,7 +80,7 @@ bool store(const QString& provider, const QString& key, QString* error)
         if (status != errSecSuccess) {
             if (error) {
                 CFStringRef message = SecCopyErrorMessageString(status, nullptr);
-                *error = message ? QString::fromCFString(message) : QStringLiteral("The Keychain refused the key.");
+                *error = message ? QString::fromCFString(message) : QCoreApplication::translate("CloudKeys", "The Keychain refused the key.");
                 if (message)
                     CFRelease(message);
             }

@@ -2,6 +2,7 @@
 
 #include "decode/AudioDecoder.h"
 #include "encode/WavWriter.h"
+#include "model/Translate.h"
 
 #include <Accelerate/Accelerate.h>
 #include <onnxruntime/onnxruntime_cxx_api.h>
@@ -109,7 +110,7 @@ std::optional<DeepFilterConfig> DeepFilterConfig::parse(const std::string& ini, 
         read("conv_lookahead", c.convLookahead);
         read("norm_tau", c.normTau);
     } catch (const std::exception&) {
-        fail(error, "The model's settings could not be read.");
+        fail(error, TVE_TR("core", "The model's settings could not be read."));
         return std::nullopt;
     }
     const bool fits = c.sampleRate == audio::kSampleRate && c.hopSize > 0 && c.fftSize >= 2 * c.hopSize
@@ -117,7 +118,7 @@ std::optional<DeepFilterConfig> DeepFilterConfig::parse(const std::string& ini, 
                    && c.dfOrder > 0 && c.dfLookahead >= 0 && c.dfLookahead < c.dfOrder && c.convLookahead >= 0
                    && c.normTau > 0.0;
     if (!fits) {
-        fail(error, "This model's settings are not ones the app can run (it needs 48 kHz).");
+        fail(error, TVE_TR("core", "This model's settings are not ones the app can run (it needs 48 kHz)."));
         return std::nullopt;
     }
     return c;
@@ -459,7 +460,7 @@ bool readChannels(const std::string& path, std::array<std::vector<float>, 2>& ch
     std::string why;
     std::unique_ptr<AudioDecoder> decoder = AudioDecoder::open(path, &why);
     if (!decoder) {
-        fail(error, why.empty() ? "This has no sound to work on." : why);
+        fail(error, why.empty() ? TVE_TR("core", "This has no sound to work on.") : why);
         return false;
     }
     if (sourceChannels)
@@ -478,7 +479,7 @@ bool readChannels(const std::string& path, std::array<std::vector<float>, 2>& ch
             return false;
     }
     if (channels[0].empty()) {
-        fail(error, "This has no sound to work on.");
+        fail(error, TVE_TR("core", "This has no sound to work on."));
         return false;
     }
     return true;
@@ -502,18 +503,18 @@ bool writeWav(const std::string& path, const std::array<std::vector<float>, 2>& 
                 interleaved[i * std::size_t(count) + std::size_t(ch)] = channels[std::size_t(ch)][at + i];
         }
         if (!writer->write(interleaved.data(), std::int64_t(n))) {
-            fail(error, "The cleaned sound could not be written.");
+            fail(error, TVE_TR("core", "The cleaned sound could not be written."));
             return false;
         }
     }
     if (!writer->finish()) {
-        fail(error, "The cleaned sound could not be written.");
+        fail(error, TVE_TR("core", "The cleaned sound could not be written."));
         return false;
     }
     std::error_code ec;
     std::filesystem::rename(part, path, ec);
     if (ec) {
-        fail(error, "The cleaned sound could not be written.");
+        fail(error, TVE_TR("core", "The cleaned sound could not be written."));
         return false;
     }
     return true;

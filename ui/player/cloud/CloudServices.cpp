@@ -67,7 +67,7 @@ QVariantList CloudServices::imageModels() const
     return {QVariantMap{{QStringLiteral("id"), kImageModels[0]}, {QStringLiteral("label"), QStringLiteral("GPT Image 2.5 Flare")},
                         {QStringLiteral("detail"), QStringLiteral("Fast")}},
             QVariantMap{{QStringLiteral("id"), kImageModels[1]}, {QStringLiteral("label"), QStringLiteral("GPT Image 2.5 Sunburst")},
-                        {QStringLiteral("detail"), QStringLiteral("More precise, slower")}}};
+                        {QStringLiteral("detail"), tr("More precise, slower")}}};
 }
 
 void CloudServices::setImageModel(const QString& model)
@@ -108,17 +108,17 @@ bool CloudServices::generateMedia(const QString& job, const QString& status, Med
 QVariantList CloudServices::claudeModels() const
 {
     return {QVariantMap{{QStringLiteral("id"), kClaudeModels[0]}, {QStringLiteral("label"), QStringLiteral("Claude Opus 5.5")},
-                        {QStringLiteral("detail"), QStringLiteral("Best writing and translation · $4 / $20 per million tokens")}},
+                        {QStringLiteral("detail"), tr("Best writing and translation · $4 / $20 per million tokens")}},
             QVariantMap{{QStringLiteral("id"), kClaudeModels[1]}, {QStringLiteral("label"), QStringLiteral("Claude Sonnet 5.5")},
-                        {QStringLiteral("detail"), QStringLiteral("Faster, half the price · $2 / $10 per million tokens")}}};
+                        {QStringLiteral("detail"), tr("Faster, half the price · $2 / $10 per million tokens")}}};
 }
 
 QVariantList CloudServices::elevenLabsModels() const
 {
     return {QVariantMap{{QStringLiteral("id"), kElevenLabsModels[0]}, {QStringLiteral("label"), QStringLiteral("Multilingual v2")},
-                        {QStringLiteral("detail"), QStringLiteral("Most natural, 29 languages")}},
+                        {QStringLiteral("detail"), tr("Most natural, 29 languages")}},
             QVariantMap{{QStringLiteral("id"), kElevenLabsModels[1]}, {QStringLiteral("label"), QStringLiteral("Flash v2.5")},
-                        {QStringLiteral("detail"), QStringLiteral("Fast and cheaper per character")}}};
+                        {QStringLiteral("detail"), tr("Fast and cheaper per character")}}};
 }
 
 void CloudServices::setClaudeModel(const QString& model)
@@ -188,7 +188,7 @@ void CloudServices::resetUsage()
 bool CloudServices::setKey(const QString& provider, const QString& key)
 {
     if (!kProviders.contains(provider)) {
-        m_error = QStringLiteral("Unknown provider %1").arg(provider);
+        m_error = tr("Unknown provider %1").arg(provider);
         return false;
     }
     if (!cloudkeys::store(provider, key, &m_error))
@@ -299,7 +299,7 @@ bool CloudServices::generate(const QString& job, const TextRequest& request, std
     if (busy() && (m_job != job || (m_textTask && !m_textTask->done())))
         return false;
     if (!busy())
-        beginJob(job, QStringLiteral("Asking Claude…"));
+        beginJob(job, tr("Asking Claude…"));
     TextTask* task = m_claude->send(request, this);
     m_textTask = task;
     connect(task, &TextTask::textChanged, this, [this](const QString& text) {
@@ -307,7 +307,7 @@ bool CloudServices::generate(const QString& job, const TextRequest& request, std
         emit draftChanged();
     });
     connect(task, &TextTask::retrying, this, [this](int attempt, double seconds) {
-        m_status = QStringLiteral("Claude is busy; trying again in %1 s (attempt %2 of 3)…").arg(qRound(seconds)).arg(attempt);
+        m_status = tr("Claude is busy; trying again in %1 s (attempt %2 of 3)…").arg(qRound(seconds)).arg(attempt);
         emit jobChanged();
     });
     connect(task, &TextTask::finished, this, [this, task, done = std::move(done)](const TextResult& result) {
@@ -327,9 +327,9 @@ bool CloudServices::converse(const AgentRequest& request, std::function<void(con
     if (busy() && (m_job != job || (m_textTask && !m_textTask->done())))
         return false;
     if (!busy())
-        beginJob(job, QStringLiteral("Asking Claude…"));
+        beginJob(job, tr("Asking Claude…"));
     else {
-        m_status = QStringLiteral("Asking Claude…");
+        m_status = tr("Asking Claude…");
         emit jobChanged();
     }
     AgentTask* task = m_claude->converse(request, this);
@@ -339,7 +339,7 @@ bool CloudServices::converse(const AgentRequest& request, std::function<void(con
         emit draftChanged();
     });
     connect(task, &TextTask::retrying, this, [this](int attempt, double seconds) {
-        m_status = QStringLiteral("Claude is busy; trying again in %1 s (attempt %2 of 3)…").arg(qRound(seconds)).arg(attempt);
+        m_status = tr("Claude is busy; trying again in %1 s (attempt %2 of 3)…").arg(qRound(seconds)).arg(attempt);
         emit jobChanged();
     });
     connect(task, &TextTask::finished, this, [this, task, done = std::move(done)](const TextResult& result) {
@@ -353,7 +353,7 @@ bool CloudServices::converse(const AgentRequest& request, std::function<void(con
         if (!result.ok || agent.toolCalls.isEmpty() || result.stopReason != QLatin1String("tool_use"))
             endJob(result.ok ? QString() : result.error);
         else {
-            m_status = QStringLiteral("Editing…");
+            m_status = tr("Editing…");
             emit jobChanged();
         }
         done(agent);
@@ -366,7 +366,7 @@ bool CloudServices::cloneVoice(const QString& name, const QString& description, 
 {
     if (busy())
         return false;
-    beginJob(QStringLiteral("clone"), QStringLiteral("ElevenLabs is copying the voice…"));
+    beginJob(QStringLiteral("clone"), tr("ElevenLabs is copying the voice…"));
     QPointer<CloudServices> self(this);
     m_elevenLabs->clone(name, description, recording, [self, done = std::move(done)](QString voiceId, QString error) {
         if (!self)
@@ -398,7 +398,7 @@ bool CloudServices::speak(const QString& text, const QString& voiceId, double sp
     const bool cloud = voiceId.startsWith(QLatin1String("elevenlabs:"));
     VoiceProvider* provider = cloud ? static_cast<VoiceProvider*>(m_elevenLabs.get()) : m_system.get();
     const QString id = voiceId.mid(voiceId.indexOf(QLatin1Char(':')) + 1);
-    beginJob(QStringLiteral("speak"), cloud ? QStringLiteral("ElevenLabs is speaking…") : QStringLiteral("Speaking…"));
+    beginJob(QStringLiteral("speak"), cloud ? tr("ElevenLabs is speaking…") : tr("Speaking…"));
     SpeechTask* task = provider->speak(text, id, speed, basePath, this);
     m_speechTask = task;
     connect(task, &SpeechTask::finished, this, [this, task, done = std::move(done)](const SpeechResult& result) {

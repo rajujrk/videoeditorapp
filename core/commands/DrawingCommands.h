@@ -19,7 +19,7 @@ public:
     AddDrawingCommand(Id trackId, Ticks start, Ticks duration, ClipDrawing drawing)
         : m_trackId(trackId), m_start(start), m_duration(duration), m_drawing(std::move(drawing)) {}
 
-    std::string label() const override { return "Add Drawing"; }
+    std::string label() const override { return TVE_TR("core", "Add Drawing"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 

@@ -2,6 +2,7 @@
 
 #include "analysis/PeopleVision.h"
 
+#include <QCoreApplication>
 #include <QImage>
 
 #include <CoreVideo/CoreVideo.h>
@@ -31,7 +32,7 @@ bool cutOutSticker(const QString& path, QString* error)
     QImage image(path);
     if (image.isNull()) {
         if (error)
-            *error = QStringLiteral("The picture could not be read.");
+            *error = QCoreApplication::translate("StickerCutout", "The picture could not be read.");
         return false;
     }
     if (hasTransparency(image))
@@ -42,7 +43,7 @@ bool cutOutSticker(const QString& path, QString* error)
     if (CVPixelBufferCreate(kCFAllocatorDefault, std::size_t(bgra.width()), std::size_t(bgra.height()),
                             kCVPixelFormatType_32BGRA, nullptr, &buffer) != kCVReturnSuccess) {
         if (error)
-            *error = QStringLiteral("The picture could not be prepared.");
+            *error = QCoreApplication::translate("StickerCutout", "The picture could not be prepared.");
         return false;
     }
     CVPixelBufferLockBaseAddress(buffer, 0);
@@ -55,7 +56,7 @@ bool cutOutSticker(const QString& path, QString* error)
     CVPixelBufferRelease(buffer);
     if (!matte) {
         if (error)
-            *error = QStringLiteral("No subject stood out to cut out; the picture is kept as it is.");
+            *error = QCoreApplication::translate("StickerCutout", "No subject stood out to cut out; the picture is kept as it is.");
         return false;
     }
     // The matte, scaled to the picture, becomes its alpha.
@@ -70,7 +71,7 @@ bool cutOutSticker(const QString& path, QString* error)
     }
     if (!cut.save(path, "PNG")) {
         if (error)
-            *error = QStringLiteral("The sticker could not be saved.");
+            *error = QCoreApplication::translate("StickerCutout", "The sticker could not be saved.");
         return false;
     }
     return true;

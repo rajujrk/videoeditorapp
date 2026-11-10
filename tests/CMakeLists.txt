@@ -33,6 +33,15 @@ add_executable(tve_core_tests
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
 
+# Translation: the catalogue names are in step with effects/, and every translation is
+# complete with its placeholders (tools/i18n).
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_FOUND)
+    add_test(NAME tve_catalogue_strings
+             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/i18n/catalogue_strings.py --check)
+    add_test(NAME tve_translations COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/i18n/check_translations.py)
+endif()
+
 add_executable(tve_engine_tests
     engine/test_ffmpeg_license.cpp
     engine/test_decoder.cpp

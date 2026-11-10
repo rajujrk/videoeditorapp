@@ -68,9 +68,9 @@ Rectangle {
             TextButton {
                 objectName: card.prefix + "Window:" + card.stackIndex
                 visible: card.plugin && card.pluginParams.length >= 0
-                text: "Window"
+                text: qsTr("Window")
                 variant: "ghost"
-                tip: "Open the plug-in's own window; what you change there is one undo step"
+                tip: qsTr("Open the plug-in's own window; what you change there is one undo step")
                 onClicked: card.project.openPluginWindow(card.onTrack ? -1 : card.clipId, card.onTrack ? card.trackId : -1, card.stackIndex)
             }
             ToggleSwitch {
@@ -81,7 +81,7 @@ Rectangle {
             IconButton {
                 objectName: (card.onTrack ? "removeTrackEffect:" : card.audio ? "removeAudioEffect:" : "removeEffect:") + card.stackIndex
                 iconName: "delete"
-                tip: "Remove effect"
+                tip: qsTr("Remove effect")
                 buttonSize: 24
                 onClicked: card.remove()
             }
@@ -91,8 +91,8 @@ Rectangle {
             visible: card.videoPlugin
             Layout.fillWidth: true
             text: card.spec.params && card.spec.params.length >= 0 && card.spec.id
-                  ? "A plug-in: it works on the clip's own picture, before its colour and our effects."
-                  : "Not available on this Mac: it's passed over until it's installed."
+                  ? qsTr("A plug-in: it works on the clip's own picture, before its colour and our effects.")
+                  : qsTr("Not available on this Mac: it's passed over until it's installed.")
             font: Theme.type.caption
             color: card.spec.id ? Theme.color.textSecondary : Theme.color.warning
             wrapMode: Text.WordWrap
@@ -100,7 +100,7 @@ Rectangle {
         Text {
             visible: card.plugin && card.pluginParams.length === 0
             Layout.fillWidth: true
-            text: "Not available on this Mac: it's passed over until it's installed."
+            text: qsTr("Not available on this Mac: it's passed over until it's installed.")
             font: Theme.type.caption
             color: Theme.color.warning
             wrapMode: Text.WordWrap

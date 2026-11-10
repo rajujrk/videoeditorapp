@@ -1,4 +1,5 @@
 #include "io/Interchange.h"
+#include "model/Translate.h"
 
 #include <algorithm>
 #include <cctype>
@@ -30,27 +31,27 @@ void noteClip(const Clip& clip, const MediaItem* media, bool videoTrack, Notes& 
         ClipVisual visual = clip.visual;
         visual.sphere = plain.sphere;
         if (visual != plain)
-            notes.add("Position, size, crop, opacity and blend modes");
+            notes.add(TVE_TR("core", "Position, size, crop, opacity and blend modes"));
         if (media && media->spherical && clip.visual.sphere != plain.sphere)
-            notes.add("360° reframing");
+            notes.add(TVE_TR("core", "360° reframing"));
         if (!clip.color.isNeutral() || clip.look)
-            notes.add("Colour grades and looks");
+            notes.add(TVE_TR("core", "Colour grades and looks"));
         if (!clip.effects.empty())
-            notes.add("Video effects and plug-ins");
+            notes.add(TVE_TR("core", "Video effects and plug-ins"));
         if (clip.chromaKey.enabled || !clip.masks.empty() || clip.matte != MatteMode::None)
-            notes.add("Keys, masks and mattes");
+            notes.add(TVE_TR("core", "Keys, masks and mattes"));
         if (clip.cutout.enabled || clip.faceMosaic.active() || clip.stabilization.enabled || clip.deflicker.enabled
             || clip.denoise > 0.0 || clip.cursor.shows() || clip.processedVideo)
-            notes.add("Cutouts, covered faces, stabilization, denoise and cursor effects");
+            notes.add(TVE_TR("core", "Cutouts, covered faces, stabilization, denoise and cursor effects"));
     }
     if (clip.gainDb != 0.0f || clip.fadeIn > 0 || clip.fadeOut > 0)
-        notes.add("Clip volume and fades");
+        notes.add(TVE_TR("core", "Clip volume and fades"));
     if (!clip.audioEffects.empty() || clip.enhancedAudio)
-        notes.add("Audio effects and enhanced speech");
+        notes.add(TVE_TR("core", "Audio effects and enhanced speech"));
     if (!clip.keyframes.empty())
-        notes.add("Keyframes");
+        notes.add(TVE_TR("core", "Keyframes"));
     if (!clip.speedRamp.empty())
-        notes.add("Speed ramps (as their average speed)");
+        notes.add(TVE_TR("core", "Speed ramps (as their average speed)"));
 }
 
 Item::Kind kindOf(const Clip& clip)
@@ -100,9 +101,9 @@ Timeline fromProject(const Project& project, const std::string& name, Notes& not
     timeline.height = project.settings.height;
     timeline.markers = project.markers;
     if (isHdr(project.settings.colour))
-        notes.addLine("The project's HDR colour: the other editor's timeline is set up as its own");
+        notes.addLine(TVE_TR("core", "The project's HDR colour: the other editor's timeline is set up as its own"));
     if (project.settings.spherical)
-        notes.addLine("The 360° project setting");
+        notes.addLine(TVE_TR("core", "The 360° project setting"));
 
     std::vector<Track> video, audio;
     int videoCount = 0, audioCount = 0;
@@ -115,26 +116,26 @@ Timeline fromProject(const Project& project, const std::string& name, Notes& not
                                                      : "Audio " + std::to_string(++audioCount));
         track.enabled = !source.hidden && !source.muted;
         if (source.gainDb != 0.0f || source.pan != 0.0f || !source.audioEffects.empty())
-            notes.addLine("Track volume, balance and effects");
+            notes.addLine(TVE_TR("core", "Track volume, balance and effects"));
         if (source.locked || source.solo)
-            notes.addLine("Locked and soloed tracks (they come unlocked, not soloed)");
+            notes.addLine(TVE_TR("core", "Locked and soloed tracks (they come unlocked, not soloed)"));
         for (const Clip& clip : source.clips) {
             const MediaItem* media = project.findMedia(clip.mediaId);
             if (clip.drawing) {
-                notes.add("Drawings (left as space)");
+                notes.add(TVE_TR("core", "Drawings (left as space)"));
                 continue;
             }
             if (clip.adjustment) {
-                notes.add("Adjustment layers (left as space)");
+                notes.add(TVE_TR("core", "Adjustment layers (left as space)"));
                 continue;
             }
             if (clip.compound()) {
-                notes.add("Compound clips (left as space)");
+                notes.add(TVE_TR("core", "Compound clips (left as space)"));
                 continue;
             }
             if (!clip.text && (!media || media->lottie)) {
                 if (media && media->lottie)
-                    notes.add("Stickers (left as space)");
+                    notes.add(TVE_TR("core", "Stickers (left as space)"));
                 continue;
             }
             Item item;
@@ -144,7 +145,7 @@ Timeline fromProject(const Project& project, const std::string& name, Notes& not
             if (item.kind == Item::Kind::Title) {
                 item.text = clip.text->text;
                 item.name = "Title";
-                notes.add("Titles' look and animation (they come as placeholders with their text)");
+                notes.add(TVE_TR("core", "Titles' look and animation (they come as placeholders with their text)"));
             } else {
                 item.path = media->path;
                 item.name = fileName(media->path);
@@ -172,7 +173,7 @@ Timeline fromProject(const Project& project, const std::string& name, Notes& not
                 case TransitionAlignment::StartsAtCut: transition.after = t.duration; break;
                 }
                 if (t.transitionId != kDissolve)
-                    notes.add("Transitions other than cross dissolves (as cross dissolves)");
+                    notes.add(TVE_TR("core", "Transitions other than cross dissolves (as cross dissolves)"));
                 item.transitionIn = transition;
             }
             noteClip(clip, media, isVideo, notes);
@@ -253,7 +254,7 @@ Project toProject(const Timeline& timeline, Notes& notes)
             if (item.kind == Item::Kind::Gap || item.duration <= 0)
                 continue;
             if (item.start < end) {
-                notes.add("Overlapping clips on one track (the later one left out)");
+                notes.add(TVE_TR("core", "Overlapping clips on one track (the later one left out)"));
                 continue;
             }
             Clip clip;
@@ -262,21 +263,21 @@ Project toProject(const Timeline& timeline, Notes& notes)
             clip.duration = item.duration;
             if (item.kind == Item::Kind::Title) {
                 if (source.audio) {
-                    notes.add("Titles on audio tracks (left out)");
+                    notes.add(TVE_TR("core", "Titles on audio tracks (left out)"));
                     continue;
                 }
                 clip.text = ClipText{};
                 clip.text->text = item.text.empty() ? "Title" : item.text;
             } else {
                 if (item.path.empty()) {
-                    notes.add("Clips without a media file (left out)");
+                    notes.add(TVE_TR("core", "Clips without a media file (left out)"));
                     continue;
                 }
                 clip.mediaId = mediaFor(item);
                 clip.sourceIn = std::max<Ticks>(item.sourceIn, 0);
                 double speed = std::abs(item.speed);
                 if (!item.freeze && (speed < 0.05 || speed > 100.0)) {
-                    notes.add("Speeds outside 5%–10,000% (kept at the nearest)");
+                    notes.add(TVE_TR("core", "Speeds outside 5%–10,000% (kept at the nearest)"));
                     speed = std::clamp(speed, 0.05, 100.0);
                 }
                 clip.speed = item.freeze ? 1.0 : speed;
@@ -288,7 +289,7 @@ Project toProject(const Timeline& timeline, Notes& notes)
             if (item.transitionIn) {
                 const Transition& t = *item.transitionIn;
                 if (!previous || previous->end() != clip.start) {
-                    notes.add("Transitions not between two touching clips (left out)");
+                    notes.add(TVE_TR("core", "Transitions not between two touching clips (left out)"));
                 } else {
                     ClipTransition transition;
                     transition.transitionId = kDissolve;
@@ -297,9 +298,9 @@ Project toProject(const Timeline& timeline, Notes& notes)
                                          : t.after == 0  ? TransitionAlignment::EndsAtCut
                                                          : TransitionAlignment::Center;
                     if (t.before > 0 && t.after > 0 && std::llabs(t.before - t.after) > kTicksPerSecond / 100)
-                        notes.add("Off-centre transitions (centred on the cut)");
+                        notes.add(TVE_TR("core", "Off-centre transitions (centred on the cut)"));
                     if (t.kind != "dissolve")
-                        notes.add("Transitions other than cross dissolves (as cross dissolves)");
+                        notes.add(TVE_TR("core", "Transitions other than cross dissolves (as cross dissolves)"));
                     clip.transitionIn = transition;
                 }
             }
