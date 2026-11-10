@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
+import TechieVideoEditor.Player
 
 // Start screen: pick a canvas shape for a new project, or drop media to start one.
 Rectangle {
@@ -16,11 +17,11 @@ Rectangle {
     color: Theme.color.canvas
 
     readonly property var ratios: [
-        { name: "Landscape", ratio: "16:9", w: 1920, h: 1080 },
-        { name: "Vertical", ratio: "9:16", w: 1080, h: 1920 },
-        { name: "Square", ratio: "1:1", w: 1080, h: 1080 },
-        { name: "Standard", ratio: "4:3", w: 1440, h: 1080 },
-        { name: "Cinema", ratio: "21:9", w: 2560, h: 1080 }
+        { name: qsTr("Landscape"), ratio: "16:9", w: 1920, h: 1080 },
+        { name: qsTr("Vertical"), ratio: "9:16", w: 1080, h: 1920 },
+        { name: qsTr("Square"), ratio: "1:1", w: 1080, h: 1080 },
+        { name: qsTr("Standard"), ratio: "4:3", w: 1440, h: 1080 },
+        { name: qsTr("Cinema"), ratio: "21:9", w: 2560, h: 1080 }
     ]
 
     RowLayout {
@@ -50,7 +51,7 @@ Rectangle {
                         Icon { anchors.centerIn: parent; name: "play"; size: 14; color: Theme.color.textOnAccent }
                     }
                     Text {
-                        text: "TechieVideoEditor"
+                        text: qsTr("TechieVideoEditor")
                         font: Theme.type.heading
                         color: Theme.color.textPrimary
                     }
@@ -58,10 +59,10 @@ Rectangle {
 
                 Repeater {
                     model: [
-                        { icon: "home", label: "Home", ready: true },
-                        { icon: "folder", label: "Projects", ready: false },
-                        { icon: "templates", label: "Templates", ready: false },
-                        { icon: "record", label: "Recordings", ready: false }
+                        { icon: "home", label: qsTr("Home"), ready: true },
+                        { icon: "folder", label: qsTr("Projects"), ready: false },
+                        { icon: "templates", label: qsTr("Templates"), ready: false },
+                        { icon: "record", label: qsTr("Recordings"), ready: false }
                     ]
                     delegate: Rectangle {
                         required property var modelData
@@ -94,10 +95,27 @@ Rectangle {
 
                 Item { Layout.fillHeight: true }
 
+                // The app's language: this Mac's, or one chosen here (switches at once).
+                Text {
+                    text: qsTr("Language")
+                    font: Theme.type.label
+                    color: Theme.color.textSecondary
+                }
+                ComboBox {
+                    objectName: "languagePicker"
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: Theme.space.s
+                    model: Language.languages
+                    textRole: "label"
+                    valueRole: "id"
+                    currentIndex: Math.max(0, Language.languages.findIndex((l) => l.id === Language.language))
+                    onActivated: Language.language = currentValue
+                }
+
                 IconButton {
                     objectName: "themeToggle"
                     iconName: Theme.dark ? "sun" : "moon"
-                    tip: Theme.dark ? "Light theme" : "Dark theme"
+                    tip: Theme.dark ? qsTr("Light theme") : qsTr("Dark theme")
                     onClicked: Theme.dark = !Theme.dark
                 }
             }
@@ -120,7 +138,7 @@ Rectangle {
                 spacing: Theme.space.xl
 
                 Text {
-                    text: "Start creating"
+                    text: qsTr("Start creating")
                     font: Theme.type.display
                     color: Theme.color.textPrimary
                 }
@@ -134,10 +152,10 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: Theme.space.s
 
-                    Text { text: "Unsaved work"; font: Theme.type.title; color: Theme.color.textPrimary }
+                    Text { text: qsTr("Unsaved work"); font: Theme.type.title; color: Theme.color.textPrimary }
                     Text {
                         Layout.fillWidth: true
-                        text: "TechieVideoEditor kept these changes when it last closed without saving."
+                        text: qsTr("TechieVideoEditor kept these changes when it last closed without saving.")
                         font: Theme.type.label
                         color: Theme.color.textSecondary
                         wrapMode: Text.WordWrap
@@ -171,9 +189,8 @@ Rectangle {
                                         Layout.fillWidth: true
                                     }
                                     Text {
-                                        text: "Last saved automatically "
-                                              + new Date(modelData.savedAt).toLocaleString(Qt.locale(), Locale.ShortFormat)
-                                              + " · " + modelData.clipCount + (modelData.clipCount === 1 ? " clip" : " clips")
+                                        text: (modelData.clipCount === 1 ? qsTr("Last saved automatically %1 · 1 clip").arg(Fmt.dateTime(modelData.savedAt))
+                                               : qsTr("Last saved automatically %1 · %2 clips").arg(Fmt.dateTime(modelData.savedAt)).arg(Fmt.num(modelData.clipCount)))
                                               + (modelData.originalPath ? " · " + modelData.originalPath : "")
                                         font: Theme.type.label
                                         color: Theme.color.textSecondary
@@ -183,13 +200,13 @@ Rectangle {
                                 }
                                 TextButton {
                                     objectName: "discardRecovery:" + modelData.id
-                                    text: "Discard"
+                                    text: qsTr("Discard")
                                     variant: "ghost"
                                     onClicked: home.project.discardRecovery(modelData.id)
                                 }
                                 TextButton {
                                     objectName: "recover:" + modelData.id
-                                    text: "Recover"
+                                    text: qsTr("Recover")
                                     variant: "primary"
                                     onClicked: home.recoverRequested(modelData.id)
                                 }
@@ -201,7 +218,7 @@ Rectangle {
                 // New project: one card per canvas shape
                 ColumnLayout {
                     spacing: Theme.space.m
-                    Text { text: "New project"; font: Theme.type.title; color: Theme.color.textPrimary }
+                    Text { objectName: "newProjectHeading"; text: qsTr("New project"); font: Theme.type.title; color: Theme.color.textPrimary }
 
                     Flow {
                         Layout.fillWidth: true
@@ -263,17 +280,17 @@ Rectangle {
                 // Quick actions
                 RowLayout {
                     spacing: Theme.space.s
-                    TextButton { objectName: "openProject"; text: "Open project…"; iconName: "folder"
-                                 tip: "A project, or a timeline from another editor (OpenTimelineIO, Final Cut Pro XML)"
+                    TextButton { objectName: "openProject"; text: qsTr("Open project…"); iconName: "folder"
+                                 tip: qsTr("A project, or a timeline from another editor (OpenTimelineIO, Final Cut Pro XML)")
                                  onClicked: home.openRequested() }
-                    TextButton { text: "Record screen"; iconName: "record"; enabled: false; tip: "Recording arrives in Phase 4" }
-                    TextButton { text: "Instant mode"; iconName: "effects"; enabled: false; tip: "Instant mode arrives in Phase 4" }
+                    TextButton { text: qsTr("Record screen"); iconName: "record"; enabled: false; tip: qsTr("Recording arrives in Phase 4") }
+                    TextButton { text: qsTr("Instant mode"); iconName: "effects"; enabled: false; tip: qsTr("Instant mode arrives in Phase 4") }
                 }
 
                 // Recent projects (empty state until projects are saved in Phase 1)
                 ColumnLayout {
                     spacing: Theme.space.m
-                    Text { text: "Recent projects"; font: Theme.type.title; color: Theme.color.textPrimary }
+                    Text { text: qsTr("Recent projects"); font: Theme.type.title; color: Theme.color.textPrimary }
 
                     Rectangle {
                         Layout.fillWidth: true
@@ -288,13 +305,13 @@ Rectangle {
                             Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "import"; size: 28 }
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: "Recent projects appear here"
+                                text: qsTr("Recent projects appear here")
                                 font: Theme.type.heading
                                 color: Theme.color.textPrimary
                             }
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: "Drop a video here to start a project with it"
+                                text: qsTr("Drop a video here to start a project with it")
                                 font: Theme.type.label
                                 color: Theme.color.textSecondary
                             }

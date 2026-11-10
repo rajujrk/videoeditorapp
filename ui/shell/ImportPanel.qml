@@ -21,9 +21,9 @@ Popup {
     readonly property int chosenCount: Object.keys(chosen).length
 
     readonly property var sources: [
-        { id: "photos", label: "Photos", noun: "album" },
-        { id: "music", label: "Music", noun: "playlist" },
-        { id: "devices", label: "Devices", noun: "device" }
+        { id: "photos", label: qsTr("Photos"), noun: "album" },
+        { id: "music", label: qsTr("Music"), noun: "playlist" },
+        { id: "devices", label: qsTr("Devices"), noun: "device" }
     ]
 
     function show(name) {
@@ -96,7 +96,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.space.m
-            Text { text: "Import from"; font: Theme.type.title; color: Theme.color.textPrimary }
+            Text { text: qsTr("Import from"); font: Theme.type.title; color: Theme.color.textPrimary }
             Row {
                 spacing: Theme.space.xxs
                 Repeater {
@@ -132,7 +132,7 @@ Popup {
             IconButton {
                 objectName: "closeImport"
                 iconName: "close"
-                tip: "Close"
+                tip: qsTr("Close")
                 enabled: !panel.imports.fetching
                 onClicked: panel.close()
             }
@@ -151,17 +151,17 @@ Popup {
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
                 text: panel.access === "denied"
-                      ? "TechieVideoEditor isn't allowed to read your " + (panel.source === "music" ? "Music" : "Photos")
-                        + " library. Allow it in System Settings › Privacy & Security."
-                      : "To import from your " + (panel.source === "music" ? "Music" : "Photos")
-                        + " library, allow TechieVideoEditor to read it. Only what you choose is imported."
+                      ? (panel.source === "music" ? qsTr("TechieVideoEditor isn't allowed to read your Music library. Allow it in System Settings › Privacy & Security.")
+                                                  : qsTr("TechieVideoEditor isn't allowed to read your Photos library. Allow it in System Settings › Privacy & Security."))
+                      : (panel.source === "music" ? qsTr("To import from your Music library, allow TechieVideoEditor to read it. Only what you choose is imported.")
+                                                  : qsTr("To import from your Photos library, allow TechieVideoEditor to read it. Only what you choose is imported."))
                 font: Theme.type.body
                 color: Theme.color.textSecondary
             }
             TextButton {
                 objectName: "allowImportAccess"
                 Layout.alignment: Qt.AlignHCenter
-                text: panel.access === "denied" ? "Open System Settings" : "Allow access"
+                text: panel.access === "denied" ? qsTr("Open System Settings") : qsTr("Allow access")
                 variant: "primary"
                 onClicked: panel.access === "denied" ? panel.imports.openPrivacySettings(panel.source)
                                                      : panel.imports.requestAccess(panel.source)
@@ -221,8 +221,8 @@ Popup {
                     anchors.fill: parent
                     anchors.margins: Theme.space.s
                     visible: collectionList.count === 0
-                    text: panel.source === "devices" ? "Connect an iPhone, a camera or a memory card"
-                                                     : "Nothing here yet"
+                    text: panel.source === "devices" ? qsTr("Connect an iPhone, a camera or a memory card")
+                                                     : qsTr("Nothing here yet")
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                     wrapMode: Text.WordWrap
@@ -352,7 +352,7 @@ Popup {
                 Text {
                     anchors.centerIn: parent
                     visible: itemGrid.count === 0 && collectionList.count > 0
-                    text: "No photos, videos or songs here"
+                    text: qsTr("No photos, videos or songs here")
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                 }
@@ -366,7 +366,7 @@ Popup {
             spacing: Theme.space.s
             TextButton {
                 objectName: "chooseAllImports"
-                text: panel.chosenCount === panel.items.length && panel.items.length > 0 ? "Choose none" : "Choose all"
+                text: panel.chosenCount === panel.items.length && panel.items.length > 0 ? qsTr("Choose none") : qsTr("Choose all")
                 variant: "ghost"
                 enabled: panel.items.length > 0 && !panel.imports.fetching
                 onClicked: panel.chosenCount === panel.items.length ? panel.chosen = ({}) : panel.chooseAll()
@@ -375,9 +375,9 @@ Popup {
                 objectName: "importStatus"
                 Layout.fillWidth: true
                 text: panel.imports.fetching
-                      ? "Importing " + Math.min(panel.imports.fetchedCount + 1, panel.imports.fetchTotal) + " of " + panel.imports.fetchTotal + "…"
-                      : panel.chosenCount === 0 ? "Choose what to import"
-                      : panel.chosenCount + (panel.chosenCount === 1 ? " item" : " items") + " chosen"
+                      ? qsTr("Importing %1 of %2…").arg(Fmt.num(Math.min(panel.imports.fetchedCount + 1, panel.imports.fetchTotal))).arg(Fmt.num(panel.imports.fetchTotal))
+                      : panel.chosenCount === 0 ? qsTr("Choose what to import")
+                      : panel.chosenCount === 1 ? qsTr("1 item chosen") : qsTr("%1 items chosen").arg(Fmt.num(panel.chosenCount))
                 font: Theme.type.label
                 color: Theme.color.textSecondary
                 elide: Text.ElideRight
@@ -391,7 +391,7 @@ Popup {
             }
             TextButton {
                 objectName: "importChosen"
-                text: panel.source === "music" ? "Add to media" : "Import"
+                text: panel.source === "music" ? qsTr("Add to media") : qsTr("Import")
                 variant: "primary"
                 enabled: panel.chosenCount > 0 && !panel.imports.fetching
                 onClicked: panel.importChosen()

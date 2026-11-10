@@ -1,5 +1,6 @@
 #include "Stickers.h"
 
+#include "Language.h"
 #include "PackStore.h"
 
 #include <QCache>
@@ -31,7 +32,7 @@ void readStickers(const QString& folder, const QString& prefix, const QString& p
         if (name.isEmpty() || name.contains(QLatin1Char('/')) || name.contains(QLatin1Char('\\')) || name.startsWith(QLatin1Char('.')))
             continue;
         into << QVariantMap{{QStringLiteral("id"), prefix + o.value(QStringLiteral("id")).toString()},
-                            {QStringLiteral("title"), o.value(QStringLiteral("title")).toString()},
+                            {QStringLiteral("title"), catalogueText(o.value(QStringLiteral("title")).toString())},
                             {QStringLiteral("category"), o.value(QStringLiteral("category")).toString()},
                             {QStringLiteral("path"), folder + name},
                             {QStringLiteral("pack"), pack}};

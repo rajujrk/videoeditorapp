@@ -58,35 +58,35 @@ Rectangle {
             Layout.rightMargin: Theme.space.m
             spacing: Theme.space.xxs
 
-            IconButton { iconName: "select"; tip: "Select (V)"; checkable: true; checked: true }
+            IconButton { iconName: "select"; tip: qsTr("Select (V)"); checkable: true; checked: true }
             IconButton {
                 objectName: "splitButton"
                 iconName: "split"
-                tip: "Split at playhead" + KeyMap.hints["split"]
+                tip: qsTr("Split at playhead") + KeyMap.hints["split"]
                 enabled: timeline.project.duration > 0
                 onClicked: timeline.project.splitAtPlayhead()
             }
             IconButton {
                 objectName: "deleteButton"
                 iconName: "delete"
-                tip: timeline.project.selectedTransition > 0 ? "Remove selected transition" + KeyMap.hints["delete"]
-                                                             : "Delete selected clip" + KeyMap.hints["delete"] + " — closes the gap on the main track"
+                tip: timeline.project.selectedTransition > 0 ? qsTr("Remove selected transition") + KeyMap.hints["delete"]
+                                                             : qsTr("Delete selected clip%1 — closes the gap on the main track").arg(KeyMap.hints["delete"])
                 enabled: timeline.project.selectedClip > 0 || timeline.project.selectedTransition > 0
                 onClicked: timeline.project.selectedTransition > 0
                            ? timeline.project.removeTransition(timeline.project.selectedTransition)
                            : timeline.project.deleteClip(timeline.project.selectedClip)
             }
             Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
-            IconButton { iconName: "magnet"; tip: "Main track closes gaps on delete"; checkable: true; checked: true; enabled: false }
-            IconButton { id: snapToggle; iconName: "snap"; tip: "Snapping"; checkable: true; checked: true }
+            IconButton { iconName: "magnet"; tip: qsTr("Main track closes gaps on delete"); checkable: true; checked: true; enabled: false }
+            IconButton { id: snapToggle; iconName: "snap"; tip: qsTr("Snapping"); checkable: true; checked: true }
             IconButton {
                 objectName: "keyframeToolButton"
                 readonly property var info: timeline.project.selectedClipInfo
                 readonly property bool keyHere: Object.values(info.keyframeStates || {}).indexOf("key") >= 0
                 iconName: "keyframe"
-                tip: timeline.project.selectedClip <= 0 ? "Select a clip to animate it"
-                   : keyHere ? "Remove the selected clip's keyframe at the playhead"
-                             : "Add a keyframe to the selected clip at the playhead"
+                tip: timeline.project.selectedClip <= 0 ? qsTr("Select a clip to animate it")
+                   : keyHere ? qsTr("Remove the selected clip's keyframe at the playhead")
+                             : qsTr("Add a keyframe to the selected clip at the playhead")
                 enabled: timeline.project.selectedClip > 0
                 checked: keyHere
                 onClicked: keyHere ? timeline.project.removeKeyframes(info.id)
@@ -96,8 +96,8 @@ Rectangle {
                 objectName: "drawButton"
                 iconName: "draw"
                 tip: timeline.project.selectedClipInfo.isDrawing === true
-                     ? "Draw more on the selected drawing — brush, lines, arrows and shapes"
-                     : "Draw on the picture — brush, lines, arrows and shapes, as a drawing at the playhead"
+                     ? qsTr("Draw more on the selected drawing — brush, lines, arrows and shapes")
+                     : qsTr("Draw on the picture — brush, lines, arrows and shapes, as a drawing at the playhead")
                 checkable: true
                 checked: timeline.project.drawingMode
                 onClicked: timeline.project.drawingMode = !timeline.project.drawingMode
@@ -106,15 +106,15 @@ Rectangle {
             IconButton {
                 objectName: "markerButton"
                 iconName: "marker"
-                tip: "Add a marker at the playhead" + KeyMap.hints["addMarker"] + " — click a marker to edit it"
+                tip: qsTr("Add a marker at the playhead%1 — click a marker to edit it").arg(KeyMap.hints["addMarker"])
                 onClicked: timeline.project.addMarker()
             }
             IconButton {
                 objectName: "groupButton"
                 readonly property bool grouped: (timeline.project.selectedClipInfo.groupId || 0) > 0
                 iconName: "group"
-                tip: grouped ? "Ungroup" + KeyMap.hints["ungroup"]
-                             : "Group the selected clips" + KeyMap.hints["group"] + " — ⇧-click clips to select several"
+                tip: grouped ? qsTr("Ungroup") + KeyMap.hints["ungroup"]
+                             : qsTr("Group the selected clips%1 — ⇧-click clips to select several").arg(KeyMap.hints["group"])
                 enabled: grouped || timeline.project.selectedClips.length >= 2
                 onClicked: grouped ? timeline.project.ungroupSelected() : timeline.project.groupSelected()
             }
@@ -122,7 +122,7 @@ Rectangle {
                 objectName: "compoundButton"
                 readonly property bool compound: timeline.project.selectedClipInfo.isCompound === true
                 iconName: "compound"
-                tip: (compound ? "Break apart the compound clip" : "Make the selected clips one compound clip")
+                tip: (compound ? qsTr("Break apart the compound clip") : qsTr("Make the selected clips one compound clip"))
                      + KeyMap.hints["compound"]
                 enabled: timeline.project.selectedClips.length > 0
                 onClicked: compound ? timeline.project.breakCompound(timeline.project.selectedClip)
@@ -133,7 +133,7 @@ Rectangle {
                 id: voiceOverButton
                 objectName: "voiceOverButton"
                 iconName: "mic"
-                tip: "Record voice-over"
+                tip: qsTr("Record voice-over")
                 checkable: true
                 checked: voiceOver.visible
                 onClicked: voiceOver.visible ? voiceOver.close() : voiceOver.open()
@@ -149,7 +149,7 @@ Rectangle {
             IconButton {
                 objectName: "screenRecordButton"
                 iconName: "screen-record"
-                tip: "Record screen and camera"
+                tip: qsTr("Record screen and camera")
                 checkable: true
                 checked: recordPanel.visible
                 onClicked: recordPanel.visible ? recordPanel.close() : recordPanel.open()
@@ -166,7 +166,7 @@ Rectangle {
                 id: mixerButton
                 objectName: "mixerButton"
                 iconName: "mixer"
-                tip: "Mixer: track volume, balance, solo and loudness meters"
+                tip: qsTr("Mixer: track volume, balance, solo and loudness meters")
                 checkable: true
                 checked: mixerPanel.visible
                 onClicked: mixerPanel.visible ? mixerPanel.close() : mixerPanel.open()
@@ -187,7 +187,7 @@ Rectangle {
                 color: Theme.color.textSecondary
                 Layout.rightMargin: Theme.space.m
             }
-            IconButton { iconName: "zoom-out"; tip: "Zoom out"; onClicked: zoom.value = Math.max(zoom.from, zoom.value / 1.5) }
+            IconButton { iconName: "zoom-out"; tip: qsTr("Zoom out"); onClicked: zoom.value = Math.max(zoom.from, zoom.value / 1.5) }
             Slider {
                 id: zoom
                 from: 8
@@ -196,7 +196,7 @@ Rectangle {
                 implicitWidth: 120
                 onValueChanged: timeline.pixelsPerSecond = value
             }
-            IconButton { iconName: "zoom-in"; tip: "Zoom in"; onClicked: zoom.value = Math.min(zoom.to, zoom.value * 1.5) }
+            IconButton { iconName: "zoom-in"; tip: qsTr("Zoom in"); onClicked: zoom.value = Math.min(zoom.to, zoom.value * 1.5) }
         }
 
         Divider { Layout.fillWidth: true }
@@ -250,7 +250,7 @@ Rectangle {
                             IconButton {
                                 objectName: "lock:" + track.name
                                 iconName: "lock"
-                                tip: track.locked ? "Unlock track" : "Lock track"
+                                tip: track.locked ? qsTr("Unlock track") : qsTr("Lock track")
                                 buttonSize: 22
                                 checkable: true
                                 checked: track.locked
@@ -260,7 +260,7 @@ Rectangle {
                                 visible: track.kind === "video"
                                 objectName: "hide:" + track.name
                                 iconName: "eye"
-                                tip: track.hidden ? "Show track" : "Hide track"
+                                tip: track.hidden ? qsTr("Show track") : qsTr("Hide track")
                                 buttonSize: 22
                                 checkable: true
                                 checked: track.hidden
@@ -269,7 +269,7 @@ Rectangle {
                             IconButton {
                                 objectName: "mute:" + track.name
                                 iconName: "volume"
-                                tip: track.muted ? "Unmute track" : "Mute track"
+                                tip: track.muted ? qsTr("Unmute track") : qsTr("Mute track")
                                 buttonSize: 22
                                 checkable: true
                                 checked: track.muted
@@ -488,7 +488,7 @@ Rectangle {
                             x: Theme.space.xs
                             y: Theme.space.xs
                             visible: parent.width > implicitWidth + Theme.space.s
-                            text: "● REC"
+                            text: qsTr("● REC")
                             font: Theme.type.caption
                             color: Theme.color.danger
                         }
@@ -609,8 +609,8 @@ Rectangle {
         ToolTip {
             visible: flagMouse.containsMouse && !flagMouse.pressed && !editor.visible
             delay: 400
-            text: (flag.marker.chapter ? "Chapter · " : "") + (flag.marker.note || "Marker") + " · "
-                  + timeline.project.timecode(flag.marker.time)
+            text: (flag.marker.chapter ? qsTr("Chapter · %1 · %2") : qsTr("%1 · %2"))
+                  .arg(flag.marker.note || qsTr("Marker")).arg(timeline.project.timecode(flag.marker.time))
         }
 
         MouseArea {
@@ -686,7 +686,7 @@ Rectangle {
             spacing: Theme.space.m
 
             Text {
-                text: editor.current ? "Marker at " + timeline.project.timecode(editor.current.time) : ""
+                text: editor.current ? qsTr("Marker at %1").arg(timeline.project.timecode(editor.current.time)) : ""
                 font: Theme.type.label
                 color: Theme.color.textPrimary
             }
@@ -694,7 +694,7 @@ Rectangle {
                 id: noteField
                 objectName: "markerNote"
                 Layout.fillWidth: true
-                placeholderText: "Note (the chapter's title)"
+                placeholderText: qsTr("Note (the chapter's title)")
                 maximumLength: 500
                 onEditingFinished: if (editor.current && text !== editor.current.note)
                                        timeline.project.setMarker(editor.current.id, { note: text })
@@ -722,7 +722,7 @@ Rectangle {
             }
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "Chapter in exports"; font: Theme.type.body; color: Theme.color.textPrimary; Layout.fillWidth: true }
+                Text { text: qsTr("Chapter in exports"); font: Theme.type.body; color: Theme.color.textPrimary; Layout.fillWidth: true }
                 ToggleSwitch {
                     objectName: "markerChapter"
                     checked: editor.current ? editor.current.chapter : false
@@ -731,7 +731,7 @@ Rectangle {
             }
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "Range (s)"; font: Theme.type.body; color: Theme.color.textPrimary; Layout.fillWidth: true }
+                Text { text: qsTr("Range (s)"); font: Theme.type.body; color: Theme.color.textPrimary; Layout.fillWidth: true }
                 TextField {
                     objectName: "markerDuration"
                     implicitWidth: 72
@@ -744,7 +744,7 @@ Rectangle {
                 Layout.fillWidth: true
                 TextButton {
                     objectName: "removeMarker"
-                    text: "Remove"
+                    text: qsTr("Remove")
                     variant: "ghost"
                     onClicked: {
                         const id = editor.current.id
@@ -754,7 +754,7 @@ Rectangle {
                     }
                 }
                 Item { Layout.fillWidth: true }
-                TextButton { text: "Done"; variant: "primary"; onClicked: editor.close() }
+                TextButton { text: qsTr("Done"); variant: "primary"; onClicked: editor.close() }
             }
         }
     }
@@ -777,7 +777,7 @@ Rectangle {
         ToolTip {
             visible: marker.hovered
             delay: 500
-            text: marker.transition.title + " · " + marker.transition.duration.toFixed(1) + " s"
+            text: marker.transition.title + " · " + Fmt.seconds(marker.transition.duration)
         }
         background: Rectangle {
             radius: Theme.radius.s
@@ -933,13 +933,13 @@ Rectangle {
                     x: Theme.space.s - 3
                     width: parent.width - Theme.space.s
                     // Badges first so a short clip still shows them.
-                    text: (item.clip.missing ? "Missing · " : "")
-                          + (item.clip.isTitle && !item.track.captions ? "Title · " : "")
+                    text: (item.clip.missing ? qsTr("Missing · ") : "")
+                          + (item.clip.isTitle && !item.track.captions ? qsTr("Title · ") : "")
                           + (item.clip.lookTitle ? item.clip.lookTitle + " · " : "")
-                          + (item.clip.freeze ? "Still · " : "")
-                          + (item.clip.speedRamp && item.clip.speedRamp.length > 0 ? "Ramp · "
-                             : !item.clip.freeze && item.clip.speed !== 1 ? Number(item.clip.speed.toFixed(2)) + "× · " : "")
-                          + (item.clip.reversed ? "Reverse · " : "")
+                          + (item.clip.freeze ? qsTr("Still · ") : "")
+                          + (item.clip.speedRamp && item.clip.speedRamp.length > 0 ? qsTr("Ramp · ")
+                             : !item.clip.freeze && item.clip.speed !== 1 ? Fmt.brief(item.clip.speed, 2) + "× · " : "")
+                          + (item.clip.reversed ? qsTr("Reverse · ") : "")
                           + item.clip.label
                     font: Theme.type.caption
                     color: "#FFFFFF"
@@ -965,7 +965,7 @@ Rectangle {
                     Icon { name: "compound"; size: Theme.size.iconSmall; color: "#FFFFFF" }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "Compound clip"
+                        text: qsTr("Compound clip")
                         font: Theme.type.caption
                         color: "#FFFFFF"
                     }

@@ -19,6 +19,9 @@ qt_add_qml_module(tve_player
         ProjectController.cpp
         Copilot.h
         Copilot.cpp
+        Language.h
+        Language.cpp
+        CatalogueStrings.cpp
         VoiceCloning.h
         VoiceCloning.cpp
         KeyMap.h
@@ -108,6 +111,15 @@ qt_add_resources(tve_player "tve_player_data"
     FILES
         export_presets.json
 )
+
+# The translations (i18n/*.ts, filled by the update_translations target), compiled and
+# built in at :/i18n/.
+find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
+qt_add_lrelease(
+    TS_FILES ${CMAKE_SOURCE_DIR}/i18n/tve_ta.ts
+    LRELEASE_TARGET tve_translations
+    QM_FILES_OUTPUT_VARIABLE TVE_QM_FILES)
+qt_add_resources(tve_player "tve_translations" PREFIX "/i18n" BASE ${CMAKE_CURRENT_BINARY_DIR} FILES ${TVE_QM_FILES})
 
 target_include_directories(tve_player PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # (QML type registration includes headers by their bare name.)

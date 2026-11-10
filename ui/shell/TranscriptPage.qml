@@ -85,8 +85,8 @@ ScrollView {
             spacing: Theme.space.s
             Text {
                 Layout.fillWidth: true
-                text: page.model ? "Transcribe the clips to edit them by their words: delete words here and they are cut from the video."
-                                 : "Download a speech model in the Captions tab first; then transcribe the clips here and edit them by their words."
+                text: page.model ? qsTr("Transcribe the clips to edit them by their words: delete words here and they are cut from the video.")
+                                 : qsTr("Download a speech model in the Captions tab first; then transcribe the clips here and edit them by their words.")
                 font: Theme.type.body
                 color: Theme.color.textSecondary
                 wrapMode: Text.WordWrap
@@ -95,7 +95,7 @@ ScrollView {
                 objectName: "transcribe"
                 visible: page.model !== undefined
                 Layout.fillWidth: true
-                text: "Transcribe"
+                text: qsTr("Transcribe")
                 variant: "primary"
                 enabled: !page.project.analyzing
                 onClicked: page.project.transcribe({ model: page.model.id })
@@ -112,10 +112,10 @@ ScrollView {
             objectName: "writeWithAi"
             visible: page.words.length > 0 || page.project.captionCount > 0
             Layout.fillWidth: true
-            text: "Write with AI…"
+            text: qsTr("Write with AI…")
             iconName: "assistant"
             variant: "secondary"
-            tip: "Titles, a description or a clean script from what is said"
+            tip: qsTr("Titles, a description or a clean script from what is said")
             onClicked: writePanel.open()
         }
 
@@ -129,31 +129,31 @@ ScrollView {
                 spacing: Theme.space.xs
                 TextButton {
                     objectName: "deleteWords"
-                    text: page.selected.length > 1 ? "Delete " + page.selected.length + " words" : "Delete word"
+                    text: page.selected.length > 1 ? qsTr("Delete %1 words").arg(Fmt.num(page.selected.length)) : qsTr("Delete word")
                     variant: "primary"
                     enabled: page.selected.length > 0
-                    tip: "Cuts them out of the clips (⌫)"
+                    tip: qsTr("Cuts them out of the clips (⌫)")
                     onClicked: page.project.deleteWords(page.selected)
                 }
                 TextButton {
                     objectName: "shortenPauses"
-                    text: "Shorten pauses"
+                    text: qsTr("Shorten pauses")
                     variant: "secondary"
-                    tip: "Pauses between words longer than the length below become 0.3 s"
+                    tip: qsTr("Pauses between words longer than the length below become 0.3 s")
                     onClicked: page.project.removeTranscriptPauses(page.pauseLimit, 0.15)
                 }
                 TextButton {
                     objectName: "removeFillers"
-                    text: "Remove fillers (" + page.fillerCount + ")"
+                    text: qsTr("Remove fillers (%1)").arg(Fmt.num(page.fillerCount))
                     variant: "secondary"
                     enabled: page.fillerCount > 0
-                    tip: "Cuts every “um”, “uh” and the like"
+                    tip: qsTr("Cuts every “um”, “uh” and the like")
                     onClicked: page.project.removeFillerWords()
                 }
             }
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "Pauses longer than"; font: Theme.type.body; color: Theme.color.textSecondary }
+                Text { text: qsTr("Pauses longer than"); font: Theme.type.body; color: Theme.color.textSecondary }
                 Slider {
                     objectName: "pauseLimit"
                     Layout.fillWidth: true
@@ -163,7 +163,7 @@ ScrollView {
                     value: page.pauseLimit
                     onMoved: page.pauseLimit = value
                 }
-                Text { text: page.pauseLimit.toFixed(1) + " s"; font: Theme.type.mono; color: Theme.color.textPrimary }
+                Text { text: Fmt.seconds(page.pauseLimit); font: Theme.type.mono; color: Theme.color.textPrimary }
             }
         }
 

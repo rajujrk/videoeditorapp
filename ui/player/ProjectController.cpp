@@ -1,5 +1,6 @@
 #include "ProjectController.h"
 
+#include "Language.h"
 #include "VideoView.h"
 #include "audio/AudioOutput.h"
 #include "audio/AudioRecorder.h"
@@ -51,6 +52,8 @@
 #include <QGuiApplication>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QCoreApplication>
+#include <QLocale>
 #include <QRegularExpression>
 #include <QPointer>
 #include <numbers>
@@ -122,6 +125,20 @@ QString fileName(const std::string& path)
 }
 
 // What a media item is called: its file's name, or a built-in sticker's title.
+// A note of what didn't carry over to or from another editor, in the app's language (the
+// core counts them: "Effects (left out) — 3 clips").
+QString noteText(const std::string& note)
+{
+    static const QRegularExpression counted(QStringLiteral("^(.*) — (\\d+) clips?$"));
+    const QRegularExpressionMatch match = counted.match(QString::fromStdString(note));
+    if (!match.hasMatch())
+        return coreText(note);
+    const QString what = coreText(match.captured(1).toStdString());
+    const int count = match.captured(2).toInt();
+    return count == 1 ? QCoreApplication::translate("ProjectController", "%1 — 1 clip").arg(what)
+                      : QCoreApplication::translate("ProjectController", "%1 — %2 clips").arg(what).arg(count);
+}
+
 QString mediaName(const std::string& path)
 {
     const QString title = stickers::titleOf(QString::fromStdString(path));
@@ -166,7 +183,7 @@ std::optional<MediaItem> probeMedia(const std::string& path, QString* error)
             item.duration = sound->info().duration;
     }
     if (!item.hasVideo && !item.hasAudio) {
-        *error = QStringLiteral("Could not import %1: no video or audio found").arg(fileName(path));
+        *error = QCoreApplication::translate("ProjectController", "Could not import %1: no video or audio found").arg(fileName(path));
         return std::nullopt;
     }
     if (item.duration <= 0) {
@@ -295,8 +312,8 @@ QVariantMap transitionMap(const Track& track, const Clip& clip)
     return {
         {QStringLiteral("clipId"), double(clip.id)},
         {QStringLiteral("transitionId"), QString::fromStdString(window->spec->transitionId)},
-        {QStringLiteral("title"), loaded ? QString::fromStdString(loaded->manifest.displayTitle())
-                                         : QStringLiteral("Unknown transition")},
+        {QStringLiteral("title"), loaded ? catalogueText(loaded->manifest.displayTitle())
+                                         : QCoreApplication::translate("ProjectController", "Unknown transition")},
         {QStringLiteral("start"), seconds(window->start)},
         {QStringLiteral("end"), seconds(window->end)},
         {QStringLiteral("cut"), seconds(window->cut)},
@@ -662,7 +679,7 @@ QString lutName(const std::string& path)
         return {};
     for (const LookInfo& look : builtInLooks()) {
         if (look.grade.lutPath == path)
-            return QString::fromStdString(look.title);
+            return catalogueText(look.title);
     }
     return fileName(path);
 }
@@ -808,6 +825,13 @@ ProjectController::ProjectController(QObject* parent)
     m_store = new PackStore(this);
     m_pluginHost = new AudioPluginHost(this);
     connect(m_pluginHost, &AudioPluginHost::edited, this, &ProjectController::pluginEdited);
+    // Names shown from here follow the app's language.
+    connect(Language::instance(), &Language::changed, this, [this] {
+        emit languageChanged();
+        emit selectedClipInfoChanged();
+        emit stickersChanged();
+        emit m_soundLibrary->changed();
+    });
     // Plug-ins being looked at follow the project (undo, removal).
     connect(this, &ProjectController::projectChanged, this,
             [this] { m_pluginHost->sync([this](const QString& key) { return audioEffectAt(key); }); });
@@ -829,7 +853,7 @@ ProjectController::ProjectController(QObject* parent)
         if (!files.isEmpty())
             importMedia(files);
         if (!errors.isEmpty())
-            reportError(QStringLiteral("Some items could not be imported: %1").arg(errors.join(QStringLiteral("; "))));
+            reportError(tr("Some items could not be imported: %1").arg(errors.join(QStringLiteral("; "))));
     });
 
     m_playheadTimer.setInterval(16);
@@ -917,7 +941,7 @@ void ProjectController::setView(VideoView* view)
 
 QString ProjectController::name() const
 {
-    return m_filePath.isEmpty() ? QStringLiteral("Untitled project") : QFileInfo(m_filePath).completeBaseName();
+    return m_filePath.isEmpty() ? tr("Untitled project") : QFileInfo(m_filePath).completeBaseName();
 }
 
 double ProjectController::frameRate() const
@@ -949,7 +973,7 @@ bool ProjectController::setSphericalProject(bool on)
         settings.width = settings.height * 16 / 9;
     }
     m_canvasChosen = true;
-    return apply(std::make_unique<SetProjectSettingsCommand>(settings, on ? "Make 360° Project" : "Make Flat Project"));
+    return apply(std::make_unique<SetProjectSettingsCommand>(settings, on ? TVE_TR("core", "Make 360° Project") : TVE_TR("core", "Make Flat Project")));
 }
 
 void ProjectController::setProjectColour(const QString& colour)
@@ -980,11 +1004,11 @@ QVariantList ProjectController::tracks() const
             const MediaItem* media = m_project.findMedia(clip.mediaId);
             const Sequence* sequence = clip.compound() ? m_project.findSequence(clip.sequenceId) : nullptr;
             const QString label = clip.text      ? QString::fromStdString(clip.text->text).section(QLatin1Char('\n'), 0, 0)
-                                  : clip.adjustment ? QStringLiteral("Adjustment layer")
-                                  : clip.drawing ? QStringLiteral("Drawing")
+                                  : clip.adjustment ? tr("Adjustment layer")
+                                  : clip.drawing ? tr("Drawing")
                                   : sequence       ? QString::fromStdString(sequence->name)
                                   : media          ? mediaName(media->path)
-                                                   : QStringLiteral("Missing media");
+                                                   : tr("Missing media");
             const bool sequenceSound = sequence && std::ranges::any_of(sequence->tracks, [&](const Track& t) {
                 return std::ranges::any_of(t.clips, [&](const Clip& c) {
                     const MediaItem* m = m_project.findMedia(c.mediaId);
@@ -1094,12 +1118,12 @@ QVariantList ProjectController::media() const
 
 QString ProjectController::undoText() const
 {
-    return QString::fromStdString(m_stack->undoLabel());
+    return coreText(m_stack->undoLabel());
 }
 
 QString ProjectController::redoText() const
 {
-    return QString::fromStdString(m_stack->redoLabel());
+    return coreText(m_stack->redoLabel());
 }
 
 bool ProjectController::playing() const
@@ -1190,7 +1214,7 @@ QVariantList ProjectController::overlayTransitions() const
     QVariantList list;
     for (const overlays::Kind& kind : overlays::kinds())
         list << QVariantMap{{QStringLiteral("id"), QString::fromStdString(kind.id)},
-                            {QStringLiteral("title"), QString::fromStdString(kind.title)},
+                            {QStringLiteral("title"), catalogueText(kind.title)},
                             {QStringLiteral("blend"), QString::fromLatin1(kBlendNames[int(kind.blend)])}};
     return list;
 }
@@ -1259,7 +1283,7 @@ bool ProjectController::open(const QUrl& file)
         requestAutoProxies();
         return true;
     } catch (const std::exception& e) {
-        reportError(QStringLiteral("Could not open %1: %2").arg(QFileInfo(path).fileName(), QString::fromUtf8(e.what())));
+        reportError(tr("Could not open %1: %2").arg(QFileInfo(path).fileName(), coreText(e.what())));
         return false;
     }
 }
@@ -1277,14 +1301,14 @@ bool ProjectController::openTimeline(const QUrl& file)
         path += QStringLiteral("/Info.fcpxml"); // a .fcpxmld bundle
     QFile in(path);
     if (!in.open(QIODevice::ReadOnly) || in.size() > 64 * 1024 * 1024) {
-        reportError(QStringLiteral("Cannot read ") + shown);
+        reportError(tr("Cannot read %1").arg(shown));
         return false;
     }
     ImportedTimeline imported;
     try {
         imported = importTimeline(in.readAll().toStdString(), *format, QFileInfo(path).absolutePath().toStdString());
     } catch (const std::exception& e) {
-        reportError(QStringLiteral("Could not open %1: %2").arg(shown, QString::fromUtf8(e.what())));
+        reportError(tr("Could not open %1: %2").arg(shown, coreText(e.what())));
         return false;
     }
     Project& project = imported.project;
@@ -1313,7 +1337,7 @@ bool ProjectController::openTimeline(const QUrl& file)
     requestAutoProxies();
     QStringList notes;
     for (const std::string& note : imported.notes)
-        notes << QString::fromStdString(note);
+        notes << noteText(note);
     emit timelineOpened(notes, shown);
     return true;
 }
@@ -1326,22 +1350,22 @@ QVariantMap ProjectController::exportTimeline(const QUrl& file, const QString& f
                                           : format == QLatin1String("edl")    ? std::optional(InterchangeFormat::Edl)
                                                                               : interchangeFormatOf(path.toStdString());
     if (!kind) {
-        reportError(QStringLiteral("Choose OpenTimelineIO (.otio), Final Cut Pro XML (.fcpxml) or an EDL (.edl)"));
+        reportError(tr("Choose OpenTimelineIO (.otio), Final Cut Pro XML (.fcpxml) or an EDL (.edl)"));
         return {{QStringLiteral("ok"), false}};
     }
     if (m_project.duration() == 0) {
-        reportError(QStringLiteral("Add something to the timeline to export"));
+        reportError(tr("Add something to the timeline to export"));
         return {{QStringLiteral("ok"), false}};
     }
     const ExportedTimeline out = tve::exportTimeline(m_project, *kind, name().toStdString());
     QSaveFile save(path);
     if (!save.open(QIODevice::WriteOnly) || save.write(QByteArray::fromStdString(out.text)) < 0 || !save.commit()) {
-        reportError(QStringLiteral("Cannot write ") + path);
+        reportError(tr("Cannot write %1").arg(path));
         return {{QStringLiteral("ok"), false}};
     }
     QStringList notes;
     for (const std::string& note : out.notes)
-        notes << QString::fromStdString(note);
+        notes << noteText(note);
     return {{QStringLiteral("ok"), true}, {QStringLiteral("notes"), notes}};
 }
 
@@ -1349,7 +1373,7 @@ bool ProjectController::save(const QUrl& file)
 {
     QString path = file.isEmpty() ? m_filePath : (file.isLocalFile() ? file.toLocalFile() : file.toString());
     if (path.isEmpty()) {
-        reportError(QStringLiteral("Choose where to save the project"));
+        reportError(tr("Choose where to save the project"));
         return false;
     }
     if (!path.endsWith(QLatin1String(".tve")))
@@ -1357,7 +1381,7 @@ bool ProjectController::save(const QUrl& file)
     try {
         saveProject(m_project, path.toStdString());
     } catch (const std::exception& e) {
-        reportError(QStringLiteral("Could not save: %1").arg(QString::fromUtf8(e.what())));
+        reportError(tr("Could not save: %1").arg(coreText(e.what())));
         return false;
     }
     m_filePath = path;
@@ -1410,9 +1434,10 @@ QVariantList ProjectController::missingMedia() const
 
 bool ProjectController::relinkMedia(double mediaId, const QUrl& file, bool force)
 {
+    m_relinkDifferent = false;
     const MediaItem* media = m_project.findMedia(toId(mediaId));
     if (!media) {
-        reportError(QStringLiteral("Media not found"));
+        reportError(tr("Media not found"));
         return false;
     }
     const std::string path = (file.isLocalFile() ? file.toLocalFile() : file.toString()).toStdString();
@@ -1428,6 +1453,7 @@ bool ProjectController::relinkMedia(double mediaId, const QUrl& file, bool force
         return false;
     }
     if (!force && !media->fingerprint.empty() && item->fingerprint != media->fingerprint) {
+        m_relinkDifferent = true;
         reportError(QStringLiteral("%1 is not the same file as the one imported").arg(fileName(path)));
         return false;
     }
@@ -1453,7 +1479,7 @@ int ProjectController::relinkFromFolder(const QUrl& folder)
         }
     }
     if (relinked.empty()) {
-        reportError(QStringLiteral("None of the missing files are in %1").arg(QFileInfo(directory).fileName()));
+        reportError(tr("None of the missing files are in %1").arg(QFileInfo(directory).fileName()));
         return 0;
     }
     const int count = int(relinked.size());
@@ -1489,7 +1515,7 @@ bool ProjectController::addClip(double mediaId, double trackId, double start)
 {
     const MediaItem* media = m_project.findMedia(toId(mediaId));
     if (!media) {
-        reportError(QStringLiteral("Media not found"));
+        reportError(tr("Media not found"));
         return false;
     }
     Id target = toId(trackId);
@@ -1506,7 +1532,7 @@ bool ProjectController::addClip(double mediaId, double trackId, double start)
     }
     const Track* track = m_project.findTrack(target);
     if (!track) {
-        reportError(QStringLiteral("Track not found"));
+        reportError(tr("Track not found"));
         return false;
     }
     // An untouched project takes its canvas from the first video clip.
@@ -1570,7 +1596,7 @@ bool ProjectController::moveClip(double clipId, double trackId, double start)
     std::vector<std::unique_ptr<Command>> commands;
     for (const Move& move : moves)
         commands.push_back(std::make_unique<MoveClipCommand>(move.clip, move.track, move.start + delta));
-    return apply(std::make_unique<CompositeCommand>(std::move(commands), "Move Group"));
+    return apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Move Group")));
 }
 
 bool ProjectController::trimClip(double clipId, bool startEdge, double time)
@@ -1596,7 +1622,7 @@ bool ProjectController::splitAtPlayhead()
 {
     const auto clip = clipAtPlayhead();
     if (!clip) {
-        reportError(QStringLiteral("Put the playhead inside a clip to split it"));
+        reportError(tr("Put the playhead inside a clip to split it"));
         return false;
     }
     return apply(std::make_unique<SplitClipCommand>(*clip, ticks(m_playhead)));
@@ -1608,7 +1634,7 @@ bool ProjectController::deleteClip(double clipId)
     Project& project = m_project;
     auto location = project.locateClip(id);
     if (!location) {
-        reportError(QStringLiteral("Select a clip to delete"));
+        reportError(tr("Select a clip to delete"));
         return false;
     }
     const bool ripple = location->track->id == mainTrackId();
@@ -1624,7 +1650,7 @@ bool ProjectController::deleteClip(double clipId)
             const bool onMain = project.locateClip(member)->track->id == mainTrackId();
             commands.push_back(std::make_unique<DeleteClipCommand>(member, onMain));
         }
-        if (!apply(std::make_unique<CompositeCommand>(std::move(commands), "Delete Group")))
+        if (!apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Delete Group"))))
             return false;
         setSelectedClip(0);
         return true;
@@ -1734,7 +1760,7 @@ bool ProjectController::createProxy(double mediaId)
 {
     const MediaItem* media = m_project.findMedia(toId(mediaId));
     if (!media || !media->hasVideo || media->still) {
-        reportError(QStringLiteral("Only videos have proxies"));
+        reportError(tr("Only videos have proxies"));
         return false;
     }
     m_proxies.request(QString::fromStdString(media->path));
@@ -1808,13 +1834,13 @@ void ProjectController::autosaveNow()
         return;
     }
     if (!QDir().mkpath(m_autosaveDir)) {
-        reportError(QStringLiteral("Could not autosave to %1").arg(m_autosaveDir));
+        reportError(tr("Could not autosave to %1").arg(m_autosaveDir));
         return;
     }
     try {
         saveProject(m_project, autosavePath(m_sessionId, ".tve").toStdString());
     } catch (const std::exception& e) {
-        reportError(QStringLiteral("Could not autosave: %1").arg(QString::fromUtf8(e.what())));
+        reportError(tr("Could not autosave: %1").arg(coreText(e.what())));
         return;
     }
     int clips = 0;
@@ -1896,14 +1922,14 @@ bool ProjectController::recoverProject(const QString& id)
             found = entry.toMap();
     }
     if (found.isEmpty()) {
-        reportError(QStringLiteral("That unsaved work is no longer there"));
+        reportError(tr("That unsaved work is no longer there"));
         return false;
     }
     Project recovered;
     try {
         recovered = loadProject(autosavePath(id, ".tve").toStdString());
     } catch (const std::exception& e) {
-        reportError(QStringLiteral("Could not recover: %1").arg(QString::fromUtf8(e.what())));
+        reportError(tr("Could not recover: %1").arg(coreText(e.what())));
         return false;
     }
     resetProject(std::move(recovered), found.value(QStringLiteral("originalPath")).toString());
@@ -1947,9 +1973,9 @@ bool ProjectController::setClipAudio(double clipId, double gainDb, double fadeIn
             std::map<std::string, Keyframes> changes;
             changes.emplace(std::string(property::kVolume), withKey(*clip, property::kVolume, gainDb));
             if (audio.fadeIn == clip->fadeIn && audio.fadeOut == clip->fadeOut)
-                return apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Change Audio"));
+                return apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), TVE_TR("core", "Change Audio")));
             // Rare: both at once (two steps).
-            if (!apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Change Audio")))
+            if (!apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), TVE_TR("core", "Change Audio"))))
                 return false;
         }
     }
@@ -1960,7 +1986,7 @@ bool ProjectController::detachAudio(double clipId)
 {
     auto location = m_project.locateClip(toId(clipId));
     if (!location) {
-        reportError(QStringLiteral("Select a clip to detach its audio"));
+        reportError(tr("Select a clip to detach its audio"));
         return false;
     }
     const Clip& clip = *location->clip;
@@ -1974,7 +2000,7 @@ bool ProjectController::detachAudio(double clipId)
             return true;
         }
     }
-    reportError(QStringLiteral("No audio track is free where this clip is"));
+    reportError(tr("No audio track is free where this clip is"));
     return false;
 }
 
@@ -2022,9 +2048,9 @@ QVariantMap ProjectController::selectedClipInfo() const
         });
         return {
             {QStringLiteral("id"), double(clip->id)},
-            {QStringLiteral("label"), clip->text         ? QStringLiteral("Title")
-                                      : clip->drawing    ? QStringLiteral("Drawing")
-                                      : clip->adjustment ? QStringLiteral("Adjustment layer")
+            {QStringLiteral("label"), clip->text         ? tr("Title")
+                                      : clip->drawing    ? tr("Drawing")
+                                      : clip->adjustment ? tr("Adjustment layer")
                                       : sequence         ? QString::fromStdString(sequence->name)
                                       : media            ? mediaName(media->path)
                                                          : QString()},
@@ -2064,7 +2090,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("isStill"), media && media->still},
             {QStringLiteral("isSticker"), media && media->lottie},
             {QStringLiteral("look"), clip->look ? QVariant(QVariantMap{{QStringLiteral("id"), QString::fromStdString(clip->look->id)},
-                                                                       {QStringLiteral("title"), QString::fromStdString(clip->look->title)},
+                                                                       {QStringLiteral("title"), catalogueText(clip->look->title)},
                                                                        {QStringLiteral("intensity"), clip->look->intensity}})
                                                 : QVariant()},
             {QStringLiteral("speed"), clip->speed},
@@ -2185,7 +2211,7 @@ bool ProjectController::setClipVisual(double clipId, const QVariantMap& visual)
     const auto v = visualFrom(toId(clipId), visual);
     const Clip* clip = findClip(toId(clipId));
     if (!v || !clip) {
-        reportError(QStringLiteral("Select a video clip"));
+        reportError(tr("Select a video clip"));
         return false;
     }
     // Animated properties take the new value as a keyframe at the playhead (their unused
@@ -2208,7 +2234,7 @@ bool ProjectController::setClipVisual(double clipId, const QVariantMap& visual)
     after.visual.blend = next.blend;
     const bool ok = after.keyframes == clip->keyframes
                         ? apply(std::make_unique<SetClipVisualCommand>(clip->id, after.visual))
-                        : commitAnimation(*clip, after, "Change Picture");
+                        : commitAnimation(*clip, after, TVE_TR("core", "Change Picture"));
     if (!ok && m_view)
         m_view->clearPreview(toId(clipId)); // the refused value must not stay on screen
     return ok;
@@ -2240,7 +2266,7 @@ bool ProjectController::resetClipVisual(double clipId)
     });
     if (after.keyframes == clip->keyframes)
         return apply(std::make_unique<SetClipVisualCommand>(clip->id, ClipVisual{}));
-    return commitAnimation(*clip, after, "Change Picture");
+    return commitAnimation(*clip, after, TVE_TR("core", "Change Picture"));
 }
 
 // --- Colour ---
@@ -2309,7 +2335,7 @@ bool ProjectController::setClipColor(double clipId, const QVariantMap& changes)
 {
     const auto grade = gradeWith(toId(clipId), changes);
     if (!grade) {
-        reportError(QStringLiteral("Select a video clip"));
+        reportError(tr("Select a video clip"));
         return false;
     }
     const bool ok = apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, *grade));
@@ -2326,7 +2352,7 @@ void ProjectController::previewClipColor(double clipId, const QVariantMap& chang
 
 bool ProjectController::resetClipColor(double clipId)
 {
-    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, ColorGrade{}, "Reset Color"));
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, ColorGrade{}, TVE_TR("core", "Reset Color")));
 }
 
 bool ProjectController::chooseLut(double clipId, const QUrl& file)
@@ -2338,7 +2364,7 @@ bool ProjectController::chooseLut(double clipId, const QUrl& file)
     try {
         readLut(path.toStdString());
     } catch (const std::exception& e) {
-        reportError(QStringLiteral("Could not use %1: %2").arg(QFileInfo(path).fileName(), QString::fromUtf8(e.what())));
+        reportError(tr("Could not use %1: %2").arg(QFileInfo(path).fileName(), coreText(e.what())));
         return false;
     }
     const Clip* clip = findClip(toId(clipId));
@@ -2347,7 +2373,7 @@ bool ProjectController::chooseLut(double clipId, const QUrl& file)
     ColorGrade g = clip->color;
     g.lutPath = path.toStdString();
     g.lutIntensity = 1.0;
-    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{clip->id}, g, "Apply LUT"));
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{clip->id}, g, TVE_TR("core", "Apply LUT")));
 }
 
 bool ProjectController::removeLut(double clipId)
@@ -2358,7 +2384,7 @@ bool ProjectController::removeLut(double clipId)
     ColorGrade g = clip->color;
     g.lutPath.clear();
     g.lutIntensity = 1.0;
-    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{clip->id}, g, "Remove LUT"));
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{clip->id}, g, TVE_TR("core", "Remove LUT")));
 }
 
 // --- Masks, keys and layouts ---
@@ -2376,7 +2402,7 @@ bool ProjectController::addMask(double clipId, const QString& shape, const QVari
 {
     const Clip* clip = findClip(toId(clipId));
     if (!clip) {
-        reportError(QStringLiteral("Select a clip"));
+        reportError(tr("Select a clip"));
         return false;
     }
     ClipMask mask;
@@ -2388,7 +2414,7 @@ bool ProjectController::addMask(double clipId, const QString& shape, const QVari
         }
     }
     if (!known) {
-        reportError(QStringLiteral("Unknown mask shape %1").arg(shape));
+        reportError(tr("Unknown mask shape %1").arg(shape));
         return false;
     }
     // Each starts in the middle of the picture at a useful size.
@@ -2404,7 +2430,7 @@ bool ProjectController::addMask(double clipId, const QString& shape, const QVari
     ClipKeying keying = keyingOf(*clip);
     keying.masks.push_back(mask);
     const int index = int(keying.masks.size()) - 1;
-    if (!apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), "Add Mask")))
+    if (!apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), TVE_TR("core", "Add Mask"))))
         return false;
     setActiveMask(index); // edit the new one
     return true;
@@ -2417,7 +2443,7 @@ bool ProjectController::setMask(double clipId, int index, const QVariantMap& cha
         return false;
     ClipKeying keying = keyingOf(*clip);
     keying.masks[std::size_t(index)] = maskWith(keying.masks[std::size_t(index)], changes);
-    const bool ok = apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), "Change Mask"));
+    const bool ok = apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), TVE_TR("core", "Change Mask")));
     if (!ok && m_view)
         m_view->clearPreview(toId(clipId));
     return ok;
@@ -2441,7 +2467,7 @@ bool ProjectController::removeMask(double clipId, int index)
         return false;
     ClipKeying keying = keyingOf(*clip);
     keying.masks.erase(keying.masks.begin() + index);
-    if (!apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), "Remove Mask")))
+    if (!apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), TVE_TR("core", "Remove Mask"))))
         return false;
     setActiveMask(-1);
     return true;
@@ -2454,7 +2480,7 @@ bool ProjectController::setChromaKey(double clipId, const QVariantMap& changes)
         return false;
     ClipKeying keying = keyingOf(*clip);
     keying.chromaKey = chromaKeyWith(keying.chromaKey, changes);
-    const bool ok = apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), "Change Key"));
+    const bool ok = apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), TVE_TR("core", "Change Key")));
     if (!ok && m_view)
         m_view->clearPreview(toId(clipId));
     return ok;
@@ -2479,10 +2505,10 @@ bool ProjectController::setMatte(double clipId, const QString& mode)
         if (mode == QLatin1String(kMatteModes[i])) {
             ClipKeying keying = keyingOf(*clip);
             keying.matte = MatteMode(i);
-            return apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), "Change Matte"));
+            return apply(std::make_unique<SetClipKeyingCommand>(clip->id, std::move(keying), TVE_TR("core", "Change Matte")));
         }
     }
-    reportError(QStringLiteral("Unknown matte %1").arg(mode));
+    reportError(tr("Unknown matte %1").arg(mode));
     return false;
 }
 
@@ -2552,12 +2578,12 @@ struct Layout {
 const std::vector<Layout>& builtInLayouts()
 {
     static const std::vector<Layout> layouts{
-        {"pip", "Picture in picture", {{0.62, 0.06, 0.95, 0.39}}, true},
-        {"side-by-side", "Side by side", {{0, 0, 0.5, 1}, {0.5, 0, 1, 1}}},
-        {"top-bottom", "Top and bottom", {{0, 0, 1, 0.5}, {0, 0.5, 1, 1}}},
-        {"three-columns", "Three columns", {{0, 0, 1.0 / 3, 1}, {1.0 / 3, 0, 2.0 / 3, 1}, {2.0 / 3, 0, 1, 1}}},
-        {"one-and-two", "One and two", {{0, 0, 2.0 / 3, 1}, {2.0 / 3, 0, 1, 0.5}, {2.0 / 3, 0.5, 1, 1}}},
-        {"grid", "Grid of four", {{0, 0, 0.5, 0.5}, {0.5, 0, 1, 0.5}, {0, 0.5, 0.5, 1}, {0.5, 0.5, 1, 1}}},
+        {"pip", TVE_TR("core", "Picture in picture"), {{0.62, 0.06, 0.95, 0.39}}, true},
+        {"side-by-side", TVE_TR("core", "Side by side"), {{0, 0, 0.5, 1}, {0.5, 0, 1, 1}}},
+        {"top-bottom", TVE_TR("core", "Top and bottom"), {{0, 0, 1, 0.5}, {0, 0.5, 1, 1}}},
+        {"three-columns", TVE_TR("core", "Three columns"), {{0, 0, 1.0 / 3, 1}, {1.0 / 3, 0, 2.0 / 3, 1}, {2.0 / 3, 0, 1, 1}}},
+        {"one-and-two", TVE_TR("core", "One and two"), {{0, 0, 2.0 / 3, 1}, {2.0 / 3, 0, 1, 0.5}, {2.0 / 3, 0.5, 1, 1}}},
+        {"grid", TVE_TR("core", "Grid of four"), {{0, 0, 0.5, 0.5}, {0.5, 0, 1, 0.5}, {0, 0.5, 0.5, 1}, {0.5, 0.5, 1, 1}}},
     };
     return layouts;
 }
@@ -2595,7 +2621,7 @@ QVariantList ProjectController::layouts() const
         for (const auto& r : layout.regions)
             regions << QVariant(QVariantList{r[0], r[1], r[2], r[3]});
         list << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(layout.id)},
-                            {QStringLiteral("title"), QString::fromLatin1(layout.title)},
+                            {QStringLiteral("title"), coreText(layout.title)},
                             {QStringLiteral("regions"), regions}};
     }
     return list;
@@ -2606,7 +2632,7 @@ bool ProjectController::applyLayout(const QString& layoutId)
     const auto& all = builtInLayouts();
     const auto layout = std::ranges::find_if(all, [&](const Layout& l) { return layoutId == QLatin1String(l.id); });
     if (layout == all.end()) {
-        reportError(QStringLiteral("Unknown layout %1").arg(layoutId));
+        reportError(tr("Unknown layout %1").arg(layoutId));
         return false;
     }
     // The pictures at the playhead, top track first (titles and adjustment layers stay).
@@ -2648,7 +2674,7 @@ bool ProjectController::applyLayout(const QString& layoutId)
         }
         commands.push_back(std::make_unique<SetClipVisualCommand>(clip.id, visual));
     }
-    return apply(std::make_unique<CompositeCommand>(std::move(commands), "Apply Layout"));
+    return apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Apply Layout")));
 }
 
 // --- Looks and adjustment layers ---
@@ -2658,8 +2684,8 @@ QVariantList ProjectController::looks() const
     QVariantList list;
     for (const LookInfo& look : builtInLooks())
         list << QVariantMap{{QStringLiteral("id"), QString::fromStdString(look.id)},
-                            {QStringLiteral("title"), QString::fromStdString(look.title)},
-                            {QStringLiteral("category"), QString::fromStdString(look.category)}};
+                            {QStringLiteral("title"), catalogueText(look.title)},
+                            {QStringLiteral("category"), catalogueText(look.category)}};
     return list;
 }
 
@@ -2668,7 +2694,7 @@ QVariantList ProjectController::lutLibrary() const
     QVariantList list;
     for (const LookInfo& look : builtInLooks()) {
         if (!look.grade.lutPath.empty())
-            list << QVariantMap{{QStringLiteral("name"), QString::fromStdString(look.title)},
+            list << QVariantMap{{QStringLiteral("name"), catalogueText(look.title)},
                                 {QStringLiteral("path"), QString::fromStdString(look.grade.lutPath)}};
     }
     return list;
@@ -2678,16 +2704,16 @@ bool ProjectController::applyLook(double clipId, const QString& lookId)
 {
     const LookInfo* look = findLook(lookId.toStdString());
     if (!look) {
-        reportError(QStringLiteral("Unknown look %1").arg(lookId));
+        reportError(tr("Unknown look %1").arg(lookId));
         return false;
     }
     const Clip* clip = findClip(toId(clipId));
     if (!clip) {
-        reportError(QStringLiteral("Select a video clip"));
+        reportError(tr("Select a video clip"));
         return false;
     }
     return apply(std::make_unique<SetClipLookCommand>(clip->id, ClipLook{look->id, look->title, 1.0, look->grade},
-                                                      "Apply Look"));
+                                                      TVE_TR("core", "Apply Look")));
 }
 
 bool ProjectController::setLookIntensity(double clipId, double intensity)
@@ -2697,7 +2723,7 @@ bool ProjectController::setLookIntensity(double clipId, double intensity)
         return false;
     ClipLook look = *clip->look;
     look.intensity = std::clamp(intensity, 0.0, 1.0);
-    return apply(std::make_unique<SetClipLookCommand>(clip->id, look, "Change Look"));
+    return apply(std::make_unique<SetClipLookCommand>(clip->id, look, TVE_TR("core", "Change Look")));
 }
 
 void ProjectController::previewLookIntensity(double clipId, double intensity)
@@ -2715,7 +2741,7 @@ bool ProjectController::removeLook(double clipId)
     const Clip* clip = findClip(toId(clipId));
     if (!clip || !clip->look)
         return false;
-    return apply(std::make_unique<SetClipLookCommand>(clip->id, std::nullopt, "Remove Look"));
+    return apply(std::make_unique<SetClipLookCommand>(clip->id, std::nullopt, TVE_TR("core", "Remove Look")));
 }
 
 bool ProjectController::addAdjustmentLayer(double trackId, double start)
@@ -2754,10 +2780,10 @@ bool ProjectController::copyGrade(double clipId)
 bool ProjectController::pasteGrade(double clipId)
 {
     if (!m_copiedGrade) {
-        reportError(QStringLiteral("Copy a clip's grade first"));
+        reportError(tr("Copy a clip's grade first"));
         return false;
     }
-    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, *m_copiedGrade, "Paste Grade"));
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, *m_copiedGrade, TVE_TR("core", "Paste Grade")));
 }
 
 QString ProjectController::colorPresetDirectory() const
@@ -2800,17 +2826,17 @@ bool ProjectController::saveColorPreset(double clipId, const QString& name)
     if (!clip)
         return false;
     if (name.trimmed().isEmpty()) {
-        reportError(QStringLiteral("Name the preset"));
+        reportError(tr("Name the preset"));
         return false;
     }
     if (!QDir().mkpath(colorPresetDirectory())) {
-        reportError(QStringLiteral("Could not create %1").arg(colorPresetDirectory()));
+        reportError(tr("Could not create %1").arg(colorPresetDirectory()));
         return false;
     }
     const nlohmann::json json{{"name", name.trimmed().toStdString()}, {"grade", gradeToJson(clip->color)}};
     QSaveFile file(colorPresetPath(name));
     if (!file.open(QIODevice::WriteOnly) || file.write(QByteArray::fromStdString(json.dump(2))) < 0 || !file.commit()) {
-        reportError(QStringLiteral("Could not save the preset %1").arg(name));
+        reportError(tr("Could not save the preset %1").arg(name));
         return false;
     }
     emit colorPresetsChanged();
@@ -2821,17 +2847,17 @@ bool ProjectController::applyColorPreset(double clipId, const QString& name)
 {
     QFile file(colorPresetPath(name));
     if (!file.open(QIODevice::ReadOnly)) {
-        reportError(QStringLiteral("No colour preset named %1").arg(name));
+        reportError(tr("No colour preset named %1").arg(name));
         return false;
     }
     ColorGrade grade;
     try {
         grade = gradeFromJson(nlohmann::json::parse(file.readAll().toStdString()).at("grade"));
     } catch (const std::exception&) {
-        reportError(QStringLiteral("The preset %1 is damaged").arg(name));
+        reportError(tr("The preset %1 is damaged").arg(name));
         return false;
     }
-    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, grade, "Apply Color Preset"));
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, grade, TVE_TR("core", "Apply Color Preset")));
 }
 
 QVariantList ProjectController::sampleColorCurve(const QVariantList& points, int count) const
@@ -2922,7 +2948,7 @@ bool ProjectController::addKeyframes(double clipId, const QStringList& propertie
 {
     const Clip* clip = findClip(toId(clipId));
     if (!clip) {
-        reportError(QStringLiteral("Select a clip to animate"));
+        reportError(tr("Select a clip to animate"));
         return false;
     }
     const auto location = m_project.locateClip(clip->id);
@@ -2944,7 +2970,7 @@ bool ProjectController::addKeyframes(double clipId, const QStringList& propertie
         }
         setKey(after, id, channelValue(*clip, id, at));
     }
-    return commitAnimation(*clip, after, "Add Keyframe");
+    return commitAnimation(*clip, after, TVE_TR("core", "Add Keyframe"));
 }
 
 bool ProjectController::removeKeyframes(double clipId, const QStringList& properties)
@@ -2966,13 +2992,13 @@ bool ProjectController::removeKeyframes(double clipId, const QStringList& proper
             emptied.push_back(id);
     });
     if (!removed) {
-        reportError(QStringLiteral("No keyframe at the playhead"));
+        reportError(tr("No keyframe at the playhead"));
         return false;
     }
     // A channel whose last keyframe goes keeps the value it had there.
     for (const std::string& id : emptied)
         setChannelStatic(after, id, channelValue(*clip, id, clip->start + at));
-    return commitAnimation(*clip, after, "Remove Keyframe");
+    return commitAnimation(*clip, after, TVE_TR("core", "Remove Keyframe"));
 }
 
 bool ProjectController::clearKeyframes(double clipId, const QStringList& properties)
@@ -2994,7 +3020,7 @@ bool ProjectController::clearKeyframes(double clipId, const QStringList& propert
         setChannelStatic(after, id, channelValue(*clip, id, now));
     if (cleared.empty())
         return false;
-    return commitAnimation(*clip, after, "Clear Keyframes");
+    return commitAnimation(*clip, after, TVE_TR("core", "Clear Keyframes"));
 }
 
 namespace {
@@ -3014,7 +3040,7 @@ bool ProjectController::setKeyframeEasing(double clipId, const QString& easing)
 {
     const auto chosen = easingFromName(easing);
     if (!chosen) {
-        reportError(QStringLiteral("Unknown easing %1").arg(easing));
+        reportError(tr("Unknown easing %1").arg(easing));
         return false;
     }
     const Clip* clip = findClip(toId(clipId));
@@ -3032,7 +3058,7 @@ bool ProjectController::setKeyframeEasing(double clipId, const QString& easing)
             k.easing = *chosen;
         }
     });
-    return commitAnimation(*clip, after, "Change Keyframe");
+    return commitAnimation(*clip, after, TVE_TR("core", "Change Keyframe"));
 }
 
 bool ProjectController::setKeyframeCurve(double clipId, double x1, double y1, double x2, double y2)
@@ -3052,8 +3078,8 @@ bool ProjectController::setKeyframeCurve(double clipId, double x1, double y1, do
             }
         }
     });
-    if (!commitAnimation(*clip, after, "Change Keyframe")) {
-        reportError(QStringLiteral("No keyframe at the playhead"));
+    if (!commitAnimation(*clip, after, TVE_TR("core", "Change Keyframe"))) {
+        reportError(tr("No keyframe at the playhead"));
         return false;
     }
     return true;
@@ -3083,11 +3109,11 @@ bool ProjectController::moveKeyframes(double clipId, double from, double to)
         std::ranges::sort(keys, {}, &Keyframe::time);
     });
     if (taken) {
-        reportError(QStringLiteral("Another keyframe is already there"));
+        reportError(tr("Another keyframe is already there"));
         return false;
     }
     const Ticks landed = clip->start + target; // `clip` does not outlive the edit
-    if (!commitAnimation(*clip, after, "Move Keyframe"))
+    if (!commitAnimation(*clip, after, TVE_TR("core", "Move Keyframe")))
         return false;
     seek(::seconds(landed));
     return true;
@@ -3130,7 +3156,7 @@ QVariantList ProjectController::speedRampPresets() const
     QVariantList list;
     for (const SpeedRampPreset& preset : tve::speedRampPresets())
         list << QVariantMap{{QStringLiteral("id"), QString::fromStdString(preset.id)},
-                            {QStringLiteral("title"), QString::fromStdString(preset.title)},
+                            {QStringLiteral("title"), coreText(preset.title)},
                             {QStringLiteral("points"), rampList(preset.ramp)}};
     return list;
 }
@@ -3143,7 +3169,7 @@ bool ProjectController::setClipSpeedRamp(double clipId, const QVariantList& poin
         ramp.push_back({map.value(QStringLiteral("at")).toDouble(), map.value(QStringLiteral("speed")).toDouble()});
     }
     if (ramp.empty()) {
-        reportError(QStringLiteral("A speed ramp needs points"));
+        reportError(tr("A speed ramp needs points"));
         return false;
     }
     return apply(std::make_unique<SetClipSpeedRampCommand>(toId(clipId), std::move(ramp)));
@@ -3155,7 +3181,7 @@ bool ProjectController::applySpeedRampPreset(double clipId, const QString& prese
         if (QString::fromStdString(preset.id) == presetId)
             return apply(std::make_unique<SetClipSpeedRampCommand>(toId(clipId), preset.ramp));
     }
-    reportError(QStringLiteral("Unknown speed ramp %1").arg(presetId));
+    reportError(tr("Unknown speed ramp %1").arg(presetId));
     return false;
 }
 
@@ -3189,7 +3215,7 @@ bool ProjectController::freezeFrame(double holdSeconds)
         }
     }
     if (target == kNoId) {
-        reportError(QStringLiteral("Put the playhead on a video clip to freeze a frame"));
+        reportError(tr("Put the playhead on a video clip to freeze a frame"));
         return false;
     }
     auto command = std::make_unique<FreezeFrameCommand>(target, at, ticks(std::max(holdSeconds, 0.1)));
@@ -3268,7 +3294,7 @@ std::optional<Id> ProjectController::cutNear(const Track& track, Ticks time, Tic
 bool ProjectController::addTransition(const QString& transitionId, double clipId)
 {
     if (!EffectLibrary::builtIn().findTransition(transitionId.toStdString())) {
-        reportError(QStringLiteral("Unknown transition %1").arg(transitionId));
+        reportError(tr("Unknown transition %1").arg(transitionId));
         return false;
     }
     Id target = toId(clipId);
@@ -3281,14 +3307,14 @@ bool ProjectController::addTransition(const QString& transitionId, double clipId
             track = m_project.findTrack(mainTrackId());
         const auto cut = track ? cutNear(*track, ticks(m_playhead), std::numeric_limits<Ticks>::max()) : std::nullopt;
         if (!cut) {
-            reportError(QStringLiteral("Put two clips side by side to add a transition between them"));
+            reportError(tr("Put two clips side by side to add a transition between them"));
             return false;
         }
         target = *cut;
     }
     const Clip* clip = findClip(target);
     if (!clip) {
-        reportError(QStringLiteral("Drop the transition on a cut between two clips"));
+        reportError(tr("Drop the transition on a cut between two clips"));
         return false;
     }
     ClipTransition transition{transitionId.toStdString()};
@@ -3307,7 +3333,7 @@ bool ProjectController::addTransitionAt(const QString& transitionId, double trac
     const Track* track = m_project.findTrack(toId(trackId));
     const auto cut = track ? cutNear(*track, ticks(time), ticks(tolerance)) : std::nullopt;
     if (!cut) {
-        reportError(QStringLiteral("Drop the transition on a cut between two clips"));
+        reportError(tr("Drop the transition on a cut between two clips"));
         return false;
     }
     return addTransition(transitionId, double(*cut));
@@ -3317,7 +3343,7 @@ bool ProjectController::addOverlayTransition(const QString& overlayId, double se
 {
     const overlays::Kind* kind = overlays::find(overlayId.toStdString());
     if (!kind) {
-        reportError(QStringLiteral("Unknown overlay %1").arg(overlayId));
+        reportError(tr("Unknown overlay %1").arg(overlayId));
         return false;
     }
     QString error;
@@ -3348,7 +3374,7 @@ bool ProjectController::addOverlayTransition(const QString& overlayId, double se
     }
     ClipVisual visual;
     visual.blend = kind->blend;
-    auto add = std::make_unique<AddOverlayClipCommand>(std::move(*item), track, start, length, visual, "Overlays", "Add Overlay");
+    auto add = std::make_unique<AddOverlayClipCommand>(std::move(*item), track, start, length, visual, "Overlays", TVE_TR("core", "Add Overlay"));
     auto* raw = add.get();
     if (!apply(std::move(add)))
         return false;
@@ -3401,17 +3427,17 @@ bool ProjectController::addClipEffect(double clipId, const QString& effectId)
 {
     const Clip* clip = findClip(toId(clipId));
     if (!clip) {
-        reportError(QStringLiteral("Select a video clip to add an effect to"));
+        reportError(tr("Select a video clip to add an effect to"));
         return false;
     }
     const bool plugin = isOfxEffect(effectId.toStdString());
     if (!plugin && !EffectLibrary::builtIn().find(effectId.toStdString())) {
-        reportError(QStringLiteral("Unknown effect %1").arg(effectId));
+        reportError(tr("Unknown effect %1").arg(effectId));
         return false;
     }
     auto effects = clip->effects;
     effects.push_back(ClipEffect{effectId.toStdString(), true, {}});
-    return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects), plugin ? "Add Plug-in" : "Add Effect"));
+    return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects), plugin ? TVE_TR("core", "Add Plug-in") : TVE_TR("core", "Add Effect")));
 }
 
 bool ProjectController::removeClipEffect(double clipId, int index)
@@ -3421,7 +3447,7 @@ bool ProjectController::removeClipEffect(double clipId, int index)
         return false;
     auto effects = clip->effects;
     effects.erase(effects.begin() + index);
-    return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects), "Remove Effect"));
+    return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects), TVE_TR("core", "Remove Effect")));
 }
 
 bool ProjectController::setClipEffectEnabled(double clipId, int index, bool enabled)
@@ -3432,7 +3458,7 @@ bool ProjectController::setClipEffectEnabled(double clipId, int index, bool enab
     auto effects = clip->effects;
     effects[std::size_t(index)].enabled = enabled;
     return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects),
-                                                         enabled ? "Enable Effect" : "Disable Effect"));
+                                                         enabled ? TVE_TR("core", "Enable Effect") : TVE_TR("core", "Disable Effect")));
 }
 
 std::optional<std::vector<ClipEffect>> ProjectController::effectsWithParam(Id clipId, int index,
@@ -3458,12 +3484,12 @@ bool ProjectController::setClipEffectParam(double clipId, int index, const QStri
             return false;
         Clip after = *clip;
         setKey(after, channel, components.front());
-        return commitAnimation(*clip, after, "Change Effect");
+        return commitAnimation(*clip, after, TVE_TR("core", "Change Effect"));
     }
     auto effects = effectsWithParam(toId(clipId), index, paramId, value);
     if (!effects)
         return false;
-    return apply(std::make_unique<SetClipEffectsCommand>(toId(clipId), std::move(*effects), "Change Effect"));
+    return apply(std::make_unique<SetClipEffectsCommand>(toId(clipId), std::move(*effects), TVE_TR("core", "Change Effect")));
 }
 
 void ProjectController::previewClipEffectParam(double clipId, int index, const QString& paramId, const QVariant& value)
@@ -3491,19 +3517,19 @@ struct ExportFormat {
 };
 
 constexpr ExportFormat kExportFormats[] = {
-    {"mp4-h264", "MP4 · H.264 (plays everywhere)", Container::Mp4, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Aac},
-    {"mp4-hevc", "MP4 · HEVC (smaller files)", Container::Mp4, VideoCodec::Hevc, ProResProfile::Hq, AudioCodec::Aac},
-    {"mov-h264", "MOV · H.264", Container::Mov, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Aac},
-    {"mov-prores-proxy", "MOV · ProRes Proxy", Container::Mov, VideoCodec::ProRes, ProResProfile::Proxy, AudioCodec::Pcm24},
-    {"mov-prores-lt", "MOV · ProRes LT", Container::Mov, VideoCodec::ProRes, ProResProfile::Lt, AudioCodec::Pcm24},
-    {"mov-prores-422", "MOV · ProRes 422", Container::Mov, VideoCodec::ProRes, ProResProfile::Standard, AudioCodec::Pcm24},
-    {"mov-prores-hq", "MOV · ProRes 422 HQ", Container::Mov, VideoCodec::ProRes, ProResProfile::Hq, AudioCodec::Pcm24},
-    {"mov-prores-4444", "MOV · ProRes 4444", Container::Mov, VideoCodec::ProRes, ProResProfile::P4444, AudioCodec::Pcm24},
-    {"gif", "GIF · animated, no sound", Container::Gif, VideoCodec::Gif, ProResProfile::Hq, AudioCodec::Aac},
-    {"m4a", "M4A · AAC, sound only", Container::M4a, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Aac},
-    {"wav-16", "WAV · 16-bit, sound only", Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm16},
-    {"wav-24", "WAV · 24-bit, sound only", Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm24},
-    {"flac", "FLAC · lossless, sound only", Container::Flac, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Flac},
+    {"mp4-h264", QT_TRANSLATE_NOOP("ProjectController", "MP4 · H.264 (plays everywhere)"), Container::Mp4, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Aac},
+    {"mp4-hevc", QT_TRANSLATE_NOOP("ProjectController", "MP4 · HEVC (smaller files)"), Container::Mp4, VideoCodec::Hevc, ProResProfile::Hq, AudioCodec::Aac},
+    {"mov-h264", QT_TRANSLATE_NOOP("ProjectController", "MOV · H.264"), Container::Mov, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Aac},
+    {"mov-prores-proxy", QT_TRANSLATE_NOOP("ProjectController", "MOV · ProRes Proxy"), Container::Mov, VideoCodec::ProRes, ProResProfile::Proxy, AudioCodec::Pcm24},
+    {"mov-prores-lt", QT_TRANSLATE_NOOP("ProjectController", "MOV · ProRes LT"), Container::Mov, VideoCodec::ProRes, ProResProfile::Lt, AudioCodec::Pcm24},
+    {"mov-prores-422", QT_TRANSLATE_NOOP("ProjectController", "MOV · ProRes 422"), Container::Mov, VideoCodec::ProRes, ProResProfile::Standard, AudioCodec::Pcm24},
+    {"mov-prores-hq", QT_TRANSLATE_NOOP("ProjectController", "MOV · ProRes 422 HQ"), Container::Mov, VideoCodec::ProRes, ProResProfile::Hq, AudioCodec::Pcm24},
+    {"mov-prores-4444", QT_TRANSLATE_NOOP("ProjectController", "MOV · ProRes 4444"), Container::Mov, VideoCodec::ProRes, ProResProfile::P4444, AudioCodec::Pcm24},
+    {"gif", QT_TRANSLATE_NOOP("ProjectController", "GIF · animated, no sound"), Container::Gif, VideoCodec::Gif, ProResProfile::Hq, AudioCodec::Aac},
+    {"m4a", QT_TRANSLATE_NOOP("ProjectController", "M4A · AAC, sound only"), Container::M4a, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Aac},
+    {"wav-16", QT_TRANSLATE_NOOP("ProjectController", "WAV · 16-bit, sound only"), Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm16},
+    {"wav-24", QT_TRANSLATE_NOOP("ProjectController", "WAV · 24-bit, sound only"), Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm24},
+    {"flac", QT_TRANSLATE_NOOP("ProjectController", "FLAC · lossless, sound only"), Container::Flac, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Flac},
 };
 
 const ExportFormat* findExportFormat(const QString& id)
@@ -3539,7 +3565,15 @@ FrameRate frameRateFrom(double fps)
 
 QVariantList ProjectController::exportPresets() const
 {
-    return presetList();
+    // Their title and description in the app's language (catalogue names).
+    QVariantList list;
+    for (const QVariant& preset : presetList()) {
+        QVariantMap map = preset.toMap();
+        map[QStringLiteral("title")] = catalogueText(map.value(QStringLiteral("title")).toString());
+        map[QStringLiteral("description")] = catalogueText(map.value(QStringLiteral("description")).toString());
+        list << map;
+    }
+    return list;
 }
 
 QVariantList ProjectController::exportFormats() const
@@ -3550,7 +3584,7 @@ QVariantList ProjectController::exportFormats() const
         settings.container = format.container;
         list << QVariantMap{
             {QStringLiteral("id"), QString::fromLatin1(format.id)},
-            {QStringLiteral("label"), QString::fromUtf8(format.label)},
+            {QStringLiteral("label"), tr(format.label)},
             {QStringLiteral("extension"), QString::fromLatin1(fileExtension(format.container))},
             {QStringLiteral("video"), settings.hasVideo()},
             {QStringLiteral("sound"), format.container != Container::Gif},
@@ -3574,7 +3608,7 @@ std::optional<Exporter::Options> ProjectController::exportOptions(const QVariant
             return p.toMap().value(QStringLiteral("id")).toString() == preset;
         });
         if (found == presetList().end())
-            return refuse(QStringLiteral("Unknown export preset: ") + preset);
+            return refuse(tr("Unknown export preset: %1").arg(preset));
         options = found->toMap();
     }
     for (auto it = given.begin(); it != given.end(); ++it)
@@ -3586,7 +3620,7 @@ std::optional<Exporter::Options> ProjectController::exportOptions(const QVariant
                                                                                               : QStringLiteral("mp4-h264");
     const ExportFormat* format = findExportFormat(formatId);
     if (!format)
-        return refuse(QStringLiteral("Unknown export format: ") + formatId);
+        return refuse(tr("Unknown export format: %1").arg(formatId));
 
     Exporter::Options result;
     MediaSettings& settings = result.settings;
@@ -3656,24 +3690,24 @@ std::optional<Exporter::Options> ProjectController::exportOptions(const QVariant
             any = true;
         }
         if (!any)
-            return refuse(QStringLiteral("Select the clips to export"));
+            return refuse(tr("Select the clips to export"));
     } else if (range == QLatin1String("marker")) {
         const auto marker = std::ranges::find(m_project.markers, toId(options.value(QStringLiteral("markerId")).toDouble()),
                                               &tve::Marker::id);
         if (marker == m_project.markers.end() || marker->duration <= 0)
-            return refuse(QStringLiteral("Pick a marker with a length (a range) to export"));
+            return refuse(tr("Pick a marker with a length (a range) to export"));
         result.from = marker->time;
         result.to = std::min(end, marker->time + marker->duration);
     } else if (range == QLatin1String("all")) {
         result.from = 0;
         result.to = end;
     } else {
-        return refuse(QStringLiteral("Unknown export range: ") + range);
+        return refuse(tr("Unknown export range: %1").arg(range));
     }
     if (end == 0)
-        return refuse(QStringLiteral("Add something to the timeline to export"));
+        return refuse(tr("Add something to the timeline to export"));
     if (result.to <= result.from)
-        return refuse(QStringLiteral("There is nothing to export in that range"));
+        return refuse(tr("There is nothing to export in that range"));
     return result;
 }
 
@@ -3703,14 +3737,14 @@ bool ProjectController::exportVideo(const QUrl& file, const QVariantMap& options
 {
     const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
     if (path.isEmpty()) {
-        reportError(QStringLiteral("Choose where to save the video"));
+        reportError(tr("Choose where to save the video"));
         return false;
     }
     const bool queued = std::ranges::any_of(m_exportJobs, [&](const ExportJob& job) {
         return job.path == path && (job.state == QLatin1String("waiting") || job.state == QLatin1String("running"));
     });
     if (queued) {
-        reportError(QStringLiteral("That file is already being exported"));
+        reportError(tr("That file is already being exported"));
         return false;
     }
     QString error;
@@ -3727,7 +3761,7 @@ bool ProjectController::exportVideo(const QUrl& file, const QVariantMap& options
         if (format.container == planned->settings.container && format.codec == planned->settings.codec
             && format.audio == planned->settings.audioCodec
             && (format.codec != VideoCodec::ProRes || format.proRes == planned->settings.proRes))
-            job.format = QString::fromUtf8(format.label).section(QStringLiteral(" ("), 0, 0);
+            job.format = tr(format.label).section(QStringLiteral(" ("), 0, 0);
     }
     job.options = std::move(*planned);
     job.snapshot = std::make_shared<const Project>(m_project);
@@ -3768,7 +3802,7 @@ int ProjectController::exportMarkerRanges(const QUrl& folder, const QVariantMap&
             ++count;
     }
     if (count == 0 && used.empty())
-        reportError(QStringLiteral("Give markers a length (a range) to export them one by one"));
+        reportError(tr("Give markers a length (a range) to export them one by one"));
     return count;
 }
 
@@ -4105,7 +4139,7 @@ bool ProjectController::openVoiceOver()
     }
     auto recorder = std::make_unique<AudioRecorder>(backend, m_inputDevice.toStdString());
     if (!recorder->isOpen()) {
-        reportError(QStringLiteral("Could not open the microphone: %1").arg(QString::fromStdString(recorder->errorString())));
+        reportError(tr("Could not open the microphone: %1").arg(coreText(recorder->errorString())));
         return false;
     }
     m_inputDevices.clear();
@@ -4136,12 +4170,12 @@ bool ProjectController::startRecording()
         return false;
     const QString path = takePath();
     if (path.isEmpty()) {
-        reportError(QStringLiteral("Could not create the folder %1").arg(recordingsDirectory()));
+        reportError(tr("Could not create the folder %1").arg(recordingsDirectory()));
         return false;
     }
     std::string error;
     if (!m_recorder->start(path.toStdString(), &error)) {
-        reportError(QStringLiteral("Could not start recording: %1").arg(QString::fromStdString(error)));
+        reportError(tr("Could not start recording: %1").arg(coreText(error)));
         return false;
     }
     // The take begins at the playhead and the timeline plays along (past its end if need be).
@@ -4167,7 +4201,7 @@ bool ProjectController::stopRecording()
     updatePlayhead();
     emit voiceOverChanged();
     if (!take) {
-        reportError(QStringLiteral("Recording failed: %1").arg(QString::fromStdString(error)));
+        reportError(tr("Recording failed: %1").arg(coreText(error)));
         return false;
     }
     QString probeError;
@@ -4226,7 +4260,7 @@ bool ProjectController::addSound(const QString& soundId)
         }
     }
     auto command = std::make_unique<AddVoiceOverCommand>(std::move(*item), target, start,
-                                                         music ? "Add Music" : "Add Sound Effect",
+                                                         music ? TVE_TR("core", "Add Music") : TVE_TR("core", "Add Sound Effect"),
                                                          music ? "Music" : "Sound effects");
     auto* raw = command.get();
     if (!apply(std::move(command)))
@@ -4252,8 +4286,8 @@ QString ProjectController::importsDirectory() const
 bool ProjectController::importFrom(const QString& source, const QStringList& itemIds)
 {
     if (!m_imports->fetch(source, itemIds, importsDirectory())) {
-        reportError(m_imports->fetching() ? QStringLiteral("An import is already under way")
-                                          : QStringLiteral("Nothing to import"));
+        reportError(m_imports->fetching() ? tr("An import is already under way")
+                                          : tr("Nothing to import"));
         return false;
     }
     return true;
@@ -4288,7 +4322,7 @@ bool ProjectController::writeCopy(const QString& kind, const QString& tone, cons
         for (const CaptionBlock& caption : captionBlocks())
             said << QString::fromStdString(caption.text).replace(QLatin1Char('\n'), QLatin1Char(' '));
     if (said.isEmpty()) {
-        reportError(QStringLiteral("Transcribe the video first (Transcript tab): the writing works from what is said"));
+        reportError(tr("Transcribe the video first (Transcript tab): the writing works from what is said"));
         return false;
     }
     const TextRequest request = cloudfeatures::copyRequest(kind, said.join(QLatin1Char(' ')), tone, notes, m_cloud->claudeModel());
@@ -4302,13 +4336,13 @@ bool ProjectController::writeCopy(const QString& kind, const QString& tone, cons
         for (const QVariant& offered : cloud->claudeModels())
             if (offered.toMap().value(QStringLiteral("id")).toString() == model)
                 model = offered.toMap().value(QStringLiteral("label")).toString();
-        cloud->endJob(result.ok ? QStringLiteral("Written by %1").arg(model) : result.error);
+        cloud->endJob(result.ok ? tr("Written by %1").arg(model) : result.error);
         emit cloud->jobFinished(QStringLiteral("write"), result.ok, result.cancelled ? QString() : result.error);
         if (!result.ok && !result.cancelled)
             self->reportError(result.error);
     });
     if (!started)
-        reportError(QStringLiteral("Another AI job is running"));
+        reportError(tr("Another AI job is running"));
     return started;
 }
 
@@ -4316,11 +4350,11 @@ bool ProjectController::translateCaptions(const QString& language)
 {
     const std::vector<CaptionBlock> captions = captionBlocks();
     if (captions.empty()) {
-        reportError(QStringLiteral("There are no captions to translate"));
+        reportError(tr("There are no captions to translate"));
         return false;
     }
     if (m_cloud->busy()) {
-        reportError(QStringLiteral("Another AI job is running"));
+        reportError(tr("Another AI job is running"));
         return false;
     }
     // Batches, one after another; the captions change only when all are in (and only if the
@@ -4347,7 +4381,7 @@ bool ProjectController::translateCaptions(const QString& language)
             batch.push_back({i, QString::fromStdString(state->captions[std::size_t(i)].text)});
             indices << i;
         }
-        cloud->setProgress(double(from) / total, QStringLiteral("Translating captions %1–%2 of %3…").arg(from + 1).arg(to).arg(total));
+        cloud->setProgress(double(from) / total, tr("Translating captions %1–%2 of %3…").arg(from + 1).arg(to).arg(total));
         const auto done = [self, state, step, indices, to, total](const TextResult& result) {
             if (!self)
                 return;
@@ -4365,7 +4399,7 @@ bool ProjectController::translateCaptions(const QString& language)
             }
             const auto texts = cloudfeatures::readTranslation(result.text, indices);
             if (!texts) {
-                fail(QStringLiteral("The translation came back incomplete; try again"));
+                fail(tr("The translation came back incomplete; try again"));
                 return;
             }
             state->texts.insert(*texts);
@@ -4381,7 +4415,7 @@ bool ProjectController::translateCaptions(const QString& language)
                                        return a.start == b.start && a.end == b.end && a.text == b.text;
                                    });
             if (!unchanged) {
-                fail(QStringLiteral("The captions changed while they were being translated; try again"));
+                fail(tr("The captions changed while they were being translated; try again"));
                 return;
             }
             for (std::size_t i = 0; i < now.size(); ++i) {
@@ -4391,7 +4425,7 @@ bool ProjectController::translateCaptions(const QString& language)
             auto [style, visual] = self->captionLook();
             const bool applied = self->apply(std::make_unique<SetCaptionsCommand>(
                 std::move(now), "Translate Captions to " + state->language.toStdString(), style, visual));
-            cloud->endJob(applied ? QStringLiteral("Translated into %1").arg(state->language) : QString());
+            cloud->endJob(applied ? tr("Translated into %1").arg(state->language) : QString());
             emit cloud->jobFinished(QStringLiteral("translate"), applied, QString());
             *step = nullptr;
         };
@@ -4409,11 +4443,11 @@ bool ProjectController::speakText(const QString& text, const QString& voiceId, c
 {
     const QString words = text.trimmed();
     if (words.isEmpty()) {
-        reportError(QStringLiteral("Type something to say first"));
+        reportError(tr("Type something to say first"));
         return false;
     }
     if (m_cloud->busy()) {
-        reportError(QStringLiteral("Another AI job is running"));
+        reportError(tr("Another AI job is running"));
         return false;
     }
     const double speed = std::clamp(options.value(QStringLiteral("speed"), 1.0).toDouble(), 0.5, 2.0);
@@ -4473,7 +4507,7 @@ bool ProjectController::placeVoice(const SpeechResult& speech, bool captions)
         }
     }
     const Ticks length = item->duration;
-    auto add = std::make_unique<AddVoiceOverCommand>(std::move(*item), target, start, "Add Voice", "Voice");
+    auto add = std::make_unique<AddVoiceOverCommand>(std::move(*item), target, start, TVE_TR("core", "Add Voice"), "Voice");
     auto* raw = add.get();
     std::vector<std::unique_ptr<Command>> commands;
     commands.push_back(std::move(add));
@@ -4486,9 +4520,9 @@ bool ProjectController::placeVoice(const SpeechResult& speech, bool captions)
         for (CaptionBlock& c : cloudfeatures::speechCaptions(speech.words, start))
             all.push_back(std::move(c));
         auto [style, visual] = captionLook();
-        commands.push_back(std::make_unique<SetCaptionsCommand>(std::move(all), "Add Voice", style, visual));
+        commands.push_back(std::make_unique<SetCaptionsCommand>(std::move(all), TVE_TR("core", "Add Voice"), style, visual));
     }
-    if (!apply(std::make_unique<CompositeCommand>(std::move(commands), "Add Voice")))
+    if (!apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Add Voice"))))
         return false;
     setSelectedClip(double(raw->clipId()));
     return true;
@@ -4522,12 +4556,12 @@ bool ProjectController::addDrawnPath(double clipId, const QVariantMap& path)
 {
     const Clip* clip = findClip(toId(clipId));
     if (!clip || !clip->drawing) {
-        reportError(QStringLiteral("Select a drawing"));
+        reportError(tr("Select a drawing"));
         return false;
     }
     ClipDrawing drawing = *clip->drawing;
     drawing.paths.push_back(pathFrom(path));
-    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), "Draw"));
+    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), TVE_TR("core", "Draw")));
 }
 
 bool ProjectController::setDrawnPath(double clipId, int index, const QVariantMap& changes)
@@ -4537,7 +4571,7 @@ bool ProjectController::setDrawnPath(double clipId, int index, const QVariantMap
         return false;
     ClipDrawing drawing = *clip->drawing;
     drawing.paths[std::size_t(index)] = pathFrom(changes, drawing.paths[std::size_t(index)]);
-    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), "Change Path"));
+    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), TVE_TR("core", "Change Path")));
 }
 
 bool ProjectController::removeDrawnPath(double clipId, int index)
@@ -4547,7 +4581,7 @@ bool ProjectController::removeDrawnPath(double clipId, int index)
         return false;
     ClipDrawing drawing = *clip->drawing;
     drawing.paths.erase(drawing.paths.begin() + index);
-    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), "Remove Path"));
+    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), TVE_TR("core", "Remove Path")));
 }
 
 bool ProjectController::setDrawing(double clipId, const QVariantMap& options)
@@ -4562,10 +4596,10 @@ bool ProjectController::setDrawing(double clipId, const QVariantMap& options)
     // Never longer than the clip together.
     const double seconds = toSeconds(clip->duration);
     if (drawing.drawIn + drawing.drawOut > seconds) {
-        reportError(QStringLiteral("Drawing on and off take longer than the clip"));
+        reportError(tr("Drawing on and off take longer than the clip"));
         return false;
     }
-    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), "Animate Drawing"));
+    return apply(std::make_unique<SetClipDrawingCommand>(clip->id, std::move(drawing), TVE_TR("core", "Animate Drawing")));
 }
 
 QVariantList ProjectController::pathsToFollow(double clipId) const
@@ -4584,7 +4618,7 @@ QVariantList ProjectController::pathsToFollow(double clipId) const
                     line << QVariant(QVariantList{x, y});
                 list << QVariantMap{{QStringLiteral("clipId"), double(other.id)},
                                     {QStringLiteral("index"), int(i)},
-                                    {QStringLiteral("label"), QStringLiteral("Path %1 (%2)").arg(i + 1)
+                                    {QStringLiteral("label"), tr("Path %1 (%2)").arg(i + 1)
                                                                   .arg(QLatin1String(kPathKinds[int(other.drawing->paths[i].kind)]))},
                                     {QStringLiteral("line"), line}};
             }
@@ -4597,20 +4631,20 @@ bool ProjectController::followPath(double clipId, double drawingClipId, int path
     const Clip* clip = findClip(toId(clipId));
     const Clip* drawing = findClip(toId(drawingClipId));
     if (!clip || !drawing || !drawing->drawing || pathIndex < 0 || std::size_t(pathIndex) >= drawing->drawing->paths.size()) {
-        reportError(QStringLiteral("Choose a drawn path to follow"));
+        reportError(tr("Choose a drawn path to follow"));
         return false;
     }
     const bool turn = options.value(QStringLiteral("turn")).toBool();
     const double aspect = double(m_project.settings.width) / std::max(1, m_project.settings.height);
     const FollowKeyframes keys = followLine(pathLine(drawing->drawing->paths[std::size_t(pathIndex)]), aspect, clip->duration, turn);
     if (keys.x.empty()) {
-        reportError(QStringLiteral("That path is too short to follow"));
+        reportError(tr("That path is too short to follow"));
         return false;
     }
     std::map<std::string, Keyframes> changes{{std::string(tve::property::kX), keys.x}, {std::string(tve::property::kY), keys.y}};
     if (turn)
         changes.emplace(std::string(tve::property::kRotation), keys.rotation);
-    return apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Follow Path"));
+    return apply(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), TVE_TR("core", "Follow Path")));
 }
 
 // --- Templates ---
@@ -4685,18 +4719,18 @@ bool ProjectController::newFromTemplate(const QString& templateId, const QString
 bool ProjectController::fillTemplateSlot(int index, double mediaId, double fromSeconds)
 {
     if (!m_project.templateInfo || index < 0 || std::size_t(index) >= m_project.templateInfo->mediaSlots.size()) {
-        reportError(QStringLiteral("No such slot"));
+        reportError(tr("No such slot"));
         return false;
     }
     const TemplateSlot& slot = m_project.templateInfo->mediaSlots[std::size_t(index)];
     const Clip* clip = findClip(slot.clipId);
     const MediaItem* media = m_project.findMedia(toId(mediaId));
     if (!clip || !media || !media->hasVideo) {
-        reportError(QStringLiteral("Choose a picture or a video for the slot"));
+        reportError(tr("Choose a picture or a video for the slot"));
         return false;
     }
     if ((slot.kind == "video" && media->still) || (slot.kind == "photo" && !media->still)) {
-        reportError(slot.kind == "video" ? QStringLiteral("This slot takes a video") : QStringLiteral("This slot takes a photo"));
+        reportError(slot.kind == "video" ? tr("This slot takes a video") : tr("This slot takes a photo"));
         return false;
     }
     // From that far in (as far as leaves the slot full), slowed if it is still too short.
@@ -4719,14 +4753,14 @@ bool ProjectController::fillTemplateSlot(int index, double mediaId, double fromS
             && followSubject(moved, *media, subject->second, m_project.settings.width, m_project.settings.height, 0.6)) {
             std::vector<std::unique_ptr<Command>> commands;
             commands.push_back(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, from, speed, std::nullopt,
-                                                                          std::size_t(index), "Fill Slot"));
+                                                                          std::size_t(index), TVE_TR("core", "Fill Slot")));
             std::map<std::string, Keyframes> changes{{std::string(tve::property::kX), moved.keyframes[std::string(tve::property::kX)]},
                                                      {std::string(tve::property::kY), moved.keyframes[std::string(tve::property::kY)]}};
-            commands.push_back(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), "Fill Slot", moved.visual));
-            return apply(std::make_unique<CompositeCommand>(std::move(commands), "Fill Slot"));
+            commands.push_back(std::make_unique<SetClipKeyframesCommand>(clip->id, std::move(changes), TVE_TR("core", "Fill Slot"), moved.visual));
+            return apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Fill Slot")));
         }
     }
-    return apply(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, from, speed, crop, std::size_t(index), "Fill Slot"));
+    return apply(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, from, speed, crop, std::size_t(index), TVE_TR("core", "Fill Slot")));
 }
 
 bool ProjectController::setTemplateSlotStart(int index, double fromSeconds)
@@ -4747,12 +4781,12 @@ bool ProjectController::setTemplateText(int index, const QString& text)
 bool ProjectController::setTemplateMusic(double mediaId)
 {
     if (!m_project.templateInfo || !findClip(m_project.templateInfo->musicClipId)) {
-        reportError(QStringLiteral("This project has no template music"));
+        reportError(tr("This project has no template music"));
         return false;
     }
     const MediaItem* media = m_project.findMedia(toId(mediaId));
     if (!media || !media->hasAudio) {
-        reportError(QStringLiteral("Choose something with sound"));
+        reportError(tr("Choose something with sound"));
         return false;
     }
     const Clip* clip = findClip(m_project.templateInfo->musicClipId);
@@ -4760,7 +4794,7 @@ bool ProjectController::setTemplateMusic(double mediaId)
         reportError(QStringLiteral("%1 is shorter than the video").arg(mediaName(media->path)));
         return false;
     }
-    return apply(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, 0, 1.0, std::nullopt, std::nullopt, "Replace Music"));
+    return apply(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, 0, 1.0, std::nullopt, std::nullopt, TVE_TR("core", "Replace Music")));
 }
 
 bool ProjectController::setTemplateMusicStart(double fromSeconds)
@@ -4773,7 +4807,7 @@ bool ProjectController::setTemplateMusicStart(double fromSeconds)
         return false;
     const Ticks from = std::clamp(ticks(fromSeconds), Ticks(0), std::max<Ticks>(0, media->duration - clip->duration));
     return apply(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, from, 1.0, std::nullopt, std::nullopt,
-                                                            "Move Music"));
+                                                            TVE_TR("core", "Move Music")));
 }
 
 QVariantList ProjectController::templateCandidates() const
@@ -4869,7 +4903,7 @@ void ProjectController::withSubject(const MediaItem& media, std::function<void()
         return;
     }
     auto found = std::make_shared<std::vector<SubjectSample>>();
-    runInBackground(QStringLiteral("Following the subject"),
+    runInBackground(tr("Following the subject"),
                     [path = media.path, key, found, directory = analysisDirectory().toStdString()](
                         const tve::AnalysisProgress& progress) -> std::string {
                         std::string error;
@@ -4902,11 +4936,11 @@ void ProjectController::rankMoments(bool rank, const QString& purpose, const QLi
         [self, indices, then](const TextResult& result) {
             if (!self)
                 return;
-            self->m_cloud->endJob(result.ok ? QStringLiteral("Ranked by Claude") : result.error);
+            self->m_cloud->endJob(result.ok ? tr("Ranked by Claude") : result.error);
             // Without Claude's order the edit still goes ahead, in the measured order.
             const auto order = result.ok ? cloudfeatures::readRanking(result.text, indices) : std::nullopt;
             if (!result.ok && !result.cancelled)
-                self->reportError(QStringLiteral("Claude could not rank the moments (%1); using the measured order").arg(result.error));
+                self->reportError(tr("Claude could not rank the moments (%1); using the measured order").arg(result.error));
             then(order.value_or(QList<QPair<int, QString>>{}));
         });
     if (!started)
@@ -4924,13 +4958,13 @@ bool ProjectController::makeAutoEdit(const QVariantMap& options)
 {
     const QString kind = options.value(QStringLiteral("kind"), QStringLiteral("instant")).toString();
     if (analyzing() || m_cloud->busy()) {
-        reportError(QStringLiteral("Something is already being worked on"));
+        reportError(tr("Something is already being worked on"));
         return false;
     }
     const AutoEditStyle* style = findAutoEditStyle(options.value(QStringLiteral("style"), QStringLiteral("upbeat")).toString());
     const auto shape = templateShape(options.value(QStringLiteral("shape"), QStringLiteral("16:9")).toString().toStdString());
     if (!style || !shape) {
-        reportError(QStringLiteral("Unknown style or shape"));
+        reportError(tr("Unknown style or shape"));
         return false;
     }
     std::vector<Id> ids, videos;
@@ -4945,7 +4979,7 @@ bool ProjectController::makeAutoEdit(const QVariantMap& options)
             videos.push_back(media->id);
     }
     if (ids.empty() || (kind == QLatin1String("montage") && videos.empty())) {
-        reportError(kind == QLatin1String("montage") ? QStringLiteral("Choose one or more videos") : QStringLiteral("Choose some pictures or videos"));
+        reportError(kind == QLatin1String("montage") ? tr("Choose one or more videos") : tr("Choose some pictures or videos"));
         return false;
     }
     const double seconds = std::clamp(options.value(QStringLiteral("seconds"), 30.0).toDouble(), 5.0, 300.0);
@@ -4953,7 +4987,7 @@ bool ProjectController::makeAutoEdit(const QVariantMap& options)
     const bool rank = options.value(QStringLiteral("rank")).toBool();
     const TemplateShape canvas = *shape;
     const AutoEditStyle chosenStyle = *style;
-    withAllFeatures(videos, QStringLiteral("Finding the best moments"), [this, kind, ids, chosenStyle, canvas, seconds, title, rank] {
+    withAllFeatures(videos, tr("Finding the best moments"), [this, kind, ids, chosenStyle, canvas, seconds, title, rank] {
         // Each video's moments, from its sound, pictures and words.
         auto sources = std::make_shared<std::vector<AutoEditSource>>();
         for (Id id : ids) {
@@ -5004,7 +5038,7 @@ bool ProjectController::makeAutoEdit(const QVariantMap& options)
             }
             resetProject(std::move(*project), {});
             m_canvasChosen = true;
-            emit autoEditFinished(kind, true, order.isEmpty() ? QString() : QStringLiteral("Moments ranked by Claude"));
+            emit autoEditFinished(kind, true, order.isEmpty() ? QString() : tr("Moments ranked by Claude"));
             emit analysisFinished(true, {});
         });
     });
@@ -5014,13 +5048,13 @@ bool ProjectController::makeAutoEdit(const QVariantMap& options)
 bool ProjectController::makeShorts(const QVariantMap& options)
 {
     if (analyzing() || m_cloud->busy()) {
-        reportError(QStringLiteral("Something is already being worked on"));
+        reportError(tr("Something is already being worked on"));
         return false;
     }
     const MediaItem* media = m_project.findMedia(toId(options.value(QStringLiteral("media")).toDouble()));
     const double seconds = std::clamp(options.value(QStringLiteral("seconds"), 30.0).toDouble(), 10.0, 90.0);
     if (!media || !media->hasVideo || media->still || media->lottie) {
-        reportError(QStringLiteral("Choose a video to make shorts from"));
+        reportError(tr("Choose a video to make shorts from"));
         return false;
     }
     if (double(media->duration) / kTicksPerSecond < seconds * 0.6) {
@@ -5031,7 +5065,7 @@ bool ProjectController::makeShorts(const QVariantMap& options)
     const bool captions = options.value(QStringLiteral("captions"), true).toBool();
     const bool rank = options.value(QStringLiteral("rank")).toBool();
     const MediaItem source = *media;
-    withAllFeatures({source.id}, QStringLiteral("Finding the best moments"), [this, source, seconds, count, captions, rank] {
+    withAllFeatures({source.id}, tr("Finding the best moments"), [this, source, seconds, count, captions, rank] {
         withSubject(source, [this, source, seconds, count, captions, rank] {
             const std::string key = fingerprintOf(source);
             const auto audio = m_audioFeatures.find(key);
@@ -5079,13 +5113,13 @@ bool ProjectController::makeShorts(const QVariantMap& options)
                     std::ranges::sort(placed, {}, &TimedWord::start);
                     SetCaptionsCommand(tve::layoutCaptions(placed), "Captions").redo(*project);
                 } else if (captions) {
-                    note = QStringLiteral("No captions: transcribe the video first (Transcript tab)");
+                    note = tr("No captions: transcribe the video first (Transcript tab)");
                 }
                 const int made = int(plans.size());
                 resetProject(std::move(*project), {});
                 m_canvasChosen = true;
                 if (!order.isEmpty())
-                    note = note.isEmpty() ? QStringLiteral("Ranked and titled by Claude") : note;
+                    note = note.isEmpty() ? tr("Ranked and titled by Claude") : note;
                 emit autoEditFinished(QStringLiteral("shorts"), true,
                                       QStringLiteral("%1 short%2").arg(made).arg(made == 1 ? "" : "s") + (note.isEmpty() ? QString() : QStringLiteral(" · ") + note));
                 emit analysisFinished(true, {});
@@ -5171,13 +5205,13 @@ std::optional<std::pair<QStringList, QStringList>> stillInputs(const Project& pr
 bool ProjectController::generateImage(const QString& prompt, const QVariantMap& options)
 {
     if (prompt.trimmed().isEmpty()) {
-        reportError(QStringLiteral("Describe the picture first"));
+        reportError(tr("Describe the picture first"));
         return false;
     }
     const bool sticker = options.value(QStringLiteral("sticker")).toBool();
     const auto inputs = stillInputs(m_project, options.value(QStringLiteral("inputs")).toList());
     if (!inputs) {
-        reportError(QStringLiteral("Only pictures in the media bin can be worked from"));
+        reportError(tr("Only pictures in the media bin can be worked from"));
         return false;
     }
     ImageOptions image;
@@ -5194,7 +5228,7 @@ bool ProjectController::generateImage(const QString& prompt, const QVariantMap& 
     QPointer<ProjectController> self(this);
     const QString sources = inputs->second.join(QStringLiteral(", "));
     const bool started = m_cloud->generateMedia(
-        job, sticker ? QStringLiteral("OpenAI is drawing the sticker…") : QStringLiteral("OpenAI is drawing…"),
+        job, sticker ? tr("OpenAI is drawing the sticker…") : tr("OpenAI is drawing…"),
         [prompt, image, base](QNetworkAccessManager* network, QObject* parent) {
             return cloudmedia::image(network, prompt, image, base, parent);
         },
@@ -5212,11 +5246,11 @@ bool ProjectController::generateImage(const QString& prompt, const QVariantMap& 
                 result, GeneratedBy{.provider = "openai", .kind = sticker ? "sticker" : "image",
                                     .prompt = prompt.toStdString(), .source = sources.toStdString()},
                 sticker);
-            const bool ok = media != kNoId && (!sticker || self->placeOverlay(media, 0.4, "Stickers", "Add AI Sticker"));
+            const bool ok = media != kNoId && (!sticker || self->placeOverlay(media, 0.4, "Stickers", TVE_TR("core", "Add AI Sticker")));
             self->endGeneration(job, result, ok);
         });
     if (!started)
-        reportError(QStringLiteral("Another AI job is running"));
+        reportError(tr("Another AI job is running"));
     return started;
 }
 
@@ -5230,7 +5264,7 @@ bool ProjectController::generateVideo(const QString& prompt, const QVariantMap& 
     if (video.mode == QLatin1String("extend")) {
         const MediaItem* media = m_project.findMedia(Id(options.value(QStringLiteral("extend")).toDouble()));
         if (!media || !media->generated || media->generated->kind != "video" || media->generated->reference.empty()) {
-            reportError(QStringLiteral("Choose a video made here to extend"));
+            reportError(tr("Choose a video made here to extend"));
             return false;
         }
         video.previous = QString::fromStdString(media->generated->reference);
@@ -5239,12 +5273,12 @@ bool ProjectController::generateVideo(const QString& prompt, const QVariantMap& 
         const auto inputs = stillInputs(m_project, options.value(QStringLiteral("images")).toList());
         const qsizetype wanted = video.mode == QLatin1String("image") ? 1 : video.mode == QLatin1String("frames") ? 2 : 0;
         if (!inputs || inputs->first.size() != wanted) {
-            reportError(wanted == 2 ? QStringLiteral("Choose a first and a last picture")
-                                    : QStringLiteral("Choose a picture to start from"));
+            reportError(wanted == 2 ? tr("Choose a first and a last picture")
+                                    : tr("Choose a picture to start from"));
             return false;
         }
         if (prompt.trimmed().isEmpty() && wanted == 0) {
-            reportError(QStringLiteral("Describe the video first"));
+            reportError(tr("Describe the video first"));
             return false;
         }
         video.images = inputs->first;
@@ -5253,7 +5287,7 @@ bool ProjectController::generateVideo(const QString& prompt, const QVariantMap& 
     const QString base = generatedBase(QStringLiteral("Video"));
     QPointer<ProjectController> self(this);
     const bool started = m_cloud->generateMedia(
-        QStringLiteral("video"), QStringLiteral("Google is making the video; this can take a few minutes…"),
+        QStringLiteral("video"), tr("Google is making the video; this can take a few minutes…"),
         [prompt, video, base](QNetworkAccessManager* network, QObject* parent) {
             return cloudmedia::video(network, prompt, video, base, parent);
         },
@@ -5272,14 +5306,14 @@ bool ProjectController::generateVideo(const QString& prompt, const QVariantMap& 
             self->endGeneration(job, result, media != kNoId);
         });
     if (!started)
-        reportError(QStringLiteral("Another AI job is running"));
+        reportError(tr("Another AI job is running"));
     return started;
 }
 
 bool ProjectController::generateSound(const QString& prompt, const QVariantMap& options)
 {
     if (prompt.trimmed().isEmpty()) {
-        reportError(QStringLiteral("Describe the sound first"));
+        reportError(tr("Describe the sound first"));
         return false;
     }
     const bool music = options.value(QStringLiteral("kind"), QStringLiteral("music")).toString() == QLatin1String("music");
@@ -5290,7 +5324,7 @@ bool ProjectController::generateSound(const QString& prompt, const QVariantMap& 
     const QString base = generatedBase(music ? QStringLiteral("Music") : QStringLiteral("Sound"));
     QPointer<ProjectController> self(this);
     const bool started = m_cloud->generateMedia(
-        job, music ? QStringLiteral("ElevenLabs is composing…") : QStringLiteral("ElevenLabs is making the sound…"),
+        job, music ? tr("ElevenLabs is composing…") : tr("ElevenLabs is making the sound…"),
         [prompt, music, length, instrumental, loop, base](QNetworkAccessManager* network, QObject* parent) {
             return music ? cloudmedia::music(network, prompt, length, instrumental, base, parent)
                          : cloudmedia::soundEffect(network, prompt, length, loop, base, parent);
@@ -5322,7 +5356,7 @@ bool ProjectController::generateSound(const QString& prompt, const QVariantMap& 
                     break;
                 }
             auto command = std::make_unique<AddVoiceOverCommand>(std::move(*item), target, start,
-                                                                 music ? "Add AI Music" : "Add AI Sound Effect",
+                                                                 music ? TVE_TR("core", "Add AI Music") : TVE_TR("core", "Add AI Sound Effect"),
                                                                  music ? "Music" : "Sound effects");
             auto* raw = command.get();
             const bool ok = self->apply(std::move(command));
@@ -5331,7 +5365,7 @@ bool ProjectController::generateSound(const QString& prompt, const QVariantMap& 
             self->endGeneration(job, result, ok);
         });
     if (!started)
-        reportError(QStringLiteral("Another AI job is running"));
+        reportError(tr("Another AI job is running"));
     return started;
 }
 
@@ -5426,13 +5460,13 @@ QVariantList ProjectController::listCameras()
 bool ProjectController::startScreenRecording(const QVariantMap& options)
 {
     if (screenRecording() || recording()) {
-        reportError(QStringLiteral("Something is being recorded already"));
+        reportError(tr("Something is being recorded already"));
         return false;
     }
     const QVariantMap screen = options.value(QStringLiteral("screen")).toMap();
     const QString cameraId = options.value(QStringLiteral("camera")).toString();
     if (screen.isEmpty() && cameraId.isEmpty()) {
-        reportError(QStringLiteral("Choose a screen or a camera to record"));
+        reportError(tr("Choose a screen or a camera to record"));
         return false;
     }
     const int rate = std::clamp(options.value(QStringLiteral("frameRate"), 30).toInt(), 10, 60);
@@ -5445,7 +5479,7 @@ bool ProjectController::startScreenRecording(const QVariantMap& options)
             source = tve::makeTestSource(1280, 720, rate, options.value(QStringLiteral("systemSound")).toBool());
         } else {
             if (tve::screenAccess() != CaptureAccess::Granted) {
-                reportError(QStringLiteral("Allow screen recording in System Settings first"));
+                reportError(tr("Allow screen recording in System Settings first"));
                 return false;
             }
             ScreenTarget target;
@@ -5467,7 +5501,7 @@ bool ProjectController::startScreenRecording(const QVariantMap& options)
         m_screenRecorder = std::make_unique<CaptureRecorder>(std::move(source), rate);
         if (!m_screenRecorder->start(folder.filePath(QStringLiteral("Screen %1.mov").arg(stamp)).toStdString(), &error)) {
             m_screenRecorder.reset();
-            reportError(QStringLiteral("The screen recording could not start: ") + QString::fromStdString(error));
+            reportError(tr("The screen recording could not start: %1").arg(coreText(error)));
             return false;
         }
         if (const auto area = m_screenRecorder->source().screenArea()) {
@@ -5478,14 +5512,14 @@ bool ProjectController::startScreenRecording(const QVariantMap& options)
     if (!cameraId.isEmpty()) {
         if (!testCamera() && tve::cameraAccess() != CaptureAccess::Granted) {
             stopScreenRecording();
-            reportError(QStringLiteral("Allow the camera in System Settings first"));
+            reportError(tr("Allow the camera in System Settings first"));
             return false;
         }
         auto source = testCamera() ? tve::makeTestSource(640, 360, rate, false) : tve::makeCameraSource(cameraId.toStdString(), rate);
         m_cameraRecorder = std::make_unique<CaptureRecorder>(std::move(source), rate);
         if (!m_cameraRecorder->start(folder.filePath(QStringLiteral("Camera %1.mov").arg(stamp)).toStdString(), &error)) {
             m_cameraRecorder.reset();
-            const QString message = QStringLiteral("The camera recording could not start: ") + QString::fromStdString(error);
+            const QString message = tr("The camera recording could not start: %1").arg(coreText(error));
             if (m_screenRecorder)
                 stopScreenRecording();
             reportError(message);
@@ -5547,7 +5581,7 @@ bool ProjectController::stopScreenRecording()
                 takes.push_back(std::move(*take));
             }
         } else {
-            problems << QString::fromStdString(error);
+            problems << coreText(error);
         }
     }
     if (m_cameraRecorder) {
@@ -5562,7 +5596,7 @@ bool ProjectController::stopScreenRecording()
                 takes.push_back(std::move(*take));
             }
         } else {
-            problems << QString::fromStdString(error);
+            problems << coreText(error);
         }
     }
     if (m_screenMicrophone) {
@@ -5576,12 +5610,12 @@ bool ProjectController::stopScreenRecording()
     m_screenMicrophone.reset();
     emit screenRecordingChanged();
     if (takes.empty()) {
-        reportError(QStringLiteral("Nothing was recorded: ") + problems.join(QStringLiteral("; ")));
+        reportError(tr("Nothing was recorded: %1").arg(problems.join(QStringLiteral("; "))));
         return false;
     }
     const bool screen = std::ranges::any_of(takes, [](const RecordedTake& t) { return t.trackName == "Screen"; });
     auto command = std::make_unique<AddRecordingCommand>(std::move(takes), m_screenRecordingStart,
-                                                         screen ? "Record Screen" : "Record Camera");
+                                                         screen ? TVE_TR("core", "Record Screen") : TVE_TR("core", "Record Camera"));
     auto* raw = command.get();
     if (!apply(std::move(command)))
         return false;
@@ -5593,7 +5627,7 @@ bool ProjectController::setCursorEffects(double clipId, const QVariantMap& effec
 {
     const Clip* clip = findClip(toId(clipId));
     if (!clip || !clip->cursor.hasLog()) {
-        reportError(QStringLiteral("Select a screen recording"));
+        reportError(tr("Select a screen recording"));
         return false;
     }
     CursorEffects cursor = clip->cursor;
@@ -5608,11 +5642,11 @@ bool ProjectController::zoomOnClicks(double clipId, const QVariantMap& options)
 {
     const Clip* clip = findClip(toId(clipId));
     if (!clip || !clip->cursor.hasLog() || clip->cursor.clicks.empty()) {
-        reportError(QStringLiteral("Select a screen recording with clicks"));
+        reportError(tr("Select a screen recording with clicks"));
         return false;
     }
     if (clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
-        reportError(QStringLiteral("Zooming on clicks works on clips playing forwards at a steady speed"));
+        reportError(tr("Zooming on clicks works on clips playing forwards at a steady speed"));
         return false;
     }
     const double zoom = std::clamp(options.value(QStringLiteral("zoom"), 1.8).toDouble(), 1.2, 3.0);
@@ -5667,21 +5701,21 @@ bool ProjectController::zoomOnClicks(double clipId, const QVariantMap& options)
     tidy(ys);
     tidy(scales);
     if (xs.empty()) {
-        reportError(QStringLiteral("No clicks within the clip"));
+        reportError(tr("No clicks within the clip"));
         return false;
     }
     return apply(std::make_unique<SetClipKeyframesCommand>(clip->id,
                                                            std::map<std::string, Keyframes>{{std::string(tve::property::kX), xs},
                                                                                             {std::string(tve::property::kY), ys},
                                                                                             {std::string(tve::property::kScale), scales}},
-                                                           "Zoom on Clicks"));
+                                                           TVE_TR("core", "Zoom on Clicks")));
 }
 
 bool ProjectController::addClickSounds(double clipId)
 {
     const Clip* clip = findClip(toId(clipId));
     if (!clip || clip->cursor.clicks.empty()) {
-        reportError(QStringLiteral("Select a screen recording with clicks"));
+        reportError(tr("Select a screen recording with clicks"));
         return false;
     }
     // The click: 40 ms of a short, bright tick (made once, kept with the recordings).
@@ -5690,7 +5724,7 @@ bool ProjectController::addClickSounds(double clipId)
         QDir().mkpath(recordingsDirectory());
         auto writer = WavWriter::open(path.toStdString(), audio::kSampleRate, 1);
         if (!writer) {
-            reportError(QStringLiteral("The click sound could not be made"));
+            reportError(tr("The click sound could not be made"));
             return false;
         }
         std::vector<float> tick(std::size_t(audio::kSampleRate) / 25);
@@ -5715,7 +5749,7 @@ bool ProjectController::addClickSounds(double clipId)
             times.push_back(at);
     }
     if (times.empty()) {
-        reportError(QStringLiteral("No clicks within the clip"));
+        reportError(tr("No clicks within the clip"));
         return false;
     }
     return apply(std::make_unique<AddClickSoundsCommand>(std::move(*item), std::move(times)));
@@ -5791,11 +5825,10 @@ QString ProjectController::timecode(double value) const
     const long long fps = std::llround(frameRate());
     const long long ff = totalFrames % fps;
     const long long totalSeconds = totalFrames / fps;
-    return QStringLiteral("%1:%2:%3:%4")
-        .arg(totalSeconds / 3600, 2, 10, QLatin1Char('0'))
-        .arg((totalSeconds / 60) % 60, 2, 10, QLatin1Char('0'))
-        .arg(totalSeconds % 60, 2, 10, QLatin1Char('0'))
-        .arg(ff, 2, 10, QLatin1Char('0'));
+    // In the language's digits.
+    const QLocale locale;
+    const auto two = [&](long long n) { return locale.toString(n).rightJustified(2, locale.zeroDigit().at(0)); };
+    return QStringLiteral("%1:%2:%3:%4").arg(two(totalSeconds / 3600), two((totalSeconds / 60) % 60), two(totalSeconds % 60), two(ff));
 }
 
 // --- Mixer and audio effects ---
@@ -5873,17 +5906,17 @@ bool ProjectController::addAudioEffect(double clipId, const QString& effectId)
 {
     const Clip* clip = findClip(toId(clipId));
     if (!clip) {
-        reportError(QStringLiteral("Select a clip with sound"));
+        reportError(tr("Select a clip with sound"));
         return false;
     }
     const bool plugin = isPluginEffect(effectId.toStdString());
     if (!plugin && !AudioEffectLibrary::builtIn().find(effectId.toStdString())) {
-        reportError(QStringLiteral("Unknown audio effect %1").arg(effectId));
+        reportError(tr("Unknown audio effect %1").arg(effectId));
         return false;
     }
     auto effects = clip->audioEffects;
     effects.push_back(ClipEffect{.effectId = effectId.toStdString()});
-    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects), plugin ? "Add Plug-in" : "Add Audio Effect"));
+    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects), plugin ? TVE_TR("core", "Add Plug-in") : TVE_TR("core", "Add Audio Effect")));
 }
 
 bool ProjectController::removeAudioEffect(double clipId, int index)
@@ -5893,7 +5926,7 @@ bool ProjectController::removeAudioEffect(double clipId, int index)
         return false;
     auto effects = clip->audioEffects;
     effects.erase(effects.begin() + index);
-    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects), "Remove Audio Effect"));
+    return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects), TVE_TR("core", "Remove Audio Effect")));
 }
 
 bool ProjectController::setAudioEffectEnabled(double clipId, int index, bool enabled)
@@ -5904,7 +5937,7 @@ bool ProjectController::setAudioEffectEnabled(double clipId, int index, bool ena
     auto effects = clip->audioEffects;
     effects[std::size_t(index)].enabled = enabled;
     return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects),
-                                                              enabled ? "Enable Audio Effect" : "Disable Audio Effect"));
+                                                              enabled ? TVE_TR("core", "Enable Audio Effect") : TVE_TR("core", "Disable Audio Effect")));
 }
 
 bool ProjectController::setAudioEffectParam(double clipId, int index, const QString& paramId, const QVariant& value)
@@ -5918,7 +5951,7 @@ bool ProjectController::setAudioEffectParam(double clipId, int index, const QStr
     const EffectParamSpec* param = manifest ? manifest->findParam(paramId.toStdString()) : nullptr;
     const auto components = componentsOf(value);
     if ((!plugin && !param) || components.empty()) {
-        reportError(QStringLiteral("Unknown setting %1").arg(paramId));
+        reportError(tr("Unknown setting %1").arg(paramId));
         return false;
     }
     const float clamped = plugin ? std::clamp(components.front(), 0.0f, 1.0f)
@@ -5928,12 +5961,12 @@ bool ProjectController::setAudioEffectParam(double clipId, int index, const QStr
     if (channelKeys(*clip, channel)) {
         Clip after = *clip;
         setKey(after, channel, clamped);
-        return commitAnimation(*clip, after, plugin ? "Change Plug-in" : "Change Audio Effect");
+        return commitAnimation(*clip, after, plugin ? TVE_TR("core", "Change Plug-in") : TVE_TR("core", "Change Audio Effect"));
     }
     auto effects = clip->audioEffects;
     effects[std::size_t(index)].values[paramId.toStdString()] = {clamped};
     return apply(std::make_unique<SetClipAudioEffectsCommand>(clip->id, std::move(effects),
-                                                              plugin ? "Change Plug-in" : "Change Audio Effect"));
+                                                              plugin ? TVE_TR("core", "Change Plug-in") : TVE_TR("core", "Change Audio Effect")));
 }
 
 // --- Track audio effects and plug-ins ---
@@ -5960,12 +5993,12 @@ bool ProjectController::addTrackAudioEffect(double trackId, const QString& effec
     const auto* stack = audioStack(-1, trackId);
     const bool plugin = isPluginEffect(effectId.toStdString());
     if (!stack || (!plugin && !AudioEffectLibrary::builtIn().find(effectId.toStdString()))) {
-        reportError(QStringLiteral("Unknown audio effect %1").arg(effectId));
+        reportError(tr("Unknown audio effect %1").arg(effectId));
         return false;
     }
     auto effects = *stack;
     effects.push_back(ClipEffect{.effectId = effectId.toStdString()});
-    return setAudioStack(-1, trackId, std::move(effects), plugin ? "Add Track Plug-in" : "Add Track Effect");
+    return setAudioStack(-1, trackId, std::move(effects), plugin ? TVE_TR("core", "Add Track Plug-in") : TVE_TR("core", "Add Track Effect"));
 }
 
 bool ProjectController::removeTrackAudioEffect(double trackId, int index)
@@ -5975,7 +6008,7 @@ bool ProjectController::removeTrackAudioEffect(double trackId, int index)
         return false;
     auto effects = *stack;
     effects.erase(effects.begin() + index);
-    return setAudioStack(-1, trackId, std::move(effects), "Remove Track Effect");
+    return setAudioStack(-1, trackId, std::move(effects), TVE_TR("core", "Remove Track Effect"));
 }
 
 bool ProjectController::setTrackAudioEffectEnabled(double trackId, int index, bool enabled)
@@ -5985,7 +6018,7 @@ bool ProjectController::setTrackAudioEffectEnabled(double trackId, int index, bo
         return false;
     auto effects = *stack;
     effects[std::size_t(index)].enabled = enabled;
-    return setAudioStack(-1, trackId, std::move(effects), enabled ? "Enable Track Effect" : "Disable Track Effect");
+    return setAudioStack(-1, trackId, std::move(effects), enabled ? TVE_TR("core", "Enable Track Effect") : TVE_TR("core", "Disable Track Effect"));
 }
 
 bool ProjectController::setTrackAudioEffectParam(double trackId, int index, const QString& paramId, const QVariant& value)
@@ -5999,13 +6032,13 @@ bool ProjectController::setTrackAudioEffectParam(double trackId, int index, cons
     const EffectParamSpec* param = manifest ? manifest->findParam(paramId.toStdString()) : nullptr;
     const auto components = componentsOf(value);
     if ((!plugin && !param) || components.empty()) {
-        reportError(QStringLiteral("Unknown setting %1").arg(paramId));
+        reportError(tr("Unknown setting %1").arg(paramId));
         return false;
     }
     auto effects = *stack;
     effects[std::size_t(index)].values[paramId.toStdString()] = {
         plugin ? std::clamp(components.front(), 0.0f, 1.0f) : std::clamp(components.front(), float(param->min), float(param->max))};
-    return setAudioStack(-1, trackId, std::move(effects), plugin ? "Change Plug-in" : "Change Track Effect");
+    return setAudioStack(-1, trackId, std::move(effects), plugin ? TVE_TR("core", "Change Plug-in") : TVE_TR("core", "Change Track Effect"));
 }
 
 QString ProjectController::pluginKey(double clipId, double trackId, int index)
@@ -6187,7 +6220,7 @@ bool ProjectController::openPluginWindow(double clipId, double trackId, int inde
     const QString key = pluginKey(clipId, trackId, index);
     const ClipEffect* effect = audioEffectAt(key);
     if (!effect) {
-        reportError(QStringLiteral("That isn't a plug-in"));
+        reportError(tr("That isn't a plug-in"));
         return false;
     }
     QString name = QString::fromStdString(effect->effectId);
@@ -6238,7 +6271,7 @@ void ProjectController::pluginEdited(const QString& key, const QString& state)
     ClipEffect& changed = effects[std::size_t(index)];
     changed.state = state.toStdString();
     std::erase_if(changed.values, [&](const auto& entry) { return !changed.keyframes.contains(entry.first); });
-    setAudioStack(clip ? id : -1, clip ? -1 : id, std::move(effects), "Adjust Plug-in");
+    setAudioStack(clip ? id : -1, clip ? -1 : id, std::move(effects), TVE_TR("core", "Adjust Plug-in"));
 }
 
 bool ProjectController::setKeepPitch(double clipId, bool keep)
@@ -6251,18 +6284,18 @@ bool ProjectController::normalizeLoudness(double clipId, double targetLufs)
 {
     const auto location = m_project.locateClip(toId(clipId));
     if (!location) {
-        reportError(QStringLiteral("Select a clip with sound"));
+        reportError(tr("Select a clip with sound"));
         return false;
     }
     const Clip& clip = *location->clip;
     const MediaItem* media = m_project.findMedia(clip.mediaId);
     if (clip.generated() || !media || !media->hasAudio
         || (location->track->kind == TrackKind::Video && !clip.audioEnabled)) {
-        reportError(QStringLiteral("This clip has no sound of its own"));
+        reportError(tr("This clip has no sound of its own"));
         return false;
     }
     if (clip.keyframesOf(property::kVolume)) {
-        reportError(QStringLiteral("The volume is animated: remove its keyframes to normalize"));
+        reportError(tr("The volume is animated: remove its keyframes to normalize"));
         return false;
     }
     if (m_measuringLoudness)
@@ -6297,7 +6330,7 @@ bool ProjectController::normalizeLoudness(double clipId, double targetLufs)
             if (!clip)
                 return;
             if (!std::isfinite(measured)) {
-                self->reportError(QStringLiteral("This clip is silent"));
+                self->reportError(tr("This clip is silent"));
                 emit self->loudnessMeasured(double(id), std::nan(""));
                 return;
             }
@@ -6306,7 +6339,7 @@ bool ProjectController::normalizeLoudness(double clipId, double targetLufs)
             std::vector<std::unique_ptr<Command>> steps;
             steps.push_back(std::make_unique<SetClipAudioCommand>(clip->id, audio));
             self->m_loudness[id] = {measured, targetLufs};
-            if (self->apply(std::make_unique<CompositeCommand>(std::move(steps), "Normalize Loudness")))
+            if (self->apply(std::make_unique<CompositeCommand>(std::move(steps), TVE_TR("core", "Normalize Loudness"))))
                 emit self->loudnessMeasured(double(id), measured);
         }, Qt::QueuedConnection);
     }).detach();
@@ -6318,7 +6351,7 @@ QVariantList ProjectController::textAnimations() const
     QVariantList list;
     for (const TextAnimationPreset& preset : textAnimationPresets()) {
         list << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(preset.id.data(), qsizetype(preset.id.size()))},
-                            {QStringLiteral("title"), QString::fromLatin1(preset.title.data(), qsizetype(preset.title.size()))},
+                            {QStringLiteral("title"), coreText(std::string(preset.title))},
                             {QStringLiteral("loop"), preset.loop}};
     }
     return list;
@@ -6348,7 +6381,7 @@ int ProjectController::applyTransitions(const std::function<std::string(std::siz
 {
     const std::vector<Id> cuts = transitionCuts();
     if (cuts.empty()) {
-        reportError(QStringLiteral("There are no cuts between clips to put transitions on"));
+        reportError(tr("There are no cuts between clips to put transitions on"));
         return 0;
     }
     std::vector<std::unique_ptr<Command>> steps;
@@ -6372,10 +6405,10 @@ int ProjectController::applyTransitionToAll(const QString& transitionId, double 
 {
     const std::string id = transitionId.toStdString();
     if (!EffectLibrary::builtIn().findTransition(id)) {
-        reportError(QStringLiteral("Unknown transition %1").arg(transitionId));
+        reportError(tr("Unknown transition %1").arg(transitionId));
         return 0;
     }
-    return applyTransitions([&](std::size_t) { return id; }, duration, "Apply Transition to All");
+    return applyTransitions([&](std::size_t) { return id; }, duration, TVE_TR("core", "Apply Transition to All"));
 }
 
 int ProjectController::applyRandomTransitions(double duration)
@@ -6396,7 +6429,7 @@ int ProjectController::applyRandomTransitions(double duration)
             previous = all[chosen].manifest.id;
             return previous;
         },
-        duration, "Random Transitions");
+        duration, TVE_TR("core", "Random Transitions"));
 }
 
 // --- Stickers ---
@@ -6410,7 +6443,7 @@ bool ProjectController::addSticker(const QString& stickerId)
 {
     const QString path = stickers::pathOf(stickerId);
     if (path.isEmpty()) {
-        reportError(QStringLiteral("Unknown sticker %1").arg(stickerId));
+        reportError(tr("Unknown sticker %1").arg(stickerId));
         return false;
     }
     // Its media, once (a resource path, not a URL); then a clip at the playhead on the lowest
@@ -6428,7 +6461,7 @@ bool ProjectController::addSticker(const QString& stickerId)
             return false;
         media = std::ranges::find(m_project.media, path.toStdString(), &MediaItem::path);
     }
-    return placeOverlay(media->id, 0.4, "Stickers", "Add Sticker");
+    return placeOverlay(media->id, 0.4, "Stickers", TVE_TR("core", "Add Sticker"));
 }
 
 bool ProjectController::placeOverlay(Id mediaId, double scale, const std::string& trackName, const std::string& label)
@@ -6603,7 +6636,7 @@ bool ProjectController::groupSelected()
     for (const QVariant& id : selectedClips())
         ids.push_back(toId(id.toDouble()));
     if (ids.size() < 2) {
-        reportError(QStringLiteral("Select two or more clips (⇧-click) to group them"));
+        reportError(tr("Select two or more clips (⇧-click) to group them"));
         return false;
     }
     return apply(std::make_unique<GroupClipsCommand>(std::move(ids)));
@@ -6613,7 +6646,7 @@ bool ProjectController::ungroupSelected()
 {
     const Clip* clip = findClip(m_selectedClip);
     if (!clip || clip->groupId == kNoId) {
-        reportError(QStringLiteral("Select a grouped clip to ungroup"));
+        reportError(tr("Select a grouped clip to ungroup"));
         return false;
     }
     if (!apply(std::make_unique<UngroupCommand>(clip->groupId)))
@@ -6628,7 +6661,7 @@ double ProjectController::createCompound()
     for (const QVariant& id : selectedClips())
         ids.push_back(toId(id.toDouble()));
     if (ids.empty()) {
-        reportError(QStringLiteral("Select the clips to put in a compound clip"));
+        reportError(tr("Select the clips to put in a compound clip"));
         return 0;
     }
     std::size_t number = m_project.sequences.size() + 1;
@@ -6649,7 +6682,7 @@ bool ProjectController::breakCompound(double clipId)
 {
     const Clip* clip = findClip(toId(clipId));
     if (!clip || !clip->compound()) {
-        reportError(QStringLiteral("Select a compound clip to break apart"));
+        reportError(tr("Select a compound clip to break apart"));
         return false;
     }
     if (!apply(std::make_unique<BreakCompoundCommand>(toId(clipId))))
@@ -6690,7 +6723,7 @@ const Clip* ProjectController::analysableClip(Id clipId, bool needsSound, bool n
     const Clip* clip = findClip(clipId);
     const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
     if (!clip || !media) {
-        reportError(QStringLiteral("Select a clip with media to analyse"));
+        reportError(tr("Select a clip with media to analyse"));
         return nullptr;
     }
     if (needsSound && !media->hasAudio) {
@@ -6702,7 +6735,7 @@ const Clip* ProjectController::analysableClip(Id clipId, bool needsSound, bool n
         return nullptr;
     }
     if (clip->speed != 1.0 || clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
-        reportError(QStringLiteral("Analysis works on clips playing at normal speed"));
+        reportError(tr("Analysis works on clips playing at normal speed"));
         return nullptr;
     }
     if (!QFileInfo::exists(QString::fromStdString(media->path))) {
@@ -6795,9 +6828,9 @@ void ProjectController::withFeatures(const std::vector<Id>& mediaIds, bool video
             if (error.empty()) {
                 then();
             } else {
-                const QString message = error == "cancelled" ? QString() : QString::fromStdString(error);
+                const QString message = error == "cancelled" ? QString() : coreText(error);
                 if (!message.isEmpty())
-                    reportError(QStringLiteral("Analysis failed: ") + message);
+                    reportError(tr("Analysis failed: %1").arg(message));
                 emit analysisFinished(false, message);
             }
         }, Qt::QueuedConnection);
@@ -6823,7 +6856,7 @@ void ProjectController::clearAnalysis()
 bool ProjectController::findSilences(double clipId, const QVariantMap& options)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* clip = analysableClip(toId(clipId), true, false);
@@ -6835,7 +6868,7 @@ bool ProjectController::findSilences(double clipId, const QVariantMap& options)
     settings.thresholdDb = options.value(QStringLiteral("thresholdDb"), settings.thresholdDb).toDouble();
     settings.minDuration = options.value(QStringLiteral("minDuration"), settings.minDuration).toDouble();
     settings.padding = options.value(QStringLiteral("padding"), settings.padding).toDouble();
-    withFeatures({mediaId}, false, QStringLiteral("Listening for pauses"), [this, id, settings] {
+    withFeatures({mediaId}, false, tr("Listening for pauses"), [this, id, settings] {
         const Clip* clip = findClip(id);
         const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
         if (!media)
@@ -6862,7 +6895,7 @@ bool ProjectController::removeSilences()
     const auto location = m_project.locateClip(toId(m_silences.value(QStringLiteral("clipId")).toDouble()));
     const QVariantList ranges = m_silences.value(QStringLiteral("ranges")).toList();
     if (!location || ranges.isEmpty()) {
-        reportError(QStringLiteral("Find the pauses first"));
+        reportError(tr("Find the pauses first"));
         return false;
     }
     std::vector<std::pair<Ticks, Ticks>> cut;
@@ -6870,7 +6903,7 @@ bool ProjectController::removeSilences()
         const QVariantMap range = r.toMap();
         cut.emplace_back(ticks(range.value(QStringLiteral("start")).toDouble()), ticks(range.value(QStringLiteral("end")).toDouble()));
     }
-    if (!apply(std::make_unique<RemoveRangesCommand>(location->track->id, std::move(cut), "Remove Pauses")))
+    if (!apply(std::make_unique<RemoveRangesCommand>(location->track->id, std::move(cut), TVE_TR("core", "Remove Pauses"))))
         return false;
     m_silences.clear();
     emit analysisChanged();
@@ -6880,7 +6913,7 @@ bool ProjectController::removeSilences()
 bool ProjectController::findScenes(double clipId, const QVariantMap& options)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* clip = analysableClip(toId(clipId), false, true);
@@ -6890,7 +6923,7 @@ bool ProjectController::findScenes(double clipId, const QVariantMap& options)
     tve::SceneOptions settings;
     settings.threshold = options.value(QStringLiteral("threshold"), settings.threshold).toDouble();
     settings.minScene = options.value(QStringLiteral("minScene"), settings.minScene).toDouble();
-    withFeatures({clip->mediaId}, true, QStringLiteral("Looking for scene changes"), [this, id, settings] {
+    withFeatures({clip->mediaId}, true, tr("Looking for scene changes"), [this, id, settings] {
         const Clip* clip = findClip(id);
         const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
         if (!media)
@@ -6913,14 +6946,14 @@ bool ProjectController::splitAtScenes()
     const Id id = toId(m_scenes.value(QStringLiteral("clipId")).toDouble());
     QVariantList cuts = m_scenes.value(QStringLiteral("cuts")).toList();
     if (!findClip(id) || cuts.isEmpty()) {
-        reportError(QStringLiteral("Find the scene changes first"));
+        reportError(tr("Find the scene changes first"));
         return false;
     }
     // Latest first: the clip keeps its id on the left of each split.
     std::vector<std::unique_ptr<Command>> commands;
     for (auto it = cuts.rbegin(); it != cuts.rend(); ++it)
         commands.push_back(std::make_unique<SplitClipCommand>(id, ticks(it->toDouble())));
-    if (!apply(std::make_unique<CompositeCommand>(std::move(commands), "Split at Scenes")))
+    if (!apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Split at Scenes"))))
         return false;
     m_scenes.clear();
     emit analysisChanged();
@@ -6931,7 +6964,7 @@ bool ProjectController::markScenes()
 {
     const QVariantList cuts = m_scenes.value(QStringLiteral("cuts")).toList();
     if (cuts.isEmpty()) {
-        reportError(QStringLiteral("Find the scene changes first"));
+        reportError(tr("Find the scene changes first"));
         return false;
     }
     std::vector<std::unique_ptr<Command>> commands;
@@ -6943,7 +6976,7 @@ bool ProjectController::markScenes()
         marker.note = "Scene " + std::to_string(++n);
         commands.push_back(std::make_unique<AddMarkerCommand>(std::move(marker)));
     }
-    if (!apply(std::make_unique<CompositeCommand>(std::move(commands), "Mark Scenes")))
+    if (!apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Mark Scenes"))))
         return false;
     m_scenes.clear();
     emit analysisChanged();
@@ -6953,14 +6986,14 @@ bool ProjectController::markScenes()
 bool ProjectController::findBeats(double clipId)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* clip = analysableClip(toId(clipId), true, false);
     if (!clip)
         return false;
     const Id id = clip->id;
-    withFeatures({clip->mediaId}, false, QStringLiteral("Finding the beat"), [this, id] {
+    withFeatures({clip->mediaId}, false, tr("Finding the beat"), [this, id] {
         const Clip* clip = findClip(id);
         const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
         if (!media)
@@ -6983,7 +7016,7 @@ bool ProjectController::addBeatMarkers(int every)
 {
     const QVariantList times = m_beats.value(QStringLiteral("times")).toList();
     if (times.isEmpty()) {
-        reportError(QStringLiteral("Find the beat first"));
+        reportError(tr("Find the beat first"));
         return false;
     }
     every = std::max(1, every);
@@ -6994,7 +7027,7 @@ bool ProjectController::addBeatMarkers(int every)
         marker.color = MarkerColor::Yellow;
         commands.push_back(std::make_unique<AddMarkerCommand>(std::move(marker)));
     }
-    return apply(std::make_unique<CompositeCommand>(std::move(commands), "Add Beat Markers"));
+    return apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Add Beat Markers")));
 }
 
 // --- People ---
@@ -7024,7 +7057,7 @@ const Clip* ProjectController::peopleClip(Id clipId, bool needsFile)
     const Clip* clip = location ? location->clip : nullptr;
     const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
     if (!clip || clip->generated() || clip->compound() || !media || !media->hasVideo || media->still || media->lottie) {
-        reportError(QStringLiteral("Select a clip of a video file"));
+        reportError(tr("Select a clip of a video file"));
         return nullptr;
     }
     if (needsFile && !QFileInfo::exists(QString::fromStdString(media->path))) {
@@ -7046,16 +7079,16 @@ bool ProjectController::setPortraitCutout(double clipId, const QVariantMap& sett
     cutout.shift = settings.value(QStringLiteral("shift"), cutout.shift).toDouble();
     if (settings.contains(QStringLiteral("subject")) && !settings.value(QStringLiteral("subject")).toBool())
         cutout.subject.clear(); // back to people
-    const char* label = cutout.enabled == clip->cutout.enabled ? "Change Cutout"
-                      : cutout.enabled                          ? "Portrait Cutout"
-                                                                 : "Remove Cutout";
+    const char* label = cutout.enabled == clip->cutout.enabled ? TVE_TR("core", "Change Cutout")
+                      : cutout.enabled                          ? TVE_TR("core", "Portrait Cutout")
+                                                                 : TVE_TR("core", "Remove Cutout");
     return apply(std::make_unique<SetClipPeopleCommand>(clip->id, cutout, std::nullopt, label));
 }
 
 bool ProjectController::findFaces(double clipId)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* clip = peopleClip(toId(clipId), true);
@@ -7104,7 +7137,7 @@ bool ProjectController::findFaces(double clipId)
         return true;
     }
     auto found = std::make_shared<std::vector<FaceFrame>>();
-    runInBackground(QStringLiteral("Looking for faces"),
+    runInBackground(tr("Looking for faces"),
                     [path = media.path, key, found, directory = analysisDirectory().toStdString()](
                         const tve::AnalysisProgress& progress) -> std::string {
                         std::string error;
@@ -7128,12 +7161,12 @@ bool ProjectController::coverFaces(double clipId, const QVariantList& faceIds, c
     if (!clip)
         return false;
     if (toId(m_faces.value(QStringLiteral("clipId"), -1.0).toDouble()) != clip->id) {
-        reportError(QStringLiteral("Find the faces first"));
+        reportError(tr("Find the faces first"));
         return false;
     }
     FaceMosaic mosaic = clip->faceMosaic;
     if (!readCover(options, mosaic)) {
-        reportError(QStringLiteral("Unknown face cover"));
+        reportError(tr("Unknown face cover"));
         return false;
     }
     mosaic.faces.clear();
@@ -7142,11 +7175,11 @@ bool ProjectController::coverFaces(double clipId, const QVariantList& faceIds, c
             mosaic.faces.push_back(track);
     }
     if (mosaic.faces.empty()) {
-        reportError(m_faceTracks.empty() ? QStringLiteral("No faces were found in this clip")
-                                         : QStringLiteral("Choose the faces to cover"));
+        reportError(m_faceTracks.empty() ? tr("No faces were found in this clip")
+                                         : tr("Choose the faces to cover"));
         return false;
     }
-    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, std::nullopt, mosaic, "Cover Faces"));
+    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, std::nullopt, mosaic, TVE_TR("core", "Cover Faces")));
 }
 
 bool ProjectController::setFaceCover(double clipId, const QVariantMap& options)
@@ -7156,14 +7189,14 @@ bool ProjectController::setFaceCover(double clipId, const QVariantMap& options)
         return false;
     FaceMosaic mosaic = clip->faceMosaic;
     if (!mosaic.active()) {
-        reportError(QStringLiteral("This clip covers no faces"));
+        reportError(tr("This clip covers no faces"));
         return false;
     }
     if (!readCover(options, mosaic)) {
-        reportError(QStringLiteral("Unknown face cover"));
+        reportError(tr("Unknown face cover"));
         return false;
     }
-    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, std::nullopt, mosaic, "Change Face Cover"));
+    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, std::nullopt, mosaic, TVE_TR("core", "Change Face Cover")));
 }
 
 bool ProjectController::uncoverFaces(double clipId)
@@ -7172,30 +7205,30 @@ bool ProjectController::uncoverFaces(double clipId)
     if (!clip)
         return false;
     if (!clip->faceMosaic.active()) {
-        reportError(QStringLiteral("This clip covers no faces"));
+        reportError(tr("This clip covers no faces"));
         return false;
     }
     FaceMosaic none = clip->faceMosaic;
     none.faces.clear();
-    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, std::nullopt, none, "Uncover Faces"));
+    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, std::nullopt, none, TVE_TR("core", "Uncover Faces")));
 }
 
 bool ProjectController::autoReframe(double clipId, const QVariantMap& options)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* clip = peopleClip(toId(clipId), true);
     if (!clip)
         return false;
     if (clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
-        reportError(QStringLiteral("Auto reframe works on clips playing forwards at a steady speed"));
+        reportError(tr("Auto reframe works on clips playing forwards at a steady speed"));
         return false;
     }
     const MediaItem& media = *m_project.findMedia(clip->mediaId);
     if (media.width <= 0 || media.height <= 0) {
-        reportError(QStringLiteral("The size of %1 is not known").arg(mediaName(media.path)));
+        reportError(tr("The size of %1 is not known").arg(mediaName(media.path)));
         return false;
     }
     // The canvas: the shape asked for, its shorter side kept (even sizes, for encoders).
@@ -7206,7 +7239,7 @@ bool ProjectController::autoReframe(double clipId, const QVariantMap& options)
         const double a = parts.size() == 2 ? parts[0].toDouble() : 0.0;
         const double b = parts.size() == 2 ? parts[1].toDouble() : 0.0;
         if (a <= 0.0 || b <= 0.0) {
-            reportError(QStringLiteral("Unknown shape: ") + aspect);
+            reportError(tr("Unknown shape: %1").arg(aspect));
             return false;
         }
         const int shorter = std::min(canvas.width, canvas.height);
@@ -7268,8 +7301,8 @@ bool ProjectController::autoReframe(double clipId, const QVariantMap& options)
         std::vector<std::unique_ptr<Command>> commands;
         if (canvas.width != m_project.settings.width || canvas.height != m_project.settings.height)
             commands.push_back(std::make_unique<SetProjectSettingsCommand>(canvas));
-        commands.push_back(std::make_unique<SetClipKeyframesCommand>(id, std::move(changes), "Auto Reframe", visual));
-        if (apply(std::make_unique<CompositeCommand>(std::move(commands), "Auto Reframe"))) {
+        commands.push_back(std::make_unique<SetClipKeyframesCommand>(id, std::move(changes), TVE_TR("core", "Auto Reframe"), visual));
+        if (apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Auto Reframe")))) {
             m_canvasChosen = true;
             emit analysisFinished(true, {});
         } else {
@@ -7343,7 +7376,7 @@ void ProjectController::withMotion(Id clipId, const QString& task, std::function
 bool ProjectController::stabilize(double clipId, const QVariantMap& options)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* clip = peopleClip(toId(clipId), true);
@@ -7353,9 +7386,9 @@ bool ProjectController::stabilize(double clipId, const QVariantMap& options)
     const bool lock = options.value(QStringLiteral("lock"), clip->stabilization.lock).toBool();
     const double maxZoom = std::clamp(options.value(QStringLiteral("maxZoom"), clip->stabilization.maxZoom).toDouble(), 1.0, 2.0);
     const Id id = clip->id;
-    withMotion(id, QStringLiteral("Measuring camera motion"), [this, id, smoothness, lock, maxZoom](const MotionAnalysis& analysis) {
+    withMotion(id, tr("Measuring camera motion"), [this, id, smoothness, lock, maxZoom](const MotionAnalysis& analysis) {
         if (apply(std::make_unique<SetClipMotionCommand>(id, tve::stabilize(analysis, smoothness, lock, maxZoom), std::nullopt,
-                                                         std::nullopt, "Stabilize")))
+                                                         std::nullopt, TVE_TR("core", "Stabilize"))))
             emit analysisFinished(true, {});
         else
             emit analysisFinished(false, lastError());
@@ -7369,20 +7402,20 @@ bool ProjectController::removeStabilization(double clipId)
     if (!clip)
         return false;
     if (!clip->stabilization.enabled) {
-        reportError(QStringLiteral("This clip is not stabilized"));
+        reportError(tr("This clip is not stabilized"));
         return false;
     }
     Stabilization off;
     off.smoothness = clip->stabilization.smoothness;
     off.lock = clip->stabilization.lock;
     off.maxZoom = clip->stabilization.maxZoom;
-    return apply(std::make_unique<SetClipMotionCommand>(clip->id, off, std::nullopt, std::nullopt, "Remove Stabilization"));
+    return apply(std::make_unique<SetClipMotionCommand>(clip->id, off, std::nullopt, std::nullopt, TVE_TR("core", "Remove Stabilization")));
 }
 
 bool ProjectController::removeFlicker(double clipId, const QVariantMap& options)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* clip = peopleClip(toId(clipId), true);
@@ -7390,9 +7423,9 @@ bool ProjectController::removeFlicker(double clipId, const QVariantMap& options)
         return false;
     const double strength = std::clamp(options.value(QStringLiteral("strength"), clip->deflicker.strength).toDouble(), 0.0, 1.0);
     const Id id = clip->id;
-    withMotion(id, QStringLiteral("Measuring brightness"), [this, id, strength](const MotionAnalysis& analysis) {
+    withMotion(id, tr("Measuring brightness"), [this, id, strength](const MotionAnalysis& analysis) {
         if (apply(std::make_unique<SetClipMotionCommand>(id, std::nullopt, tve::deflicker(analysis, strength), std::nullopt,
-                                                         "Remove Flicker")))
+                                                         TVE_TR("core", "Remove Flicker"))))
             emit analysisFinished(true, {});
         else
             emit analysisFinished(false, lastError());
@@ -7406,12 +7439,12 @@ bool ProjectController::keepFlicker(double clipId)
     if (!clip)
         return false;
     if (!clip->deflicker.enabled) {
-        reportError(QStringLiteral("This clip's flicker is not removed"));
+        reportError(tr("This clip's flicker is not removed"));
         return false;
     }
     Deflicker off;
     off.strength = clip->deflicker.strength;
-    return apply(std::make_unique<SetClipMotionCommand>(clip->id, std::nullopt, off, std::nullopt, "Keep Flicker"));
+    return apply(std::make_unique<SetClipMotionCommand>(clip->id, std::nullopt, off, std::nullopt, TVE_TR("core", "Keep Flicker")));
 }
 
 bool ProjectController::setDenoise(double clipId, double strength)
@@ -7420,9 +7453,9 @@ bool ProjectController::setDenoise(double clipId, double strength)
     if (!clip)
         return false;
     return apply(std::make_unique<SetClipMotionCommand>(clip->id, std::nullopt, std::nullopt, strength,
-                                                        clip->denoise > 0.0 && strength > 0.0 ? "Change Denoise"
-                                                        : strength > 0.0                      ? "Denoise"
-                                                                                              : "Remove Denoise"));
+                                                        clip->denoise > 0.0 && strength > 0.0 ? TVE_TR("core", "Change Denoise")
+                                                        : strength > 0.0                      ? TVE_TR("core", "Denoise")
+                                                                                              : TVE_TR("core", "Remove Denoise")));
 }
 
 void ProjectController::setDrawingMode(bool drawing)
@@ -7448,7 +7481,7 @@ bool ProjectController::setTrackArea(double clipId, const QVariantMap& box)
         return false;
     const double w = box.value(QStringLiteral("width")).toDouble(), h = box.value(QStringLiteral("height")).toDouble();
     if (w <= 0.005 || h <= 0.005) {
-        reportError(QStringLiteral("Draw a larger box"));
+        reportError(tr("Draw a larger box"));
         return false;
     }
     m_trackArea = box;
@@ -7461,18 +7494,18 @@ bool ProjectController::setTrackArea(double clipId, const QVariantMap& box)
 bool ProjectController::trackMotion(double clipId, const QVariantMap& options)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* clip = peopleClip(toId(clipId), true);
     if (!clip)
         return false;
     if (clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
-        reportError(QStringLiteral("Tracking works on clips playing forwards at a steady speed"));
+        reportError(tr("Tracking works on clips playing forwards at a steady speed"));
         return false;
     }
     if (toId(m_trackArea.value(QStringLiteral("clipId"), -1.0).toDouble()) != clip->id) {
-        reportError(QStringLiteral("Draw a box around what to follow first"));
+        reportError(tr("Draw a box around what to follow first"));
         return false;
     }
     const MediaItem& media = *m_project.findMedia(clip->mediaId);
@@ -7501,7 +7534,7 @@ bool ProjectController::trackMotion(double clipId, const QVariantMap& options)
                         for (const MotionTrack& t : tracks)
                             next = std::max(next, t.id + 1);
                         tracks.push_back({next, surface, std::move(*found)});
-                        if (apply(std::make_unique<SetClipTracksCommand>(id, std::move(tracks), "Track Motion"))) {
+                        if (apply(std::make_unique<SetClipTracksCommand>(id, std::move(tracks), TVE_TR("core", "Track Motion")))) {
                             m_trackArea.clear();
                             emit editingChanged();
                             emit analysisFinished(true, {});
@@ -7527,18 +7560,18 @@ TrackSample ProjectController::drawnBox(const Clip& clip, Ticks mediaTime) const
 bool ProjectController::cutOutSubject(double clipId)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* clip = peopleClip(toId(clipId), true);
     if (!clip)
         return false;
     if (clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
-        reportError(QStringLiteral("Smart cutout works on clips playing forwards at a steady speed"));
+        reportError(tr("Smart cutout works on clips playing forwards at a steady speed"));
         return false;
     }
     if (toId(m_trackArea.value(QStringLiteral("clipId"), -1.0).toDouble()) != clip->id) {
-        reportError(QStringLiteral("Draw a box around the subject first"));
+        reportError(tr("Draw a box around the subject first"));
         return false;
     }
     const MediaItem& media = *m_project.findMedia(clip->mediaId);
@@ -7548,7 +7581,7 @@ bool ProjectController::cutOutSubject(double clipId)
     const TrackSample box = drawnBox(*clip, from);
     const Id id = clip->id;
     auto found = std::make_shared<std::vector<TrackSample>>();
-    runInBackground(QStringLiteral("Following the subject"),
+    runInBackground(tr("Following the subject"),
                     [path = media.path, from, to, box, found](const tve::AnalysisProgress& progress) -> std::string {
                         std::string error;
                         auto samples = tve::trackRegion(path, from, to, box, false, progress, &error);
@@ -7565,7 +7598,7 @@ bool ProjectController::cutOutSubject(double clipId)
                         cutout.enabled = true;
                         cutout.invert = false;
                         cutout.subject = std::move(*found);
-                        if (apply(std::make_unique<SetClipPeopleCommand>(id, cutout, std::nullopt, "Cut Out Subject"))) {
+                        if (apply(std::make_unique<SetClipPeopleCommand>(id, cutout, std::nullopt, TVE_TR("core", "Cut Out Subject")))) {
                             m_trackArea.clear();
                             emit editingChanged();
                             emit analysisFinished(true, {});
@@ -7583,10 +7616,10 @@ bool ProjectController::deleteTrack(double clipId, int trackId)
         return false;
     std::vector<MotionTrack> tracks = clip->motionTracks;
     if (std::erase_if(tracks, [&](const MotionTrack& t) { return t.id == trackId; }) == 0) {
-        reportError(QStringLiteral("No such track"));
+        reportError(tr("No such track"));
         return false;
     }
-    return apply(std::make_unique<SetClipTracksCommand>(clip->id, std::move(tracks), "Delete Track"));
+    return apply(std::make_unique<SetClipTracksCommand>(clip->id, std::move(tracks), TVE_TR("core", "Delete Track")));
 }
 
 QVariantList ProjectController::tracksToFollow(double clipId) const
@@ -7618,13 +7651,13 @@ bool ProjectController::followTrack(double clipId, double sourceClipId, int trac
     const Clip* follower = location ? location->clip : nullptr;
     const Clip* source = findClip(toId(sourceClipId));
     if (!follower || follower->adjustment || !source || source == follower) {
-        reportError(QStringLiteral("Select the clip that should follow"));
+        reportError(tr("Select the clip that should follow"));
         return false;
     }
     const auto track = std::ranges::find(source->motionTracks, trackId, &MotionTrack::id);
     const MediaItem* media = m_project.findMedia(source->mediaId);
     if (track == source->motionTracks.end() || !media || media->width <= 0 || media->height <= 0) {
-        reportError(QStringLiteral("No such track"));
+        reportError(tr("No such track"));
         return false;
     }
     const bool withScale = options.value(QStringLiteral("scale")).toBool();
@@ -7652,7 +7685,7 @@ bool ProjectController::followTrack(double clipId, double sourceClipId, int trac
     const Ticks first = std::max(follower->start, points.empty() ? follower->end() : points.front().time);
     const Ticks last = std::min(follower->end(), points.empty() ? follower->start : points.back().time);
     if (points.empty() || first > last) {
-        reportError(QStringLiteral("This clip and the track are never on screen together"));
+        reportError(tr("This clip and the track are never on screen together"));
         return false;
     }
     // From where the follower is now (at the playhead, within the track), it moves as the track does.
@@ -7694,7 +7727,7 @@ bool ProjectController::followTrack(double clipId, double sourceClipId, int trac
         changes.emplace(std::string(tve::property::kScale), scales);
     if (withRotation)
         changes.emplace(std::string(tve::property::kRotation), turns);
-    return apply(std::make_unique<SetClipKeyframesCommand>(follower->id, std::move(changes), "Follow Track"));
+    return apply(std::make_unique<SetClipKeyframesCommand>(follower->id, std::move(changes), TVE_TR("core", "Follow Track")));
 }
 
 // --- Processed pictures ---
@@ -7725,7 +7758,7 @@ bool ProjectController::downloadUpscaleModel()
 {
     const tve::UpscaleModel status = tve::upscaleModelStatus();
     if (status == tve::UpscaleModel::Unsupported) {
-        reportError(QStringLiteral("Upscaling is not available on this Mac"));
+        reportError(tr("Upscaling is not available on this Mac"));
         return false;
     }
     if (status != tve::UpscaleModel::NeedsDownload)
@@ -7738,7 +7771,7 @@ bool ProjectController::downloadUpscaleModel()
             if (self->m_upscaleWatch)
                 self->m_upscaleWatch->stop();
             if (!ok)
-                self->reportError(QStringLiteral("The upscaling model could not be downloaded: ") + QString::fromStdString(error));
+                self->reportError(tr("The upscaling model could not be downloaded: %1").arg(coreText(error)));
             emit self->upscaleModelChanged();
         }, Qt::QueuedConnection);
     });
@@ -7756,7 +7789,7 @@ bool ProjectController::downloadUpscaleModel()
 bool ProjectController::processVideo(double clipId, const QVariantMap& options)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* clip = peopleClip(toId(clipId), true);
@@ -7780,7 +7813,7 @@ bool ProjectController::processVideo(double clipId, const QVariantMap& options)
     if (kind == QLatin1String("upscale")) {
         const int scale = options.value(QStringLiteral("scale"), 2).toInt() >= 4 ? 4 : 2;
         if (tve::upscaleModelStatus() != tve::UpscaleModel::Ready) {
-            reportError(QStringLiteral("Download Apple's upscaling model first"));
+            reportError(tr("Download Apple's upscaling model first"));
             return false;
         }
         steps.push_back("upscale" + std::to_string(scale));
@@ -7791,17 +7824,17 @@ bool ProjectController::processVideo(double clipId, const QVariantMap& options)
     } else if (kind == QLatin1String("smooth")) {
         const int factor = std::clamp(options.value(QStringLiteral("factor"), 4).toInt(), 2, 8);
         steps.push_back("smooth" + std::to_string(factor));
-        task = QStringLiteral("Making frames between");
+        task = tr("Making frames between");
         work = [input, from, to, offset, factor](const std::string& out, const tve::AnalysisProgress& p, std::string* e) {
             return tve::smoothVideo(input, from - offset, to - offset, factor, out, p, e);
         };
     } else if (kind == QLatin1String("remove")) {
         if (clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
-            reportError(QStringLiteral("Removing works on clips playing forwards at a steady speed"));
+            reportError(tr("Removing works on clips playing forwards at a steady speed"));
             return false;
         }
         if (toId(m_trackArea.value(QStringLiteral("clipId"), -1.0).toDouble()) != clip->id) {
-            reportError(QStringLiteral("Draw a box around what to remove first"));
+            reportError(tr("Draw a box around what to remove first"));
             return false;
         }
         const Ticks at = clip->sourceTimeBeyond(std::clamp(ticks(m_playhead), clip->start, clip->end() - 1));
@@ -7824,7 +7857,7 @@ bool ProjectController::processVideo(double clipId, const QVariantMap& options)
             return tve::removeObject(input, from - offset, to - offset, *object, expand, out, half(0.5), e);
         };
     } else {
-        reportError(QStringLiteral("Unknown processing: ") + kind);
+        reportError(tr("Unknown processing: %1").arg(kind));
         return false;
     }
     std::string name = fingerprintOf(media) + "-" + std::to_string(from) + "-" + std::to_string(to);
@@ -7836,7 +7869,7 @@ bool ProjectController::processVideo(double clipId, const QVariantMap& options)
     const std::string output = QDir(processedDirectory()).filePath(QString::fromStdString(name) + QStringLiteral(".mov")).toStdString();
     const Id id = clip->id;
     const ProcessedVideo result{output, from, to, steps};
-    const char* label = kind == QLatin1String("upscale") ? "Upscale" : kind == QLatin1String("smooth") ? "Smooth Slow Motion" : "Remove Object";
+    const char* label = kind == QLatin1String("upscale") ? TVE_TR("core", "Upscale") : kind == QLatin1String("smooth") ? TVE_TR("core", "Smooth Slow Motion") : TVE_TR("core", "Remove Object");
     const auto place = [this, id, result, label] {
         if (apply(std::make_unique<SetClipProcessedVideoCommand>(id, result, label))) {
             if (result.steps.back() == "remove") {
@@ -7869,10 +7902,10 @@ bool ProjectController::restoreVideo(double clipId)
     if (!clip)
         return false;
     if (!clip->processedVideo) {
-        reportError(QStringLiteral("This clip plays its own pictures already"));
+        reportError(tr("This clip plays its own pictures already"));
         return false;
     }
-    return apply(std::make_unique<SetClipProcessedVideoCommand>(clip->id, std::nullopt, "Original Picture"));
+    return apply(std::make_unique<SetClipProcessedVideoCommand>(clip->id, std::nullopt, TVE_TR("core", "Original Picture")));
 }
 
 // --- Multicam ---
@@ -7880,7 +7913,7 @@ bool ProjectController::restoreVideo(double clipId)
 bool ProjectController::syncBySound(const QVariantList& clipIds)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     std::vector<Id> ids;
@@ -7888,7 +7921,7 @@ bool ProjectController::syncBySound(const QVariantList& clipIds)
         if (std::ranges::find(ids, toId(v.toDouble())) == ids.end())
             ids.push_back(toId(v.toDouble()));
     if (ids.size() < 2) {
-        reportError(QStringLiteral("Select two or more clips to line up"));
+        reportError(tr("Select two or more clips to line up"));
         return false;
     }
     std::vector<Id> mediaIds;
@@ -7898,7 +7931,7 @@ bool ProjectController::syncBySound(const QVariantList& clipIds)
             return false;
         mediaIds.push_back(clip->mediaId);
     }
-    withFeatures(mediaIds, false, QStringLiteral("Listening to each camera"), [this, ids] {
+    withFeatures(mediaIds, false, tr("Listening to each camera"), [this, ids] {
         const Clip* reference = findClip(ids.front());
         if (!reference)
             return;
@@ -7971,7 +8004,7 @@ QVariantMap ProjectController::enhanceModel() const
 bool ProjectController::enhanceSpeech(double clipId, const QVariantMap& options)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const auto location = m_project.locateClip(toId(clipId));
@@ -7979,16 +8012,16 @@ bool ProjectController::enhanceSpeech(double clipId, const QVariantMap& options)
     const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
     if (!clip || clip->generated() || clip->compound() || !media || !media->hasAudio
         || (location->track->kind == TrackKind::Video && !clip->audioEnabled)) {
-        reportError(QStringLiteral("Select a clip with sound to enhance"));
+        reportError(tr("Select a clip with sound to enhance"));
         return false;
     }
     if (!QFileInfo::exists(QString::fromStdString(media->path))) {
-        reportError(QStringLiteral("This clip's media is missing"));
+        reportError(tr("This clip's media is missing"));
         return false;
     }
     const auto modelPath = m_speechModels.path(QString::fromLatin1(kEnhanceModel));
     if (!modelPath) {
-        reportError(QStringLiteral("Download the speech enhancement model first"));
+        reportError(tr("Download the speech enhancement model first"));
         return false;
     }
     double limit = options.value(QStringLiteral("limitDb"), 100.0).toDouble();
@@ -8013,7 +8046,7 @@ bool ProjectController::enhanceSpeech(double clipId, const QVariantMap& options)
         place();
         return true;
     }
-    runInBackground(haveFull ? QStringLiteral("Changing the strength") : QStringLiteral("Enhancing speech"),
+    runInBackground(haveFull ? tr("Changing the strength") : tr("Enhancing speech"),
                     [source = media->path, full, limited, limit, haveFull,
                      model = modelPath->toStdString()](const tve::AnalysisProgress& progress) -> std::string {
                         std::string error;
@@ -8039,7 +8072,7 @@ bool ProjectController::removeEnhancement(double clipId)
 {
     const Clip* clip = findClip(toId(clipId));
     if (!clip || !clip->enhancedAudio) {
-        reportError(QStringLiteral("This clip's sound is not enhanced"));
+        reportError(tr("This clip's sound is not enhanced"));
         return false;
     }
     return apply(std::make_unique<SetClipEnhancedAudioCommand>(clip->id, std::nullopt));
@@ -8048,13 +8081,13 @@ bool ProjectController::removeEnhancement(double clipId)
 bool ProjectController::duckUnderSpeech(double clipId, const QVariantMap& options)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const Clip* music = findClip(toId(clipId));
     const MediaItem* musicMedia = music ? m_project.findMedia(music->mediaId) : nullptr;
     if (!music || !musicMedia || !musicMedia->hasAudio) {
-        reportError(QStringLiteral("Select the music to lower under speech"));
+        reportError(tr("Select the music to lower under speech"));
         return false;
     }
     // The other clips heard at the same time, at normal speed, with their files.
@@ -8076,7 +8109,7 @@ bool ProjectController::duckUnderSpeech(double clipId, const QVariantMap& option
         }
     }
     if (voices.empty()) {
-        reportError(QStringLiteral("No other clip with sound plays under this one"));
+        reportError(tr("No other clip with sound plays under this one"));
         return false;
     }
     const double amount = std::clamp(options.value(QStringLiteral("amountDb"), -12.0).toDouble(), -40.0, -1.0);
@@ -8087,7 +8120,7 @@ bool ProjectController::duckUnderSpeech(double clipId, const QVariantMap& option
     for (const Voice& v : voices)
         mediaIds.push_back(v.mediaId);
     const Id musicId = music->id;
-    withFeatures(mediaIds, false, QStringLiteral("Listening for speech"), [this, musicId, voices, amount, fade, speech] {
+    withFeatures(mediaIds, false, tr("Listening for speech"), [this, musicId, voices, amount, fade, speech] {
         const Clip* music = findClip(musicId);
         if (!music)
             return;
@@ -8109,7 +8142,7 @@ bool ProjectController::duckUnderSpeech(double clipId, const QVariantMap& option
             }
         }
         if (spans.empty()) {
-            reportError(QStringLiteral("No speech under this clip"));
+            reportError(tr("No speech under this clip"));
             emit analysisFinished(false, lastError());
             return;
         }
@@ -8141,7 +8174,7 @@ bool ProjectController::duckUnderSpeech(double clipId, const QVariantMap& option
         }
         Clip after = *music;
         after.keyframes[std::string(property::kVolume)] = keys;
-        if (commitAnimation(*music, after, "Auto Ducking"))
+        if (commitAnimation(*music, after, TVE_TR("core", "Auto Ducking")))
             emit analysisFinished(true, {});
         else
             emit analysisFinished(false, lastError());
@@ -8154,13 +8187,13 @@ bool ProjectController::duckUnderSpeech(double clipId, const QVariantMap& option
 QVariantList ProjectController::captionLanguages() const
 {
     static const std::pair<const char*, const char*> languages[] = {
-        {"auto", "Detect the language"}, {"en", "English"}, {"es", "Spanish"}, {"fr", "French"}, {"de", "German"},
-        {"it", "Italian"}, {"pt", "Portuguese"}, {"nl", "Dutch"}, {"sv", "Swedish"}, {"pl", "Polish"}, {"ru", "Russian"},
-        {"uk", "Ukrainian"}, {"tr", "Turkish"}, {"ar", "Arabic"}, {"hi", "Hindi"}, {"ta", "Tamil"}, {"id", "Indonesian"},
-        {"vi", "Vietnamese"}, {"ja", "Japanese"}, {"ko", "Korean"}, {"zh", "Chinese"}};
+        {"auto", TVE_TR("core", "Detect the language")}, {"en", TVE_TR("core", "English")}, {"es", TVE_TR("core", "Spanish")}, {"fr", TVE_TR("core", "French")}, {"de", TVE_TR("core", "German")},
+        {"it", TVE_TR("core", "Italian")}, {"pt", TVE_TR("core", "Portuguese")}, {"nl", TVE_TR("core", "Dutch")}, {"sv", TVE_TR("core", "Swedish")}, {"pl", TVE_TR("core", "Polish")}, {"ru", TVE_TR("core", "Russian")},
+        {"uk", TVE_TR("core", "Ukrainian")}, {"tr", TVE_TR("core", "Turkish")}, {"ar", TVE_TR("core", "Arabic")}, {"hi", TVE_TR("core", "Hindi")}, {"ta", TVE_TR("core", "Tamil")}, {"id", TVE_TR("core", "Indonesian")},
+        {"vi", TVE_TR("core", "Vietnamese")}, {"ja", TVE_TR("core", "Japanese")}, {"ko", TVE_TR("core", "Korean")}, {"zh", TVE_TR("core", "Chinese")}};
     QVariantList list;
     for (const auto& [code, name] : languages)
-        list << QVariantMap{{QStringLiteral("code"), QString::fromLatin1(code)}, {QStringLiteral("name"), QString::fromUtf8(name)}};
+        list << QVariantMap{{QStringLiteral("code"), QString::fromLatin1(code)}, {QStringLiteral("name"), coreText(name)}};
     return list;
 }
 
@@ -8213,7 +8246,7 @@ void ProjectController::runInBackground(const QString& task, std::function<std::
                 then();
                 return;
             }
-            const QString message = error == "cancelled" ? QString() : QString::fromStdString(error);
+            const QString message = error == "cancelled" ? QString() : coreText(error);
             if (!message.isEmpty())
                 reportError(message);
             emit analysisFinished(false, message);
@@ -8273,14 +8306,14 @@ std::pair<std::optional<ClipText>, std::optional<ClipVisual>> ProjectController:
 bool ProjectController::transcribeClips(const QVariantMap& options, bool makeCaptions)
 {
     if (analyzing()) {
-        reportError(QStringLiteral("An analysis is already running"));
+        reportError(tr("An analysis is already running"));
         return false;
     }
     const QString modelId = options.value(QStringLiteral("model"), QStringLiteral("base.en-q5_1")).toString();
     const SpeechModels::Model* model = SpeechModels::find(modelId);
     const auto modelPath = m_speechModels.path(modelId);
     if (!model || !modelPath) {
-        reportError(QStringLiteral("Download the speech model first"));
+        reportError(tr("Download the speech model first"));
         return false;
     }
     std::string language = options.value(QStringLiteral("language"), QStringLiteral("auto")).toString().toStdString();
@@ -8307,8 +8340,8 @@ bool ProjectController::transcribeClips(const QVariantMap& options, bool makeCap
         }
     }
     if (voices.empty()) {
-        reportError(chosen.empty() ? QStringLiteral("Add clips with sound (at normal speed) to make captions from")
-                                   : QStringLiteral("The selected clips have no sound to make captions from"));
+        reportError(chosen.empty() ? tr("Add clips with sound (at normal speed) to make captions from")
+                                   : tr("The selected clips have no sound to make captions from"));
         return false;
     }
     // What still needs transcribing (the rest is remembered, here or on disk).
@@ -8339,7 +8372,7 @@ bool ProjectController::transcribeClips(const QVariantMap& options, bool makeCap
         emit transcriptChanged();
         const auto placed = placedWords(m_project, variant, &voices);
         if (placed.empty()) {
-            reportError(QStringLiteral("No speech found"));
+            reportError(tr("No speech found"));
             emit analysisFinished(false, lastError());
             return;
         }
@@ -8351,7 +8384,7 @@ bool ProjectController::transcribeClips(const QVariantMap& options, bool makeCap
         for (const PlacedWord& w : placed)
             words.push_back({w.start, w.end, w.text});
         const auto [style, visual] = captionLook();
-        if (apply(std::make_unique<SetCaptionsCommand>(tve::layoutCaptions(words), "Generate Captions", style, visual)))
+        if (apply(std::make_unique<SetCaptionsCommand>(tve::layoutCaptions(words), TVE_TR("core", "Generate Captions"), style, visual)))
             emit analysisFinished(true, {});
         else
             emit analysisFinished(false, lastError());
@@ -8438,7 +8471,7 @@ bool ProjectController::deleteWords(const QVariantList& indices)
     std::ranges::sort(chosen);
     chosen.erase(std::unique(chosen.begin(), chosen.end()), chosen.end());
     if (chosen.empty()) {
-        reportError(QStringLiteral("Select the words to delete"));
+        reportError(tr("Select the words to delete"));
         return false;
     }
     // Runs of neighbouring words on one track become one range: from the first word's start to
@@ -8463,7 +8496,7 @@ bool ProjectController::deleteWords(const QVariantList& indices)
         const Ticks end = after >= 0 ? std::min(words[std::size_t(after)].start, tail) : b.end;
         byTrack[a.trackId].emplace_back(a.start, std::max(end, b.end));
     }
-    return cutRanges(byTrack, "Delete Words");
+    return cutRanges(byTrack, TVE_TR("core", "Delete Words"));
 }
 
 int ProjectController::removeFillerWords()
@@ -8473,7 +8506,7 @@ int ProjectController::removeFillerWords()
         if (w.toMap().value(QStringLiteral("filler")).toBool())
             fillers << w.toMap().value(QStringLiteral("index"));
     if (fillers.isEmpty()) {
-        reportError(QStringLiteral("No filler words in the transcript"));
+        reportError(tr("No filler words in the transcript"));
         return 0;
     }
     return deleteWords(fillers) ? int(fillers.size()) : 0;
@@ -8498,10 +8531,10 @@ int ProjectController::removeTranscriptPauses(double longerThan, double keep)
         previous[w.trackId] = &w;
     }
     if (count == 0) {
-        reportError(QStringLiteral("No pauses that long between words"));
+        reportError(tr("No pauses that long between words"));
         return 0;
     }
-    return cutRanges(byTrack, "Remove Pauses") ? count : 0;
+    return cutRanges(byTrack, TVE_TR("core", "Remove Pauses")) ? count : 0;
 }
 
 QString ProjectController::captionMotion() const
@@ -8515,7 +8548,7 @@ bool ProjectController::setCaptionStyle(const QString& motion, const QVariant& h
 {
     const auto track = std::ranges::find_if(m_project.tracks, [](const Track& t) { return t.captions; });
     if (track == m_project.tracks.end() || track->clips.empty()) {
-        reportError(QStringLiteral("Make captions first"));
+        reportError(tr("Make captions first"));
         return false;
     }
     QVariantMap changes{{QStringLiteral("captionMotion"), motion}};
@@ -8531,7 +8564,7 @@ bool ProjectController::setCaptionStyle(const QString& motion, const QVariant& h
     }
     if (commands.empty())
         return true;
-    return apply(std::make_unique<CompositeCommand>(std::move(commands), "Caption Style"));
+    return apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Caption Style")));
 }
 
 std::vector<tve::CaptionBlock> ProjectController::captionBlocks() const
@@ -8555,18 +8588,18 @@ bool ProjectController::exportSubtitles(const QUrl& file)
     const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
     const auto blocks = captionBlocks();
     if (blocks.empty()) {
-        reportError(QStringLiteral("There are no captions to export"));
+        reportError(tr("There are no captions to export"));
         return false;
     }
     const bool vtt = path.endsWith(QLatin1String(".vtt"), Qt::CaseInsensitive);
     QSaveFile out(path);
     if (!out.open(QIODevice::WriteOnly)) {
-        reportError(QStringLiteral("Cannot write ") + path);
+        reportError(tr("Cannot write %1").arg(path));
         return false;
     }
     out.write(QByteArray::fromStdString(vtt ? tve::writeVtt(blocks) : tve::writeSrt(blocks)));
     if (!out.commit()) {
-        reportError(QStringLiteral("Cannot write ") + path);
+        reportError(tr("Cannot write %1").arg(path));
         return false;
     }
     return true;
@@ -8577,14 +8610,14 @@ bool ProjectController::importSubtitles(const QUrl& file)
     const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
     QFile in(path);
     if (!in.open(QIODevice::ReadOnly) || in.size() > 20 * 1024 * 1024) {
-        reportError(QStringLiteral("Cannot read ") + QFileInfo(path).fileName());
+        reportError(tr("Cannot read %1").arg(QFileInfo(path).fileName()));
         return false;
     }
     std::string error;
     const auto blocks = tve::readSubtitles(in.readAll().toStdString(), &error);
     if (!blocks) {
-        reportError(QStringLiteral("%1: %2").arg(QFileInfo(path).fileName(), QString::fromStdString(error)));
+        reportError(QStringLiteral("%1: %2").arg(QFileInfo(path).fileName(), coreText(error)));
         return false;
     }
-    return apply(std::make_unique<SetCaptionsCommand>(*blocks, "Import Captions"));
+    return apply(std::make_unique<SetCaptionsCommand>(*blocks, TVE_TR("core", "Import Captions")));
 }

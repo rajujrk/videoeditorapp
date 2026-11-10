@@ -8,6 +8,7 @@
 #include <QFontMetricsF>
 #include <QPainter>
 #include <QPainterPath>
+#include <QTextBoundaryFinder>
 #include <QTextLayout>
 
 #include <algorithm>
@@ -35,7 +36,8 @@ QFont titleFont(const tve::ClipText& text, double pixelSize)
     return font;
 }
 
-// One visible character of a title, laid out on the canvas, with the units it belongs to.
+// One visible character of a title (a grapheme: a Tamil consonant with its vowel sign, an
+// emoji with its modifiers), laid out on the canvas, with the units it belongs to.
 struct Glyph {
     QPainterPath path;
     QRectF box; // its advance box: line height tall
@@ -148,6 +150,7 @@ TitleLayout layoutText(const tve::ClipText& text, const QFont& font, QSize canva
             measured.setLineWidth(1e7);
         single.endLayout();
         bool inWord = false;
+        QTextBoundaryFinder graphemes(QTextBoundaryFinder::Grapheme, line.text);
         for (int i = 0; i < line.text.size(); ++i) {
             const QChar c = line.text.at(i);
             if (c.isSpace()) {
@@ -159,8 +162,10 @@ TitleLayout layoutText(const tve::ClipText& text, const QFont& font, QSize canva
                 result.words.push_back(QRectF());
                 inWord = true;
             }
-            // Keep surrogate pairs together.
-            const int length = (c.isHighSurrogate() && i + 1 < line.text.size()) ? 2 : 1;
+            // The whole grapheme, drawn shaped as one.
+            graphemes.setPosition(i);
+            const qsizetype end = graphemes.toNextBoundary();
+            const int length = end > i ? int(end - i) : 1;
             const double cx = measured.isValid() ? measured.cursorToX(i) : 0.0;
             const double next = measured.isValid() ? measured.cursorToX(i + length) : cx;
             Glyph glyph;

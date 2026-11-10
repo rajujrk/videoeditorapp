@@ -80,7 +80,7 @@ Rectangle {
                 spacing: Theme.space.s
                 Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "media"; size: 32; color: Theme.color.textDisabled }
                 Text {
-                    text: "Drop video files here, or import them in the media library"
+                    text: qsTr("Drop video files here, or import them in the media library")
                     font: Theme.type.body
                     color: Theme.color.textSecondary
                 }
@@ -102,9 +102,9 @@ Rectangle {
                     text: video.errorString !== ""
                           ? video.errorString
                           : video.streamDescription + "\n"
-                            + (video.hardwareAccelerated ? "VideoToolbox" : "software decode") + "\n"
-                            + "decode " + video.decodeFps.toFixed(1) + " fps · present " + video.presentFps.toFixed(1) + " fps\n"
-                            + "skipped " + video.skippedFrames + " · effects " + video.enabledEffectCount
+                            + (video.hardwareAccelerated ? qsTr("VideoToolbox") : qsTr("software decode")) + "\n"
+                            + qsTr("decode %1 fps · present %2 fps").arg(Fmt.num(video.decodeFps, 1)).arg(Fmt.num(video.presentFps, 1)) + "\n"
+                            + qsTr("skipped %1 · effects %2").arg(video.skippedFrames).arg(video.enabledEffectCount)
                 }
             }
         }
@@ -137,16 +137,16 @@ Rectangle {
 
                 Item { Layout.fillWidth: true }
 
-                IconButton { iconName: "skip-back"; tip: "Previous frame" + KeyMap.hints["frameBack"]; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(-1) }
+                IconButton { iconName: "skip-back"; tip: qsTr("Previous frame") + KeyMap.hints["frameBack"]; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(-1) }
                 IconButton {
                     objectName: "playButton"
                     iconName: panel.project.playing ? "pause" : "play"
-                    tip: (panel.project.playing ? "Pause" : "Play") + KeyMap.hints["play"]
+                    tip: (panel.project.playing ? qsTr("Pause") : qsTr("Play")) + KeyMap.hints["play"]
                     enabled: panel.project.duration > 0
                     buttonSize: Theme.size.control + 4
                     onClicked: panel.project.togglePlay()
                 }
-                IconButton { iconName: "skip-forward"; tip: "Next frame" + KeyMap.hints["frameForward"]; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(1) }
+                IconButton { iconName: "skip-forward"; tip: qsTr("Next frame") + KeyMap.hints["frameForward"]; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(1) }
 
                 Item { Layout.fillWidth: true }
 
@@ -177,8 +177,8 @@ Rectangle {
                     objectName: "proxyToggle"
                     iconName: "proxy"
                     tip: panel.project.useProxies
-                         ? "Playing proxies of large media where ready (export uses the originals)"
-                         : "Playing the original media"
+                         ? qsTr("Playing proxies of large media where ready (export uses the originals)")
+                         : qsTr("Playing the original media")
                     checkable: true
                     checked: panel.project.useProxies
                     onToggled: panel.project.useProxies = checked
@@ -187,8 +187,8 @@ Rectangle {
                     objectName: "lookAroundButton"
                     visible: panel.project.spherical
                     iconName: "sphere"
-                    tip: video.lookAround ? "Showing a view to look around in (drag it); off: the whole 360° picture"
-                                          : "Look around the 360° picture in the player (export is unchanged)"
+                    tip: video.lookAround ? qsTr("Showing a view to look around in (drag it); off: the whole 360° picture")
+                                          : qsTr("Look around the 360° picture in the player (export is unchanged)")
                     checkable: true
                     checked: video.lookAround
                     onToggled: video.lookAround = checked
@@ -197,20 +197,20 @@ Rectangle {
                     objectName: "hdrViewerButton"
                     iconName: "hdr"
                     tip: panel.project.projectColour === "sdr"
-                         ? "HDR viewer: the picture in a window of its own, HDR on an HDR display (this project is SDR)"
-                         : "HDR viewer: the picture in a window of its own, HDR on an HDR display"
+                         ? qsTr("HDR viewer: the picture in a window of its own, HDR on an HDR display (this project is SDR)")
+                         : qsTr("HDR viewer: the picture in a window of its own, HDR on an HDR display")
                     checkable: true
                     checked: panel.hdrViewerOpen
                     onToggled: panel.hdrViewerOpen = checked
                 }
                 IconButton {
                     iconName: "stats"
-                    tip: "Playback statistics"
+                    tip: qsTr("Playback statistics")
                     checkable: true
                     checked: panel.showStats
                     onToggled: panel.showStats = checked
                 }
-                IconButton { iconName: "fit"; tip: "Fit to window"; checkable: true; checked: true; enabled: false }
+                IconButton { iconName: "fit"; tip: qsTr("Fit to window"); checkable: true; checked: true; enabled: false }
             }
         }
     }

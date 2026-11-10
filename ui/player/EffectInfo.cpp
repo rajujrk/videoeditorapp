@@ -1,4 +1,5 @@
 #include "EffectInfo.h"
+#include "Language.h"
 
 #include <QStringList>
 
@@ -16,10 +17,10 @@ QVariantMap describeEffect(const tve::EffectManifest& m)
             defaults << double(v);
         QStringList values;
         for (const std::string& v : p.enumValues)
-            values << QString::fromStdString(v);
+            values << catalogueText(v);
         params << QVariantMap{
             {QStringLiteral("id"), QString::fromStdString(p.id)},
-            {QStringLiteral("title"), QString::fromStdString(p.title.at("en"))},
+            {QStringLiteral("title"), catalogueText(p.title.at("en"))},
             {QStringLiteral("type"), QString::fromLatin1(tve::toString(p.type).data())},
             {QStringLiteral("min"), p.min},
             {QStringLiteral("max"), p.max},
@@ -35,7 +36,7 @@ QVariantMap describeEffect(const tve::EffectManifest& m)
         categories << QString::fromStdString(c);
     return QVariantMap{
         {QStringLiteral("id"), QString::fromStdString(m.id)},
-        {QStringLiteral("title"), QString::fromStdString(m.displayTitle())},
+        {QStringLiteral("title"), catalogueText(m.displayTitle())},
         {QStringLiteral("categories"), categories},
         {QStringLiteral("canvas"), m.space == tve::EffectSpace::Canvas},
         {QStringLiteral("params"), params},

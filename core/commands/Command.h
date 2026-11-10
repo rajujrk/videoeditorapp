@@ -1,5 +1,7 @@
 #pragma once
 
+#include "model/Translate.h"
+
 #include <optional>
 #include <string>
 

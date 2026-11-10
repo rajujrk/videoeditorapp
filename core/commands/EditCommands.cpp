@@ -591,11 +591,11 @@ void SetClipAudioCommand::undo(Project& project)
 std::string SetTrackFlagCommand::label() const
 {
     switch (m_flag) {
-    case Flag::Locked: return m_value ? "Lock Track" : "Unlock Track";
-    case Flag::Hidden: return m_value ? "Hide Track" : "Show Track";
-    case Flag::Muted: return m_value ? "Mute Track" : "Unmute Track";
+    case Flag::Locked: return m_value ? TVE_TR("core", "Lock Track") : TVE_TR("core", "Unlock Track");
+    case Flag::Hidden: return m_value ? TVE_TR("core", "Hide Track") : TVE_TR("core", "Show Track");
+    case Flag::Muted: return m_value ? TVE_TR("core", "Mute Track") : TVE_TR("core", "Unmute Track");
     }
-    return "Change Track";
+    return TVE_TR("core", "Change Track");
 }
 
 namespace {
@@ -1400,8 +1400,8 @@ void FreezeFrameCommand::undo(Project& project)
 std::string SetClipTransitionCommand::label() const
 {
     if (!m_transition)
-        return "Remove Transition";
-    return m_previous ? "Change Transition" : "Add Transition";
+        return TVE_TR("core", "Remove Transition");
+    return m_previous ? TVE_TR("core", "Change Transition") : TVE_TR("core", "Add Transition");
 }
 
 std::optional<std::string> SetClipTransitionCommand::redo(Project& project)

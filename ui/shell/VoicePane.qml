@@ -30,11 +30,11 @@ ColumnLayout {
         wrapMode: TextEdit.Wrap
         font: Theme.type.body
         color: Theme.color.textPrimary
-        placeholderText: "Type what the voice should say"
+        placeholderText: qsTr("Type what the voice should say")
         background: Rectangle { radius: Theme.radius.m; color: Theme.color.surfaceSunken; border.color: Theme.color.borderSubtle }
     }
 
-    Text { text: "Voice"; font: Theme.type.label; color: Theme.color.textSecondary }
+    Text { text: qsTr("Voice"); font: Theme.type.label; color: Theme.color.textSecondary }
     ComboBox {
         id: voiceChoice
         objectName: "voiceChoice"
@@ -46,7 +46,7 @@ ColumnLayout {
     Text {
         Layout.fillWidth: true
         visible: !pane.cloud.hasElevenLabsKey
-        text: "These are your Mac's own voices. Add an ElevenLabs key in AI settings for cloud voices."
+        text: qsTr("These are your Mac's own voices. Add an ElevenLabs key in AI settings for cloud voices.")
         font: Theme.type.caption
         color: Theme.color.textSecondary
         wrapMode: Text.WordWrap
@@ -54,7 +54,7 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        Text { text: "Speed"; font: Theme.type.label; color: Theme.color.textSecondary }
+        Text { text: qsTr("Speed"); font: Theme.type.label; color: Theme.color.textSecondary }
         Slider {
             id: speed
             objectName: "voiceSpeed"
@@ -69,7 +69,7 @@ ColumnLayout {
     ToggleSwitch {
         id: captions
         objectName: "voiceCaptions"
-        text: "Captions from the text"
+        text: qsTr("Captions from the text")
         checked: true
     }
 
@@ -78,7 +78,7 @@ ColumnLayout {
         spacing: Theme.space.s
         TextButton {
             objectName: "listenVoice"
-            text: "Listen"
+            text: qsTr("Listen")
             iconName: "play"
             variant: "secondary"
             enabled: script.text.trim() !== "" && pane.voice !== "" && pane.cloud.job === ""
@@ -87,7 +87,7 @@ ColumnLayout {
         TextButton {
             objectName: "addVoice"
             Layout.fillWidth: true
-            text: "Add at the playhead"
+            text: qsTr("Add at the playhead")
             variant: "primary"
             enabled: script.text.trim() !== "" && pane.voice !== "" && pane.cloud.job === ""
             onClicked: pane.project.speakText(script.text, pane.voice, { speed: speed.value, captions: captions.checked })
@@ -95,7 +95,7 @@ ColumnLayout {
         TextButton {
             objectName: "cancelVoice"
             visible: pane.speaking
-            text: "Stop"
+            text: qsTr("Stop")
             variant: "ghost"
             onClicked: pane.cloud.cancel()
         }
@@ -109,7 +109,7 @@ ColumnLayout {
         color: Theme.color.textSecondary
     }
     // Copied voices (ElevenLabs), and copying one with consent.
-    Text { Layout.topMargin: Theme.space.m; text: "Copied voices"; font: Theme.type.label; color: Theme.color.textSecondary }
+    Text { Layout.topMargin: Theme.space.m; text: qsTr("Copied voices"); font: Theme.type.label; color: Theme.color.textSecondary }
     Repeater {
         model: pane.project.voiceCloning.clones
         delegate: RowLayout {
@@ -123,8 +123,8 @@ ColumnLayout {
                 Text { text: modelData.name; font: Theme.type.body; color: Theme.color.textPrimary; elide: Text.ElideRight; Layout.fillWidth: true }
                 Text {
                     Layout.fillWidth: true
-                    text: modelData.consent ? "Consent recorded by " + modelData.consent.speaker + " on " + modelData.consent.date
-                                            : "Made outside this app (no consent recording here)"
+                    text: modelData.consent ? qsTr("Consent recorded by %1 on %2").arg(modelData.consent.speaker).arg(modelData.consent.date)
+                                            : qsTr("Made outside this app (no consent recording here)")
                     font: Theme.type.caption
                     color: Theme.color.textSecondary
                     elide: Text.ElideRight
@@ -133,7 +133,7 @@ ColumnLayout {
             IconButton {
                 objectName: "deleteClone:" + index
                 iconName: "delete"
-                tip: "Delete this voice from your ElevenLabs account"
+                tip: qsTr("Delete this voice from your ElevenLabs account")
                 onClicked: {
                     deleteConfirm.voice = modelData
                     deleteConfirm.open()
@@ -144,11 +144,11 @@ ColumnLayout {
     TextButton {
         objectName: "copyVoice"
         Layout.fillWidth: true
-        text: "Copy a voice, with consent…"
+        text: qsTr("Copy a voice, with consent…")
         variant: "secondary"
         enabled: pane.cloud.hasElevenLabsKey && pane.cloud.job === ""
-        tip: pane.cloud.hasElevenLabsKey ? "Make a copy of a voice from the speaker reading a consent statement"
-                                         : "Add an ElevenLabs key in AI settings first"
+        tip: pane.cloud.hasElevenLabsKey ? qsTr("Make a copy of a voice from the speaker reading a consent statement")
+                                         : qsTr("Add an ElevenLabs key in AI settings first")
         onClicked: cloneDialog.open()
     }
     Item { Layout.fillHeight: true }
@@ -176,17 +176,17 @@ ColumnLayout {
             Text {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                text: "Delete “" + (deleteConfirm.voice.name || "") + "” from your ElevenLabs account? Its consent recording "
-                      + "here is deleted too. This can't be undone."
+                text: qsTr("Delete “%1” from your ElevenLabs account? Its consent recording here is deleted too. This can't be undone.")
+                      .arg(deleteConfirm.voice.name || "")
                 font: Theme.type.body
                 color: Theme.color.textPrimary
             }
             RowLayout {
                 Item { Layout.fillWidth: true }
-                TextButton { text: "Cancel"; variant: "ghost"; onClicked: deleteConfirm.close() }
+                TextButton { text: qsTr("Cancel"); variant: "ghost"; onClicked: deleteConfirm.close() }
                 TextButton {
                     objectName: "deleteCloneConfirmButton"
-                    text: "Delete"
+                    text: qsTr("Delete")
                     variant: "danger"
                     onClicked: {
                         pane.project.voiceCloning.deleteVoice(deleteConfirm.voice.id)

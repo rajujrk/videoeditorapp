@@ -93,9 +93,9 @@ Item {
             anchors.centerIn: parent
             font: Theme.type.caption
             color: "white" // always on the dark scrim
-            text: (overlay.looking ? "360° view" : "Reframing") + " · drag to look around, scroll to zoom · "
-                  + Math.round(overlay.view().yaw) + "°, " + Math.round(overlay.view().pitch) + "° · "
-                  + Math.round(overlay.view().fov) + "° wide"
+            text: qsTr("%1 · drag to look around, scroll to zoom · %2°, %3° · %4° wide")
+                  .arg(overlay.looking ? qsTr("360° view") : qsTr("Reframing"))
+                  .arg(Fmt.num(overlay.view().yaw)).arg(Fmt.num(overlay.view().pitch)).arg(Fmt.num(overlay.view().fov))
         }
     }
 }

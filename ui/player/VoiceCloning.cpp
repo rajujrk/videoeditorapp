@@ -1,5 +1,6 @@
 #include "VoiceCloning.h"
 
+#include "Language.h"
 #include "ProjectController.h"
 #include "SpeechModels.h"
 
@@ -28,6 +29,18 @@ using namespace tve;
 namespace {
 
 constexpr const char* kSuggestedModel = "base.en-q5_1";
+
+// Why a take didn't pass, in the app's language (the words not heard listed as they are).
+QString whyText(const tve::ConsentCheck& check)
+{
+    if (check.passed || check.missing.empty() || check.why.find("weren't heard") == std::string::npos)
+        return coreText(check.why);
+    QString list;
+    for (std::size_t i = 0; i < check.missing.size(); ++i)
+        list += (i == 0 ? QString() : i + 1 == check.missing.size() ? QCoreApplication::translate("VoiceCloning", " and ") : QStringLiteral(", "))
+              + QStringLiteral("“%1”").arg(QString::fromStdString(check.missing[i]));
+    return QCoreApplication::translate("VoiceCloning", "These weren't heard in the recording: %1. Record the statement again, clearly.").arg(list);
+}
 
 QString bareId(const QString& voiceId)
 {
@@ -141,17 +154,17 @@ bool VoiceCloning::begin(const QString& speaker, const QString& voiceName, bool 
     m_error.clear();
     const QString name = speaker.simplified();
     if (name.isEmpty() || consentWords(name.toStdString()).empty()) {
-        m_error = QStringLiteral("Write the speaker's name: they say it in the statement.");
+        m_error = tr("Write the speaker's name: they say it in the statement.");
         emit changed();
         return false;
     }
     if (!isSpeaker || !adult || !agrees) {
-        m_error = QStringLiteral("A voice is copied only by the person it belongs to, 18 or older, who agrees to it.");
+        m_error = tr("A voice is copied only by the person it belongs to, 18 or older, who agrees to it.");
         emit changed();
         return false;
     }
     if (!m_project->m_cloud->hasElevenLabsKey()) {
-        m_error = QStringLiteral("Add your ElevenLabs API key in AI settings first.");
+        m_error = tr("Add your ElevenLabs API key in AI settings first.");
         emit changed();
         return false;
     }
@@ -178,13 +191,13 @@ bool VoiceCloning::startRecording()
         return true;
     }
     if (!m_project->openVoiceOver() || !m_project->m_recorder) {
-        m_error = QStringLiteral("The microphone isn't available: allow it in System Settings › Privacy & Security › Microphone.");
+        m_error = tr("The microphone isn't available: allow it in System Settings › Privacy & Security › Microphone.");
         emit changed();
         return false;
     }
     std::string error;
     if (!m_project->m_recorder->start(m_takePath.toStdString(), &error)) {
-        m_error = QStringLiteral("Could not start recording: %1").arg(QString::fromStdString(error));
+        m_error = tr("Could not start recording: %1").arg(coreText(error));
         emit changed();
         return false;
     }
@@ -205,7 +218,7 @@ bool VoiceCloning::stopRecording()
     std::string error;
     const auto take = m_project->m_recorder->stop(&error);
     if (!take) {
-        fail(QStringLiteral("Recording failed: %1").arg(QString::fromStdString(error)));
+        fail(tr("Recording failed: %1").arg(coreText(error)));
         return false;
     }
     setStage(QStringLiteral("checking"));
@@ -250,7 +263,7 @@ void VoiceCloning::checkTake(const QString& path, Ticks duration)
             model = found;
     }
     if (!model) {
-        fail(QStringLiteral("Download a speech model first: the recording is checked on this Mac."));
+        fail(tr("Download a speech model first: the recording is checked on this Mac."));
         return;
     }
     if (m_worker.joinable())
@@ -270,7 +283,7 @@ void VoiceCloning::checkTake(const QString& path, Ticks duration)
             if (!*alive)
                 return;
             if (!transcript) {
-                fail(QStringLiteral("The recording couldn't be checked: %1").arg(QString::fromStdString(error)));
+                fail(tr("The recording couldn't be checked: %1").arg(coreText(error)));
                 return;
             }
             QStringList missing;
@@ -278,7 +291,7 @@ void VoiceCloning::checkTake(const QString& path, Ticks duration)
                 missing << QString::fromStdString(w);
             m_check = {{QStringLiteral("passed"), check.passed},
                        {QStringLiteral("match"), check.match},
-                       {QStringLiteral("why"), QString::fromStdString(check.why)},
+                       {QStringLiteral("why"), whyText(check)},
                        {QStringLiteral("missing"), missing},
                        {QStringLiteral("heard"), QString::fromStdString(heard).trimmed()}};
             setStage(QStringLiteral("checked"));
@@ -305,7 +318,7 @@ bool VoiceCloning::makeVoice()
             self->m_madeVoice = QStringLiteral("elevenlabs:") + voiceId;
             self->setStage(QStringLiteral("done"));
         })) {
-        m_error = QStringLiteral("Another AI job is running; try again when it's done.");
+        m_error = tr("Another AI job is running; try again when it's done.");
         emit changed();
         return false;
     }

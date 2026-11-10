@@ -1,8 +1,10 @@
 #include "OverlayTransitions.h"
 
+#include "Language.h"
 #include "encode/MediaWriter.h"
 #include "model/Paths.h"
 
+#include <QCoreApplication>
 #include <QCache>
 #include <QDir>
 #include <QFile>
@@ -149,11 +151,11 @@ QString versionDirectory()
 const std::vector<Kind>& kinds()
 {
     static const std::vector<Kind> list{
-        {"leak.warm", "Warm light leak", tve::BlendMode::Screen},
-        {"leak.cool", "Cool light leak", tve::BlendMode::Screen},
-        {"burn", "Film burn", tve::BlendMode::Screen},
-        {"paint.white", "White paint stroke", tve::BlendMode::Normal},
-        {"paint.black", "Black paint stroke", tve::BlendMode::Normal},
+        {"leak.warm", QT_TRANSLATE_NOOP("catalogue", "Warm light leak"), tve::BlendMode::Screen},
+        {"leak.cool", QT_TRANSLATE_NOOP("catalogue", "Cool light leak"), tve::BlendMode::Screen},
+        {"burn", QT_TRANSLATE_NOOP("catalogue", "Film burn"), tve::BlendMode::Screen},
+        {"paint.white", QT_TRANSLATE_NOOP("catalogue", "White paint stroke"), tve::BlendMode::Normal},
+        {"paint.black", QT_TRANSLATE_NOOP("catalogue", "Black paint stroke"), tve::BlendMode::Normal},
     };
     return list;
 }
@@ -201,14 +203,14 @@ QString movie(const std::string& id, QString* error)
         return QString();
     };
     if (!find(id))
-        return failed(QStringLiteral("Unknown overlay %1").arg(QString::fromStdString(id)));
+        return failed(QCoreApplication::translate("OverlayTransitions", "Unknown overlay %1").arg(QString::fromStdString(id)));
     static QMutex mutex;
     QMutexLocker lock(&mutex);
     const QString path = versionDirectory() + QLatin1Char('/') + QString::fromStdString(find(id)->title) + QStringLiteral(".mov");
     if (QFileInfo(path).size() > 0)
         return path;
     if (!QDir().mkpath(versionDirectory()))
-        return failed(QStringLiteral("Cannot make the overlay cache folder"));
+        return failed(QCoreApplication::translate("OverlayTransitions", "Cannot make the overlay cache folder"));
 
     tve::MediaSettings settings;
     settings.container = tve::Container::Mov;
@@ -225,18 +227,18 @@ QString movie(const std::string& id, QString* error)
     std::string why;
     auto writer = tve::MediaWriter::open(part.toStdString(), settings, &why);
     if (!writer)
-        return failed(QStringLiteral("Cannot make the overlay: %1").arg(QString::fromStdString(why)));
+        return failed(QCoreApplication::translate("OverlayTransitions", "Cannot make the overlay: %1").arg(coreText(why)));
     const int frames = int(std::lround(kSeconds * kFramesPerSecond));
     for (int i = 0; i < frames; ++i) {
         const QImage picture = frame(id, (i + 0.5) / frames, QSize(kWidth, kHeight));
         if (!writer->writeVideoRgba(picture.constBits(), int(picture.bytesPerLine()))) {
             QFile::remove(part);
-            return failed(QStringLiteral("Cannot make the overlay: %1").arg(QString::fromStdString(writer->lastError())));
+            return failed(QCoreApplication::translate("OverlayTransitions", "Cannot make the overlay: %1").arg(coreText(writer->lastError())));
         }
     }
     if (!writer->finish() || !QFile::rename(part, path)) {
         QFile::remove(part);
-        return failed(QStringLiteral("Cannot make the overlay: %1").arg(QString::fromStdString(writer->lastError())));
+        return failed(QCoreApplication::translate("OverlayTransitions", "Cannot make the overlay: %1").arg(coreText(writer->lastError())));
     }
     return path;
 }

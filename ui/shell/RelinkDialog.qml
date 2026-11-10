@@ -12,6 +12,7 @@ Popup {
     required property var project
     readonly property var missing: project.missingMedia
     property string message
+    property bool found: false // message reports files found (else a problem)
     property real pendingId: 0   // the media a "Use anyway" answer is for
     property url pendingFile
 
@@ -22,6 +23,7 @@ Popup {
     padding: Theme.space.l
     onAboutToShow: {
         message = ""
+        found = false
         pendingId = 0
     }
 
@@ -32,7 +34,8 @@ Popup {
             return
         }
         message = dialog.project.lastError
-        if (message.indexOf("not the same file") >= 0) {
+        found = false
+        if (dialog.project.relinkRefusedAsDifferent()) {
             pendingId = id
             pendingFile = file
         }
@@ -40,18 +43,19 @@ Popup {
 
     FolderDialog {
         id: folderDialog
-        title: "Search a folder for the missing files"
+        title: qsTr("Search a folder for the missing files")
         onAccepted: {
             const before = dialog.missing.length
             const found = dialog.project.relinkFromFolder(selectedFolder)
-            dialog.message = found > 0 ? "Found " + found + " of " + before + "." : dialog.project.lastError
+            dialog.found = found > 0
+            dialog.message = found > 0 ? qsTr("Found %1 of %2.").arg(Fmt.num(found)).arg(Fmt.num(before)) : dialog.project.lastError
             dialog.pendingId = 0
         }
     }
     FileDialog {
         id: fileDialog
         property real mediaId: 0
-        title: "Locate the file"
+        title: qsTr("Locate the file")
         fileMode: FileDialog.OpenFile
         onAccepted: dialog.relink(mediaId, selectedFile, false)
     }
@@ -67,16 +71,15 @@ Popup {
         spacing: Theme.space.m
 
         Text {
-            text: dialog.missing.length > 0 ? "Missing media" : "All media found"
+            text: dialog.missing.length > 0 ? qsTr("Missing media") : qsTr("All media found")
             font: Theme.type.title
             color: Theme.color.textPrimary
         }
         Text {
             Layout.fillWidth: true
             text: dialog.missing.length > 0
-                  ? "These files are not where the project expects them. Their clips stay on the timeline, "
-                    + "but show and play nothing until you find the files."
-                  : "Every clip has its file again."
+                  ? qsTr("These files are not where the project expects them. Their clips stay on the timeline, but show and play nothing until you find the files.")
+                  : qsTr("Every clip has its file again.")
             font: Theme.type.body
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
@@ -84,10 +87,10 @@ Popup {
         TextButton {
             objectName: "relinkSearchFolder"
             visible: dialog.missing.length > 0
-            text: "Search a folder…"
+            text: qsTr("Search a folder…")
             iconName: "search"
             variant: "primary"
-            tip: "Looks in the folder and the folders in it, by file name and by content (renamed copies)"
+            tip: qsTr("Looks in the folder and the folders in it, by file name and by content (renamed copies)")
             onClicked: folderDialog.open()
         }
 
@@ -126,7 +129,7 @@ Popup {
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: "Was in " + row.modelData.folder
+                            text: qsTr("Was in %1").arg(row.modelData.folder)
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                             elide: Text.ElideMiddle
@@ -134,7 +137,7 @@ Popup {
                     }
                     TextButton {
                         objectName: "locate:" + row.modelData.name
-                        text: "Locate…"
+                        text: qsTr("Locate…")
                         variant: "secondary"
                         onClicked: {
                             fileDialog.mediaId = row.modelData.id
@@ -156,14 +159,14 @@ Popup {
                 Layout.preferredWidth: 1 // wraps in what the button leaves
                 text: dialog.message
                 font: Theme.type.body
-                color: dialog.pendingId > 0 || dialog.message.indexOf("Found") !== 0 ? Theme.color.warning
+                color: dialog.pendingId > 0 || !dialog.found ? Theme.color.warning
                                                                                       : Theme.color.textPrimary
                 wrapMode: Text.WordWrap
             }
             TextButton {
                 objectName: "relinkUseAnyway"
                 visible: dialog.pendingId > 0
-                text: "Use anyway"
+                text: qsTr("Use anyway")
                 variant: "secondary"
                 onClicked: dialog.relink(dialog.pendingId, dialog.pendingFile, true)
             }
@@ -174,7 +177,7 @@ Popup {
             Item { Layout.fillWidth: true }
             TextButton {
                 objectName: "relinkDone"
-                text: dialog.missing.length > 0 ? "Later" : "Done"
+                text: dialog.missing.length > 0 ? qsTr("Later") : qsTr("Done")
                 variant: dialog.missing.length > 0 ? "secondary" : "primary"
                 onClicked: dialog.close()
             }

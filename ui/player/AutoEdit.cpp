@@ -6,6 +6,7 @@
 #include "decode/AudioDecoder.h"
 #include "model/Keyframes.h"
 
+#include <QCoreApplication>
 #include <QImage>
 
 #include <algorithm>
@@ -36,33 +37,33 @@ QVariantList rgba(double r, double g, double b, double a = 1)
 const std::vector<AutoEditStyle>& autoEditStyles()
 {
     static const std::vector<AutoEditStyle> styles{
-        {QStringLiteral("cinematic"), QStringLiteral("Cinematic"), QStringLiteral("Long, slow cuts in teal and orange."),
+        {QStringLiteral("cinematic"), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Cinematic")), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Long, slow cuts in teal and orange.")),
          QStringLiteral("tve.music.horizon"), 8, 8, QStringLiteral("tve.transition.dissolve"), 1, QStringLiteral("teal_orange"),
          {{QStringLiteral("size"), 0.08}, {QStringLiteral("fontFamily"), QStringLiteral("Didot")}, {QStringLiteral("letterSpacing"), 0.3},
           {QStringLiteral("shadow"), true}, {QStringLiteral("animationIn"), anim("tracking", "character", 1.6)},
           {QStringLiteral("animationOut"), anim("fade", "whole", 0.8)}}},
-        {QStringLiteral("upbeat"), QStringLiteral("Upbeat"), QStringLiteral("Bright, quick cuts with flashes."),
+        {QStringLiteral("upbeat"), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Upbeat")), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Bright, quick cuts with flashes.")),
          QStringLiteral("tve.music.bright_side"), 4, 4, QStringLiteral("tve.transition.flash"), 0.5, QStringLiteral("vivid"),
          {{QStringLiteral("size"), 0.1}, {QStringLiteral("fontFamily"), QStringLiteral("Impact")}, {QStringLiteral("color"), rgba(1, 0.85, 0.1)},
           {QStringLiteral("shadow"), true}, {QStringLiteral("animationIn"), anim("pop", "word", 0.7, 0.5)},
           {QStringLiteral("animationOut"), anim("zoom", "whole", 0.4)}}},
-        {QStringLiteral("calm"), QStringLiteral("Calm"), QStringLiteral("Gentle fades through white, soft colour."),
+        {QStringLiteral("calm"), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Calm")), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Gentle fades through white, soft colour.")),
          QStringLiteral("tve.music.still_water"), 4, 4, QStringLiteral("tve.transition.dip_to_white"), 1, QStringLiteral("matte_pastel"),
          {{QStringLiteral("size"), 0.08}, {QStringLiteral("fontFamily"), QStringLiteral("Georgia")}, {QStringLiteral("italic"), true},
           {QStringLiteral("shadow"), true}, {QStringLiteral("animationIn"), anim("blur", "whole", 1.4)},
           {QStringLiteral("animationOut"), anim("fade", "whole", 1.0)}}},
-        {QStringLiteral("energetic"), QStringLiteral("Energetic"), QStringLiteral("Very fast cuts and glitches."),
+        {QStringLiteral("energetic"), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Energetic")), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Very fast cuts and glitches.")),
          QStringLiteral("tve.music.neon_run"), 2, 2, QStringLiteral("tve.transition.glitch"), 0.5, QStringLiteral("cool_night"),
          {{QStringLiteral("size"), 0.1}, {QStringLiteral("bold"), true}, {QStringLiteral("fontFamily"), QStringLiteral("Futura")},
           {QStringLiteral("color"), rgba(0.55, 1, 1)}, {QStringLiteral("outlineWidth"), 0.04},
           {QStringLiteral("outlineColor"), rgba(1, 0.2, 0.75)}, {QStringLiteral("animationIn"), anim("fade", "whole", 0.4)},
           {QStringLiteral("animationLoop"), anim("flicker", "character", 2.0)}}},
-        {QStringLiteral("vintage"), QStringLiteral("Vintage"), QStringLiteral("Faded film colour, unhurried, through black."),
+        {QStringLiteral("vintage"), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Vintage")), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Faded film colour, unhurried, through black.")),
          QStringLiteral("tve.music.late_study"), 4, 4, QStringLiteral("tve.transition.dip_to_black"), 1, QStringLiteral("vintage_fade"),
          {{QStringLiteral("size"), 0.07}, {QStringLiteral("fontFamily"), QStringLiteral("American Typewriter")},
           {QStringLiteral("color"), rgba(1, 0.95, 0.85)}, {QStringLiteral("animationIn"), anim("typewriter", "character", 1.2, 1.0)},
           {QStringLiteral("animationOut"), anim("fade", "whole", 0.8)}}},
-        {QStringLiteral("clean"), QStringLiteral("Clean"), QStringLiteral("Straightforward cuts that slide, natural colour."),
+        {QStringLiteral("clean"), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Clean")), QStringLiteral(QT_TRANSLATE_NOOP("AutoEdit", "Straightforward cuts that slide, natural colour.")),
          QStringLiteral("tve.music.teamwork"), 4, 4, QStringLiteral("tve.transition.slide"), 1, QString(),
          {{QStringLiteral("size"), 0.07}, {QStringLiteral("fontFamily"), QStringLiteral("Avenir Next")}, {QStringLiteral("letterSpacing"), 0.15},
           {QStringLiteral("shadow"), true}, {QStringLiteral("animationIn"), anim("rise", "word", 0.8, 0.4)},
@@ -83,8 +84,8 @@ QVariantList autoEditStyleList()
 {
     QVariantList list;
     for (const AutoEditStyle& style : autoEditStyles())
-        list << QVariantMap{{QStringLiteral("id"), style.id}, {QStringLiteral("name"), style.name},
-                            {QStringLiteral("description"), style.description}, {QStringLiteral("look"), style.look}};
+        list << QVariantMap{{QStringLiteral("id"), style.id}, {QStringLiteral("name"), QCoreApplication::translate("AutoEdit", style.name.toUtf8().constData())},
+                            {QStringLiteral("description"), QCoreApplication::translate("AutoEdit", style.description.toUtf8().constData())}, {QStringLiteral("look"), style.look}};
     return list;
 }
 
@@ -169,7 +170,7 @@ std::optional<Project> buildAutoEdit(const std::vector<AutoEditSource>& sources,
 {
     if (sources.empty()) {
         if (error)
-            *error = QStringLiteral("Choose some pictures or videos first.");
+            *error = QCoreApplication::translate("AutoEdit", "Choose some pictures or videos first.");
         return std::nullopt;
     }
     double tempo = 120;
@@ -213,7 +214,7 @@ std::optional<Project> buildAutoEdit(const std::vector<AutoEditSource>& sources,
         cuts = candidates(true);
     if (cuts.empty()) {
         if (error)
-            *error = QStringLiteral("Nothing long enough to cut to the music.");
+            *error = QCoreApplication::translate("AutoEdit", "Nothing long enough to cut to the music.");
         return std::nullopt;
     }
     // The best cuts up to the length asked for, then in order.
@@ -291,7 +292,7 @@ std::optional<Project> buildShorts(const MediaItem& media, const std::vector<Sho
 {
     if (shorts.empty()) {
         if (error)
-            *error = QStringLiteral("No moment was long enough for a short.");
+            *error = QCoreApplication::translate("AutoEdit", "No moment was long enough for a short.");
         return std::nullopt;
     }
     const TemplateShape shape = *templateShape("9:16");
@@ -309,8 +310,8 @@ std::optional<Project> buildShorts(const MediaItem& media, const std::vector<Sho
             clip.visual.crop = fillCrop(copy.width, copy.height, shape.width, shape.height);
         f.info.mediaSlots.push_back({.clipId = clip.id, .label = "Short " + std::to_string(i + 1), .filled = true});
         // Each short a range to export on its own.
-        const QString note = shorts[i].title.isEmpty() ? QStringLiteral("Short %1").arg(i + 1)
-                                                       : QStringLiteral("Short %1: %2").arg(i + 1).arg(shorts[i].title);
+        const QString note = shorts[i].title.isEmpty() ? QCoreApplication::translate("AutoEdit", "Short %1").arg(i + 1)
+                                                       : QCoreApplication::translate("AutoEdit", "Short %1: %2").arg(i + 1).arg(shorts[i].title);
         f.project.markers.push_back(Marker{.id = f.project.allocateId(), .time = at, .duration = clip.duration,
                                            .color = MarkerColor::Purple, .note = note.toStdString()});
         at += clip.duration;

@@ -2,6 +2,7 @@
 
 #include "cloud/CloudKeys.h"
 
+#include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
@@ -31,20 +32,20 @@ QString describeError(int status, const QByteArray& body)
     const QString type = error.value(QStringLiteral("type")).toString();
     const QString message = error.value(QStringLiteral("message")).toString();
     if (status == 401 || type == QLatin1String("authentication_error"))
-        return QStringLiteral("The Claude API key was not accepted. Check it in AI settings.");
+        return QCoreApplication::translate("CloudText", "The Claude API key was not accepted. Check it in AI settings.");
     if (status == 402 || type == QLatin1String("billing_error"))
-        return QStringLiteral("Claude API billing needs attention in your Anthropic Console.");
+        return QCoreApplication::translate("CloudText", "Claude API billing needs attention in your Anthropic Console.");
     if (status == 403 || type == QLatin1String("permission_error"))
-        return QStringLiteral("This Claude API key is not allowed to do that.");
+        return QCoreApplication::translate("CloudText", "This Claude API key is not allowed to do that.");
     if (status == 429 || type == QLatin1String("rate_limit_error"))
-        return QStringLiteral("Claude's rate limit was reached; try again shortly.");
+        return QCoreApplication::translate("CloudText", "Claude's rate limit was reached; try again shortly.");
     if (status == 529 || type == QLatin1String("overloaded_error"))
-        return QStringLiteral("Claude is busy right now; try again shortly.");
+        return QCoreApplication::translate("CloudText", "Claude is busy right now; try again shortly.");
     if (status == 413)
-        return QStringLiteral("That is too much text to send at once.");
+        return QCoreApplication::translate("CloudText", "That is too much text to send at once.");
     if (!message.isEmpty())
-        return QStringLiteral("Claude API: %1").arg(message);
-    return status > 0 ? QStringLiteral("Claude API error %1").arg(status) : QStringLiteral("Could not reach the Claude API.");
+        return QCoreApplication::translate("CloudText", "Claude API: %1").arg(message);
+    return status > 0 ? QCoreApplication::translate("CloudText", "Claude API error %1").arg(status) : QCoreApplication::translate("CloudText", "Could not reach the Claude API.");
 }
 
 class ClaudeTask final : public AgentTask {
@@ -69,7 +70,7 @@ public:
             return;
         const QString key = cloudkeys::read(QStringLiteral("anthropic"));
         if (key.isEmpty()) {
-            fail(QStringLiteral("Add your Claude API key in AI settings first."));
+            fail(tr("Add your Claude API key in AI settings first."));
             return;
         }
         m_buffer.clear();
@@ -265,7 +266,7 @@ private:
             return;
         }
         if (code != 200) {
-            fail(networkError ? QStringLiteral("Could not reach the Claude API: %1").arg(reply->errorString())
+            fail(networkError ? tr("Could not reach the Claude API: %1").arg(reply->errorString())
                               : describeError(code, m_body));
             return;
         }
@@ -278,11 +279,11 @@ private:
             return;
         }
         if (m_result.stopReason == QLatin1String("refusal")) {
-            fail(QStringLiteral("Claude declined this request."));
+            fail(tr("Claude declined this request."));
             return;
         }
         if (m_result.stopReason == QLatin1String("max_tokens")) {
-            fail(QStringLiteral("The answer was too long and was cut off."));
+            fail(tr("The answer was too long and was cut off."));
             return;
         }
         m_result.ok = true;

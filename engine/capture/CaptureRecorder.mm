@@ -1,6 +1,7 @@
 #include "capture/CaptureRecorder.h"
 
 #include "encode/MediaWriter.h"
+#include "model/Translate.h"
 
 #import <Foundation/Foundation.h>
 #include <ApplicationServices/ApplicationServices.h>
@@ -100,7 +101,7 @@ void CaptureRecorder::writerLoop()
     if (!s.writer || !s.nv12 || !s.transfer) {
         m_failed = true;
         if (m_error.empty())
-            m_error = "The recording file could not be made.";
+            m_error = TVE_TR("core", "The recording file could not be made.");
     } else {
         // Black until the first picture comes.
         if (CVPixelBufferLockBaseAddress(s.nv12, 0) == kCVReturnSuccess) {
@@ -148,7 +149,7 @@ void CaptureRecorder::writerLoop()
         CVPixelBufferUnlockBaseAddress(s.nv12, kCVPixelBufferLock_ReadOnly);
         if (!ok) {
             m_failed = true;
-            m_error = "The recording could not be written.";
+            m_error = TVE_TR("core", "The recording could not be written.");
             break;
         }
         ++m_framesWritten;
@@ -157,7 +158,7 @@ void CaptureRecorder::writerLoop()
     }
     if (s.writer && !m_failed && !s.writer->finish()) {
         m_failed = true;
-        m_error = "The recording could not be finished.";
+        m_error = TVE_TR("core", "The recording could not be finished.");
     }
     if (s.nv12)
         CVPixelBufferRelease(s.nv12);
@@ -171,7 +172,7 @@ std::optional<CaptureRecorder::Take> CaptureRecorder::stop(std::string* error)
 {
     if (!m_recording) {
         if (error)
-            *error = "Nothing is being recorded.";
+            *error = TVE_TR("core", "Nothing is being recorded.");
         return std::nullopt;
     }
     m_recording = false;
@@ -180,7 +181,7 @@ std::optional<CaptureRecorder::Take> CaptureRecorder::stop(std::string* error)
     m_source->stop();
     if (m_failed || m_framesWritten == 0) {
         if (error)
-            *error = m_error.empty() ? std::string("Nothing was recorded.") : m_error;
+            *error = m_error.empty() ? std::string(TVE_TR("core", "Nothing was recorded.")) : m_error;
         std::error_code ec;
         std::filesystem::remove(m_path, ec);
         return std::nullopt;

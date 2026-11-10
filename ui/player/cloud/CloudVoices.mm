@@ -1,5 +1,6 @@
 #include "cloud/CloudVoices.h"
 
+#include "Language.h"
 #include "cloud/CloudKeys.h"
 #include "decode/AudioDecoder.h"
 #include "encode/WavWriter.h"
@@ -149,9 +150,9 @@ public:
                                     speech->ended = true;
                                     error = speech->error;
                                     if (speech->writer && !speech->writer->finish())
-                                        error = QStringLiteral("The voice could not be written.");
+                                        error = tr("The voice could not be written.");
                                     if (!speech->writer && error.isEmpty())
-                                        error = QStringLiteral("The voice made no sound.");
+                                        error = tr("The voice made no sound.");
                                 }
                                 if (self)
                                     self->ended(*speech, error);
@@ -168,7 +169,7 @@ public:
                         std::string why;
                         speech->writer = tve::WavWriter::open(speech->path.toStdString(), int(format.sampleRate), channels, &why);
                         if (!speech->writer)
-                            speech->error = QString::fromStdString(why);
+                            speech->error = coreText(why);
                     }
                     if (!speech->writer)
                         return;
@@ -271,7 +272,7 @@ public:
     {
         const QString key = cloudkeys::read(QStringLiteral("elevenlabs"));
         if (key.isEmpty()) {
-            fail(QStringLiteral("Add your ElevenLabs API key in AI settings first."));
+            fail(tr("Add your ElevenLabs API key in AI settings first."));
             return;
         }
         m_text = text;
@@ -325,10 +326,10 @@ private:
         const QByteArray data = reply->readAll();
         SpeechResult result;
         if (code != 200) {
-            result.error = code == 401 ? QStringLiteral("The ElevenLabs API key was not accepted. Check it in AI settings.")
-                         : code == 429 ? QStringLiteral("ElevenLabs is busy or your quota is used up; try again later.")
-                         : code == 0   ? QStringLiteral("Could not reach ElevenLabs: %1").arg(reply->errorString())
-                                       : QStringLiteral("ElevenLabs error %1").arg(code);
+            result.error = code == 401 ? tr("The ElevenLabs API key was not accepted. Check it in AI settings.")
+                         : code == 429 ? tr("ElevenLabs is busy or your quota is used up; try again later.")
+                         : code == 0   ? tr("Could not reach ElevenLabs: %1").arg(reply->errorString())
+                                       : tr("ElevenLabs error %1").arg(code);
             const QJsonValue detail = QJsonDocument::fromJson(data).object().value(QStringLiteral("detail"));
             const QString message = detail.isObject() ? detail.toObject().value(QStringLiteral("message")).toString()
                                                       : detail.isString() ? detail.toString() : QString();
@@ -340,7 +341,7 @@ private:
         const QJsonObject answer = QJsonDocument::fromJson(data).object();
         const QByteArray audio = QByteArray::fromBase64(answer.value(QStringLiteral("audio_base64")).toString().toLatin1());
         if (audio.isEmpty()) {
-            result.error = QStringLiteral("ElevenLabs sent no sound.");
+            result.error = tr("ElevenLabs sent no sound.");
             finish(result);
             return;
         }
@@ -349,7 +350,7 @@ private:
         QDir().mkpath(QFileInfo(path).absolutePath());
         QSaveFile file(path);
         if (!file.open(QIODevice::WriteOnly) || file.write(audio) != audio.size() || !file.commit()) {
-            result.error = QStringLiteral("The voice could not be saved.");
+            result.error = tr("The voice could not be saved.");
             finish(result);
             return;
         }
@@ -421,7 +422,7 @@ void ElevenLabsVoices::refresh(std::function<void(QString)> done)
     const QString key = cloudkeys::read(QStringLiteral("elevenlabs"));
     if (key.isEmpty()) {
         m_voices.clear();
-        done(QStringLiteral("Add your ElevenLabs API key in AI settings first."));
+        done(QCoreApplication::translate("CloudVoices", "Add your ElevenLabs API key in AI settings first."));
         return;
     }
     QNetworkRequest http(QUrl(baseUrl() + QStringLiteral("/v1/voices")));
@@ -433,8 +434,8 @@ void ElevenLabsVoices::refresh(std::function<void(QString)> done)
         const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (code != 200) {
             m_voices.clear(); // a refused key has no voices
-            done(code == 401 ? QStringLiteral("The ElevenLabs API key was not accepted.")
-                             : QStringLiteral("Could not list ElevenLabs voices (%1).").arg(code ? QString::number(code) : reply->errorString()));
+            done(code == 401 ? QCoreApplication::translate("CloudVoices", "The ElevenLabs API key was not accepted.")
+                             : QCoreApplication::translate("CloudVoices", "Could not list ElevenLabs voices (%1).").arg(code ? QString::number(code) : reply->errorString()));
             return;
         }
         m_voices.clear();
@@ -463,10 +464,10 @@ QString elevenLabsError(int code, const QByteArray& body, const QString& network
                     : detail.isArray()  ? detail.toArray().first().toObject().value(QStringLiteral("msg")).toString()
                                         : QString();
     if (code == 401)
-        return QStringLiteral("The ElevenLabs API key was not accepted.");
+        return QCoreApplication::translate("CloudVoices", "The ElevenLabs API key was not accepted.");
     if (code == 0)
-        return QStringLiteral("Could not reach ElevenLabs: %1").arg(network);
-    return message.isEmpty() ? QStringLiteral("ElevenLabs error %1").arg(code) : QStringLiteral("ElevenLabs: %1").arg(message);
+        return QCoreApplication::translate("CloudVoices", "Could not reach ElevenLabs: %1").arg(network);
+    return message.isEmpty() ? QCoreApplication::translate("CloudVoices", "ElevenLabs error %1").arg(code) : QCoreApplication::translate("CloudVoices", "ElevenLabs: %1").arg(message);
 }
 
 } // namespace
@@ -476,13 +477,13 @@ void ElevenLabsVoices::clone(const QString& name, const QString& description, co
 {
     const QString key = cloudkeys::read(QStringLiteral("elevenlabs"));
     if (key.isEmpty()) {
-        done({}, QStringLiteral("Add your ElevenLabs API key in AI settings first."));
+        done({}, QCoreApplication::translate("CloudVoices", "Add your ElevenLabs API key in AI settings first."));
         return;
     }
     auto* file = new QFile(recording);
     if (!file->open(QIODevice::ReadOnly)) {
         delete file;
-        done({}, QStringLiteral("The recording can't be read."));
+        done({}, QCoreApplication::translate("CloudVoices", "The recording can't be read."));
         return;
     }
     auto* form = new QHttpMultiPart(QHttpMultiPart::FormDataType);
@@ -524,7 +525,7 @@ void ElevenLabsVoices::remove(const QString& voiceId, std::function<void(QString
 {
     const QString key = cloudkeys::read(QStringLiteral("elevenlabs"));
     if (key.isEmpty()) {
-        done(QStringLiteral("Add your ElevenLabs API key in AI settings first."));
+        done(QCoreApplication::translate("CloudVoices", "Add your ElevenLabs API key in AI settings first."));
         return;
     }
     QNetworkRequest http(QUrl(baseUrl() + QStringLiteral("/v1/voices/") + QString::fromLatin1(QUrl::toPercentEncoding(voiceId))));

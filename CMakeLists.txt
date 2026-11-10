@@ -52,6 +52,19 @@ if(TVE_BUILD_APP)
     add_subdirectory(ui/player)
     add_subdirectory(ui/shell)
     add_subdirectory(app)
+
+    # Translations: i18n/tve_<language>.ts from every string the app shows (refreshed with
+    # cmake --build --preset macos-release --target update_translations), built into the
+    # player library as :/i18n/tve_<language>.qm. The core library, which has no Qt, marks
+    # its messages with TVE_TR (model/Translate.h).
+    find_package(Qt6 6.7 REQUIRED COMPONENTS LinguistTools)
+    # Extracting strings needs every target; the compiled .qm is built into tve_player's
+    # resources from ui/player (where its other resources live).
+    qt_add_lupdate(
+        TS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_ta.ts
+        SOURCE_TARGETS tve_player tve_shell tve_theme TechieVideoEditor tve_core tve_engine
+        LUPDATE_TARGET update_translations
+        OPTIONS -no-obsolete -locations none -tr-function-alias QT_TRANSLATE_NOOP+=TVE_TR)
 endif()
 
 if(TVE_BUILD_TESTS)

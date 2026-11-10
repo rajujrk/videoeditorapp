@@ -1,4 +1,5 @@
 #include "VideoView.h"
+#include "Language.h"
 
 #include "EffectInfo.h"
 #include "FrameCompositor.h"
@@ -382,6 +383,7 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
 
 VideoView::VideoView(QQuickItem* parent) : QQuickRhiItem(parent), m_mirrors(std::make_shared<tve::FrameMirrors>())
 {
+    connect(Language::instance(), &Language::changed, this, &VideoView::languageChanged);
     // Every built-in effect starts in the stack, disabled, at its default values.
     for (const tve::LoadedEffect& effect : tve::EffectLibrary::builtIn().effects())
         m_effects.push_back(tve::EffectInstance{effect.manifest.id, false, {}});

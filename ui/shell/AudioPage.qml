@@ -20,9 +20,9 @@ ColumnLayout {
 
     readonly property var library: project.soundLibrary
     readonly property var categoryNames: ({
-        calm: "Calm", upbeat: "Upbeat", cinematic: "Cinematic", lofi: "Lo-fi", corporate: "Corporate",
-        electronic: "Electronic", transition: "Transitions", hit: "Hits", interface: "Interface",
-        texture: "Textures"
+        calm: qsTr("Calm"), upbeat: qsTr("Upbeat"), cinematic: qsTr("Cinematic"), lofi: qsTr("Lo-fi"), corporate: qsTr("Corporate"),
+        electronic: qsTr("Electronic"), transition: qsTr("Transitions"), hit: qsTr("Hits"), interface: qsTr("Interface"),
+        texture: qsTr("Textures")
     })
     function categoryName(id) { return categoryNames[id] || (id.charAt(0).toUpperCase() + id.slice(1)) }
     readonly property var categories: {
@@ -53,12 +53,12 @@ ColumnLayout {
 
     FolderDialog {
         id: folderDialog
-        title: "Add a music folder"
+        title: qsTr("Add a music folder")
         onAccepted: page.library.addMusicFolder(selectedFolder)
     }
     FolderDialog {
         id: packDialog
-        title: "Add a sound pack"
+        title: qsTr("Add a sound pack")
         onAccepted: if (!page.library.importPack(selectedFolder)) page.project.errorOccurred(page.library.lastError())
     }
 
@@ -69,7 +69,7 @@ ColumnLayout {
         Layout.rightMargin: Theme.space.m
         spacing: 0
         Repeater {
-            model: [{ id: "music", label: "Music" }, { id: "sfx", label: "Sound effects" }, { id: "mine", label: "My music" }, { id: "voice", label: "Voice" }]
+            model: [{ id: "music", label: qsTr("Music") }, { id: "sfx", label: qsTr("Sound effects") }, { id: "mine", label: qsTr("My music") }, { id: "voice", label: qsTr("Voice") }]
             delegate: AbstractButton {
                 id: sectionButton
                 required property var modelData
@@ -123,7 +123,7 @@ ColumnLayout {
                 }
                 contentItem: Text {
                     id: chipLabel
-                    text: chip.modelData === "" ? "All" : page.categoryName(chip.modelData)
+                    text: chip.modelData === "" ? qsTr("All") : page.categoryName(chip.modelData)
                     font: Theme.type.caption
                     color: chip.checked ? Theme.color.accentText : Theme.color.textSecondary
                     horizontalAlignment: Text.AlignHCenter
@@ -159,17 +159,17 @@ ColumnLayout {
                     objectName: "removeMusicFolder:" + folderRow.modelData
                     iconName: "close"
                     buttonSize: 22
-                    tip: "Stop showing this folder"
+                    tip: qsTr("Stop showing this folder")
                     onClicked: page.library.removeMusicFolder(folderRow.modelData)
                 }
             }
         }
         TextButton {
             objectName: "addMusicFolder"
-            text: "Add a folder…"
+            text: qsTr("Add a folder…")
             iconName: "folder"
             variant: "ghost"
-            tip: "Show the music in a folder on this Mac"
+            tip: qsTr("Show the music in a folder on this Mac")
             onClicked: folderDialog.open()
         }
     }
@@ -228,7 +228,7 @@ ColumnLayout {
                     objectName: "previewSound:" + row.modelData.id
                     iconName: row.playing ? "pause" : "play"
                     checked: row.playing
-                    tip: row.playing ? "Stop" : "Listen"
+                    tip: row.playing ? qsTr("Stop") : qsTr("Listen")
                     onClicked: if (!page.library.preview(row.modelData.id)) page.project.errorOccurred(page.library.lastError())
                 }
                 ColumnLayout {
@@ -269,7 +269,7 @@ ColumnLayout {
                 IconButton {
                     objectName: "addSound:" + row.modelData.id
                     iconName: "plus"
-                    tip: "Add at the playhead"
+                    tip: qsTr("Add at the playhead")
                     onClicked: page.project.addSound(row.modelData.id)
                 }
             }
@@ -280,8 +280,8 @@ ColumnLayout {
             width: parent.width - Theme.space.xl * 2
             visible: soundList.count === 0
             text: page.section === "mine" && page.library.musicFolders.length === 0
-                  ? "Add a folder to see your own music here"
-                  : "Nothing matches"
+                  ? qsTr("Add a folder to see your own music here")
+                  : qsTr("Nothing matches")
             font: Theme.type.body
             color: Theme.color.textSecondary
             horizontalAlignment: Text.AlignHCenter
@@ -301,17 +301,17 @@ ColumnLayout {
             objectName: "packProblems"
             visible: page.library.packProblems.length > 0
             Layout.fillWidth: true
-            text: "Left out (failed its check): " + page.library.packProblems.join("; ")
+            text: qsTr("Left out (failed its check): %1").arg(page.library.packProblems.join("; "))
             font: Theme.type.caption
             color: Theme.color.danger
             wrapMode: Text.WordWrap
         }
         TextButton {
             objectName: "addSoundPack"
-            text: "Add a sound pack…"
+            text: qsTr("Add a sound pack…")
             iconName: "plus"
             variant: "ghost"
-            tip: "Add a folder with a sound pack's manifest; every file is checked before use"
+            tip: qsTr("Add a folder with a sound pack's manifest; every file is checked before use")
             onClicked: packDialog.open()
         }
     }

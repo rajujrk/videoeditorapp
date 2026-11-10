@@ -1,4 +1,5 @@
 #include "SoundLibrary.h"
+#include "Language.h"
 #include "PackStore.h"
 
 #include "audio/AudioOutput.h"
@@ -55,7 +56,7 @@ std::optional<std::vector<float>> decodeFile(const QString& path, double seconds
     auto decoder = AudioDecoder::open(path.toStdString(), &why);
     if (!decoder) {
         if (error)
-            *error = QString::fromStdString(why);
+            *error = coreText(why);
         return std::nullopt;
     }
     std::vector<float> samples(std::size_t(seconds * kRate) * 2);
@@ -118,7 +119,7 @@ void SoundLibrary::refresh()
     for (const SoundRecipe& recipe : builtInSounds())
         m_sounds << QVariantMap{{QStringLiteral("id"), QString::fromStdString(recipe.id)},
                                 {QStringLiteral("kind"), QString::fromStdString(recipe.kind)},
-                                {QStringLiteral("title"), QString::fromStdString(recipe.title)},
+                                {QStringLiteral("title"), catalogueText(recipe.title)},
                                 {QStringLiteral("category"), QString::fromStdString(recipe.category)},
                                 {QStringLiteral("duration"), soundDuration(recipe)},
                                 {QStringLiteral("pack"), QString()}};
@@ -133,7 +134,7 @@ void SoundLibrary::refresh()
         for (const PackSound& sound : pack.sounds)
             m_sounds << QVariantMap{{QStringLiteral("id"), QString::fromStdString(pack.id + "/" + sound.id)},
                                     {QStringLiteral("kind"), QString::fromStdString(sound.kind)},
-                                    {QStringLiteral("title"), QString::fromStdString(sound.title)},
+                                    {QStringLiteral("title"), catalogueText(sound.title)},
                                     {QStringLiteral("category"), QString::fromStdString(sound.category)},
                                     {QStringLiteral("duration"), sound.duration},
                                     {QStringLiteral("pack"), packTitle}};
@@ -223,11 +224,11 @@ bool SoundLibrary::importPack(const QUrl& folder)
     std::string why;
     const auto pack = loadSoundPack(source.toStdString(), &why);
     if (!pack) {
-        m_error = QString::fromStdString(why);
+        m_error = coreText(why);
         return false;
     }
     if (pack->sounds.empty()) {
-        m_error = QStringLiteral("The pack has no sounds that check out.");
+        m_error = tr("The pack has no sounds that check out.");
         return false;
     }
     // Copied whole into a folder named after its id (replacing an older copy).
@@ -242,7 +243,7 @@ bool SoundLibrary::importPack(const QUrl& folder)
             const QString copy = target + QLatin1Char('/') + QDir(source).relativeFilePath(file);
             QDir().mkpath(QFileInfo(copy).absolutePath());
             if (!QFile::copy(file, copy)) {
-                m_error = QStringLiteral("The pack could not be copied.");
+                m_error = tr("The pack could not be copied.");
                 QDir(target).removeRecursively();
                 return false;
             }
@@ -276,7 +277,7 @@ std::optional<SoundLibrary::File> SoundLibrary::fileFor(const QString& id, QStri
             auto samples = renderSound(*recipe, &why);
             if (!samples || !writeSoundFile(path.toStdString(), *samples, &why)) {
                 if (error)
-                    *error = QString::fromStdString(why);
+                    *error = coreText(why);
                 return std::nullopt;
             }
         }
@@ -288,7 +289,7 @@ std::optional<SoundLibrary::File> SoundLibrary::fileFor(const QString& id, QStri
                 return File{QString::fromStdString(sound.path), QString::fromStdString(sound.title),
                             QString::fromStdString(sound.kind)};
     if (error)
-        *error = QStringLiteral("Unknown sound %1").arg(id);
+        *error = tr("Unknown sound %1").arg(id);
     return std::nullopt;
 }
 
@@ -299,7 +300,7 @@ std::optional<std::vector<float>> SoundLibrary::previewSamples(const QString& id
         std::string why;
         samples = renderSound(*recipe, &why);
         if (!samples && error)
-            *error = QString::fromStdString(why);
+            *error = coreText(why);
     } else {
         QString path;
         for (const SoundPack& pack : m_packs)
@@ -331,7 +332,7 @@ bool SoundLibrary::preview(const QString& id)
     QString why;
     auto samples = previewSamples(id, kPreviewSeconds, &why);
     if (!samples || samples->empty() || !m_preview->play(std::move(*samples))) {
-        m_error = why.isEmpty() ? QStringLiteral("The sound could not be played.") : why;
+        m_error = why.isEmpty() ? tr("The sound could not be played.") : why;
         return false;
     }
     m_previewing = id;

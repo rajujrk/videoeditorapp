@@ -2,6 +2,7 @@
 
 #include "decode/VideoDecoder.h"
 #include "encode/MediaWriter.h"
+#include "model/Translate.h"
 
 #import <Foundation/Foundation.h>
 #import <VideoToolbox/VideoToolbox.h>
@@ -109,14 +110,14 @@ public:
     bool finish(const std::string& output, std::string* error)
     {
         if (!m_writer->finish()) {
-            fail(error, "The processed copy could not be written.");
+            fail(error, TVE_TR("core", "The processed copy could not be written."));
             return false;
         }
         m_writer.reset();
         std::error_code ec;
         std::filesystem::rename(m_part, output, ec);
         if (ec) {
-            fail(error, "The processed copy could not be kept.");
+            fail(error, TVE_TR("core", "The processed copy could not be kept."));
             return false;
         }
         m_done = true;
@@ -137,7 +138,7 @@ std::unique_ptr<VideoDecoder> openAt(const std::string& path, Ticks from, std::s
     auto decoder = VideoDecoder::open(path, error);
     if (!decoder || !decoder->seek(from)) {
         if (error && error->empty())
-            *error = "This file has no pictures to work on.";
+            *error = TVE_TR("core", "This file has no pictures to work on.");
         return nullptr;
     }
     return decoder;
@@ -202,7 +203,7 @@ void downloadUpscaleModel(std::function<void(bool, std::string)> done)
 {
     VTSuperResolutionScalerConfiguration* c = upscaleConfiguration(1280, 720);
     if (!c) {
-        done(false, "Upscaling is not available on this Mac.");
+        done(false, TVE_TR("core", "Upscaling is not available on this Mac."));
         return;
     }
     g_downloading = true;
@@ -224,7 +225,7 @@ bool upscaleVideo(const std::string& path, Ticks from, Ticks to, int scale, cons
         return false;
     const VideoStreamInfo info = decoder->info();
     if (info.width > 1920 || info.height > 1080) {
-        fail(error, "Upscaling works on pictures up to 1920 × 1080.");
+        fail(error, TVE_TR("core", "Upscaling works on pictures up to 1920 × 1080."));
         return false;
     }
     scale = scale >= 4 ? 4 : 2;
@@ -233,12 +234,12 @@ bool upscaleVideo(const std::string& path, Ticks from, Ticks to, int scale, cons
     @autoreleasepool {
         VTSuperResolutionScalerConfiguration* configuration = upscaleConfiguration(info.width, info.height);
         if (!configuration) {
-            fail(error, "Upscaling is not available on this Mac.");
+            fail(error, TVE_TR("core", "Upscaling is not available on this Mac."));
             return false;
         }
         [configuration autorelease];
         if (configuration.configurationModelStatus != VTSuperResolutionScalerConfigurationModelStatusReady) {
-            fail(error, "Download Apple's upscaling model first.");
+            fail(error, TVE_TR("core", "Download Apple's upscaling model first."));
             return false;
         }
         VTFrameProcessor* processor = [[[VTFrameProcessor alloc] init] autorelease];
@@ -333,7 +334,7 @@ bool smoothVideo(const std::string& path, Ticks from, Ticks to, int factor, cons
     const VideoStreamInfo info = decoder->info();
     @autoreleasepool {
         if (!VTFrameRateConversionConfiguration.isSupported) {
-            fail(error, "Smooth slow motion is not available on this Mac.");
+            fail(error, TVE_TR("core", "Smooth slow motion is not available on this Mac."));
             return false;
         }
         VTFrameRateConversionConfiguration* configuration = [[[VTFrameRateConversionConfiguration alloc]
@@ -343,7 +344,7 @@ bool smoothVideo(const std::string& path, Ticks from, Ticks to, int factor, cons
             qualityPrioritization:VTFrameRateConversionConfigurationQualityPrioritizationQuality
                          revision:VTFrameRateConversionConfiguration.defaultRevision] autorelease];
         if (!configuration) {
-            fail(error, "Smooth slow motion does not work on pictures of this size.");
+            fail(error, TVE_TR("core", "Smooth slow motion does not work on pictures of this size."));
             return false;
         }
         VTFrameProcessor* processor = [[[VTFrameProcessor alloc] init] autorelease];
@@ -558,7 +559,7 @@ bool removeObject(const std::string& path, Ticks from, Ticks to, const std::vect
                   const std::string& output, const AnalysisProgress& progress, std::string* error)
 {
     if (object.empty()) {
-        fail(error, "Draw a box around what to remove first.");
+        fail(error, TVE_TR("core", "Draw a box around what to remove first."));
         return false;
     }
     auto decoder = openAt(path, from, error);
@@ -666,7 +667,7 @@ bool removeObject(const std::string& path, Ticks from, Ticks to, const std::vect
             p.time = frame->pts();
             if (!toPicture(transfer, frame->pixelBuffer(), p)) {
                 release();
-                fail(error, "A frame could not be read.");
+                fail(error, TVE_TR("core", "A frame could not be read."));
                 return false;
             }
             if (!window.empty()) {
@@ -688,7 +689,7 @@ bool removeObject(const std::string& path, Ticks from, Ticks to, const std::vect
             break;
         if (!fillAndWrite(next)) {
             release();
-            fail(error, "The processed copy could not be written.");
+            fail(error, TVE_TR("core", "The processed copy could not be written."));
             return false;
         }
         if (!reportProgress(progress, window[next].time, from, to)) {

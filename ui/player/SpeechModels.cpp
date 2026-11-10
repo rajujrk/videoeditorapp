@@ -31,26 +31,26 @@ const std::vector<SpeechModels::Model>& SpeechModels::catalog()
 {
     // Sizes and SHA-256 from the repository's file list (its Git LFS records).
     static const std::vector<Model> models{
-        {QStringLiteral("base.en-q5_1"), QStringLiteral("Base · English"), QStringLiteral("ggml-base.en-q5_1.bin"), 59721011,
+        {QStringLiteral("base.en-q5_1"), QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "Base · English")), QStringLiteral("ggml-base.en-q5_1.bin"), 59721011,
          QStringLiteral("4baf70dd0d7c4247ba2b81fafd9c01005ac77c2f9ef064e00dcf195d0e2fdd2f"), true,
-         QStringLiteral("fast")},
-        {QStringLiteral("base-q5_1"), QStringLiteral("Base · 99 languages"), QStringLiteral("ggml-base-q5_1.bin"), 59707625,
+         QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "fast"))},
+        {QStringLiteral("base-q5_1"), QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "Base · 99 languages")), QStringLiteral("ggml-base-q5_1.bin"), 59707625,
          QStringLiteral("422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898"), false,
-         QStringLiteral("fast")},
-        {QStringLiteral("small.en-q5_1"), QStringLiteral("Small · English"), QStringLiteral("ggml-small.en-q5_1.bin"),
+         QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "fast"))},
+        {QStringLiteral("small.en-q5_1"), QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "Small · English")), QStringLiteral("ggml-small.en-q5_1.bin"),
          190098681, QStringLiteral("bfdff4894dcb76bbf647d56263ea2a96645423f1669176f4844a1bf8e478ad30"), true,
-         QStringLiteral("more accurate")},
-        {QStringLiteral("small-q5_1"), QStringLiteral("Small · 99 languages"), QStringLiteral("ggml-small-q5_1.bin"),
+         QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "more accurate"))},
+        {QStringLiteral("small-q5_1"), QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "Small · 99 languages")), QStringLiteral("ggml-small-q5_1.bin"),
          190085487, QStringLiteral("ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb"), false,
-         QStringLiteral("more accurate")},
+         QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "more accurate"))},
         {QStringLiteral("large-v3-turbo-q5_0"), QStringLiteral("Large v3 Turbo"),
          QStringLiteral("ggml-large-v3-turbo-q5_0.bin"), 574041195,
          QStringLiteral("394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2"), false,
-         QStringLiteral("99 languages · most accurate")},
+         QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "99 languages · most accurate"))},
         // Speech enhancement: the ONNX export in the DeepFilterNet repository (models/).
         {QStringLiteral("deepfilternet3"), QStringLiteral("DeepFilterNet3"), QStringLiteral("DeepFilterNet3_onnx.tar.gz"),
          7983136, QStringLiteral("c94d91f70911001c946e0fabb4aa9adc37045f45a03b56008cb0c8244cb63616"), false,
-         QStringLiteral("speech enhancement · 48 kHz"), QStringLiteral("enhance"),
+         QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "speech enhancement · 48 kHz")), QStringLiteral("enhance"),
          QStringLiteral("https://github.com/Rikorose/DeepFilterNet/raw/main/models/DeepFilterNet3_onnx.tar.gz"),
          {QStringLiteral("enc.onnx"), QStringLiteral("erb_dec.onnx"), QStringLiteral("df_dec.onnx"),
           QStringLiteral("config.ini")}},
@@ -92,10 +92,10 @@ QVariantList SpeechModels::list(const QString& kind) const
         if (model.kind != kind)
             continue;
         list << QVariantMap{{QStringLiteral("id"), model.id},
-                            {QStringLiteral("title"), model.title},
+                            {QStringLiteral("title"), tr(model.title.toUtf8().constData())},
                             {QStringLiteral("size"), double(model.size)},
                             {QStringLiteral("englishOnly"), model.englishOnly},
-                            {QStringLiteral("note"), model.note},
+                            {QStringLiteral("note"), tr(model.note.toUtf8().constData())},
                             {QStringLiteral("downloaded"), path(model.id).has_value()}};
     }
     return list;
@@ -117,11 +117,11 @@ bool SpeechModels::download(const QString& id, QString* error)
 {
     const Model* model = find(id);
     if (!model) {
-        *error = QStringLiteral("Unknown speech model: ") + id;
+        *error = tr("Unknown speech model: %1").arg(id);
         return false;
     }
     if (!m_downloading.isEmpty()) {
-        *error = QStringLiteral("A model is already downloading");
+        *error = tr("A model is already downloading");
         return false;
     }
     if (path(id)) {
@@ -131,7 +131,7 @@ bool SpeechModels::download(const QString& id, QString* error)
     QDir().mkpath(m_directory);
     m_file = std::make_unique<QFile>(QDir(m_directory).filePath(model->file + QStringLiteral(".part")));
     if (!m_file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        *error = QStringLiteral("Cannot write to ") + m_directory;
+        *error = tr("Cannot write to %1").arg(m_directory);
         m_file.reset();
         return false;
     }
@@ -161,9 +161,9 @@ bool SpeechModels::download(const QString& id, QString* error)
         if (m_cancelled)
             return end(false, {});
         if (m_reply->error() != QNetworkReply::NoError)
-            return end(false, QStringLiteral("Download failed: ") + m_reply->errorString());
+            return end(false, tr("Download failed: %1").arg(m_reply->errorString()));
         if (m_received != size || QString::fromLatin1(m_hash->result().toHex()) != sha)
-            return end(false, QStringLiteral("The downloaded model is not the expected file (size or SHA-256 differs)"));
+            return end(false, tr("The downloaded model is not the expected file (size or SHA-256 differs)"));
         const QString finalPath = m_file->fileName().chopped(5);
         if (!model->contents.isEmpty()) {
             const QString why = unpack(*model, m_file->fileName());
@@ -171,7 +171,7 @@ bool SpeechModels::download(const QString& id, QString* error)
         }
         QFile::remove(finalPath);
         if (!QFile::rename(m_file->fileName(), finalPath))
-            return end(false, QStringLiteral("Cannot keep the downloaded model in ") + m_directory);
+            return end(false, tr("Cannot keep the downloaded model in %1").arg(m_directory));
         end(true, {});
     });
     emit changed();
@@ -200,7 +200,7 @@ QString SpeechModels::unpack(const Model& model, const QString& archive)
     QFile::remove(archive);
     const auto cleanUp = qScopeGuard([&] { QDir(scratch).removeRecursively(); });
     if (!unpacked)
-        return QStringLiteral("The downloaded model could not be unpacked");
+        return tr("The downloaded model could not be unpacked");
     const QString target = models.filePath(model.id);
     QDir(target).removeRecursively();
     models.mkpath(target);
@@ -217,7 +217,7 @@ QString SpeechModels::unpack(const Model& model, const QString& archive)
         }
         if (found.isEmpty() || !QFile::rename(found, QDir(target).filePath(name))) {
             QDir(target).removeRecursively();
-            return QStringLiteral("The downloaded model is missing ") + name;
+            return tr("The downloaded model is missing %1").arg(name);
         }
     }
     return {};

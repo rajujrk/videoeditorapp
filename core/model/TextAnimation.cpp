@@ -1,4 +1,5 @@
 #include "model/TextAnimation.h"
+#include "model/Translate.h"
 
 #include <algorithm>
 #include <cmath>
@@ -139,13 +140,13 @@ bool TextUnitState::identity() const
 const std::vector<TextAnimationPreset>& textAnimationPresets()
 {
     static const std::vector<TextAnimationPreset> presets{
-        {"fade", "Fade", false},         {"rise", "Rise", false},          {"drop", "Drop", false},
-        {"slide_left", "Slide left", false}, {"slide_right", "Slide right", false}, {"zoom", "Zoom", false},
-        {"pop", "Pop", false},           {"spin", "Spin", false},          {"flip", "Flip", false},
-        {"bounce", "Bounce", false},     {"typewriter", "Typewriter", false}, {"blur", "Focus", false},
-        {"wipe", "Wipe", false},         {"tracking", "Tracking", false},  {"wave", "Wave", true},
-        {"pulse", "Pulse", true},        {"flicker", "Flicker", true},     {"shake", "Shake", true},
-        {"swing", "Swing", true},
+        {"fade", TVE_TR("core", "Fade"), false},         {"rise", TVE_TR("core", "Rise"), false},          {"drop", TVE_TR("core", "Drop"), false},
+        {"slide_left", TVE_TR("core", "Slide left"), false}, {"slide_right", TVE_TR("core", "Slide right"), false}, {"zoom", TVE_TR("core", "Zoom"), false},
+        {"pop", TVE_TR("core", "Pop"), false},           {"spin", TVE_TR("core", "Spin"), false},          {"flip", TVE_TR("core", "Flip"), false},
+        {"bounce", TVE_TR("core", "Bounce"), false},     {"typewriter", TVE_TR("core", "Typewriter"), false}, {"blur", TVE_TR("core", "Focus"), false},
+        {"wipe", TVE_TR("core", "Wipe"), false},         {"tracking", TVE_TR("core", "Tracking"), false},  {"wave", TVE_TR("core", "Wave"), true},
+        {"pulse", TVE_TR("core", "Pulse"), true},        {"flicker", TVE_TR("core", "Flicker"), true},     {"shake", TVE_TR("core", "Shake"), true},
+        {"swing", TVE_TR("core", "Swing"), true},
     };
     return presets;
 }

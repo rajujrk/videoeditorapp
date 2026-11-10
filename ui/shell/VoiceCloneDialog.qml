@@ -33,9 +33,9 @@ Popup {
 
         Text {
             objectName: "cloneTitle"
-            text: dialog.stage === "done" ? "The voice is ready"
-                : dialog.stage === "failed" ? "The voice wasn't made"
-                : "Copy a voice, with consent"
+            text: dialog.stage === "done" ? qsTr("The voice is ready")
+                : dialog.stage === "failed" ? qsTr("The voice wasn't made")
+                : qsTr("Copy a voice, with consent")
             font: Theme.type.title
             color: Theme.color.textPrimary
         }
@@ -48,8 +48,7 @@ Popup {
             Text {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                text: "ElevenLabs makes a copy of a voice from a recording, for speech in your videos. Here it is made only "
-                      + "from a recording of the speaker reading a consent statement aloud, checked on this Mac first."
+                text: qsTr("ElevenLabs makes a copy of a voice from a recording, for speech in your videos. Here it is made only from a recording of the speaker reading a consent statement aloud, checked on this Mac first.")
                 font: Theme.type.body
                 color: Theme.color.textSecondary
             }
@@ -57,27 +56,27 @@ Popup {
                 columns: 2
                 Layout.fillWidth: true
                 columnSpacing: Theme.space.m
-                Text { text: "Speaker's name"; font: Theme.type.label; color: Theme.color.textSecondary }
-                TextField { id: speakerField; objectName: "cloneSpeaker"; Layout.fillWidth: true; placeholderText: "As they'll say it" }
-                Text { text: "Voice name"; font: Theme.type.label; color: Theme.color.textSecondary }
-                TextField { id: nameField; objectName: "cloneVoiceName"; Layout.fillWidth: true; placeholderText: "e.g. My narration voice" }
+                Text { text: qsTr("Speaker's name"); font: Theme.type.label; color: Theme.color.textSecondary }
+                TextField { id: speakerField; objectName: "cloneSpeaker"; Layout.fillWidth: true; placeholderText: qsTr("As they'll say it") }
+                Text { text: qsTr("Voice name"); font: Theme.type.label; color: Theme.color.textSecondary }
+                TextField { id: nameField; objectName: "cloneVoiceName"; Layout.fillWidth: true; placeholderText: qsTr("e.g. My narration voice") }
             }
-            CheckBox { id: isSpeaker; objectName: "cloneIsSpeaker"; text: "The speaker is here and will read the statement themselves" }
-            CheckBox { id: adult; objectName: "cloneAdult"; text: "The speaker is 18 or older" }
-            CheckBox { id: agrees; objectName: "cloneAgrees"; text: "The speaker agrees to the copy, for speech in their own videos" }
+            CheckBox { id: isSpeaker; objectName: "cloneIsSpeaker"; text: qsTr("The speaker is here and will read the statement themselves") }
+            CheckBox { id: adult; objectName: "cloneAdult"; text: qsTr("The speaker is 18 or older") }
+            CheckBox { id: agrees; objectName: "cloneAgrees"; text: qsTr("The speaker agrees to the copy, for speech in their own videos") }
             RowLayout {
                 visible: dialog.cloning.needsModel
                 Layout.fillWidth: true
                 Text {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
-                    text: "The recording is checked with a speech model on this Mac (Base · English, about 60 MB)."
+                    text: qsTr("The recording is checked with a speech model on this Mac (Base · English, about 60 MB).")
                     font: Theme.type.caption
                     color: Theme.color.textSecondary
                 }
                 TextButton {
                     objectName: "cloneDownloadModel"
-                    text: dialog.project.modelDownload.id ? "Downloading…" : "Download"
+                    text: dialog.project.modelDownload.id ? qsTr("Downloading…") : qsTr("Download")
                     variant: "secondary"
                     enabled: !dialog.project.modelDownload.id
                     onClicked: dialog.project.downloadSpeechModel(dialog.cloning.speechModel)
@@ -109,7 +108,7 @@ Popup {
             visible: dialog.stage === "ready"
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            text: dialog.cloning.speaker + " reads all of it aloud, at an easy pace, somewhere quiet."
+            text: qsTr("%1 reads all of it aloud, at an easy pace, somewhere quiet.").arg(dialog.cloning.speaker)
             font: Theme.type.body
             color: Theme.color.textSecondary
         }
@@ -125,7 +124,7 @@ Popup {
             }
             Text {
                 objectName: "cloneSeconds"
-                text: "Recording · " + dialog.cloning.seconds.toFixed(0) + " s"
+                text: qsTr("Recording · %1").arg(Fmt.seconds(dialog.cloning.seconds, 0))
                 font: Theme.type.label
                 color: Theme.color.danger
             }
@@ -134,7 +133,7 @@ Popup {
             visible: dialog.stage === "checking" || dialog.stage === "cloning"
             BusyIndicator { implicitWidth: 20; implicitHeight: 20; running: parent.visible }
             Text {
-                text: dialog.stage === "checking" ? "Checking the recording on this Mac…" : (dialog.project.cloud.status || "Copying the voice…")
+                text: dialog.stage === "checking" ? qsTr("Checking the recording on this Mac…") : (dialog.project.cloud.status || qsTr("Copying the voice…"))
                 font: Theme.type.body
                 color: Theme.color.textSecondary
             }
@@ -147,8 +146,8 @@ Popup {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             text: dialog.cloning.check.passed
-                  ? "The recording says the statement (" + Math.round(dialog.cloning.check.match * 100) + "% of its words heard in order). "
-                    + "Making the voice sends this recording to ElevenLabs."
+                  ? qsTr("The recording says the statement (%1 of its words heard in order). Making the voice sends this recording to ElevenLabs.")
+                    .arg(Fmt.percent(dialog.cloning.check.match))
                   : (dialog.cloning.check.why || "")
             font: Theme.type.body
             color: dialog.cloning.check.passed ? Theme.color.textPrimary : Theme.color.warning
@@ -158,8 +157,7 @@ Popup {
             visible: dialog.stage === "done"
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            text: "“" + dialog.cloning.voiceName + "” is in your voices. Its consent recording is kept with it; deleting "
-                  + "the voice deletes both."
+            text: qsTr("“%1” is in your voices. Its consent recording is kept with it; deleting the voice deletes both.").arg(dialog.cloning.voiceName)
             font: Theme.type.body
             color: Theme.color.textPrimary
         }
@@ -179,7 +177,7 @@ Popup {
             Item { Layout.fillWidth: true }
             TextButton {
                 objectName: "cloneCancel"
-                text: dialog.stage === "done" ? "Done" : "Cancel"
+                text: dialog.stage === "done" ? qsTr("Done") : qsTr("Cancel")
                 variant: dialog.stage === "done" ? "primary" : "ghost"
                 enabled: dialog.stage !== "checking" && dialog.stage !== "cloning"
                 onClicked: dialog.close()
@@ -187,7 +185,7 @@ Popup {
             TextButton {
                 objectName: "cloneContinue"
                 visible: dialog.stage === "start"
-                text: "Continue"
+                text: qsTr("Continue")
                 variant: "primary"
                 enabled: speakerField.text.trim() !== "" && isSpeaker.checked && adult.checked && agrees.checked
                          && !dialog.cloning.needsModel && dialog.project.cloud.hasElevenLabsKey
@@ -196,7 +194,7 @@ Popup {
             TextButton {
                 objectName: "cloneRecord"
                 visible: dialog.stage === "ready" || (dialog.stage === "checked" && !dialog.cloning.check.passed)
-                text: dialog.stage === "ready" ? "Start recording" : "Record again"
+                text: dialog.stage === "ready" ? qsTr("Start recording") : qsTr("Record again")
                 iconName: "record"
                 variant: "primary"
                 onClicked: dialog.cloning.startRecording()
@@ -204,21 +202,21 @@ Popup {
             TextButton {
                 objectName: "cloneStop"
                 visible: dialog.stage === "recording"
-                text: "Stop"
+                text: qsTr("Stop")
                 variant: "primary"
                 onClicked: dialog.cloning.stopRecording()
             }
             TextButton {
                 objectName: "cloneMake"
                 visible: dialog.stage === "checked" && dialog.cloning.check.passed
-                text: "Make the voice"
+                text: qsTr("Make the voice")
                 variant: "primary"
                 onClicked: dialog.cloning.makeVoice()
             }
             TextButton {
                 objectName: "cloneStartAgain"
                 visible: dialog.stage === "failed"
-                text: "Start again"
+                text: qsTr("Start again")
                 variant: "secondary"
                 onClicked: dialog.cloning.reset()
             }

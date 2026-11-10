@@ -33,9 +33,9 @@ Popup {
 
         RowLayout {
             Layout.fillWidth: true
-            Text { text: "Mixer"; font: Theme.type.heading; color: Theme.color.textPrimary; Layout.fillWidth: true }
+            Text { text: qsTr("Mixer"); font: Theme.type.heading; color: Theme.color.textPrimary; Layout.fillWidth: true }
             Text {
-                text: mixer.project.playing ? "" : "Play to see the levels"
+                text: mixer.project.playing ? "" : qsTr("Play to see the levels")
                 font: Theme.type.caption
                 color: Theme.color.textSecondary
             }
@@ -107,7 +107,7 @@ Popup {
                                 Text {
                                     Layout.fillWidth: true
                                     horizontalAlignment: Text.AlignHCenter
-                                    text: fader.value <= -60 ? "−∞ dB" : (fader.value > 0 ? "+" : "") + fader.value.toFixed(1) + " dB"
+                                    text: fader.value <= -60 ? qsTr("−∞ dB") : qsTr("%1 dB").arg((fader.value > 0 ? "+" : "") + Fmt.num(fader.value, 1))
                                     font: Theme.type.mono
                                     color: Theme.color.textSecondary
                                 }
@@ -119,7 +119,7 @@ Popup {
                                     to: 1
                                     value: stripItem.modelData.pan
                                     ToolTip.visible: pressed || hovered
-                                    ToolTip.text: Math.abs(value) < 0.01 ? "Centre"
+                                    ToolTip.text: Math.abs(value) < 0.01 ? qsTr("Centre")
                                                   : Math.round(Math.abs(value) * 100) + "% " + (value < 0 ? "left" : "right")
                                     onPressedChanged: {
                                         if (!pressed && Math.abs(value - stripItem.modelData.pan) > 0.001)
@@ -131,16 +131,16 @@ Popup {
                                     spacing: Theme.space.xs
                                     StripButton {
                                         objectName: "trackMute:" + stripItem.modelData.id
-                                        text: "M"
-                                        tip: "Mute"
+                                        text: qsTr("M")
+                                        tip: qsTr("Mute")
                                         on: stripItem.modelData.muted
                                         onColour: Theme.color.warning
                                         onClicked: mixer.project.setTrackFlag(stripItem.modelData.id, "muted", !on)
                                     }
                                     StripButton {
                                         objectName: "trackSolo:" + stripItem.modelData.id
-                                        text: "S"
-                                        tip: "Solo: hear only soloed tracks"
+                                        text: qsTr("S")
+                                        tip: qsTr("Solo: hear only soloed tracks")
                                         on: stripItem.modelData.solo
                                         onColour: Theme.color.success
                                         onClicked: mixer.project.setTrackMix(stripItem.modelData.id, { solo: !on })
@@ -150,8 +150,8 @@ Popup {
                                     objectName: "trackEffects:" + stripItem.modelData.id
                                     Layout.fillWidth: true
                                     text: (stripItem.modelData.audioEffects || []).length > 0
-                                          ? "FX " + stripItem.modelData.audioEffects.length : "FX"
-                                    tip: "The track's own effects and plug-ins, on all of its sound"
+                                          ? qsTr("FX %1").arg(stripItem.modelData.audioEffects.length) : qsTr("FX")
+                                    tip: qsTr("The track's own effects and plug-ins, on all of its sound")
                                     on: (stripItem.modelData.audioEffects || []).length > 0
                                     onClicked: { trackEffects.trackId = stripItem.modelData.id; trackEffects.open() }
                                 }
@@ -176,7 +176,7 @@ Popup {
                     spacing: Theme.space.xs
                     Text {
                         Layout.fillWidth: true
-                        text: "Master"
+                        text: qsTr("Master")
                         font: Theme.type.label
                         color: Theme.color.textPrimary
                         horizontalAlignment: Text.AlignHCenter
@@ -196,26 +196,26 @@ Popup {
                             columns: 1
                             rowSpacing: 2
                             Repeater {
-                                model: [{ key: "momentary", label: "Momentary" }, { key: "shortTerm", label: "Short-term" },
-                                        { key: "integrated", label: "Integrated" }]
+                                model: [{ key: "momentary", label: qsTr("Momentary") }, { key: "shortTerm", label: qsTr("Short-term") },
+                                        { key: "integrated", label: qsTr("Integrated") }]
                                 delegate: ColumnLayout {
                                     required property var modelData
                                     spacing: 0
                                     Text { text: modelData.label; font: Theme.type.caption; color: Theme.color.textSecondary }
                                     Text {
                                         objectName: "masterLufs:" + modelData.key
-                                        text: mixer.lufsText(mixer.levels[modelData.key]) + " LUFS"
+                                        text: qsTr("%1 LUFS").arg(mixer.lufsText(mixer.levels[modelData.key]))
                                         font: Theme.type.mono
                                         color: Theme.color.textPrimary
                                     }
                                 }
                             }
-                            Text { text: "Peak"; font: Theme.type.caption; color: Theme.color.textSecondary; Layout.topMargin: 4 }
+                            Text { text: qsTr("Peak"); font: Theme.type.caption; color: Theme.color.textSecondary; Layout.topMargin: 4 }
                             Text {
                                 objectName: "masterPeak"
                                 readonly property var m: mixer.levels.master
-                                text: m ? (Math.max(m[0], m[1]) > 0 ? (20 * Math.log10(Math.max(m[0], m[1]))).toFixed(1) : "−∞") + " dBFS"
-                                        : "— dBFS"
+                                text: m ? qsTr("%1 dBFS").arg(Math.max(m[0], m[1]) > 0 ? Fmt.num(20 * Math.log10(Math.max(m[0], m[1])), 1) : "−∞")
+                                        : qsTr("— dBFS")
                                 font: Theme.type.mono
                                 color: m && Math.max(m[0], m[1]) >= 0.999 ? Theme.color.danger : Theme.color.textPrimary
                             }
@@ -280,15 +280,15 @@ Popup {
         contentItem: ColumnLayout {
             spacing: Theme.space.s
             Text {
-                text: "Effects on " + trackEffects.track.name
+                text: qsTr("Effects on %1").arg(trackEffects.track.name)
                 font: Theme.type.heading
                 color: Theme.color.textPrimary
             }
             Text {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
-                text: "On the track's whole sound, before its volume and balance."
-                      + (mixer.project.scanningPlugins ? " Looking for plug-ins…" : "")
+                text: qsTr("On the track's whole sound, before its volume and balance.")
+                      + (mixer.project.scanningPlugins ? " " + qsTr("Looking for plug-ins…") : "")
                 font: Theme.type.caption
                 color: Theme.color.textSecondary
                 wrapMode: Text.WordWrap
@@ -303,12 +303,12 @@ Popup {
                     valueRole: "id"
                     model: mixer.project.audioEffects.map((e) => ({ id: e.id, label: e.title }))
                         .concat(mixer.project.audioPlugins.filter((p) => p.problem === "").map((p) => ({
-                            id: p.id, label: "Plug-in · " + p.name + " (" + [p.vendor, p.format].filter((x) => x).join(", ") + ")"
+                            id: p.id, label: qsTr("Plug-in · %1 (%2)").arg(p.name).arg([p.vendor, p.format].filter((x) => x).join(", "))
                         })))
                 }
                 TextButton {
                     objectName: "addTrackEffect"
-                    text: "Add"
+                    text: qsTr("Add")
                     iconName: "plus"
                     onClicked: mixer.project.addTrackAudioEffect(trackEffects.trackId, trackPicker.currentValue)
                 }

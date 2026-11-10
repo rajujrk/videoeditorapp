@@ -29,16 +29,16 @@ ScrollView {
                                               : category === "mine" ? !t.builtIn && !t.pack
                                               : t.category === category)
     }
-    function clock(seconds) { return seconds < 60 ? seconds.toFixed(0) + " s" : Math.floor(seconds / 60) + ":" + String(Math.round(seconds % 60)).padStart(2, "0") }
+    function clock(seconds) { return seconds < 60 ? Fmt.seconds(seconds, 0) : Math.floor(seconds / 60) + ":" + String(Math.round(seconds % 60)).padStart(2, "0") }
 
     contentWidth: availableWidth
     clip: true
 
     FileDialog {
         id: importDialog
-        title: "Choose a picture or video for the slot"
+        title: qsTr("Choose a picture or video for the slot")
         fileMode: FileDialog.OpenFile
-        nameFilters: ["Pictures and videos (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff)"]
+        nameFilters: [qsTr("Pictures and videos (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff)")]
         onAccepted: {
             if (page.project.importMedia([selectedFile]) === 1 && page.importingFor >= 0)
                 page.project.fillTemplateSlot(page.importingFor, page.project.media[page.project.media.length - 1].id)
@@ -75,14 +75,14 @@ ScrollView {
         spacing: Theme.space.s
 
         // --- Made for you ---
-        Text { text: "Make it for me"; font: Theme.type.heading; color: Theme.color.textPrimary }
+        Text { text: qsTr("Make it for me"); font: Theme.type.heading; color: Theme.color.textPrimary }
         GridLayout {
             Layout.fillWidth: true
             columns: 3
             columnSpacing: Theme.space.xs
             Repeater {
-                model: [{ id: "instant", label: "Instant video", icon: "generate" }, { id: "montage", label: "Highlights", icon: "effects" },
-                        { id: "shorts", label: "Shorts", icon: "screen-record" }]
+                model: [{ id: "instant", label: qsTr("Instant video"), icon: "generate" }, { id: "montage", label: qsTr("Highlights"), icon: "effects" },
+                        { id: "shorts", label: qsTr("Shorts"), icon: "screen-record" }]
                 delegate: AbstractButton {
                     id: makeButton
                     required property var modelData
@@ -120,14 +120,14 @@ ScrollView {
 
             Text {
                 Layout.fillWidth: true
-                text: (page.info.name || "") + " · " + page.slotList.filter((s) => s.filled).length + " of " + page.slotList.length + " filled"
+                text: qsTr("%1 · %2 of %3 filled").arg(page.info.name || "").arg(Fmt.num(page.slotList.filter((s) => s.filled).length)).arg(Fmt.num(page.slotList.length))
                 font: Theme.type.heading
                 color: Theme.color.textPrimary
                 elide: Text.ElideRight
             }
             Text {
                 Layout.fillWidth: true
-                text: "Choose what goes in each slot; it is cropped to fill the frame, and a short video is slowed to fit."
+                text: qsTr("Choose what goes in each slot; it is cropped to fill the frame, and a short video is slowed to fit.")
                 font: Theme.type.caption
                 color: Theme.color.textSecondary
                 wrapMode: Text.WordWrap
@@ -180,10 +180,10 @@ ScrollView {
                                 Text { Layout.fillWidth: true; text: slotCard.modelData.label; font: Theme.type.label; color: Theme.color.textPrimary; elide: Text.ElideRight }
                                 Text {
                                     Layout.fillWidth: true
-                                    text: slotCard.modelData.duration.toFixed(1) + " s · "
+                                    text: Fmt.seconds(slotCard.modelData.duration) + " · "
                                           + (slotCard.modelData.filled ? slotCard.modelData.name
-                                             + (slotCard.modelData.speed < 0.999 ? " · slowed to " + Math.round(slotCard.modelData.speed * 100) + "%" : "")
-                                             : "empty")
+                                             + (slotCard.modelData.speed < 0.999 ? qsTr(" · slowed to %1").arg(Fmt.percent(slotCard.modelData.speed)) : "")
+                                             : qsTr("empty"))
                                     font: Theme.type.caption
                                     color: Theme.color.textSecondary
                                     elide: Text.ElideRight
@@ -191,7 +191,7 @@ ScrollView {
                             }
                             TextButton {
                                 objectName: "chooseSlot:" + slotCard.modelData.index
-                                text: slotCard.modelData.filled ? "Change" : "Choose"
+                                text: slotCard.modelData.filled ? qsTr("Change") : qsTr("Choose")
                                 variant: slotCard.modelData.filled ? "ghost" : "secondary"
                                 onClicked: slotMenu.popup()
                                 Menu {
@@ -207,7 +207,7 @@ ScrollView {
                                         }
                                     }
                                     MenuItem {
-                                        text: "Import a file…"
+                                        text: qsTr("Import a file…")
                                         onTriggered: { page.importingFor = slotCard.modelData.index; importDialog.open() }
                                     }
                                 }
@@ -218,7 +218,7 @@ ScrollView {
                             visible: slotCard.modelData.filled && !slotCard.modelData.still
                                      && slotCard.modelData.mediaDuration > slotCard.modelData.duration + 0.05
                             Layout.fillWidth: true
-                            Text { text: "Starts at"; font: Theme.type.caption; color: Theme.color.textSecondary }
+                            Text { text: qsTr("Starts at"); font: Theme.type.caption; color: Theme.color.textSecondary }
                             Slider {
                                 id: startSlider
                                 objectName: "slotStart:" + slotCard.modelData.index
@@ -228,7 +228,7 @@ ScrollView {
                                 value: slotCard.modelData.sourceIn
                                 onPressedChanged: if (!pressed) page.project.setTemplateSlotStart(slotCard.modelData.index, value)
                             }
-                            Text { text: startSlider.value.toFixed(1) + " s"; font: Theme.type.caption; color: Theme.color.textPrimary }
+                            Text { text: Fmt.seconds(startSlider.value); font: Theme.type.caption; color: Theme.color.textPrimary }
                         }
                     }
                 }
@@ -278,7 +278,7 @@ ScrollView {
                     }
                     TextButton {
                         objectName: "changeMusic"
-                        text: "Change"
+                        text: qsTr("Change")
                         variant: "ghost"
                         onClicked: musicMenu.popup()
                         Menu {
@@ -298,7 +298,7 @@ ScrollView {
                 RowLayout {
                     visible: (page.music.mediaDuration || 0) > (page.music.duration || 0) + 0.05
                     Layout.fillWidth: true
-                    Text { text: "Music starts at"; font: Theme.type.caption; color: Theme.color.textSecondary }
+                    Text { text: qsTr("Music starts at"); font: Theme.type.caption; color: Theme.color.textSecondary }
                     Slider {
                         id: musicStart
                         objectName: "musicStart"
@@ -308,7 +308,7 @@ ScrollView {
                         value: page.music.sourceIn || 0
                         onPressedChanged: if (!pressed) page.project.setTemplateMusicStart(value)
                     }
-                    Text { text: musicStart.value.toFixed(1) + " s"; font: Theme.type.caption; color: Theme.color.textPrimary }
+                    Text { text: Fmt.seconds(musicStart.value); font: Theme.type.caption; color: Theme.color.textPrimary }
                 }
             }
             Divider { Layout.fillWidth: true; implicitHeight: 1 }
@@ -317,10 +317,10 @@ ScrollView {
         // --- The templates ---
         RowLayout {
             Layout.fillWidth: true
-            Text { Layout.fillWidth: true; text: "Browse"; font: Theme.type.heading; color: Theme.color.textPrimary }
+            Text { Layout.fillWidth: true; text: qsTr("Browse"); font: Theme.type.heading; color: Theme.color.textPrimary }
             TextButton {
                 objectName: "saveAsTemplate"
-                text: "Save as template…"
+                text: qsTr("Save as template…")
                 variant: "ghost"
                 enabled: page.project.duration > 0
                 onClicked: saveDialog.open()
@@ -401,7 +401,7 @@ ScrollView {
                         Text { Layout.fillWidth: true; text: card.modelData.name; font: Theme.type.label; color: Theme.color.textPrimary; elide: Text.ElideRight }
                         Text {
                             Layout.fillWidth: true
-                            text: card.modelData.slots + " slots · " + page.clock(card.modelData.seconds) + " · " + card.modelData.shape
+                            text: qsTr("%1 slots · %2 · %3").arg(Fmt.num(card.modelData.slots)).arg(page.clock(card.modelData.seconds)).arg(card.modelData.shape)
                             font: Theme.type.caption
                             color: Theme.color.textSecondary
                             elide: Text.ElideRight

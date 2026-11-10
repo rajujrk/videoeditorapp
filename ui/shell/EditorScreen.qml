@@ -63,15 +63,16 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1 // elides in what the button leaves
                     readonly property var names: editor.project.missingMedia.map((m) => m.name)
-                    text: (names.length === 1 ? "1 media file is missing: " : names.length + " media files are missing: ")
-                          + names.slice(0, 3).join(", ") + (names.length > 3 ? "…" : "")
+                    readonly property string listed: names.slice(0, 3).join(", ") + (names.length > 3 ? "…" : "")
+                    text: names.length === 1 ? qsTr("1 media file is missing: %1").arg(listed)
+                        : qsTr("%1 media files are missing: %2").arg(Fmt.num(names.length)).arg(listed)
                     font: Theme.type.body
                     color: Theme.color.textPrimary
                     elide: Text.ElideRight
                 }
                 TextButton {
                     objectName: "relinkButton"
-                    text: "Relink…"
+                    text: qsTr("Relink…")
                     variant: "secondary"
                     onClicked: relinkDialog.open()
                 }
@@ -122,12 +123,12 @@ Rectangle {
 
     FileDialog {
         id: importDialog
-        title: "Import media"
+        title: qsTr("Import media")
         fileMode: FileDialog.OpenFiles
-        nameFilters: ["Media files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp)",
-                      "Videos (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif)",
-                      "Images (*.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.gif)",
-                      "Audio (*.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg)", "All files (*)"]
+        nameFilters: [qsTr("Media files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp)"),
+                      qsTr("Videos (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif)"),
+                      qsTr("Images (*.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.gif)"),
+                      qsTr("Audio (*.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg)"), qsTr("All files (*)")]
         onAccepted: editor.project.importMedia(selectedFiles)
     }
 
@@ -172,10 +173,10 @@ Rectangle {
 
     FileDialog {
         id: saveDialog
-        title: "Save project"
+        title: qsTr("Save project")
         fileMode: FileDialog.SaveFile
         defaultSuffix: "tve"
-        nameFilters: ["TechieVideoEditor projects (*.tve)"]
+        nameFilters: [qsTr("TechieVideoEditor projects (*.tve)")]
         onAccepted: editor.project.save(selectedFile)
     }
 

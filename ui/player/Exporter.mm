@@ -1,5 +1,6 @@
 #include "Exporter.h"
 
+#include "Language.h"
 #include "FrameCompositor.h"
 
 #include "decode/AudioDecoder.h"
@@ -133,7 +134,7 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
     fileSettings.chapters = project->chapters(from, to);
     auto writer = tve::MediaWriter::open(path.toStdString(), fileSettings, &error);
     if (!writer) {
-        result.error = QString::fromStdString(error);
+        result.error = coreText(error);
         return result;
     }
     const auto abandon = [&](const QString& message) {
@@ -173,13 +174,13 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
                 }
                 const int frames = int(std::min<std::int64_t>(tve::AudioChunk::kFrames, wanted - samplesWritten));
                 if (!writer->writeAudio(chunk->samples.data(), frames))
-                    return QString::fromStdString(writer->lastError());
+                    return coreText(writer->lastError());
                 samplesWritten += frames;
             } else if (mixer.producerFinished() && mixer.queue().size() == 0) {
                 const int frames = int(wanted - samplesWritten);
                 silence.assign(std::size_t(frames) * tve::audio::kChannels, 0.0f);
                 if (!writer->writeAudio(silence.data(), frames))
-                    return QString::fromStdString(writer->lastError());
+                    return coreText(writer->lastError());
                 samplesWritten = wanted;
             } else {
                 std::this_thread::sleep_for(1ms);
@@ -200,7 +201,7 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
                 return abandon(QString()); // cancelled
         }
         if (!writer->finish())
-            return abandon(QString::fromStdString(writer->lastError()));
+            return abandon(coreText(writer->lastError()));
         result.ok = true;
         return result;
     }
@@ -304,18 +305,18 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
             if (rgba) {
                 const auto rows = packedRows(lumaData, output.width() * 4, output.height());
                 if (!writer->writeVideoRgba(rows.data(), output.width() * 4))
-                    return abandon(QString::fromStdString(writer->lastError()));
+                    return abandon(coreText(writer->lastError()));
             } else if (hdr) {
                 const auto y = packedRows(lumaData, output.width() * 2, output.height());
                 const auto uv = packedRows(chromaData, output.width() * 2, output.height() / 2); // width/2 × 4 bytes
                 if (!writer->writeVideoP010(reinterpret_cast<const std::uint16_t*>(y.data()), output.width(),
                                             reinterpret_cast<const std::uint16_t*>(uv.data()), output.width()))
-                    return abandon(QString::fromStdString(writer->lastError()));
+                    return abandon(coreText(writer->lastError()));
             } else {
                 const auto y = packedRows(lumaData, output.width(), output.height());
                 const auto uv = packedRows(chromaData, output.width(), output.height() / 2); // width/2 × 2 bytes
                 if (!writer->writeVideo(y.data(), output.width(), uv.data(), output.width()))
-                    return abandon(QString::fromStdString(writer->lastError()));
+                    return abandon(coreText(writer->lastError()));
             }
 
             // Sound up to the end of this frame.
@@ -327,7 +328,7 @@ Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, cons
         }
     }
     if (!writer->finish())
-        return abandon(QString::fromStdString(writer->lastError()));
+        return abandon(coreText(writer->lastError()));
     result.ok = true;
     return result;
 }

@@ -11,7 +11,7 @@ class AddTrackCommand final : public Command {
 public:
     AddTrackCommand(TrackKind kind, std::string name) : m_kind(kind), m_name(std::move(name)) {}
 
-    std::string label() const override { return "Add Track"; }
+    std::string label() const override { return TVE_TR("core", "Add Track"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -29,7 +29,7 @@ public:
     explicit ImportMediaCommand(MediaItem item) : m_item(std::move(item)) {}
     ImportMediaCommand(std::string path, Ticks duration) : m_item{.path = std::move(path), .duration = duration} {}
 
-    std::string label() const override { return "Import Media"; }
+    std::string label() const override { return TVE_TR("core", "Import Media"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -45,7 +45,7 @@ class RelinkMediaCommand final : public Command {
 public:
     explicit RelinkMediaCommand(std::vector<MediaItem> items) : m_items(std::move(items)) {}
 
-    std::string label() const override { return m_items.size() == 1 ? "Relink Media" : "Relink Media Files"; }
+    std::string label() const override { return m_items.size() == 1 ? TVE_TR("core", "Relink Media") : TVE_TR("core", "Relink Media Files"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -61,7 +61,7 @@ public:
     enum class Edge { Start, End };
     TrimClipCommand(Id clipId, Edge edge, Ticks newTime) : m_clipId(clipId), m_edge(edge), m_newTime(newTime) {}
 
-    std::string label() const override { return "Trim Clip"; }
+    std::string label() const override { return TVE_TR("core", "Trim Clip"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -77,7 +77,7 @@ class AddClipCommand final : public Command {
 public:
     // `visual` places the new clip (a sticker starts small, say); `label` names the step.
     AddClipCommand(Id trackId, Id mediaId, Ticks start, Ticks duration, Ticks sourceIn = 0, ClipVisual visual = {},
-                   std::string label = "Add Clip")
+                   std::string label = TVE_TR("core", "Add Clip"))
         : m_trackId(trackId), m_mediaId(mediaId), m_start(start), m_duration(duration), m_sourceIn(sourceIn),
           m_visual(visual), m_label(std::move(label)) {}
 
@@ -102,7 +102,7 @@ class MoveClipCommand final : public Command {
 public:
     MoveClipCommand(Id clipId, Id toTrackId, Ticks newStart) : m_clipId(clipId), m_toTrackId(toTrackId), m_newStart(newStart) {}
 
-    std::string label() const override { return "Move Clip"; }
+    std::string label() const override { return TVE_TR("core", "Move Clip"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -125,7 +125,7 @@ class SplitClipCommand final : public Command {
 public:
     SplitClipCommand(Id clipId, Ticks at) : m_clipId(clipId), m_at(at) {}
 
-    std::string label() const override { return "Split Clip"; }
+    std::string label() const override { return TVE_TR("core", "Split Clip"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -146,7 +146,7 @@ class DeleteClipCommand final : public Command {
 public:
     DeleteClipCommand(Id clipId, bool ripple) : m_clipId(clipId), m_ripple(ripple) {}
 
-    std::string label() const override { return m_ripple ? "Ripple Delete" : "Delete Clip"; }
+    std::string label() const override { return m_ripple ? TVE_TR("core", "Ripple Delete") : TVE_TR("core", "Delete Clip"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -173,7 +173,7 @@ class SetClipAudioCommand final : public Command {
 public:
     SetClipAudioCommand(Id clipId, ClipAudio audio) : m_clipId(clipId), m_audio(audio) {}
 
-    std::string label() const override { return "Change Audio"; }
+    std::string label() const override { return TVE_TR("core", "Change Audio"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -206,7 +206,7 @@ class DetachAudioCommand final : public Command {
 public:
     DetachAudioCommand(Id clipId, Id audioTrackId) : m_clipId(clipId), m_audioTrackId(audioTrackId) {}
 
-    std::string label() const override { return "Detach Audio"; }
+    std::string label() const override { return TVE_TR("core", "Detach Audio"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -223,7 +223,7 @@ class SetClipVisualCommand final : public Command {
 public:
     SetClipVisualCommand(Id clipId, ClipVisual visual) : m_clipId(clipId), m_visual(visual) {}
 
-    std::string label() const override { return "Change Picture"; }
+    std::string label() const override { return TVE_TR("core", "Change Picture"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -290,7 +290,7 @@ class SetClipKeepPitchCommand final : public Command {
 public:
     SetClipKeepPitchCommand(Id clipId, bool keep) : m_clipId(clipId), m_keep(keep) {}
 
-    std::string label() const override { return m_keep ? "Keep Pitch" : "Pitch Follows Speed"; }
+    std::string label() const override { return m_keep ? TVE_TR("core", "Keep Pitch") : TVE_TR("core", "Pitch Follows Speed"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -396,7 +396,7 @@ public:
     {
     }
 
-    std::string label() const override { return m_enhanced ? "Enhance Speech" : "Original Sound"; }
+    std::string label() const override { return m_enhanced ? TVE_TR("core", "Enhance Speech") : "Original Sound"; }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -419,7 +419,7 @@ class SetTrackMixCommand final : public Command {
 public:
     SetTrackMixCommand(Id trackId, TrackMix mix) : m_trackId(trackId), m_mix(mix) {}
 
-    std::string label() const override { return "Change Track Mix"; }
+    std::string label() const override { return TVE_TR("core", "Change Track Mix"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -459,7 +459,7 @@ public:
 
     std::string label() const override
     {
-        return !m_label.empty() ? m_label : m_colourOnly ? "Change Project Colour" : "Change Canvas";
+        return !m_label.empty() ? m_label : m_colourOnly ? TVE_TR("core", "Change Project Colour") : TVE_TR("core", "Change Canvas");
     }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
@@ -477,7 +477,7 @@ class SetClipSpeedCommand final : public Command {
 public:
     SetClipSpeedCommand(Id clipId, double speed, bool reversed) : m_clipId(clipId), m_speed(speed), m_reversed(reversed) {}
 
-    std::string label() const override { return "Change Speed"; }
+    std::string label() const override { return TVE_TR("core", "Change Speed"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -500,7 +500,7 @@ public:
 
     std::string label() const override
     {
-        return m_reversed ? "Change Speed" : m_ramp.empty() ? "Remove Speed Ramp" : "Speed Ramp";
+        return m_reversed ? TVE_TR("core", "Change Speed") : m_ramp.empty() ? TVE_TR("core", "Remove Speed Ramp") : TVE_TR("core", "Speed Ramp");
     }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
@@ -520,7 +520,7 @@ class FreezeFrameCommand final : public Command {
 public:
     FreezeFrameCommand(Id clipId, Ticks at, Ticks hold) : m_clipId(clipId), m_at(at), m_hold(hold) {}
 
-    std::string label() const override { return "Freeze Frame"; }
+    std::string label() const override { return TVE_TR("core", "Freeze Frame"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -575,7 +575,7 @@ class SetClipCursorCommand final : public Command {
 public:
     SetClipCursorCommand(Id clipId, CursorEffects cursor) : m_clipId(clipId), m_cursor(std::move(cursor)) {}
 
-    std::string label() const override { return "Cursor Effects"; }
+    std::string label() const override { return TVE_TR("core", "Cursor Effects"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -590,7 +590,7 @@ class AddClickSoundsCommand final : public Command {
 public:
     AddClickSoundsCommand(MediaItem click, std::vector<Ticks> times) : m_click(std::move(click)), m_times(std::move(times)) {}
 
-    std::string label() const override { return "Click Sounds"; }
+    std::string label() const override { return TVE_TR("core", "Click Sounds"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -605,7 +605,7 @@ class AddVoiceOverCommand final : public Command {
 public:
     // `label` names the step and `trackName` a new track (numbered after the first); media
     // already in the project (by path) is used again rather than imported twice.
-    AddVoiceOverCommand(MediaItem item, Id trackId, Ticks start, std::string label = "Record Voice-over",
+    AddVoiceOverCommand(MediaItem item, Id trackId, Ticks start, std::string label = TVE_TR("core", "Record Voice-over"),
                         std::string trackName = "Voice-over")
         : m_item(std::move(item)), m_trackId(trackId), m_start(start), m_label(std::move(label)),
           m_trackName(std::move(trackName)) {}
@@ -664,7 +664,7 @@ private:
 // "Paste Grade" for several).
 class SetClipColorCommand final : public Command {
 public:
-    SetClipColorCommand(std::vector<Id> clipIds, ColorGrade grade, std::string label = "Change Color")
+    SetClipColorCommand(std::vector<Id> clipIds, ColorGrade grade, std::string label = TVE_TR("core", "Change Color"))
         : m_clipIds(std::move(clipIds)), m_grade(std::move(grade)), m_label(std::move(label)) {}
 
     std::string label() const override { return m_label; }
@@ -749,7 +749,7 @@ public:
     AddTitleCommand(Id trackId, Ticks start, Ticks duration, ClipText text, ClipVisual visual = {})
         : m_trackId(trackId), m_start(start), m_duration(duration), m_text(std::move(text)), m_visual(visual) {}
 
-    std::string label() const override { return "Add Title"; }
+    std::string label() const override { return TVE_TR("core", "Add Title"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -773,7 +773,7 @@ public:
     AddAdjustmentCommand(Id trackId, Ticks start, Ticks duration)
         : m_trackId(trackId), m_start(start), m_duration(duration) {}
 
-    std::string label() const override { return "Add Adjustment Layer"; }
+    std::string label() const override { return TVE_TR("core", "Add Adjustment Layer"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
@@ -793,7 +793,7 @@ class SetClipTextCommand final : public Command {
 public:
     SetClipTextCommand(Id clipId, ClipText text) : m_clipId(clipId), m_text(std::move(text)) {}
 
-    std::string label() const override { return "Edit Title"; }
+    std::string label() const override { return TVE_TR("core", "Edit Title"); }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 

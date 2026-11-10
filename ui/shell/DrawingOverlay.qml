@@ -17,11 +17,11 @@ Item {
     property real strokeWidth: 0.01 // of the canvas's shorter side
     property bool filled: false
     readonly property bool closedShape: tool === "rectangle" || tool === "ellipse"
-    readonly property var tools: [{ id: "brush", label: "Brush" }, { id: "line", label: "Line" }, { id: "arrow", label: "Arrow" },
-                                  { id: "rectangle", label: "Rectangle" }, { id: "ellipse", label: "Ellipse" }]
+    readonly property var tools: [{ id: "brush", label: qsTr("Brush") }, { id: "line", label: qsTr("Line") }, { id: "arrow", label: qsTr("Arrow") },
+                                  { id: "rectangle", label: qsTr("Rectangle") }, { id: "ellipse", label: qsTr("Ellipse") }]
     readonly property var colours: [[1, 1, 1, 1], [0, 0, 0, 1], [1, 0.84, 0.2, 1], [1, 0.55, 0.1, 1],
                                     [0.92, 0.25, 0.3, 1], [0.35, 0.55, 1, 1], [0.3, 0.8, 0.55, 1]]
-    readonly property var widths: [{ label: "Thin", value: 0.005 }, { label: "Medium", value: 0.01 }, { label: "Thick", value: 0.022 }]
+    readonly property var widths: [{ label: qsTr("Thin"), value: 0.005 }, { label: qsTr("Medium"), value: 0.01 }, { label: qsTr("Thick"), value: 0.022 }]
 
     readonly property real canvasScale: Math.min(width / project.canvasWidth, height / project.canvasHeight)
     readonly property rect canvasRect: Qt.rect((width - project.canvasWidth * canvasScale) / 2,
@@ -223,14 +223,14 @@ Item {
             Chip {
                 objectName: "drawFill"
                 visible: overlay.closedShape
-                label: "Fill"
+                label: qsTr("Fill")
                 checked: overlay.filled
                 onClicked: overlay.filled = !overlay.filled
             }
             Divider { implicitWidth: 1; implicitHeight: 16 }
             TextButton {
                 objectName: "drawDone"
-                text: "Done"
+                text: qsTr("Done")
                 variant: "primary"
                 onClicked: overlay.project.drawingMode = false
             }

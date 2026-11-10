@@ -22,7 +22,7 @@ Popup {
     onAboutToShow: { message.text = ""; keyCleared() }
 
     function money(dollars) {
-        return dollars < 0.01 && dollars > 0 ? "under $0.01" : "about $" + dollars.toFixed(2)
+        return dollars < 0.01 && dollars > 0 ? qsTr("under $0.01") : qsTr("about $%1").arg(Fmt.num(dollars, 2))
     }
     function count(n) { return n.toLocaleString(Qt.locale(), "f", 0) }
 
@@ -39,7 +39,7 @@ Popup {
         function save() {
             if (dialog.cloud.setKey(row.provider, field.text)) {
                 field.text = ""
-                message.text = "Saved in your Keychain."
+                message.text = qsTr("Saved in your Keychain.")
             } else {
                 message.text = dialog.cloud.lastError()
             }
@@ -59,12 +59,12 @@ Popup {
                 color: Theme.color.surfaceSunken
                 border.color: parent.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
             }
-            placeholderText: row.has ? "Key saved · paste a new one to replace it" : "Paste your " + row.label + " API key"
+            placeholderText: row.has ? qsTr("Key saved · paste a new one to replace it") : qsTr("Paste your %1 API key").arg(row.label)
             onAccepted: row.save()
         }
         TextButton {
             objectName: "save" + row.name.charAt(0).toUpperCase() + row.name.slice(1) + "Key"
-            text: "Save"
+            text: qsTr("Save")
             variant: "primary"
             enabled: field.text.trim() !== ""
             onClicked: row.save()
@@ -72,9 +72,9 @@ Popup {
         TextButton {
             objectName: "remove" + row.name.charAt(0).toUpperCase() + row.name.slice(1) + "Key"
             visible: row.has
-            text: "Remove"
+            text: qsTr("Remove")
             variant: "ghost"
-            onClicked: { dialog.cloud.removeKey(row.provider); message.text = "Removed." }
+            onClicked: { dialog.cloud.removeKey(row.provider); message.text = qsTr("Removed.") }
         }
     }
 
@@ -155,14 +155,14 @@ Popup {
 
         RowLayout {
             Layout.fillWidth: true
-            Text { Layout.fillWidth: true; text: "AI settings"; font: Theme.type.title; color: Theme.color.textPrimary }
-            IconButton { objectName: "closeCloudSettings"; iconName: "close"; tip: "Close"; onClicked: dialog.close() }
+            Text { Layout.fillWidth: true; text: qsTr("AI settings"); font: Theme.type.title; color: Theme.color.textPrimary }
+            IconButton { objectName: "closeCloudSettings"; iconName: "close"; tip: qsTr("Close"); onClicked: dialog.close() }
         }
         Text {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            text: "These features use your own accounts. Your keys stay in your Mac's Keychain; what you use them on is "
-                  + "sent to that company, and their charges are yours." + (dialog.cloud.mock ? " (Mock services: nothing leaves this Mac.)" : "")
+            text: qsTr("These features use your own accounts. Your keys stay in your Mac's Keychain; what you use them on is sent to that company, and their charges are yours.")
+                  + (dialog.cloud.mock ? " " + qsTr("(Mock services: nothing leaves this Mac.)") : "")
             font: Theme.type.body
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
@@ -181,8 +181,8 @@ Popup {
                 width: scroll.availableWidth
                 spacing: Theme.space.s
 
-                Heading { text: "Claude · writing and translation" }
-                KeyRow { provider: "anthropic"; name: "claude"; label: "Claude"; has: dialog.cloud.hasClaudeKey }
+                Heading { text: qsTr("Claude · writing and translation") }
+                KeyRow { provider: "anthropic"; name: "claude"; label: qsTr("Claude"); has: dialog.cloud.hasClaudeKey }
                 Choices {
                     name: "claude"
                     models: dialog.cloud.claudeModels
@@ -190,8 +190,8 @@ Popup {
                     onChosen: (id) => dialog.cloud.claudeModel = id
                 }
 
-                Heading { text: "ElevenLabs · voices, music and sound effects" }
-                KeyRow { provider: "elevenlabs"; name: "elevenLabs"; label: "ElevenLabs"; has: dialog.cloud.hasElevenLabsKey }
+                Heading { text: qsTr("ElevenLabs · voices, music and sound effects") }
+                KeyRow { provider: "elevenlabs"; name: "elevenLabs"; label: qsTr("ElevenLabs"); has: dialog.cloud.hasElevenLabsKey }
                 Choices {
                     name: "elevenLabs"
                     models: dialog.cloud.elevenLabsModels
@@ -203,10 +203,10 @@ Popup {
                     text: dialog.cloud.voicesError
                     color: Theme.color.danger
                 }
-                Note { text: "How you may use ElevenLabs audio depends on your ElevenLabs plan (music: not for film, TV, radio or studio games below Enterprise Music)." }
+                Note { text: qsTr("How you may use ElevenLabs audio depends on your ElevenLabs plan (music: not for film, TV, radio or studio games below Enterprise Music).") }
 
-                Heading { text: "OpenAI · pictures and stickers" }
-                KeyRow { provider: "openai"; name: "openAi"; label: "OpenAI"; has: dialog.cloud.hasOpenAiKey }
+                Heading { text: qsTr("OpenAI · pictures and stickers") }
+                KeyRow { provider: "openai"; name: "openAi"; label: qsTr("OpenAI"); has: dialog.cloud.hasOpenAiKey }
                 Choices {
                     name: "image"
                     models: dialog.cloud.imageModels
@@ -214,9 +214,9 @@ Popup {
                     onChosen: (id) => dialog.cloud.imageModel = id
                 }
 
-                Heading { text: "Google AI · video" }
-                KeyRow { provider: "google"; name: "google"; label: "Gemini API"; has: dialog.cloud.hasGoogleKey }
-                Note { text: "Gemini Omni Flash makes the video with your Gemini API key (only paid use is allowed in the EEA, Switzerland and the UK)." }
+                Heading { text: qsTr("Google AI · video") }
+                KeyRow { provider: "google"; name: "google"; label: qsTr("Gemini API"); has: dialog.cloud.hasGoogleKey }
+                Note { text: qsTr("Gemini Omni Flash makes the video with your Gemini API key (only paid use is allowed in the EEA, Switzerland and the UK).") }
             }
         }
 
@@ -237,26 +237,26 @@ Popup {
                 Layout.fillWidth: true
                 text: {
                     const u = dialog.cloud.usage
-                    const plural = (n, one, many) => dialog.count(n) + " " + (n === 1 ? one : many)
+                    const plural = (n, one, many) => (n === 1 ? one : many.arg(dialog.count(n)))
                     const parts = []
                     if (u.inputTokens > 0 || u.outputTokens > 0)
-                        parts.push(dialog.count(u.inputTokens) + " tokens in, " + dialog.count(u.outputTokens) + " out ("
-                                   + dialog.money(u.cost) + ")")
+                        parts.push(qsTr("%1 tokens in, %2 out (%3)").arg(dialog.count(u.inputTokens))
+                                   .arg(dialog.count(u.outputTokens)).arg(dialog.money(u.cost)))
                     if (u.characters > 0)
-                        parts.push(plural(u.characters, "character", "characters") + " spoken")
+                        parts.push(plural(u.characters, qsTr("1 character spoken"), qsTr("%1 characters spoken")))
                     if (u.images > 0)
-                        parts.push(plural(u.images, "picture", "pictures"))
+                        parts.push(plural(u.images, qsTr("1 picture"), qsTr("%1 pictures")))
                     if (u.videos > 0)
-                        parts.push(plural(u.videos, "video", "videos"))
+                        parts.push(plural(u.videos, qsTr("1 video"), qsTr("%1 videos")))
                     if (u.soundSeconds > 0)
-                        parts.push(Math.round(u.soundSeconds) + " s of music and sound")
-                    return "This session: " + (parts.length > 0 ? parts.join(" · ") : "nothing used yet")
+                        parts.push(qsTr("%1 s of music and sound").arg(dialog.count(Math.round(u.soundSeconds))))
+                    return qsTr("This session: %1").arg(parts.length > 0 ? parts.join(" · ") : qsTr("nothing used yet"))
                 }
                 font: Theme.type.caption
                 color: Theme.color.textSecondary
                 wrapMode: Text.WordWrap
             }
-            TextButton { text: "Reset"; variant: "ghost"; onClicked: dialog.cloud.resetUsage() }
+            TextButton { text: qsTr("Reset"); variant: "ghost"; onClicked: dialog.cloud.resetUsage() }
         }
     }
 }

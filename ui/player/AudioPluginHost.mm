@@ -1,4 +1,5 @@
 #include "AudioPluginHost.h"
+#include "Language.h"
 
 #import <AppKit/AppKit.h>
 
@@ -77,7 +78,7 @@ tve::AudioPlugin* AudioPluginHost::instance(const QString& key, const tve::ClipE
         auto plugin = tve::AudioPlugin::open(effect.effectId, &why);
         if (!plugin) {
             if (error)
-                *error = QString::fromStdString(why);
+                *error = coreText(why);
             return nullptr;
         }
         Session session;

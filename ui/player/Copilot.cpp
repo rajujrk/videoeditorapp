@@ -1,5 +1,6 @@
 #include "Copilot.h"
 
+#include "Language.h"
 #include "LookLibrary.h"
 #include "ProjectController.h"
 
@@ -308,7 +309,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
             return failed(QStringLiteral("there is no clip %1").arg(id("clip_id")));
         const QString what = clipName(project, *location->clip);
         return applyTo(project, std::make_unique<SplitClipCommand>(id("clip_id"), time("at")),
-                       QStringLiteral("Split %1 at %2 s").arg(what, seconds(time("at"))));
+                       tr("Split %1 at %2 s").arg(what, seconds(time("at"))));
     }
     if (name == QLatin1String("trim_clip")) {
         auto location = findClip(id("clip_id"));
@@ -325,7 +326,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
         Outcome done = applyTo(project, std::make_unique<CompositeCommand>(std::move(steps), "Trim"), {});
         if (done.ok) {
             const Clip& clip = *project.locateClip(id("clip_id"))->clip;
-            done.change = QStringLiteral("Trim %1 to %2–%3 s").arg(what, seconds(clip.start), seconds(clip.end()));
+            done.change = tr("Trim %1 to %2–%3 s").arg(what, seconds(clip.start), seconds(clip.end()));
         }
         return done;
     }
@@ -336,7 +337,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
         const Id track = input.contains(QStringLiteral("track_id")) ? id("track_id") : location->track->id;
         const QString what = clipName(project, *location->clip);
         return applyTo(project, std::make_unique<MoveClipCommand>(id("clip_id"), track, time("start")),
-                       QStringLiteral("Move %1 to %2 s").arg(what, seconds(time("start"))));
+                       tr("Move %1 to %2 s").arg(what, seconds(time("start"))));
     }
     if (name == QLatin1String("delete_clips")) {
         const bool ripple = input.value(QStringLiteral("close_gaps")).toBool(false);
@@ -357,7 +358,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
         if (steps.empty())
             return failed(QStringLiteral("no clips given"));
         return applyTo(project, std::make_unique<CompositeCommand>(std::move(steps), "Delete"),
-                       QStringLiteral("Delete %1%2").arg(names.join(QStringLiteral(", ")),
+                       tr("Delete %1%2").arg(names.join(QStringLiteral(", ")),
                                                          ripple ? QStringLiteral(", closing the gaps") : QString()));
     }
     if (name == QLatin1String("add_title")) {
@@ -395,7 +396,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
         ClipText text;
         text.text = input.value(QStringLiteral("text")).toString().toStdString();
         return applyTo(project, std::make_unique<AddTitleCommand>(track, start, duration, text),
-                       QStringLiteral("Add title %1 at %2 s for %3 s")
+                       tr("Add title %1 at %2 s for %3 s")
                            .arg(quoted(text.text), seconds(start), seconds(duration)));
     }
     if (name == QLatin1String("set_title_text")) {
@@ -406,7 +407,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
         const std::string before = text.text;
         text.text = input.value(QStringLiteral("text")).toString().toStdString();
         return applyTo(project, std::make_unique<SetClipTextCommand>(id("clip_id"), text),
-                       QStringLiteral("Change title %1 to %2").arg(quoted(before, 30), quoted(text.text)));
+                       tr("Change title %1 to %2").arg(quoted(before, 30), quoted(text.text)));
     }
     if (name == QLatin1String("set_transition")) {
         auto location = findClip(id("clip_id"));
@@ -416,7 +417,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
         const std::string transitionId = input.value(QStringLiteral("transition_id")).toString().toStdString();
         if (transitionId.empty())
             return applyTo(project, std::make_unique<SetClipTransitionCommand>(id("clip_id"), std::nullopt),
-                           QStringLiteral("Remove the transition into %1").arg(what));
+                           tr("Remove the transition into %1").arg(what));
         const LoadedEffect* found = EffectLibrary::builtIn().findTransition(transitionId);
         if (!found)
             return failed(QStringLiteral("there is no transition %1").arg(QString::fromStdString(transitionId)));
@@ -425,8 +426,8 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
             return failed(QStringLiteral("duration must be 0.1 to 10 seconds"));
         ClipTransition transition{.transitionId = transitionId, .duration = at(project, secondsValue)};
         return applyTo(project, std::make_unique<SetClipTransitionCommand>(id("clip_id"), transition),
-                       QStringLiteral("Add a %1 transition into %2 (%3 s)")
-                           .arg(QString::fromStdString(found->manifest.displayTitle()), what, seconds(transition.duration)));
+                       tr("Add a %1 transition into %2 (%3 s)")
+                           .arg(catalogueText(found->manifest.displayTitle()), what, seconds(transition.duration)));
     }
     if (name == QLatin1String("add_effect") || name == QLatin1String("remove_effect")) {
         auto location = findClip(id("clip_id"));
@@ -442,8 +443,8 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
             effects.erase(effects.begin() + index);
             const LoadedEffect* loaded = EffectLibrary::builtIn().find(gone.effectId);
             return applyTo(project, std::make_unique<SetClipEffectsCommand>(id("clip_id"), effects, "Remove Effect"),
-                           QStringLiteral("Remove %1 from %2")
-                               .arg(loaded ? QString::fromStdString(loaded->manifest.displayTitle()) : QString::fromStdString(gone.effectId), what));
+                           tr("Remove %1 from %2")
+                               .arg(loaded ? catalogueText(loaded->manifest.displayTitle()) : QString::fromStdString(gone.effectId), what));
         }
         const std::string effectId = input.value(QStringLiteral("effect_id")).toString().toStdString();
         const LoadedEffect* loaded = EffectLibrary::builtIn().find(effectId);
@@ -459,7 +460,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
         }
         effects.push_back(effect);
         return applyTo(project, std::make_unique<SetClipEffectsCommand>(id("clip_id"), effects, "Add Effect"),
-                       QStringLiteral("Add %1 to %2").arg(QString::fromStdString(loaded->manifest.displayTitle()), what));
+                       tr("Add %1 to %2").arg(catalogueText(loaded->manifest.displayTitle()), what));
     }
     if (name == QLatin1String("set_color")) {
         const QJsonArray ids = input.value(QStringLiteral("clip_ids")).toArray();
@@ -487,7 +488,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
             if (input.contains(QLatin1String(key)))
                 what << QStringLiteral("%1 %2").arg(QLatin1String(key)).arg(input.value(QLatin1String(key)).toDouble(), 0, 'g', 2);
         return applyTo(project, std::make_unique<CompositeCommand>(std::move(steps), "Color"),
-                       QStringLiteral("Colour of %1: %2").arg(names.join(QStringLiteral(", ")), what.join(QStringLiteral(", "))));
+                       tr("Colour of %1: %2").arg(names.join(QStringLiteral(", ")), what.join(QStringLiteral(", "))));
     }
     if (name == QLatin1String("set_look")) {
         auto location = findClip(id("clip_id"));
@@ -497,7 +498,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
         const std::string lookId = input.value(QStringLiteral("look_id")).toString().toStdString();
         if (lookId.empty())
             return applyTo(project, std::make_unique<SetClipLookCommand>(id("clip_id"), std::nullopt, "Remove Look"),
-                           QStringLiteral("Remove the look from %1").arg(what));
+                           tr("Remove the look from %1").arg(what));
         const LookInfo* look = findLook(lookId);
         if (!look)
             return failed(QStringLiteral("there is no look %1").arg(QString::fromStdString(lookId)));
@@ -505,7 +506,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
         return applyTo(project,
                        std::make_unique<SetClipLookCommand>(id("clip_id"), ClipLook{look->id, look->title, intensity, look->grade},
                                                             "Apply Look"),
-                       QStringLiteral("Give %1 the look %2 (%3%)")
+                       tr("Give %1 the look %2 (%3%)")
                            .arg(what, QString::fromStdString(look->title))
                            .arg(qRound(intensity * 100)));
     }
@@ -521,7 +522,7 @@ Copilot::Outcome Copilot::run(const QString& name, const QJsonObject& input, Pro
         }
         const std::size_t count = blocks.size();
         return applyTo(project, std::make_unique<SetCaptionsCommand>(std::move(blocks), "Captions"),
-                       QStringLiteral("Set the captions (%1)").arg(count));
+                       tr("Set the captions (%1)").arg(count));
     }
     return failed(QStringLiteral("there is no tool %1").arg(name));
 }
@@ -706,7 +707,7 @@ void Copilot::send()
     request.model = m_project->m_cloud->claudeModel();
     if (!m_project->m_cloud->converse(request, [this](const AgentResult& result) { received(result); })) {
         rollBack();
-        add({{QStringLiteral("kind"), QStringLiteral("error")}, {QStringLiteral("text"), QStringLiteral("Another AI job is running; try again when it's done.")}});
+        add({{QStringLiteral("kind"), QStringLiteral("error")}, {QStringLiteral("text"), tr("Another AI job is running; try again when it's done.")}});
         m_busy = false;
         emit changed();
         return;
@@ -752,7 +753,7 @@ void Copilot::received(const AgentResult& result)
     if (++m_rounds >= kMostRounds) {
         // (Its last calls have their results; it is told why it stops with the next request.)
         m_note = QStringLiteral("(You stopped after %1 rounds of tools.)").arg(kMostRounds);
-        finishTurn(QStringLiteral("That took more steps than I can take at once; here is what I did so far."));
+        finishTurn(tr("That took more steps than I can take at once; here is what I did so far."));
         return;
     }
     emit changed();
@@ -793,11 +794,11 @@ bool Copilot::applyChanges()
 {
     if (m_proposal.isEmpty() || !m_base || !m_sandbox || m_busy)
         return false;
-    const QString label = m_proposal.size() == 1 ? QStringLiteral("Copilot: ") + m_proposal.first()
-                                                 : QStringLiteral("Copilot: %1 changes").arg(m_proposal.size());
+    const QString label = m_proposal.size() == 1 ? tr("Copilot: %1").arg(m_proposal.first())
+                                                 : tr("Copilot: %1 changes").arg(m_proposal.size());
     if (!m_project->apply(std::make_unique<ApplyEditsCommand>(*m_base, *m_sandbox, label.toStdString()))) {
         add({{QStringLiteral("kind"), QStringLiteral("error")},
-             {QStringLiteral("text"), QStringLiteral("The project changed since these were made: ask again to have them made for it as it is now.")}});
+             {QStringLiteral("text"), tr("The project changed since these were made: ask again to have them made for it as it is now.")}});
         return false;
     }
     setChangesState(QStringLiteral("applied"));

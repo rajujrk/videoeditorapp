@@ -83,7 +83,7 @@ class VideoView : public QQuickRhiItem {
     Q_PROPERTY(double presentFps READ presentFps NOTIFY statsChanged)
     Q_PROPERTY(qint64 skippedFrames READ skippedFrames NOTIFY statsChanged)
     Q_PROPERTY(bool hardwareAccelerated READ hardwareAccelerated NOTIFY statsChanged)
-    Q_PROPERTY(QVariantList availableEffects READ availableEffects CONSTANT)
+    Q_PROPERTY(QVariantList availableEffects READ availableEffects NOTIFY languageChanged)
     Q_PROPERTY(int enabledEffectCount READ enabledEffectCount NOTIFY effectsChanged)
     // While true, a small copy of each new preview frame (at most ~15 a second) goes to
     // scopeFrame() for the scopes; off, it costs nothing.
@@ -173,6 +173,7 @@ public:
     quint64 effectsRevision() const { return m_effectsRevision; }
 
 signals:
+    void languageChanged(); // the effects' names are read again
     void sourceChanged();
     void statsChanged();
     void effectsChanged();

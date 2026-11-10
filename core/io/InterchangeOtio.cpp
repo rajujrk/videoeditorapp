@@ -1,6 +1,7 @@
 // OpenTimelineIO's JSON (.otio): a Timeline of a Stack of Tracks of Clips, Gaps and
 // Transitions, written in the schema versions OpenTimelineIO 0.15 and later read.
 #include "io/Interchange.h"
+#include "model/Translate.h"
 
 #include <nlohmann/json.hpp>
 
@@ -70,7 +71,7 @@ MarkerColor markerColourFrom(const std::string& name, Notes& notes)
     if (name == "PURPLE")
         return MarkerColor::Purple;
     if (name != "BLUE" && name != "CYAN" && !name.empty())
-        notes.addLine("Marker colours this app doesn't have (as the nearest)");
+        notes.addLine(TVE_TR("core", "Marker colours this app doesn't have (as the nearest)"));
     return MarkerColor::Blue;
 }
 
@@ -239,7 +240,7 @@ Track readTrack(const json& source, const std::string& base, std::vector<Marker>
     track.name = source.value("name", std::string());
     track.enabled = source.value("enabled", true);
     if (!source.value("effects", json::array()).empty())
-        notes.addLine("Track effects (left out)");
+        notes.addLine(TVE_TR("core", "Track effects (left out)"));
     Ticks at = 0;
     std::optional<Transition> pending;
     for (const json& child : source.value("children", json::array())) {
@@ -255,8 +256,8 @@ Track readTrack(const json& source, const std::string& base, std::vector<Marker>
             continue;
         }
         if (!isSchema(child, "Clip")) {
-            notes.add(isSchema(child, "Stack") || isSchema(child, "Track") ? "Nested sequences (left as space)"
-                                                                          : "Items this app doesn't know (left as space)");
+            notes.add(isSchema(child, "Stack") || isSchema(child, "Track") ? TVE_TR("core", "Nested sequences (left as space)")
+                                                                          : TVE_TR("core", "Items this app doesn't know (left as space)"));
             at += length;
             pending.reset();
             continue;
@@ -285,11 +286,11 @@ Track readTrack(const json& source, const std::string& base, std::vector<Marker>
             const json& parameters = reference->value("parameters", json::object());
             it.text = parameters.is_object() ? parameters.value("text", std::string()) : std::string();
             if (reference->value("generator_kind", std::string()) != "title")
-                notes.add("Generated clips (as titles)");
+                notes.add(TVE_TR("core", "Generated clips (as titles)"));
             if (it.text.empty())
                 it.text = it.name.empty() ? "Title" : it.name;
         } else {
-            notes.add("Clips without a media file (left as space)");
+            notes.add(TVE_TR("core", "Clips without a media file (left as space)"));
             at += length;
             continue;
         }
@@ -305,7 +306,7 @@ Track readTrack(const json& source, const std::string& base, std::vector<Marker>
                     it.reversed = scalar < 0.0;
                 }
             } else {
-                notes.add("Effects (left out)");
+                notes.add(TVE_TR("core", "Effects (left out)"));
             }
         }
         readMarkers(child, at - range.start, markers, notes);
@@ -377,7 +378,7 @@ Timeline readOtio(const std::string& text, const std::string& base, Notes& notes
         if (first == children.end())
             throw std::runtime_error("the collection has no timeline");
         if (std::ranges::count_if(children, [](const json& c) { return isSchema(c, "Timeline"); }) > 1)
-            notes.addLine("The collection's other timelines (only the first is opened)");
+            notes.addLine(TVE_TR("core", "The collection's other timelines (only the first is opened)"));
         root = *first;
     }
     if (!isSchema(root, "Timeline"))
@@ -402,7 +403,7 @@ Timeline readOtio(const std::string& text, const std::string& base, Notes& notes
     std::vector<Track> video, audio;
     for (const json& track : stack.value("children", json::array())) {
         if (!isSchema(track, "Track")) {
-            notes.addLine("Nested compositions in the top stack (left out)");
+            notes.addLine(TVE_TR("core", "Nested compositions in the top stack (left out)"));
             continue;
         }
         Track read = readTrack(track, base, timeline.markers, notes);

@@ -1,4 +1,5 @@
 #include "model/SpeedRamp.h"
+#include "model/Translate.h"
 
 #include <algorithm>
 #include <cmath>
@@ -107,14 +108,14 @@ const std::vector<SpeedRampPreset>& speedRampPresets()
 {
     // Our own shapes for the usual ramp moves.
     static const std::vector<SpeedRampPreset> presets{
-        {"ramp-up", "Ramp up", {{0.0, 0.5}, {1.0, 3.0}}},
-        {"ramp-down", "Ramp down", {{0.0, 3.0}, {1.0, 0.5}}},
-        {"flash-in", "Flash in", {{0.0, 5.0}, {0.3, 5.0}, {0.5, 1.0}, {1.0, 1.0}}},
-        {"flash-out", "Flash out", {{0.0, 1.0}, {0.5, 1.0}, {0.7, 5.0}, {1.0, 5.0}}},
-        {"bullet-time", "Bullet time", {{0.0, 1.5}, {0.3, 1.5}, {0.4, 0.25}, {0.7, 0.25}, {0.8, 1.5}, {1.0, 1.5}}},
-        {"hero-moment", "Hero moment", {{0.0, 1.0}, {0.4, 1.0}, {0.5, 0.2}, {0.6, 0.2}, {0.7, 3.0}, {1.0, 3.0}}},
-        {"montage", "Montage", {{0.0, 2.5}, {0.25, 0.6}, {0.5, 2.5}, {0.75, 0.6}, {1.0, 2.5}}},
-        {"jumper", "Jumper", {{0.0, 3.0}, {0.4, 3.0}, {0.5, 0.3}, {0.6, 3.0}, {1.0, 3.0}}},
+        {"ramp-up", TVE_TR("core", "Ramp up"), {{0.0, 0.5}, {1.0, 3.0}}},
+        {"ramp-down", TVE_TR("core", "Ramp down"), {{0.0, 3.0}, {1.0, 0.5}}},
+        {"flash-in", TVE_TR("core", "Flash in"), {{0.0, 5.0}, {0.3, 5.0}, {0.5, 1.0}, {1.0, 1.0}}},
+        {"flash-out", TVE_TR("core", "Flash out"), {{0.0, 1.0}, {0.5, 1.0}, {0.7, 5.0}, {1.0, 5.0}}},
+        {"bullet-time", TVE_TR("core", "Bullet time"), {{0.0, 1.5}, {0.3, 1.5}, {0.4, 0.25}, {0.7, 0.25}, {0.8, 1.5}, {1.0, 1.5}}},
+        {"hero-moment", TVE_TR("core", "Hero moment"), {{0.0, 1.0}, {0.4, 1.0}, {0.5, 0.2}, {0.6, 0.2}, {0.7, 3.0}, {1.0, 3.0}}},
+        {"montage", TVE_TR("core", "Montage"), {{0.0, 2.5}, {0.25, 0.6}, {0.5, 2.5}, {0.75, 0.6}, {1.0, 2.5}}},
+        {"jumper", TVE_TR("core", "Jumper"), {{0.0, 3.0}, {0.4, 3.0}, {0.5, 0.3}, {0.6, 3.0}, {1.0, 3.0}}},
     };
     return presets;
 }

@@ -23,7 +23,7 @@ Rectangle {
         anchors.rightMargin: Theme.space.m
         spacing: Theme.space.s
 
-        IconButton { iconName: "back"; tip: "Home"; onClicked: bar.homeRequested() }
+        IconButton { iconName: "back"; tip: qsTr("Home"); onClicked: bar.homeRequested() }
         Divider { implicitWidth: 1; implicitHeight: 20 }
 
         Text {
@@ -36,7 +36,7 @@ Rectangle {
         Text {
             objectName: "autosaveStatus"
             visible: bar.project.modified && bar.project.lastAutosave > 0
-            text: "Autosaved " + new Date(bar.project.lastAutosave).toLocaleTimeString(Qt.locale(), Locale.ShortFormat)
+            text: qsTr("Autosaved %1").arg(new Date(bar.project.lastAutosave).toLocaleTimeString(Qt.locale(), Locale.ShortFormat))
             font: Theme.type.caption
             color: Theme.color.textSecondary
         }
@@ -49,8 +49,7 @@ Rectangle {
             Text {
                 id: canvas
                 anchors.centerIn: parent
-                text: bar.project.canvasWidth + " × " + bar.project.canvasHeight + " · "
-                      + Math.round(bar.project.frameRate) + " fps"
+                text: qsTr("%1 × %2 · %3 fps").arg(bar.project.canvasWidth).arg(bar.project.canvasHeight).arg(Fmt.num(bar.project.frameRate))
                 font: Theme.type.caption
                 color: Theme.color.textSecondary
             }
@@ -61,39 +60,39 @@ Rectangle {
         IconButton {
             objectName: "undoButton"
             iconName: "undo"
-            tip: bar.project.canUndo ? "Undo " + bar.project.undoText + KeyMap.hints["undo"] : "Nothing to undo"
+            tip: bar.project.canUndo ? qsTr("Undo %1").arg(bar.project.undoText) + KeyMap.hints["undo"] : qsTr("Nothing to undo")
             enabled: bar.project.canUndo
             onClicked: bar.project.undo()
         }
         IconButton {
             objectName: "redoButton"
             iconName: "redo"
-            tip: bar.project.canRedo ? "Redo " + bar.project.redoText + KeyMap.hints["redo"] : "Nothing to redo"
+            tip: bar.project.canRedo ? qsTr("Redo %1").arg(bar.project.redoText) + KeyMap.hints["redo"] : qsTr("Nothing to redo")
             enabled: bar.project.canRedo
             onClicked: bar.project.redo()
         }
-        IconButton { iconName: "save"; tip: "Save project" + KeyMap.hints["save"]; onClicked: bar.saveRequested() }
+        IconButton { iconName: "save"; tip: qsTr("Save project") + KeyMap.hints["save"]; onClicked: bar.saveRequested() }
         IconButton {
             objectName: "interchangeButton"
             iconName: "interchange"
-            tip: "Export the timeline for another editor (OpenTimelineIO, Final Cut Pro XML, EDL)"
+            tip: qsTr("Export the timeline for another editor (OpenTimelineIO, Final Cut Pro XML, EDL)")
             onClicked: bar.interchangeRequested()
         }
         IconButton {
             objectName: "cloudSettingsButton"
             iconName: "assistant"
-            tip: "AI settings: keys, models and use"
+            tip: qsTr("AI settings: keys, models and use")
             onClicked: bar.cloudSettingsRequested()
         }
         IconButton {
             objectName: "shortcutsButton"
             iconName: "keyboard"
-            tip: "Keyboard shortcuts" + KeyMap.hints["shortcuts"]
+            tip: qsTr("Keyboard shortcuts") + KeyMap.hints["shortcuts"]
             onClicked: bar.shortcutsRequested()
         }
         IconButton {
             iconName: Theme.dark ? "sun" : "moon"
-            tip: Theme.dark ? "Light theme" : "Dark theme"
+            tip: Theme.dark ? qsTr("Light theme") : qsTr("Dark theme")
             onClicked: Theme.dark = !Theme.dark
         }
         IconButton {
@@ -103,7 +102,7 @@ Rectangle {
             readonly property int pending: bar.project.exportJobs.filter((j) => j.state === "running" || j.state === "waiting").length
             visible: bar.project.exportJobs.length > 0
             iconName: "queue"
-            tip: "Render queue" + (pending > 0 ? " · " + pending + " to go" : "")
+            tip: pending > 0 ? qsTr("Render queue · %1 to go").arg(Fmt.num(pending)) : qsTr("Render queue")
             checkable: true
             checked: queuePanel.visible
             onClicked: queuePanel.visible ? queuePanel.close() : queuePanel.open()
@@ -134,12 +133,12 @@ Rectangle {
         }
         TextButton {
             objectName: "exportButton"
-            text: bar.project.exporting ? (bar.project.exportPaused ? "Paused " : "Exporting ")
-                                          + Math.round(bar.project.exportProgress * 100) + " %" : "Export"
+            text: bar.project.exporting ? (bar.project.exportPaused ? qsTr("Paused %1") : qsTr("Exporting %1")).arg(Fmt.percent(bar.project.exportProgress))
+                                        : qsTr("Export")
             iconName: "export"
             variant: "primary"
             enabled: bar.project.duration > 0
-            tip: "Export a video, a GIF or the sound" + KeyMap.hints["export"] + "; exports queue up and run while you edit"
+            tip: qsTr("Export a video, a GIF or the sound%1; exports queue up and run while you edit").arg(KeyMap.hints["export"])
             Layout.leftMargin: Theme.space.s
             onClicked: bar.exportRequested()
         }

@@ -1,6 +1,7 @@
 #include "analysis/PeopleVision.h"
 
 #include "decode/VideoDecoder.h"
+#include "model/Translate.h"
 
 #import <Foundation/Foundation.h>
 #import <Vision/Vision.h>
@@ -157,7 +158,7 @@ bool eachFrame(const std::string& path, Ticks spacing, const AnalysisProgress& p
     auto decoder = VideoDecoder::open(path, error);
     if (!decoder) {
         if (error && error->empty())
-            *error = "This file has no pictures to look at.";
+            *error = TVE_TR("core", "This file has no pictures to look at.");
         return false;
     }
     const double total = std::max(1e-3, toSeconds(decoder->info().duration));
