@@ -47,6 +47,7 @@ qt_add_qml_module(tve_shell
         SphereOverlay.qml
         InterchangeDialog.qml
         CopilotPage.qml
+        VoiceCloneDialog.qml
         TitleTemplates.js
     IMPORTS
         TechieVideoEditor.Theme

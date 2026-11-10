@@ -4,7 +4,8 @@ import QtQuick.Layouts
 import TechieVideoEditor.Theme
 
 // The Audio tab's Voice section: type what to say, choose a voice (the Mac's own, offline,
-// or ElevenLabs with a key), listen, and add it at the playhead with captions.
+// or ElevenLabs with a key), listen, and add it at the playhead with captions. Below, the
+// voices copied with consent: made here from the speaker's recorded statement, deletable.
 ColumnLayout {
     id: pane
     required property var project
@@ -107,5 +108,92 @@ ColumnLayout {
         font: Theme.type.caption
         color: Theme.color.textSecondary
     }
+    // Copied voices (ElevenLabs), and copying one with consent.
+    Text { Layout.topMargin: Theme.space.m; text: "Copied voices"; font: Theme.type.label; color: Theme.color.textSecondary }
+    Repeater {
+        model: pane.project.voiceCloning.clones
+        delegate: RowLayout {
+            required property var modelData
+            required property int index
+            objectName: "clonedVoice:" + index
+            Layout.fillWidth: true
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+                Text { text: modelData.name; font: Theme.type.body; color: Theme.color.textPrimary; elide: Text.ElideRight; Layout.fillWidth: true }
+                Text {
+                    Layout.fillWidth: true
+                    text: modelData.consent ? "Consent recorded by " + modelData.consent.speaker + " on " + modelData.consent.date
+                                            : "Made outside this app (no consent recording here)"
+                    font: Theme.type.caption
+                    color: Theme.color.textSecondary
+                    elide: Text.ElideRight
+                }
+            }
+            IconButton {
+                objectName: "deleteClone:" + index
+                iconName: "delete"
+                tip: "Delete this voice from your ElevenLabs account"
+                onClicked: {
+                    deleteConfirm.voice = modelData
+                    deleteConfirm.open()
+                }
+            }
+        }
+    }
+    TextButton {
+        objectName: "copyVoice"
+        Layout.fillWidth: true
+        text: "Copy a voice, with consent…"
+        variant: "secondary"
+        enabled: pane.cloud.hasElevenLabsKey && pane.cloud.job === ""
+        tip: pane.cloud.hasElevenLabsKey ? "Make a copy of a voice from the speaker reading a consent statement"
+                                         : "Add an ElevenLabs key in AI settings first"
+        onClicked: cloneDialog.open()
+    }
     Item { Layout.fillHeight: true }
+
+    VoiceCloneDialog {
+        id: cloneDialog
+        objectName: "voiceCloneDialog"
+        project: pane.project
+        onClosed: if (project.voiceCloning.stage === "done") {
+            pane.voice = project.voiceCloning.madeVoice
+            project.voiceCloning.reset()
+        }
+    }
+    Popup {
+        id: deleteConfirm
+        objectName: "deleteCloneConfirm"
+        property var voice: ({})
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        width: 420
+        padding: Theme.space.l
+        background: Rectangle { radius: Theme.radius.l; color: Theme.color.surfaceRaised; border.color: Theme.color.borderStrong }
+        contentItem: ColumnLayout {
+            spacing: Theme.space.m
+            Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: "Delete “" + (deleteConfirm.voice.name || "") + "” from your ElevenLabs account? Its consent recording "
+                      + "here is deleted too. This can't be undone."
+                font: Theme.type.body
+                color: Theme.color.textPrimary
+            }
+            RowLayout {
+                Item { Layout.fillWidth: true }
+                TextButton { text: "Cancel"; variant: "ghost"; onClicked: deleteConfirm.close() }
+                TextButton {
+                    objectName: "deleteCloneConfirmButton"
+                    text: "Delete"
+                    variant: "danger"
+                    onClicked: {
+                        pane.project.voiceCloning.deleteVoice(deleteConfirm.voice.id)
+                        deleteConfirm.close()
+                    }
+                }
+            }
+        }
+    }
 }

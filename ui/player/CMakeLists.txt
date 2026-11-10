@@ -19,6 +19,8 @@ qt_add_qml_module(tve_player
         ProjectController.cpp
         Copilot.h
         Copilot.cpp
+        VoiceCloning.h
+        VoiceCloning.cpp
         KeyMap.h
         KeyMap.cpp
         SpeechModels.h

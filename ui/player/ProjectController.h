@@ -9,6 +9,7 @@
 #include "TemplateLibrary.h"
 #include "cloud/CloudFeatures.h"
 #include "Copilot.h"
+#include "VoiceCloning.h"
 #include "cloud/CloudServices.h"
 #include "SoundLibrary.h"
 #include "SpeechModels.h"
@@ -244,6 +245,8 @@ class ProjectController : public QObject {
     Q_PROPERTY(CloudServices* cloud READ cloud CONSTANT)
     // The editing copilot (Claude with tools over the edit).
     Q_PROPERTY(Copilot* copilot READ copilot CONSTANT)
+    // Copying a voice with the speaker's recorded consent.
+    Q_PROPERTY(VoiceCloning* voiceCloning READ voiceCloning CONSTANT)
     Q_PROPERTY(QStringList translationLanguages READ translationLanguages CONSTANT)
     Q_PROPERTY(QString voicesDirectory READ voicesDirectory NOTIFY projectChanged)
     Q_PROPERTY(QString generatedDirectory READ generatedDirectory NOTIFY projectChanged)
@@ -384,6 +387,7 @@ public:
     QString importsDirectory() const;
     CloudServices* cloud() const { return m_cloud; }
     Copilot* copilot() const { return m_copilot; }
+    VoiceCloning* voiceCloning() const { return m_voiceCloning; }
     QStringList translationLanguages() const;
     QString voicesDirectory() const;
     QString generatedDirectory() const;
@@ -1051,7 +1055,9 @@ private:
     MediaImports* m_imports = nullptr;
     CloudServices* m_cloud = nullptr;
     Copilot* m_copilot = nullptr;
+    VoiceCloning* m_voiceCloning = nullptr;
     friend class Copilot;
+    friend class VoiceCloning;
     TemplateLibrary* m_templates = nullptr;
     PackStore* m_store = nullptr;
     AudioPluginHost* m_pluginHost = nullptr;

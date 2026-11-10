@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QHttpMultiPart>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -16,6 +17,7 @@
 #include <QNetworkRequest>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QTimer>
 #include <QUrlQuery>
 
 #import <AVFAudio/AVFAudio.h>
@@ -94,6 +96,7 @@ struct SystemSpeech {
     qint64 frames = 0;
     QList<QPair<qint64, NSRange>> marks; // frame offset, text range
     bool cancelled = false;
+    bool ended = false;
 };
 
 class SystemSpeechTask final : public SpeechTask {
@@ -128,19 +131,31 @@ public:
             [m_synthesizer writeUtterance:utterance
                 toBufferCallback:^(AVAudioBuffer* buffer) {
                     std::lock_guard lock(speech->mutex);
-                    if (speech->cancelled)
+                    if (speech->cancelled || speech->ended)
                         return;
                     AVAudioPCMBuffer* pcm = [buffer isKindOfClass:[AVAudioPCMBuffer class]] ? (AVAudioPCMBuffer*)buffer : nil;
                     if (!pcm || pcm.frameLength == 0) {
-                        // The end.
-                        QString error = speech->error;
-                        if (speech->writer && !speech->writer->finish())
-                            error = QStringLiteral("The voice could not be written.");
-                        if (!speech->writer && error.isEmpty())
-                            error = QStringLiteral("The voice made no sound.");
-                        QMetaObject::invokeMethod(qApp, [self, speech, error] {
-                            if (self)
-                                self->ended(*speech, error);
+                        // The end — unless more comes: a long text arrives in parts, with an
+                        // empty buffer between them. So the end is an empty buffer with nothing
+                        // after it for a second.
+                        const qint64 at = speech->frames;
+                        QMetaObject::invokeMethod(qApp, [self, speech, at] {
+                            QTimer::singleShot(1000, qApp, [self, speech, at] {
+                                QString error;
+                                {
+                                    std::lock_guard lock(speech->mutex);
+                                    if (speech->ended || speech->cancelled || speech->frames != at)
+                                        return; // (more came)
+                                    speech->ended = true;
+                                    error = speech->error;
+                                    if (speech->writer && !speech->writer->finish())
+                                        error = QStringLiteral("The voice could not be written.");
+                                    if (!speech->writer && error.isEmpty())
+                                        error = QStringLiteral("The voice made no sound.");
+                                }
+                                if (self)
+                                    self->ended(*speech, error);
+                            });
                         });
                         return;
                     }
@@ -431,8 +446,99 @@ void ElevenLabsVoices::refresh(std::function<void(QString)> done)
                 if (const QString v = labels.value(QLatin1String(label)).toString(); !v.isEmpty())
                     detail << v;
             m_voices.push_back({voice.value(QStringLiteral("voice_id")).toString(), voice.value(QStringLiteral("name")).toString(),
-                                labels.value(QStringLiteral("language")).toString(), detail.join(QStringLiteral(", "))});
+                                labels.value(QStringLiteral("language")).toString(), detail.join(QStringLiteral(", ")),
+                                voice.value(QStringLiteral("category")).toString() == QLatin1String("cloned")});
         }
+        done({});
+    });
+}
+
+namespace {
+
+// What an ElevenLabs error says, in words for the person.
+QString elevenLabsError(int code, const QByteArray& body, const QString& network)
+{
+    const QJsonValue detail = QJsonDocument::fromJson(body).object().value(QStringLiteral("detail"));
+    QString message = detail.isObject() ? detail.toObject().value(QStringLiteral("message")).toString()
+                    : detail.isArray()  ? detail.toArray().first().toObject().value(QStringLiteral("msg")).toString()
+                                        : QString();
+    if (code == 401)
+        return QStringLiteral("The ElevenLabs API key was not accepted.");
+    if (code == 0)
+        return QStringLiteral("Could not reach ElevenLabs: %1").arg(network);
+    return message.isEmpty() ? QStringLiteral("ElevenLabs error %1").arg(code) : QStringLiteral("ElevenLabs: %1").arg(message);
+}
+
+} // namespace
+
+void ElevenLabsVoices::clone(const QString& name, const QString& description, const QString& recording,
+                             std::function<void(QString, QString)> done)
+{
+    const QString key = cloudkeys::read(QStringLiteral("elevenlabs"));
+    if (key.isEmpty()) {
+        done({}, QStringLiteral("Add your ElevenLabs API key in AI settings first."));
+        return;
+    }
+    auto* file = new QFile(recording);
+    if (!file->open(QIODevice::ReadOnly)) {
+        delete file;
+        done({}, QStringLiteral("The recording can't be read."));
+        return;
+    }
+    auto* form = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    const auto field = [form](const char* fieldName, const QString& value) {
+        QHttpPart part;
+        part.setHeader(QNetworkRequest::ContentDispositionHeader, QStringLiteral("form-data; name=\"%1\"").arg(QLatin1String(fieldName)));
+        part.setBody(value.toUtf8());
+        form->append(part);
+    };
+    field("name", name);
+    field("description", description);
+    field("remove_background_noise", QStringLiteral("false"));
+    QHttpPart audio;
+    audio.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("audio/wav"));
+    audio.setHeader(QNetworkRequest::ContentDispositionHeader, QStringLiteral("form-data; name=\"files\"; filename=\"consent.wav\""));
+    audio.setBodyDevice(file);
+    file->setParent(form);
+    form->append(audio);
+
+    QNetworkRequest http(QUrl(baseUrl() + QStringLiteral("/v1/voices/add")));
+    http.setRawHeader("xi-api-key", key.toUtf8());
+    http.setTransferTimeout(180000);
+    QNetworkReply* reply = m_network->post(http, form);
+    form->setParent(reply);
+    QObject::connect(reply, &QNetworkReply::finished, reply, [reply, done = std::move(done)] {
+        reply->deleteLater();
+        const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QByteArray body = reply->readAll();
+        const QString id = QJsonDocument::fromJson(body).object().value(QStringLiteral("voice_id")).toString();
+        if (code != 200 || id.isEmpty()) {
+            done({}, elevenLabsError(code, body, reply->errorString()));
+            return;
+        }
+        done(id, {});
+    });
+}
+
+void ElevenLabsVoices::remove(const QString& voiceId, std::function<void(QString)> done)
+{
+    const QString key = cloudkeys::read(QStringLiteral("elevenlabs"));
+    if (key.isEmpty()) {
+        done(QStringLiteral("Add your ElevenLabs API key in AI settings first."));
+        return;
+    }
+    QNetworkRequest http(QUrl(baseUrl() + QStringLiteral("/v1/voices/") + QString::fromLatin1(QUrl::toPercentEncoding(voiceId))));
+    http.setRawHeader("xi-api-key", key.toUtf8());
+    http.setTransferTimeout(60000);
+    QNetworkReply* reply = m_network->deleteResource(http);
+    QObject::connect(reply, &QNetworkReply::finished, reply, [this, reply, voiceId, done = std::move(done)] {
+        reply->deleteLater();
+        const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (code != 200) {
+            done(elevenLabsError(code, reply->readAll(), reply->errorString()));
+            return;
+        }
+        m_voices.removeIf([&](const VoiceInfo& v) { return v.id == voiceId; });
         done({});
     });
 }

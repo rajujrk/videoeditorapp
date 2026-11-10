@@ -102,6 +102,12 @@ public:
         return inside(from) && inside(to) && QDir().mkpath(QFileInfo(to).path()) && QDir().rename(from, to);
     }
     Q_INVOKABLE bool exists(const QString& path) const { return QFileInfo::exists(path); }
+    // Sets a test hook's environment variable (TVE_CONSENT_RECORDING…) for what follows.
+    Q_INVOKABLE void setEnv(const QString& name, const QString& value) const
+    {
+        if (name.startsWith(QLatin1String("TVE_")))
+            qputenv(name.toLocal8Bit().constData(), value.toLocal8Bit());
+    }
     Q_INVOKABLE QString read(const QString& path) const
     {
         QFile file(path);
@@ -466,6 +472,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("templatesDir"), qEnvironmentVariable("TVE_TEMPLATE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("templateCacheDir"), qEnvironmentVariable("TVE_TEMPLATE_CACHE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("voicesDir"), qEnvironmentVariable("TVE_VOICE_DIR"));
+        engine->rootContext()->setContextProperty(QStringLiteral("consentDir"), qEnvironmentVariable("TVE_CONSENT_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("keyStoreDir"), qEnvironmentVariable("TVE_KEY_STORE"));
         engine->rootContext()->setContextProperty(QStringLiteral("importFixturesDir"), qEnvironmentVariable("TVE_TEST_IMPORTS_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("importsDir"), qEnvironmentVariable("TVE_IMPORT_DIR"));
@@ -568,6 +575,10 @@ int main(int argc, char** argv)
     qputenv("TVE_CLOUD_SETTINGS_FILE", (cloudSettings.path() + QStringLiteral("/cloud-settings.json")).toLocal8Bit());
     QTemporaryDir voices;
     qputenv("TVE_VOICE_DIR", QDir(voices.path()).canonicalPath().toLocal8Bit());
+    // Voice cloning: consent records in a scratch folder; the code words fixed.
+    QTemporaryDir consents;
+    qputenv("TVE_CONSENT_DIR", QDir(consents.path()).canonicalPath().toLocal8Bit());
+    qputenv("TVE_CONSENT_SEED", "7");
     // Templates: the person's own, the cache of placeholders and music, the favourites.
     QTemporaryDir templates;
     qputenv("TVE_TEMPLATE_DIR", QDir(templates.path()).canonicalPath().toLocal8Bit());
