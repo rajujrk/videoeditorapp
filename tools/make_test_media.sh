@@ -39,6 +39,12 @@ make test_av_1080p30.mp4 -f lavfi -i testsrc2=size=1920x1080:rate=30 \
 # moving right, 2 s at 320 × 180.
 make test_alpha_prores.mov -f lavfi -i "color=c=red:s=320x180:r=30:d=2,format=yuva444p10le,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lt(hypot(X-80-T*80,Y-90),50),1023,0)'" \
     -c:v prores_ks -profile:v 4444 -pix_fmt yuva444p10le
+# The same disc as WebM VP9 with alpha (the alpha a second VP9 stream in the blocks'
+# additional data; needs libvpx in the CLI) and as Apple's HEVC with alpha (an alpha layer).
+make test_alpha_vp9.webm -f lavfi -i "color=c=red:s=320x180:r=30:d=2,format=yuva420p,geq=lum='lum(X,Y)':cb='cb(X,Y)':cr='cr(X,Y)':a='if(lt(hypot(X-80-T*80,Y-90),50),255,0)'" \
+    -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 400k
+make test_alpha_hevc.mov -f lavfi -i "color=c=red:s=320x180:r=30:d=2,format=bgra,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lt(hypot(X-80-T*80,Y-90),50),255,0)'" \
+    -c:v hevc_videotoolbox -alpha_quality 0.75 -tag:v hvc1 -pix_fmt bgra
 
 # 20-second 4K clips for the playback spike.
 make 4k30_h264.mp4 -f lavfi -i testsrc2=size=3840x2160:rate=30 -t 20 \

@@ -39,13 +39,15 @@ const char* muxerName(Container container)
     case Container::M4a: return "ipod";
     case Container::Wav: return "wav";
     case Container::Flac: return "flac";
+    case Container::Mp3: return "mp3";
     }
     return "mp4";
 }
 
 bool takesChapters(Container container)
 {
-    return container == Container::Mp4 || container == Container::Mov || container == Container::M4a;
+    return container == Container::Mp4 || container == Container::Mov || container == Container::M4a
+        || container == Container::Mp3;
 }
 
 const char* proResName(ProResProfile profile)
@@ -84,6 +86,7 @@ const char* fileExtension(Container container)
     case Container::M4a: return "m4a";
     case Container::Wav: return "wav";
     case Container::Flac: return "flac";
+    case Container::Mp3: return "mp3";
     }
     return "mp4";
 }
@@ -126,7 +129,10 @@ std::optional<std::string> validateSettings(const MediaSettings& s)
                         : s.container == Container::Mov ? a != AudioCodec::Flac
                         : s.container == Container::Wav ? a == AudioCodec::Pcm16 || a == AudioCodec::Pcm24
                         : s.container == Container::Flac ? a == AudioCodec::Flac
+                        : s.container == Container::Mp3 ? a == AudioCodec::Mp3
                                                          : true;
+        if (a == AudioCodec::Mp3 && s.container != Container::Mp3)
+            return "MP3 sound goes in an MP3 file";
         if (!fits)
             return "that sound format does not go in that file type";
     }
@@ -153,7 +159,8 @@ std::int64_t audioBitrate(const MediaSettings& settings)
     if (!settings.hasAudio() && settings.hasVideo())
         return 0;
     switch (settings.audioCodec) {
-    case AudioCodec::Aac: return settings.audioBitrate;
+    case AudioCodec::Aac:
+    case AudioCodec::Mp3: return settings.audioBitrate;
     case AudioCodec::Pcm16: return std::int64_t(audio::kSampleRate) * audio::kChannels * 16;
     case AudioCodec::Pcm24: return std::int64_t(audio::kSampleRate) * audio::kChannels * 24;
     case AudioCodec::Flac: return std::int64_t(audio::kSampleRate) * audio::kChannels * 16 * 6 / 10;
@@ -417,6 +424,7 @@ struct MediaWriter::Impl {
         case AudioCodec::Pcm16: id = AV_CODEC_ID_PCM_S16LE; sampleFormat = AV_SAMPLE_FMT_S16; break;
         case AudioCodec::Pcm24: id = AV_CODEC_ID_PCM_S24LE; sampleFormat = AV_SAMPLE_FMT_S32; break;
         case AudioCodec::Flac: id = AV_CODEC_ID_FLAC; sampleFormat = AV_SAMPLE_FMT_S32; break;
+        case AudioCodec::Mp3: id = AV_CODEC_ID_MP3; break; // LAME (libmp3lame), planar float
         }
         const AVCodec* codec = avcodec_find_encoder(id);
         if (!codec)
@@ -426,7 +434,7 @@ struct MediaWriter::Impl {
         audio->sample_rate = audio::kSampleRate;
         av_channel_layout_default(&audio->ch_layout, audio::kChannels);
         audio->time_base = AVRational{1, audio::kSampleRate};
-        if (s.audioCodec == AudioCodec::Aac)
+        if (s.audioCodec == AudioCodec::Aac || s.audioCodec == AudioCodec::Mp3)
             audio->bit_rate = s.audioBitrate;
         if (s.audioCodec == AudioCodec::Flac)
             audio->bits_per_raw_sample = 24;

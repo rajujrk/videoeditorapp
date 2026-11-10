@@ -200,13 +200,18 @@ Item {
             verify(p.lastError.indexOf("not a Lottie animation") >= 0)
         }
 
-        function test_video_with_transparency_shows_what_is_below() {
+        function test_video_with_transparency_shows_what_is_below_data() {
+            return [{tag: "ProRes 4444", file: "test_alpha_prores.mov"},
+                    {tag: "WebM VP9 with alpha", file: "test_alpha_vp9.webm"},
+                    {tag: "HEVC with alpha", file: "test_alpha_hevc.mov"}]
+        }
+        function test_video_with_transparency_shows_what_is_below(data) {
             const f = overGreen()
             const p = f.project
-            const alpha = "file://" + samplesDir + "/test_alpha_prores.mov"
+            const alpha = "file://" + samplesDir + "/" + data.file
             if (p.importMedia([alpha]) !== 1)
                 skip("sample missing: run tools/make_test_media.sh")
-            const media = p.media.find((m) => m.name === "test_alpha_prores.mov")
+            const media = p.media.find((m) => m.name === data.file)
             verify(media.alpha)
             verify(!media.sticker)
             verify(p.addClip(media.id, trackAbove(p).id, 0))
@@ -215,6 +220,10 @@ Item {
             showsAt(f, 0.25, 0.5, isRed, "the disc never showed")
             showsAt(f, 0.75, 0.5, isGreen, "the transparent part hid the picture below")
             showsAt(f, 0.25, 0.1, isGreen, "the transparent part hid the picture below")
+            // A second in, the disc has moved on: where it was, the green again.
+            p.seek(1)
+            showsAt(f, 0.5, 0.5, isRed, "the disc did not move with the video")
+            showsAt(f, 0.15, 0.5, isGreen, "the transparent part hid the picture below")
         }
 
         function test_stickers_survive_save_and_open() {

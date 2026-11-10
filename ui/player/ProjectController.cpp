@@ -3732,6 +3732,7 @@ constexpr ExportFormat kExportFormats[] = {
     {"wav-16", QT_TRANSLATE_NOOP("ProjectController", "WAV · 16-bit, sound only"), Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm16},
     {"wav-24", QT_TRANSLATE_NOOP("ProjectController", "WAV · 24-bit, sound only"), Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm24},
     {"flac", QT_TRANSLATE_NOOP("ProjectController", "FLAC · lossless, sound only"), Container::Flac, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Flac},
+    {"mp3", QT_TRANSLATE_NOOP("ProjectController", "MP3 · 320 kbit/s, sound only"), Container::Mp3, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Mp3},
 };
 
 const ExportFormat* findExportFormat(const QString& id)
@@ -3790,7 +3791,8 @@ QVariantList ProjectController::exportFormats() const
             {QStringLiteral("extension"), QString::fromLatin1(fileExtension(format.container))},
             {QStringLiteral("video"), settings.hasVideo()},
             {QStringLiteral("sound"), format.container != Container::Gif},
-            {QStringLiteral("quality"), format.codec == VideoCodec::H264 || format.codec == VideoCodec::Hevc},
+            // (A bitrate for pictures: sound-only files have none to choose.)
+            {QStringLiteral("quality"), settings.hasVideo() && (format.codec == VideoCodec::H264 || format.codec == VideoCodec::Hevc)},
         };
     }
     return list;
@@ -3830,7 +3832,7 @@ std::optional<Exporter::Options> ProjectController::exportOptions(const QVariant
     settings.codec = format->codec;
     settings.proRes = format->proRes;
     settings.audioCodec = format->audio;
-    settings.audioBitrate = format->container == Container::M4a ? 256'000 : 192'000;
+    settings.audioBitrate = format->container == Container::M4a ? 256'000 : format->container == Container::Mp3 ? 320'000 : 192'000;
     if (options.contains(QStringLiteral("audio")) && settings.hasVideo())
         settings.audio = options.value(QStringLiteral("audio")).toBool();
     // An HDR project's HEVC stays HDR (unless asked for SDR); every other format is SDR.

@@ -8,6 +8,10 @@ QtObject {
 
     // Dark is the default: video looks most accurate against neutral dark surroundings.
     property bool dark: true
+    // Controls Qt draws itself (combo boxes and their lists) take the palette of the colour
+    // scheme: the app's, light or dark as chosen here, not the Mac's.
+    onDarkChanged: Qt.styleHints.colorScheme = dark ? Qt.ColorScheme.Dark : Qt.ColorScheme.Light
+    Component.onCompleted: Qt.styleHints.colorScheme = dark ? Qt.ColorScheme.Dark : Qt.ColorScheme.Light
 
     readonly property QtObject color: QtObject {
         // Surfaces, back to front

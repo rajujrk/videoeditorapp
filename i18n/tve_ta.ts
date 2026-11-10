@@ -4658,6 +4658,10 @@
         <translation>FLAC · இழப்பற்றது, ஒலி மட்டும்</translation>
     </message>
     <message>
+        <source>MP3 · 320 kbit/s, sound only</source>
+        <translation>MP3 · 320 kbit/s, ஒலி மட்டும்</translation>
+    </message>
+    <message>
         <source>Unknown export preset: %1</source>
         <translation>தெரியாத ஏற்றுமதி முன்னமைவு: %1</translation>
     </message>
@@ -8623,6 +8627,14 @@ The Journey</source>
     <message>
         <source>24-bit FLAC: the mix, lossless and smaller</source>
         <translation>24-பிட் FLAC: கலவை, இழப்பற்றது, சிறியது</translation>
+    </message>
+    <message>
+        <source>Sound: MP3</source>
+        <translation>ஒலி: MP3</translation>
+    </message>
+    <message>
+        <source>MP3, 320 kbit/s: the mix only, for any player</source>
+        <translation>MP3, 320 kbit/s: கலவை மட்டும், எந்த இயக்கியிலும் இயங்கும்</translation>
     </message>
     <message>
         <source>Star · Pulse</source>

@@ -11,6 +11,7 @@
       "features": [
         "avcodec",
         "avformat",
+        "mp3lame",
         "swscale",
         "swresample"
       ]

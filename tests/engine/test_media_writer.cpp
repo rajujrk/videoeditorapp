@@ -209,7 +209,7 @@ void soundRoundTrip(Container container, AudioCodec codec, const char* name, con
     for (float v : read)
         peak = std::max(peak, std::abs(v));
     // PCM and FLAC are exact to their bits; AAC close.
-    CHECK(peak == Catch::Approx(0.5f).margin(codec == AudioCodec::Aac ? 0.03f : 0.001f));
+    CHECK(peak == Catch::Approx(0.5f).margin(codec == AudioCodec::Aac || codec == AudioCodec::Mp3 ? 0.03f : 0.001f)); // (lossy: AAC, MP3)
     std::filesystem::remove(path);
 }
 
@@ -388,12 +388,46 @@ TEST_CASE("a GIF palette follows the frame's colours")
     CHECK((palette[twoIndices[0]] & 0xFFFFFF) == ((12u << 16) | (204u << 8) | 28u)); // its 5-bit bin's centre
 }
 
-TEST_CASE("sound-only files read back: M4A, WAV, FLAC")
+TEST_CASE("sound-only files read back: M4A, WAV, FLAC, MP3")
 {
     soundRoundTrip(Container::M4a, AudioCodec::Aac, "tve_writer.m4a", "aac");
     soundRoundTrip(Container::Wav, AudioCodec::Pcm16, "tve_writer16.wav", "pcm_s16le");
     soundRoundTrip(Container::Wav, AudioCodec::Pcm24, "tve_writer24.wav", "pcm_s24le");
     soundRoundTrip(Container::Flac, AudioCodec::Flac, "tve_writer.flac", "flac");
+    soundRoundTrip(Container::Mp3, AudioCodec::Mp3, "tve_writer.mp3", "mp3");
+}
+
+TEST_CASE("an MP3 keeps its chapters (ID3) and its length (LAME's gapless header)")
+{
+    const std::string path = tempFile("tve_writer_chapters.mp3");
+    MediaSettings settings;
+    settings.container = Container::Mp3;
+    settings.audioCodec = AudioCodec::Mp3;
+    settings.audioBitrate = 320'000;
+    settings.chapters = {{0, kSec, "Opening"}, {kSec, 2 * kSec, "Ending"}};
+    std::string error;
+    auto writer = MediaWriter::open(path, settings, &error);
+    INFO(error);
+    REQUIRE(writer);
+    CHECK(audioBitrate(settings) == 320'000);
+    std::vector<float> silence(std::size_t(audio::kSampleRate) * 2 * 2, 0.0f);
+    REQUIRE(writer->writeAudio(silence.data(), audio::kSampleRate * 2));
+    REQUIRE(writer->finish());
+    writer.reset();
+
+    AVFormatContext* format = nullptr;
+    REQUIRE(avformat_open_input(&format, path.c_str(), nullptr, nullptr) == 0);
+    REQUIRE(avformat_find_stream_info(format, nullptr) >= 0);
+    REQUIRE(format->nb_chapters == 2);
+    const AVDictionaryEntry* title = av_dict_get(format->chapters[1]->metadata, "title", nullptr, 0);
+    REQUIRE(title);
+    CHECK(std::string(title->value) == "Ending");
+    CHECK(double(format->chapters[1]->start) * av_q2d(format->chapters[1]->time_base) == Catch::Approx(1.0).margin(0.01));
+    avformat_close_input(&format);
+    auto sound = AudioDecoder::open(path, &error);
+    REQUIRE(sound);
+    CHECK(toSeconds(sound->info().duration) == Catch::Approx(2.0).margin(0.03));
+    std::filesystem::remove(path);
 }
 
 TEST_CASE("formats that do not go together are refused")
@@ -414,6 +448,14 @@ TEST_CASE("formats that do not go together are refused")
     flacWav.container = Container::Wav;
     flacWav.audioCodec = AudioCodec::Flac;
     refused(flacWav, "WAV carries PCM");
+    MediaSettings mp3Mov;
+    mp3Mov.container = Container::Mov;
+    mp3Mov.codec = VideoCodec::ProRes;
+    mp3Mov.audioCodec = AudioCodec::Mp3;
+    refused(mp3Mov, "MP3 sound goes in an MP3 file");
+    MediaSettings aacMp3;
+    aacMp3.container = Container::Mp3;
+    refused(aacMp3, "an MP3 file carries MP3");
     MediaSettings silentWav;
     silentWav.container = Container::Wav;
     silentWav.audioCodec = AudioCodec::Pcm16;
