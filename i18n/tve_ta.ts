@@ -1733,6 +1733,10 @@
         <translation>ஒவ்வொரு குறியீட்டு வரம்பும் · %1 கோப்புகள்</translation>
     </message>
     <message>
+        <source>In to Out (%1–%2)</source>
+        <translation>தொடக்கக்குறி முதல் முடிவுக்குறி வரை (%1–%2)</translation>
+    </message>
+    <message>
         <source>Custom…</source>
         <translation>தனிப்பயன்…</translation>
     </message>
@@ -3650,8 +3654,40 @@
         <translation>கனமான பகுதிகளை ரெண்டர் செய்</translation>
     </message>
     <message>
+        <source>Play backwards (again: faster)</source>
+        <translation>பின்னோக்கி இயக்கு (மீண்டும்: வேகமாக)</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>நிறுத்து</translation>
+    </message>
+    <message>
+        <source>Play forwards (again: faster)</source>
+        <translation>முன்னோக்கி இயக்கு (மீண்டும்: வேகமாக)</translation>
+    </message>
+    <message>
+        <source>Mark In</source>
+        <translation>தொடக்கக்குறி இடு</translation>
+    </message>
+    <message>
+        <source>Mark Out</source>
+        <translation>முடிவுக்குறி இடு</translation>
+    </message>
+    <message>
+        <source>Clear In and Out</source>
+        <translation>தொடக்க, முடிவுக் குறிகளை அழி</translation>
+    </message>
+    <message>
         <source>Split at the playhead</source>
         <translation>இயக்கக்குறியில் பிரி</translation>
+    </message>
+    <message>
+        <source>Blade tool (click clips to cut them)</source>
+        <translation>வெட்டுக் கருவி (கிளிப்புகளைச் சொடுக்கி வெட்டவும்)</translation>
+    </message>
+    <message>
+        <source>Select tool</source>
+        <translation>தேர்வுக் கருவி</translation>
     </message>
     <message>
         <source>Delete the selection</source>
@@ -3676,6 +3712,10 @@
     <message>
         <source>Duplicate</source>
         <translation>நகல் உருவாக்கு</translation>
+    </message>
+    <message>
+        <source>Paste attributes</source>
+        <translation>பண்புகளை ஒட்டு</translation>
     </message>
     <message>
         <source>Select every clip</source>
@@ -4386,6 +4426,10 @@
         <translation>தவிர்த்தவை %1 · விளைவுகள் %2</translation>
     </message>
     <message>
+        <source>Mark In</source>
+        <translation>தொடக்கக்குறி இடு</translation>
+    </message>
+    <message>
         <source>Previous frame</source>
         <translation>முந்தைய சட்டகம்</translation>
     </message>
@@ -4400,6 +4444,10 @@
     <message>
         <source>Next frame</source>
         <translation>அடுத்த சட்டகம்</translation>
+    </message>
+    <message>
+        <source>Mark Out</source>
+        <translation>முடிவுக்குறி இடு</translation>
     </message>
     <message>
         <source>Playing proxies of large media where ready (export uses the originals)</source>
@@ -5344,6 +5392,58 @@
         <source>The file is not where it was</source>
         <translation>கோப்பு முன்பிருந்த இடத்தில் இல்லை</translation>
     </message>
+    <message>
+        <source>Mark an In or Out point first (I, O)</source>
+        <translation>முதலில் ஒரு தொடக்க அல்லது முடிவுக் குறியை இடவும் (I, O)</translation>
+    </message>
+    <message>
+        <source>Mark both an In and an Out point to delete the range between them</source>
+        <translation>இடையிலுள்ள பகுதியை நீக்க, தொடக்க, முடிவுக் குறிகள் இரண்டையும் இடவும்</translation>
+    </message>
+    <message>
+        <source>There is nothing in the marked range</source>
+        <translation>குறித்த பகுதியில் எதுவும் இல்லை</translation>
+    </message>
+    <message>
+        <source>Click inside a clip to cut it there</source>
+        <translation>அந்த இடத்தில் வெட்ட ஒரு கிளிப்பின் உள்ளே சொடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>There are no gaps between clips to close</source>
+        <translation>மூடுவதற்குக் கிளிப்புகளுக்கு இடையே இடைவெளிகள் இல்லை</translation>
+    </message>
+    <message>
+        <source>That track cannot be changed</source>
+        <translation>அந்த டிராக்கை மாற்ற முடியாது</translation>
+    </message>
+    <message>
+        <source>Right-click the empty space between clips to close it</source>
+        <translation>மூட, கிளிப்புகளுக்கு இடையிலான வெற்றிடத்தில் வலது சொடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Select a clip to copy its attributes</source>
+        <translation>பண்புகளை நகலெடுக்க ஒரு கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Copy a clip&apos;s attributes first</source>
+        <translation>முதலில் ஒரு கிளிப்பின் பண்புகளை நகலெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Select the clips to paste the attributes onto</source>
+        <translation>பண்புகளை ஒட்ட வேண்டிய கிளிப்புகளைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Nothing to paste: the chosen attributes do not apply to these clips</source>
+        <translation>ஒட்ட எதுவும் இல்லை: தேர்ந்த பண்புகள் இந்தக் கிளிப்புகளுக்குப் பொருந்தாது</translation>
+    </message>
+    <message>
+        <source>There is no transition there to copy</source>
+        <translation>அங்கே நகலெடுக்க மாற்றம் எதுவும் இல்லை</translation>
+    </message>
+    <message>
+        <source>Copy a transition first</source>
+        <translation>முதலில் ஒரு மாற்றத்தை நகலெடுக்கவும்</translation>
+    </message>
 </context>
 <context>
     <name>RecordPanel</name>
@@ -6058,6 +6158,14 @@
         <translation>நகல் உருவாக்கு</translation>
     </message>
     <message>
+        <source>Copy attributes</source>
+        <translation>பண்புகளை நகலெடு</translation>
+    </message>
+    <message>
+        <source>Paste attributes…</source>
+        <translation>பண்புகளை ஒட்டு…</translation>
+    </message>
+    <message>
         <source>Delete</source>
         <translation>நீக்கு</translation>
     </message>
@@ -6080,6 +6188,14 @@
     <message>
         <source>Detach audio</source>
         <translation>ஒலியைப் பிரி</translation>
+    </message>
+    <message>
+        <source>Crossfade from the clip before</source>
+        <translation>முந்தைய கிளிப்பிலிருந்து குறுக்கு மங்கல்</translation>
+    </message>
+    <message>
+        <source>Paste the transition into this clip</source>
+        <translation>இந்தக் கிளிப்பில் மாற்றத்தை ஒட்டு</translation>
     </message>
     <message>
         <source>Speed</source>
@@ -6170,6 +6286,10 @@
         <translation>ஒலியடக்கு</translation>
     </message>
     <message>
+        <source>Close the gaps between its clips</source>
+        <translation>அதன் கிளிப்புகளுக்கு இடையிலான இடைவெளிகளை மூடு</translation>
+    </message>
+    <message>
         <source>Delete this track</source>
         <translation>இந்த டிராக்கை நீக்கு</translation>
     </message>
@@ -6186,8 +6306,84 @@
         <translation>இங்கே ஒரு குறியீட்டைச் சேர்</translation>
     </message>
     <message>
+        <source>Close this gap</source>
+        <translation>இந்த இடைவெளியை மூடு</translation>
+    </message>
+    <message>
+        <source>Close every gap on this track</source>
+        <translation>இந்த டிராக்கின் எல்லா இடைவெளிகளையும் மூடு</translation>
+    </message>
+    <message>
+        <source>Play from In to Out</source>
+        <translation>தொடக்கக்குறி முதல் முடிவுக்குறி வரை இயக்கு</translation>
+    </message>
+    <message>
+        <source>Delete from In to Out</source>
+        <translation>தொடக்கக்குறி முதல் முடிவுக்குறி வரை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Clear In and Out</source>
+        <translation>தொடக்க, முடிவுக் குறிகளை அழி</translation>
+    </message>
+    <message>
         <source>Select every clip</source>
         <translation>எல்லாக் கிளிப்புகளையும் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Track height</source>
+        <translation>டிராக் உயரம்</translation>
+    </message>
+    <message>
+        <source>Small</source>
+        <translation>சிறிய</translation>
+    </message>
+    <message>
+        <source>Normal</source>
+        <translation>இயல்பு</translation>
+    </message>
+    <message>
+        <source>Large</source>
+        <translation>பெரிய</translation>
+    </message>
+    <message>
+        <source>Copy the transition</source>
+        <translation>மாற்றத்தை நகலெடு</translation>
+    </message>
+    <message>
+        <source>Remove the transition</source>
+        <translation>மாற்றத்தை அகற்று</translation>
+    </message>
+    <message>
+        <source>Position, size and crop</source>
+        <translation>இடம், அளவு, வெட்டல்</translation>
+    </message>
+    <message>
+        <source>Colour and look</source>
+        <translation>நிறமும் தோற்றமும்</translation>
+    </message>
+    <message>
+        <source>Effects</source>
+        <translation>விளைவுகள்</translation>
+    </message>
+    <message>
+        <source>Chroma key and masks</source>
+        <translation>குரோமா கீயும் மறைப்புகளும்</translation>
+    </message>
+    <message>
+        <source>Volume, fades and sound effects</source>
+        <translation>ஒலியளவு, மங்கல்கள், ஒலி விளைவுகள்</translation>
+    </message>
+    <message>
+        <source>Paste attributes</source>
+        <translation>பண்புகளை ஒட்டு</translation>
+    </message>
+    <message>
+        <source>Onto the selected clips, from the clip you copied them from:</source>
+        <translation>நீங்கள் நகலெடுத்த கிளிப்பிலிருந்து, தேர்ந்தெடுத்த கிளிப்புகளில்:</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>ஒட்டு</translation>
     </message>
     <message>
         <source>Rename the track</source>
@@ -6205,8 +6401,12 @@
 <context>
     <name>TimelinePanel</name>
     <message>
-        <source>Select (V)</source>
-        <translation>தேர்ந்தெடு (V)</translation>
+        <source>Select</source>
+        <translation>தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Blade: click clips to cut them</source>
+        <translation>வெட்டுக் கருவி: கிளிப்புகளைச் சொடுக்கி வெட்டவும்</translation>
     </message>
     <message>
         <source>Split at playhead</source>
@@ -9852,6 +10052,22 @@ The Journey</source>
     <message>
         <source>Duplicate</source>
         <translation>நகல் உருவாக்கு</translation>
+    </message>
+    <message>
+        <source>Delete the Range</source>
+        <translation>பகுதியை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Close Gaps</source>
+        <translation>இடைவெளிகளை மூடு</translation>
+    </message>
+    <message>
+        <source>Close Gap</source>
+        <translation>இடைவெளியை மூடு</translation>
+    </message>
+    <message>
+        <source>Paste Attributes</source>
+        <translation>பண்புகளை ஒட்டு</translation>
     </message>
     <message>
         <source>Ramp up</source>

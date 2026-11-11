@@ -860,6 +860,18 @@ ProjectController::ProjectController(QObject* parent)
 
     m_playheadTimer.setInterval(16);
     connect(&m_playheadTimer, &QTimer::timeout, this, &ProjectController::updatePlayhead);
+    // Shuttling: the playhead moved through frames at the rate, about 30 times a second.
+    m_shuttleTimer.setInterval(33);
+    connect(&m_shuttleTimer, &QTimer::timeout, this, [this] {
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        const double elapsed = double(now - m_shuttleLast) / 1000.0;
+        m_shuttleLast = now;
+        const double end = ::seconds(m_project.duration());
+        const double next = std::clamp(m_playhead + m_shuttleRate * elapsed, 0.0, end);
+        seek(next);
+        if (next <= 0.0 || next >= end)
+            pause(); // at an end
+    });
     connect(&m_speechModels, &SpeechModels::changed, this, &ProjectController::speechModelsChanged);
     connect(&m_speechModels, &SpeechModels::finished, this, [this](const QString& id, bool ok, const QString& error) {
         if (!ok && !error.isEmpty())
@@ -3912,7 +3924,10 @@ std::optional<Exporter::Options> ProjectController::exportOptions(const QVariant
     // Range
     const Ticks end = m_project.duration();
     const QString range = options.value(QStringLiteral("range"), QStringLiteral("all")).toString();
-    if (range == QLatin1String("custom")) {
+    if (range == QLatin1String("marks") && m_markIn >= 0 && m_markOut > m_markIn) {
+        result.from = ticks(m_markIn);
+        result.to = ticks(m_markOut);
+    } else if (range == QLatin1String("custom")) {
         result.from = std::max<Ticks>(0, ticks(options.value(QStringLiteral("from")).toDouble()));
         result.to = std::min(end, ticks(options.value(QStringLiteral("to")).toDouble()));
     } else if (range == QLatin1String("selection")) {
@@ -4193,6 +4208,11 @@ void ProjectController::clearFinishedExports()
 
 void ProjectController::play()
 {
+    if (m_shuttleRate != 0) {
+        m_shuttleRate = 0;
+        m_shuttleTimer.stop();
+    }
+    m_playUntil = -1;
     if (m_project.duration() == 0)
         return;
     if (m_playback->clock().now() >= m_project.duration())
@@ -4203,6 +4223,12 @@ void ProjectController::play()
 
 void ProjectController::pause()
 {
+    m_playUntil = -1;
+    if (m_shuttleRate != 0) {
+        m_shuttleRate = 0;
+        m_shuttleTimer.stop();
+        emit playingChanged();
+    }
     if (recording()) {
         stopRecording();
         return;
@@ -4242,6 +4268,13 @@ void ProjectController::updatePlayhead()
         m_playback->pause();
         m_playback->seek(end);
         now = end;
+    }
+    // Playing the marked range: it stops at Out.
+    if (m_playUntil >= 0 && m_playback->clock().playing() && now >= ticks(m_playUntil)) {
+        m_playback->pause();
+        m_playback->seek(ticks(m_playUntil));
+        now = ticks(m_playUntil);
+        m_playUntil = -1;
     }
     const double value = seconds(now);
     if (value != m_playhead) {
@@ -9149,4 +9182,314 @@ int ProjectController::dropFilesAt(const QList<QUrl>& files, double trackId, dou
         }
     }
     return placed;
+}
+
+// --- Shuttle, marks, the blade, gaps, attributes (24c) ---
+
+double ProjectController::shuttleRate() const
+{
+    return m_shuttleRate != 0 ? m_shuttleRate : (playing() ? 1.0 : 0.0);
+}
+
+void ProjectController::shuttle(int direction)
+{
+    if (direction == 0) {
+        pause();
+        return;
+    }
+    const double rate = shuttleRate();
+    const double next = direction > 0 ? (rate <= 0 ? 1.0 : std::min(rate * 2, 8.0))
+                                      : (rate >= 0 ? -1.0 : std::max(rate * 2, -8.0));
+    if (next == 1.0) {
+        play(); // (stops any shuttle)
+        return;
+    }
+    m_playUntil = -1;
+    m_playback->pause();
+    m_shuttleRate = next;
+    m_shuttleLast = QDateTime::currentMSecsSinceEpoch();
+    m_shuttleTimer.start();
+    emit playingChanged();
+}
+
+double ProjectController::parseTimecode(const QString& text) const
+{
+    const QString t = text.trimmed();
+    if (t.isEmpty())
+        return -1;
+    bool ok = false;
+    if (!t.contains(QLatin1Char(':')) && !t.contains(QLatin1Char(';')) && t.contains(QLatin1Char('.'))) {
+        const double value = t.toDouble(&ok);
+        return ok && value >= 0 ? value : -1;
+    }
+    const QStringList parts = t.split(QRegularExpression(QStringLiteral("[:;]")));
+    if (parts.size() > 4)
+        return -1;
+    std::array<long long, 4> values{0, 0, 0, 0}; // frames, seconds, minutes, hours
+    for (qsizetype i = 0; i < parts.size(); ++i) {
+        const long long value = parts[parts.size() - 1 - i].toLongLong(&ok);
+        if (!ok || value < 0)
+            return -1;
+        values[std::size_t(i)] = value;
+    }
+    const double fps = frameRate() > 0 ? frameRate() : 30.0;
+    return double((values[3] * 60 + values[2]) * 60 + values[1]) + double(values[0]) / fps;
+}
+
+void ProjectController::setMarkIn(double secondsAt)
+{
+    const double at = std::clamp(secondsAt < 0 ? m_playhead : secondsAt, 0.0, ::seconds(m_project.duration()));
+    m_markIn = at;
+    if (m_markOut >= 0 && m_markOut <= at)
+        m_markOut = -1;
+    emit marksChanged();
+}
+
+void ProjectController::setMarkOut(double secondsAt)
+{
+    const double at = std::clamp(secondsAt < 0 ? m_playhead : secondsAt, 0.0, ::seconds(m_project.duration()));
+    m_markOut = at;
+    if (m_markIn >= 0 && m_markIn >= at)
+        m_markIn = -1;
+    emit marksChanged();
+}
+
+void ProjectController::clearMarks()
+{
+    if (m_markIn < 0 && m_markOut < 0)
+        return;
+    m_markIn = m_markOut = -1;
+    emit marksChanged();
+}
+
+bool ProjectController::playMarkedRange()
+{
+    const double from = m_markIn >= 0 ? m_markIn : 0.0;
+    const double to = m_markOut >= 0 ? m_markOut : ::seconds(m_project.duration());
+    if (m_markIn < 0 && m_markOut < 0) {
+        reportError(tr("Mark an In or Out point first (I, O)"));
+        return false;
+    }
+    seek(from);
+    play();
+    m_playUntil = to;
+    return true;
+}
+
+bool ProjectController::deleteMarkedRange()
+{
+    if (m_markIn < 0 || m_markOut < 0) {
+        reportError(tr("Mark both an In and an Out point to delete the range between them"));
+        return false;
+    }
+    const Ticks from = ticks(m_markIn);
+    const Ticks to = ticks(m_markOut);
+    std::vector<std::unique_ptr<Command>> steps;
+    for (const Track& track : m_project.tracks) {
+        const bool touches = std::ranges::any_of(track.clips, [&](const Clip& c) { return c.start < to && c.end() > from; });
+        if (!track.locked && (touches || std::ranges::any_of(track.clips, [&](const Clip& c) { return c.start >= to; })))
+            steps.push_back(std::make_unique<RemoveRangesCommand>(track.id, std::vector<std::pair<Ticks, Ticks>>{{from, to}}));
+    }
+    if (steps.empty()) {
+        reportError(tr("There is nothing in the marked range"));
+        return false;
+    }
+    if (!apply(std::make_unique<CompositeCommand>(std::move(steps), TVE_TR("core", "Delete the Range"))))
+        return false;
+    const double in = m_markIn;
+    clearMarks();
+    setSelectedClip(0);
+    seek(in);
+    return true;
+}
+
+bool ProjectController::splitClipAt(double clipId, double secondsAt)
+{
+    const Clip* clip = findClip(toId(clipId));
+    // On the frame grid, inside the clip.
+    const Ticks frame = frameTicks();
+    const Ticks at = (ticks(secondsAt) + frame / 2) / frame * frame;
+    if (!clip || at <= clip->start || at >= clip->end()) {
+        reportError(tr("Click inside a clip to cut it there"));
+        return false;
+    }
+    return apply(std::make_unique<SplitClipCommand>(clip->id, at));
+}
+
+int ProjectController::closeGaps(double trackId)
+{
+    Project after = m_project;
+    int closed = 0;
+    for (Track& track : after.tracks) {
+        if ((trackId >= 0 && track.id != toId(trackId)) || track.locked || track.clips.size() < 2)
+            continue;
+        // Between clips (a track's lead-in stays: a title or sound may start late on purpose).
+        Ticks shift = 0;
+        for (std::size_t i = 1; i < track.clips.size(); ++i) {
+            Clip& clip = track.clips[i];
+            const Ticks previousEnd = track.clips[i - 1].end();
+            clip.start -= shift;
+            if (clip.start > previousEnd) {
+                shift += clip.start - previousEnd;
+                clip.start = previousEnd;
+                ++closed;
+            }
+        }
+    }
+    if (closed == 0) {
+        reportError(tr("There are no gaps between clips to close"));
+        return 0;
+    }
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Close Gaps"))))
+        return 0;
+    return closed;
+}
+
+bool ProjectController::closeGapAt(double trackId, double secondsAt)
+{
+    Project after = m_project;
+    Track* track = after.findTrack(toId(trackId));
+    const Ticks at = ticks(secondsAt);
+    if (!track || track->locked) {
+        reportError(tr("That track cannot be changed"));
+        return false;
+    }
+    // The gap holding `at`: from the end of the clip before (or the start) to the next clip.
+    Ticks gapStart = 0;
+    auto next = track->clips.end();
+    for (auto it = track->clips.begin(); it != track->clips.end(); ++it) {
+        if (it->start <= at && at < it->end()) {
+            reportError(tr("Right-click the empty space between clips to close it"));
+            return false;
+        }
+        if (it->start > at) {
+            next = it;
+            break;
+        }
+        gapStart = it->end();
+    }
+    if (next == track->clips.end() || next->start <= gapStart) {
+        reportError(tr("Right-click the empty space between clips to close it"));
+        return false;
+    }
+    const Ticks gap = next->start - gapStart;
+    for (auto it = next; it != track->clips.end(); ++it)
+        it->start -= gap;
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Close Gap")));
+}
+
+bool ProjectController::copyAttributes(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip) {
+        reportError(tr("Select a clip to copy its attributes"));
+        return false;
+    }
+    m_copiedAttributes = *clip;
+    emit clipboardChanged();
+    return true;
+}
+
+bool ProjectController::pasteAttributes(const QStringList& parts, double clipId)
+{
+    if (!m_copiedAttributes) {
+        reportError(tr("Copy a clip's attributes first"));
+        return false;
+    }
+    std::vector<Id> targets = clipId > 0 ? std::vector<Id>{toId(clipId)} : clipsToCopy();
+    std::erase(targets, m_copiedAttributes->id);
+    if (targets.empty() || parts.isEmpty()) {
+        reportError(tr("Select the clips to paste the attributes onto"));
+        return false;
+    }
+    const Clip& from = *m_copiedAttributes;
+    const auto has = [&](const char* part) { return parts.contains(QLatin1String(part)); };
+    static const std::vector<std::string_view> visualKeys{property::kX, property::kY, property::kScale, property::kRotation,
+                                                          property::kOpacity, property::kCropLeft, property::kCropTop,
+                                                          property::kCropRight, property::kCropBottom};
+    const auto copyKeys = [](Clip& to, const Clip& source, const std::vector<std::string_view>& ids) {
+        for (std::string_view id : ids) {
+            const std::string key(id);
+            to.keyframes.erase(key);
+            if (const auto found = source.keyframes.find(key); found != source.keyframes.end())
+                to.keyframes[key] = found->second;
+        }
+    };
+    Project after = m_project;
+    int changed = 0;
+    for (Id id : targets) {
+        auto location = after.locateClip(id);
+        if (!location || location->track->locked)
+            continue;
+        Clip& to = *location->clip;
+        const bool picture = location->track->kind != TrackKind::Audio;
+        const MediaItem* media = after.findMedia(to.mediaId);
+        const bool sound = !to.generated() && (to.compound() || (media && media->hasAudio));
+        const Clip before = to;
+        if (has("visual") && picture) {
+            to.visual = from.visual;
+            copyKeys(to, from, visualKeys);
+        }
+        if (has("color") && picture && !to.text) {
+            to.color = from.color;
+            to.look = from.look;
+        }
+        if (has("effects") && picture)
+            to.effects = from.effects;
+        if (has("keying") && picture) {
+            to.chromaKey = from.chromaKey;
+            to.masks = from.masks;
+        }
+        if (has("audio") && sound) {
+            to.gainDb = from.gainDb;
+            to.fadeIn = std::min(from.fadeIn, to.duration);
+            to.fadeOut = std::min(from.fadeOut, to.duration - to.fadeIn);
+            to.audioEffects = from.audioEffects;
+            to.keepPitch = from.keepPitch;
+            copyKeys(to, from, {property::kVolume});
+        }
+        bool sped = false;
+        if (has("speed") && !to.generated() && !(media && media->still)) {
+            // As the speed commands do it (the length changes, later clips follow).
+            const bool same = to.speed == from.speed && to.reversed == from.reversed && to.speedRamp == from.speedRamp;
+            if (!same) {
+                if (!from.speedRamp.empty())
+                    sped = !SetClipSpeedRampCommand(id, from.speedRamp, from.reversed).redo(after);
+                else
+                    sped = !SetClipSpeedCommand(id, from.speed, from.reversed).redo(after);
+            }
+        }
+        if (sped || !(*after.locateClip(id)->clip == before))
+            ++changed;
+    }
+    if (changed == 0) {
+        reportError(tr("Nothing to paste: the chosen attributes do not apply to these clips"));
+        return false;
+    }
+    m_project.setNextId(std::max(m_project.nextId(), after.nextId()));
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Paste Attributes")));
+}
+
+bool ProjectController::copyTransition(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->transitionIn) {
+        reportError(tr("There is no transition there to copy"));
+        return false;
+    }
+    m_copiedTransition = clip->transitionIn;
+    emit clipboardChanged();
+    return true;
+}
+
+bool ProjectController::pasteTransition(double clipId)
+{
+    if (!m_copiedTransition) {
+        reportError(tr("Copy a transition first"));
+        return false;
+    }
+    if (!apply(std::make_unique<SetClipTransitionCommand>(toId(clipId), *m_copiedTransition)))
+        return false;
+    setSelectedTransition(clipId);
+    return true;
 }

@@ -83,7 +83,7 @@ TEST_CASE("changing speed keeps the source, changes length and moves later clips
     CHECK(p.get(p.clip).reversed);
     CHECK(p.get(p.next).start == 20 * kSec);
 
-    CHECK(p.tryPush<SetClipSpeedCommand>(p.clip, 50.0, false));
+    CHECK(p.tryPush<SetClipSpeedCommand>(p.clip, 500.0, false)); // past 100×
     p.stack.undo();
     p.stack.undo();
     CHECK(p.get(p.clip).duration == 10 * kSec);

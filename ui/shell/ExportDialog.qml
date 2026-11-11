@@ -86,6 +86,9 @@ Popup {
                         range: "marker", markerId: m.id })
         if (marked.length > 1)
             list.push({ label: qsTr("Each marker range · %1 files").arg(Fmt.num(marked.length)), range: "each", count: marked.length })
+        if (project.markIn >= 0 && project.markOut > project.markIn)
+            list.push({ label: qsTr("In to Out (%1–%2)").arg(project.timecode(project.markIn).substring(3, 8))
+                                                       .arg(project.timecode(project.markOut).substring(3, 8)), range: "marks" })
         list.push({ label: qsTr("Custom…"), range: "custom" })
         return list
     }

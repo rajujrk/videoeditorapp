@@ -179,3 +179,29 @@ TEST_CASE("removing media takes its clips, inside compound clips too, and undoes
     CHECK(t.project.sequences == before.sequences);
     CHECK(t.tryPush(std::make_unique<RemoveMediaCommand>(Id{424242})).value() == "media not found");
 }
+
+#include "model/TimelineQuery.h"
+
+TEST_CASE("sound clips crossfade with a transition, and speeds run from 0.01× to 100×", "[tracks]")
+{
+    Timeline t;
+    const Id music = t.push<ImportMediaCommand>(MediaItem{.path = "/m.wav", .duration = 60 * kSec, .hasVideo = false, .hasAudio = true})
+                         .mediaId();
+    const Id a = t.clip(t.audio, 0, 4 * kSec, music);
+    const Id b = t.clip(t.audio, 4 * kSec, 4 * kSec, music);
+    // On a sound track a transition is a crossfade: one rises as the other falls.
+    t.push<SetClipTransitionCommand>(b, ClipTransition{"tve.transition.dissolve", 2 * kSec});
+    const Track& audio = *t.project.findTrack(t.audio);
+    CHECK(transitionGainAt(audio, *t.get(a), 4 * kSec + kSec / 2) < 0.75f);
+    CHECK(transitionGainAt(audio, *t.get(b), 3 * kSec + kSec / 2) < 0.75f);
+    CHECK(transitionGainAt(audio, *t.get(a), kSec) == 1.0f);
+    CHECK(audibleSpan(audio, *t.get(b)).start == 3 * kSec);
+
+    const Id v = t.clip(t.main, 0, 10 * kSec);
+    t.push<SetClipSpeedCommand>(v, 100.0, false);
+    CHECK(t.get(v)->duration == kSec / 10);
+    t.push<SetClipSpeedCommand>(v, 0.01, false);
+    CHECK(t.get(v)->duration == 1000 * kSec); // 10 s of source at 0.01×
+    CHECK(t.tryPush(std::make_unique<SetClipSpeedCommand>(v, 101.0, false)).value() == "speed must be between 0.01× and 100×");
+    CHECK(t.tryPush(std::make_unique<SetClipSpeedCommand>(v, 0.005, false)).value() == "speed must be between 0.01× and 100×");
+}

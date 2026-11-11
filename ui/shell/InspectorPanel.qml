@@ -1148,8 +1148,8 @@ Rectangle {
                         objectName: "speedSlider"
                         visible: !speedSection.still
                         label: speedSection.ramped ? qsTr("Average speed") : qsTr("Speed")
-                        from: -1
-                        to: 1
+                        from: -2 // 0.01× to 100×
+                        to: 2
                         value: Math.log10(inspector.clipInfo.speed || 1)
                         format: (v) => Math.pow(10, v).toFixed(2) + "×"
                         onCommitted: (v) => inspector.project.setClipSpeed(inspector.clipInfo.id, Math.pow(10, v),

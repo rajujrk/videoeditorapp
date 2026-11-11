@@ -84,8 +84,8 @@ inline constexpr Ticks kStillDuration = 5 * kTicksPerSecond;
 
 inline constexpr float kMinGainDb = -60.0f; // treated as silence
 inline constexpr float kMaxGainDb = 12.0f;
-inline constexpr double kMinSpeed = 0.1;
-inline constexpr double kMaxSpeed = 10.0;
+inline constexpr double kMinSpeed = 0.01;
+inline constexpr double kMaxSpeed = 100.0;
 
 enum class BlendMode { Normal, Multiply, Screen, Overlay, Add, Darken, Lighten };
 
