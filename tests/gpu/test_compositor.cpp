@@ -207,3 +207,60 @@ TEST_CASE("later layers draw over earlier ones")
     checkColor(c.at(32, 18), kBlue);
     checkColor(c.at(2, 2), kRed);
 }
+
+TEST_CASE("placement: the anchor point is what scaling and rotation go about")
+{
+    // Anchored at the top-left corner, at half size: the picture keeps that corner.
+    ClipVisual visual;
+    visual.transform.anchorX = -0.5;
+    visual.transform.anchorY = -0.5;
+    visual.transform.scale = 0.5;
+    const LayerPlacement p = placeLayer(visual, 1920, 1080, 1920, 1080);
+    CHECK(p.toCanvas(0, 0)[0] == Catch::Approx(0.0).margin(1e-9));
+    CHECK(p.toCanvas(0, 0)[1] == Catch::Approx(0.0).margin(1e-9));
+    CHECK(p.toCanvas(1, 1)[0] == Catch::Approx(0.5).margin(1e-9));
+    // An anchor alone moves nothing.
+    ClipVisual moved;
+    moved.transform.anchorX = 0.3;
+    CHECK(placeLayer(moved, 1920, 1080, 1920, 1080).toCanvas(0.2, 0.7)[0] == Catch::Approx(0.2).margin(1e-9));
+    // Turned a quarter about the top-left corner: the top edge now runs down the left side.
+    visual.transform.scale = 1;
+    visual.transform.rotation = 90;
+    const LayerPlacement turned = placeLayer(visual, 1920, 1080, 1920, 1080);
+    CHECK(turned.toCanvas(1, 0)[0] * 1920 == Catch::Approx(0.0).margin(1e-6));
+    CHECK(turned.toCanvas(1, 0)[1] * 1080 == Catch::Approx(1920.0).margin(1e-6));
+    // The inverse undoes it.
+    const auto back = turned.apply(turned.toCanvas(0.3, 0.6)[0], turned.toCanvas(0.3, 0.6)[1]);
+    CHECK(back[0] == Catch::Approx(0.3).margin(1e-9));
+    CHECK(back[1] == Catch::Approx(0.6).margin(1e-9));
+}
+
+TEST_CASE("placement: a corner pin moves each corner, in perspective between them")
+{
+    ClipVisual visual;
+    visual.pin.topRightX = -0.2;
+    visual.pin.topRightY = 0.25;
+    visual.pin.bottomRightY = -0.25;
+    const LayerPlacement p = placeLayer(visual, 1920, 1080, 1920, 1080);
+    CHECK(p.toCanvas(1, 0)[0] == Catch::Approx(0.8).margin(1e-9));
+    CHECK(p.toCanvas(1, 0)[1] == Catch::Approx(0.25).margin(1e-9));
+    CHECK(p.toCanvas(1, 1)[1] == Catch::Approx(0.75).margin(1e-9));
+    CHECK(p.toCanvas(0, 0)[0] == Catch::Approx(0.0).margin(1e-9));
+    for (const auto& [u, v] : {std::pair{0.25, 0.4}, std::pair{0.9, 0.1}}) {
+        const auto c = p.toCanvas(u, v);
+        CHECK(p.inFront(c[0], c[1]));
+        CHECK(p.apply(c[0], c[1])[0] == Catch::Approx(u).margin(1e-9));
+        CHECK(p.apply(c[0], c[1])[1] == Catch::Approx(v).margin(1e-9));
+    }
+}
+
+TEST_CASE("a corner-pinned picture is drawn in perspective")
+{
+    ClipVisual visual;
+    visual.pin.topRightY = 0.4;
+    visual.pin.bottomRightY = -0.4;
+    const Canvas c = compose({{solid(64, 36, Qt::blue), visual}});
+    checkColor(c.at(2, 2), kBlue);    // the left edge as it was
+    checkColor(c.at(61, 3), kBlack);  // the right edge squeezed to the middle
+    checkColor(c.at(61, 18), kBlue);
+}

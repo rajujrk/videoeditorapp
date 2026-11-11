@@ -855,6 +855,157 @@ Rectangle {
                                        format: (v) => Math.round(v * 100) + "%" }
                         VisualSlider { key: "rotation"; objectName: "visual:rotation"; label: qsTr("Rotation"); from: -180; to: 180
                                        value: inspector.visual.rotation || 0; format: (v) => v.toFixed(1) + "°" }
+                        // The anchor point (also the cross in the player, ⌥-drag it): what scale and rotation turn about.
+                        VisualSlider { key: "anchorX"; objectName: "visual:anchorX"; label: qsTr("Anchor X"); from: -1; to: 1
+                                       value: inspector.visual.anchorX || 0; format: (v) => Math.round(v * 100) + "%" }
+                        VisualSlider { key: "anchorY"; objectName: "visual:anchorY"; label: qsTr("Anchor Y"); from: -1; to: 1
+                                       value: inspector.visual.anchorY || 0; format: (v) => Math.round(v * 100) + "%" }
+                    }
+                    // Corner pin: the picture's corners moved one by one in the player.
+                    Section {
+                        objectName: "cornerPinSection"
+                        visible: inspector.clipInfo.isAdjustment !== true
+                        title: qsTr("Corner pin")
+                        Text {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: qsTr("Drag each corner in the player to stretch the picture in perspective — onto a screen or a sign in the shot. Keyframe them to follow it.")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                        ToggleSwitch {
+                            objectName: "pinCornersSwitch"
+                            text: qsTr("Drag the corners in the player")
+                            checked: inspector.project.pinningCorners
+                            onToggled: inspector.project.pinningCorners = checked
+                        }
+                        TextButton {
+                            objectName: "resetCornerPin"
+                            text: qsTr("Put the corners back")
+                            variant: "secondary"
+                            enabled: inspector.visual.pinned === true
+                            onClicked: inspector.project.setClipVisual(inspector.clipInfo.id, {
+                                pinTopLeftX: 0, pinTopLeftY: 0, pinTopRightX: 0, pinTopRightY: 0,
+                                pinBottomRightX: 0, pinBottomRightY: 0, pinBottomLeftX: 0, pinBottomLeftY: 0 })
+                        }
+                    }
+                    // Animation presets: keyframes written for how the clip arrives, leaves or moves.
+                    Section {
+                        id: clipAnimation
+                        objectName: "clipAnimationSection"
+                        visible: inspector.clipInfo.isTitle !== true && inspector.clipInfo.isAdjustment !== true
+                                 && inspector.clipInfo.isDrawing !== true
+                        title: qsTr("Animation")
+                        readonly property var presets: inspector.project.clipAnimations()
+                        property real length: 0.6
+                        Text {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: qsTr("Choose how the clip arrives, leaves or moves; it is written as keyframes you can change.")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                        Repeater {
+                            model: [{ kind: "in", label: qsTr("In") }, { kind: "out", label: qsTr("Out") }, { kind: "combo", label: qsTr("Combo") }]
+                            delegate: RowLayout {
+                                id: animationRow
+                                required property var modelData
+                                Layout.fillWidth: true
+                                readonly property var choices: clipAnimation.presets.filter((p) => p.kind === modelData.kind)
+                                Text { text: animationRow.modelData.label; font: Theme.type.label; color: Theme.color.textSecondary; Layout.preferredWidth: 56 }
+                                ComboBox {
+                                    objectName: "animation:" + animationRow.modelData.kind
+                                    Layout.fillWidth: true
+                                    model: [qsTr("Choose…")].concat(animationRow.choices.map((p) => p.title))
+                                    currentIndex: 0
+                                    onActivated: (index) => {
+                                        if (index > 0)
+                                            inspector.project.animateClip(inspector.clipInfo.id, animationRow.choices[index - 1].id, clipAnimation.length)
+                                        currentIndex = 0
+                                    }
+                                }
+                            }
+                        }
+                        AudioSlider {
+                            objectName: "animationLength"
+                            label: qsTr("Length")
+                            from: 0.2
+                            to: 3
+                            value: clipAnimation.length
+                            format: (v) => qsTr("%1 s").arg(Fmt.num(v, 1))
+                            onCommitted: (v) => clipAnimation.length = v
+                        }
+                        TextButton {
+                            objectName: "clearAnimation"
+                            text: qsTr("Remove the animation")
+                            variant: "ghost"
+                            tip: qsTr("Takes off the position, size, rotation and opacity keyframes")
+                            onClicked: inspector.project.clearClipAnimation(inspector.clipInfo.id)
+                        }
+                    }
+                    // Pan and zoom (Ken Burns): slowly from one framing to another.
+                    Section {
+                        objectName: "panZoomSection"
+                        visible: inspector.clipInfo.isTitle !== true && inspector.clipInfo.isAdjustment !== true
+                                 && inspector.clipInfo.isDrawing !== true
+                        title: qsTr("Pan and zoom")
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            Repeater {
+                                model: inspector.project.panZoomPresets()
+                                delegate: TextButton {
+                                    required property var modelData
+                                    objectName: "panZoom:" + modelData.id
+                                    text: modelData.title
+                                    variant: "secondary"
+                                    onClicked: inspector.project.panZoom(inspector.clipInfo.id, modelData.id)
+                                }
+                            }
+                        }
+                    }
+                    // A colour clip: its colour, or the two of its gradient.
+                    Section {
+                        id: colourClip
+                        objectName: "colourClipSection"
+                        visible: inspector.clipInfo.colourFill !== undefined && inspector.clipInfo.colourFill !== null
+                        title: qsTr("Colour")
+                        readonly property var fill: inspector.clipInfo.colourFill || ({ kind: "solid", from: [1, 1, 1, 1], to: [0, 0, 0, 1], angle: 90 })
+                        function change(values) { inspector.project.setColorClip(inspector.clipInfo.id, values) }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: qsTr("Fill"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            ComboBox {
+                                objectName: "colourFillKind"
+                                readonly property var kinds: ["solid", "linear", "radial"]
+                                model: [qsTr("One colour"), qsTr("Linear gradient"), qsTr("Radial gradient")]
+                                currentIndex: Math.max(0, kinds.indexOf(colourClip.fill.kind))
+                                onActivated: (index) => colourClip.change({ kind: kinds[index] })
+                            }
+                        }
+                        Text { text: colourClip.fill.kind === "solid" ? qsTr("Colour") : qsTr("From"); font: Theme.type.label; color: Theme.color.textSecondary }
+                        Swatches {
+                            objectName: "colourFrom"
+                            current: colourClip.fill.from
+                            onPicked: (c) => colourClip.change({ from: c })
+                        }
+                        Text { visible: colourClip.fill.kind !== "solid"; text: qsTr("To"); font: Theme.type.label; color: Theme.color.textSecondary }
+                        Swatches {
+                            objectName: "colourTo"
+                            visible: colourClip.fill.kind !== "solid"
+                            current: colourClip.fill.to
+                            onPicked: (c) => colourClip.change({ to: c })
+                        }
+                        AudioSlider {
+                            objectName: "colourAngle"
+                            visible: colourClip.fill.kind === "linear"
+                            label: qsTr("Direction")
+                            from: 0
+                            to: 359
+                            value: colourClip.fill.angle
+                            format: (v) => Math.round(v) + "°"
+                            onCommitted: (v) => colourClip.change({ angle: Math.round(v) })
+                        }
                     }
                     Section {
                         visible: inspector.clipInfo.isAdjustment !== true

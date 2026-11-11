@@ -71,6 +71,16 @@ ClipVisual Clip::visualAt(Ticks time) const
     apply(property::kPitch, v.sphere.pitch);
     apply(property::kRoll, v.sphere.roll);
     apply(property::kFov, v.sphere.fov);
+    apply(property::kAnchorX, v.transform.anchorX);
+    apply(property::kAnchorY, v.transform.anchorY);
+    apply(property::kPinTopLeftX, v.pin.topLeftX);
+    apply(property::kPinTopLeftY, v.pin.topLeftY);
+    apply(property::kPinTopRightX, v.pin.topRightX);
+    apply(property::kPinTopRightY, v.pin.topRightY);
+    apply(property::kPinBottomRightX, v.pin.bottomRightX);
+    apply(property::kPinBottomRightY, v.pin.bottomRightY);
+    apply(property::kPinBottomLeftX, v.pin.bottomLeftX);
+    apply(property::kPinBottomLeftY, v.pin.bottomLeftY);
     // Edges keyed apart can meet; keep a sliver of picture as static crops do.
     const auto keepSome = [](double& a, double& b) {
         const double sum = a + b;

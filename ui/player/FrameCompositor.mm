@@ -612,15 +612,12 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         // Where the placed picture lies on the canvas, for effects that fill around it.
         const tve::LayerPlacement placement = tve::placeLayer(visual, m_canvasSize.width(), m_canvasSize.height(),
                                                               picture->pixelSize().width(), picture->pixelSize().height());
-        const auto& m = placement.canvasToLayer;
-        const double det = m[0] * m[4] - m[1] * m[3];
         tve::EffectBounds bounds{1.0f, 1.0f, 0.0f, 0.0f};
         for (const double u : {placement.cropRect[0], placement.cropRect[2]}) {
             for (const double v : {placement.cropRect[1], placement.cropRect[3]}) {
-                const double a = u - m[2];
-                const double b = v - m[5];
-                const auto x = float(std::clamp((m[4] * a - m[1] * b) / det, 0.0, 1.0));
-                const auto y = float(std::clamp((-m[3] * a + m[0] * b) / det, 0.0, 1.0));
+                const auto at = placement.toCanvas(u, v);
+                const auto x = float(std::clamp(at[0], 0.0, 1.0));
+                const auto y = float(std::clamp(at[1], 0.0, 1.0));
                 bounds = {std::min(bounds[0], x), std::min(bounds[1], y), std::max(bounds[2], x), std::max(bounds[3], y)};
             }
         }

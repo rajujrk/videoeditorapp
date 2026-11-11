@@ -42,10 +42,16 @@ NLOHMANN_JSON_SERIALIZE_ENUM(Transfer, {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColourSpace, primaries, transfer)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ProjectSettings, width, height, frameRate, sampleRate, colour, spherical)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GeneratedBy, provider, model, kind, prompt, reference, source, created)
+NLOHMANN_JSON_SERIALIZE_ENUM(ColourFillKind, {
+    {ColourFillKind::Solid, "solid"},
+    {ColourFillKind::Linear, "linear"},
+    {ColourFillKind::Radial, "radial"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColourFill, kind, from, to, angle)
 // Fields added after schema 1 shipped default when absent, so older files still load.
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MediaItem, id, path, duration, hasVideo, hasAudio, width, height,
                                                 frameRate, audioSampleRate, audioChannels, still, alpha, lottie,
-                                                fingerprint, generated, placeholder, colour, spherical)
+                                                fingerprint, generated, placeholder, colour, spherical, colourFill)
 NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
     {BlendMode::Normal, "normal"},
     {BlendMode::Multiply, "multiply"},
@@ -55,10 +61,12 @@ NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
     {BlendMode::Darken, "darken"},
     {BlendMode::Lighten, "lighten"},
 })
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipTransform, x, y, scale, rotation)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipTransform, x, y, scale, rotation, anchorX, anchorY)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipCrop, left, top, right, bottom)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipSphereView, yaw, pitch, roll, fov)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipVisual, transform, crop, opacity, blend, sphere)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipCornerPin, topLeftX, topLeftY, topRightX, topRightY, bottomRightX,
+                                                bottomRightY, bottomLeftX, bottomLeftY)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipVisual, transform, crop, opacity, blend, sphere, pin)
 
 NLOHMANN_JSON_SERIALIZE_ENUM(TransitionAlignment, {
     {TransitionAlignment::Center, "center"},

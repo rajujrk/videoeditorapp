@@ -3,7 +3,9 @@ import TechieVideoEditor.Theme
 
 // Drawn over the player: the selected clip's frame on the canvas, to place it by hand. Drag
 // inside the frame to move it (it snaps to the canvas's centre lines), a corner to scale it,
-// the knob above it to rotate it (⇧: in 15° steps). Previewed while dragging, one undo step on
+// the knob above it to rotate it (⇧: in 15° steps), the cross (the anchor point) with ⌥ to
+// choose what it scales and turns about. With corner pinning on (project.pinningCorners), the corners move
+// one by one, stretching the picture in perspective. Previewed while dragging, one undo step on
 // release. Clicking a picture in the player selects its clip.
 Item {
     id: overlay
@@ -20,10 +22,15 @@ Item {
                                      && project.playhead >= clipInfo.start && project.playhead < clipInfo.start + clipInfo.duration
     readonly property bool showsFrame: placement.m !== undefined && onScreen && !project.playing && !blocked
     readonly property var committed: clipInfo.visual || ({})
-    // The placement while a handle is dragged: {x, y, scale, rotation}.
+    // The placement while a handle is dragged: {x, y, scale, rotation, anchorX, anchorY, pin
+    // (eight corner offsets: top left x, y, top right, bottom right, bottom left)}.
     property var draft: null
+    readonly property var pinKeys: ["pinTopLeftX", "pinTopLeftY", "pinTopRightX", "pinTopRightY",
+                                    "pinBottomRightX", "pinBottomRightY", "pinBottomLeftX", "pinBottomLeftY"]
     readonly property var shown: draft || ({ x: committed.x || 0, y: committed.y || 0, scale: committed.scale || 1,
-                                              rotation: committed.rotation || 0 })
+                                              rotation: committed.rotation || 0, anchorX: committed.anchorX || 0,
+                                              anchorY: committed.anchorY || 0,
+                                              pin: pinKeys.map((k) => committed[k] || 0) })
     // Centre lines the move snapped to (drawn while dragging).
     property bool snappedX: false
     property bool snappedY: false
@@ -34,9 +41,9 @@ Item {
                                                (height - project.canvasHeight * canvasScale) / 2,
                                                project.canvasWidth * canvasScale, project.canvasHeight * canvasScale)
 
-    // The frame's corners and centre as item points, placed as the compositor places the
-    // picture (engine/gpu/LayerPlacement.h): its visible part fitted to the canvas, scaled,
-    // rotated clockwise about its centre and moved.
+    // The frame's corners, centre and anchor point as item points, placed as the compositor
+    // places the picture (engine/gpu/LayerPlacement.h): its visible part fitted to the canvas,
+    // scaled and rotated clockwise about the anchor point, moved, its corners then pinned.
     readonly property var frame: {
         if (!showsFrame)
             return null
@@ -45,22 +52,29 @@ Item {
         const cropH = 1 - (committed.cropTop || 0) - (committed.cropBottom || 0)
         const visibleW = placement.width * cropW, visibleH = placement.height * cropH
         const fit = Math.min(W / visibleW, H / visibleH)
-        const shownW = visibleW * fit * shown.scale, shownH = visibleH * fit * shown.scale
+        const fitW = visibleW * fit, fitH = visibleH * fit, k = shown.scale
         const cx = W * (0.5 + shown.x), cy = H * (0.5 + shown.y)
+        const ax = shown.anchorX * fitW, ay = shown.anchorY * fitH
         const a = shown.rotation * Math.PI / 180, c = Math.cos(a), s = Math.sin(a)
         const toItem = (px, py) => Qt.point(canvasRect.x + px / W * canvasRect.width, canvasRect.y + py / H * canvasRect.height)
-        const corner = (u, v) => {
-            const dx = (u - 0.5) * shownW, dy = (v - 0.5) * shownH
-            return toItem(cx + c * dx - s * dy, cy + s * dx + c * dy)
+        // A point of the fitted picture (pixels from its centre) on the canvas.
+        const place = (qx, qy) => [cx + ax + k * (c * (qx - ax) - s * (qy - ay)), cy + ay + k * (s * (qx - ax) + c * (qy - ay))]
+        const pin = shown.pin
+        const corner = (u, v, i) => {
+            const p = place((u - 0.5) * fitW, (v - 0.5) * fitH)
+            return toItem(p[0] + pin[2 * i] * W, p[1] + pin[2 * i + 1] * H)
         }
+        const middle = place(0, 0)
         // The rotation knob: above the top edge's middle, a fixed distance out (inside the
         // frame instead when that would leave the player, as for a picture filling it).
-        const out = 28 / canvasScale
-        let knob = toItem(cx + s * (shownH / 2 + out), cy - c * (shownH / 2 + out))
+        const out = 28 / canvasScale, half = fitH * k / 2
+        let knob = toItem(middle[0] + s * (half + out), middle[1] - c * (half + out))
         if (knob.x < 8 || knob.y < 8 || knob.x > width - 8 || knob.y > height - 8)
-            knob = toItem(cx + s * (shownH / 2 - out), cy - c * (shownH / 2 - out))
-        return { corners: [corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)], centre: toItem(cx, cy),
-                 knob: knob, top: corner(0.5, 0) }
+            knob = toItem(middle[0] + s * (half - out), middle[1] - c * (half - out))
+        const top = place(0, -fitH / 2)
+        return { corners: [corner(0, 0, 0), corner(1, 0, 1), corner(1, 1, 2), corner(0, 1, 3)],
+                 centre: toItem(middle[0], middle[1]), pivot: toItem(cx + ax, cy + ay), knob: knob,
+                 top: toItem(top[0], top[1]), fitW: fitW, fitH: fitH }
     }
     onFrameChanged: outline.requestPaint()
 
@@ -83,7 +97,12 @@ Item {
     }
     function preview(changes) {
         draft = Object.assign({}, shown, changes)
-        project.previewClipVisual(clipInfo.id, changes)
+        const values = Object.assign({}, changes)
+        if (changes.pin !== undefined) {
+            delete values.pin
+            pinKeys.forEach((key, i) => values[key] = changes.pin[i])
+        }
+        project.previewClipVisual(clipInfo.id, values)
     }
     function commit() {
         if (draft === null)
@@ -91,7 +110,9 @@ Item {
         const d = draft
         draft = null
         snappedX = snappedY = false
-        project.setClipVisual(clipInfo.id, { x: d.x, y: d.y, scale: d.scale, rotation: d.rotation })
+        const values = { x: d.x, y: d.y, scale: d.scale, rotation: d.rotation, anchorX: d.anchorX, anchorY: d.anchorY }
+        pinKeys.forEach((key, i) => values[key] = d.pin[i])
+        project.setClipVisual(clipInfo.id, values)
     }
 
     Canvas {
@@ -203,30 +224,101 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 anchors.margins: -6
-                cursorShape: handle.index % 2 === 0 ? Qt.SizeFDiagCursor : Qt.SizeBDiagCursor
+                cursorShape: overlay.project.pinningCorners ? Qt.CrossCursor
+                           : handle.index % 2 === 0 ? Qt.SizeFDiagCursor : Qt.SizeBDiagCursor
                 property real startScale: 1
                 property real startDistance: 1
+                property point startPoint
+                property var startPin: []
                 onPressed: (mouse) => {
-                    const c = overlay.frame.centre
+                    const c = overlay.frame.pivot
                     const p = mapToItem(overlay, mouse.x, mouse.y)
+                    startPoint = p
+                    startPin = overlay.shown.pin.slice()
                     startScale = overlay.shown.scale
                     startDistance = Math.max(1, Math.hypot(p.x - c.x, p.y - c.y))
                 }
-                onPositionChanged: (mouse) => {
-                    if (!pressed)
-                        return
-                    const c = overlay.frame.centre
+                onPositionChanged: (mouse) => { if (pressed) follow(mouse) }
+                // (On release too: the last move may not have arrived as a move.)
+                function follow(mouse) {
                     const p = mapToItem(overlay, mouse.x, mouse.y)
+                    if (overlay.project.pinningCorners) {
+                        // This corner alone, by as much as the pointer moved (canvas fractions).
+                        const pin = startPin.slice()
+                        const clamp = (v) => Math.max(-2, Math.min(2, v))
+                        pin[2 * handle.index] = clamp(startPin[2 * handle.index] + (p.x - startPoint.x) / overlay.canvasRect.width)
+                        pin[2 * handle.index + 1] = clamp(startPin[2 * handle.index + 1] + (p.y - startPoint.y) / overlay.canvasRect.height)
+                        overlay.preview({ pin: pin })
+                        return
+                    }
+                    const c = overlay.frame.pivot
                     const scale = startScale * Math.hypot(p.x - c.x, p.y - c.y) / startDistance
                     overlay.preview({ scale: Math.max(0.05, Math.min(4, scale)) })
                 }
-                onReleased: overlay.commit()
+                onReleased: (mouse) => { follow(mouse); overlay.commit() }
                 onCanceled: overlay.draft = null
             }
         }
     }
 
-    // The knob: rotate about the centre.
+    // The anchor point: what scaling and turning go about. ⌥-dragging it leaves the picture
+    // where it is (the position makes up for it).
+    Item {
+        objectName: "transformAnchor"
+        visible: overlay.frame !== null
+        // Drawn once moved from the centre (or while dragged); at the centre it is there for ⌥-drag
+        // without marking every picture.
+        opacity: overlay.shown.anchorX !== 0 || overlay.shown.anchorY !== 0 || anchorDrag.pressed ? 1 : 0
+        readonly property point at: overlay.frame ? overlay.frame.pivot : Qt.point(0, 0)
+        x: at.x - width / 2
+        y: at.y - height / 2
+        width: 18
+        height: 18
+        Rectangle { anchors.centerIn: parent; width: 12; height: 12; radius: 6; color: "transparent"; border.color: "#80000000"; border.width: 3 }
+        Rectangle { anchors.centerIn: parent; width: 12; height: 12; radius: 6; color: "transparent"; border.color: "#FFFFFF"; border.width: 1.5 }
+        Rectangle { anchors.centerIn: parent; width: 18; height: 1.5; color: "#FFFFFF" }
+        Rectangle { anchors.centerIn: parent; width: 1.5; height: 18; color: "#FFFFFF" }
+        MouseArea {
+            id: anchorDrag
+            anchors.fill: parent
+            anchors.margins: -4
+            cursorShape: Qt.SizeAllCursor
+            property point startPoint
+            property var start: null
+            // ⌥-drag (a plain drag from the middle moves the picture, as before).
+            onPressed: (mouse) => {
+                if (!(mouse.modifiers & Qt.AltModifier)) {
+                    mouse.accepted = false
+                    return
+                }
+                startPoint = mapToItem(overlay, mouse.x, mouse.y)
+                start = overlay.shown
+            }
+            onPositionChanged: (mouse) => {
+                if (!pressed || start === null)
+                    return
+                const p = mapToItem(overlay, mouse.x, mouse.y)
+                const W = overlay.project.canvasWidth, H = overlay.project.canvasHeight
+                const toCanvas = W / overlay.canvasRect.width
+                const dx = (p.x - startPoint.x) * toCanvas, dy = (p.y - startPoint.y) * toCanvas
+                // The anchor moves by the pointer's move undone by the picture's turn and scale
+                // (in the fitted picture's pixels); the position keeps the picture still.
+                const a = start.rotation * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), k = start.scale
+                const fw = overlay.frame.fitW, fh = overlay.frame.fitH
+                const ax = start.anchorX * fw + (c * dx + s * dy) / k
+                const ay = start.anchorY * fh + (-s * dx + c * dy) / k
+                const pivotX = W * (0.5 + start.x) + start.anchorX * fw + dx
+                const pivotY = H * (0.5 + start.y) + start.anchorY * fh + dy
+                const anchorX = Math.max(-1, Math.min(1, ax / fw)), anchorY = Math.max(-1, Math.min(1, ay / fh))
+                overlay.preview({ anchorX: anchorX, anchorY: anchorY,
+                                  x: (pivotX - anchorX * fw) / W - 0.5, y: (pivotY - anchorY * fh) / H - 0.5 })
+            }
+            onReleased: { overlay.commit(); start = null }
+            onCanceled: { overlay.draft = null; start = null }
+        }
+    }
+
+    // The knob: rotate about the anchor point.
     Rectangle {
         objectName: "transformRotate"
         visible: overlay.frame !== null
@@ -246,7 +338,7 @@ Item {
             property real startRotation: 0
             property real startAngle: 0
             function angleAt(mouse) {
-                const c = overlay.frame.centre
+                const c = overlay.frame.pivot
                 const p = mapToItem(overlay, mouse.x, mouse.y)
                 return Math.atan2(p.y - c.y, p.x - c.x) * 180 / Math.PI
             }

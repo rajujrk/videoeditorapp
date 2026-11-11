@@ -29,15 +29,14 @@ Item {
         const m = placement.m
         const u = (x - canvasRect.x) / canvasRect.width
         const v = (y - canvasRect.y) / canvasRect.height
-        return Qt.point(m[0] * u + m[1] * v + m[2], m[3] * u + m[4] * v + m[5])
+        const w = m[6] * u + m[7] * v + m[8]
+        return Qt.point((m[0] * u + m[1] * v + m[2]) / w, (m[3] * u + m[4] * v + m[5]) / w)
     }
     function fromPicture(px, py) {
-        const m = placement.m
-        const det = m[0] * m[4] - m[1] * m[3]
-        const a = px - m[2]
-        const b = py - m[5]
-        return Qt.point(canvasRect.x + ((m[4] * a - m[1] * b) / det) * canvasRect.width,
-                        canvasRect.y + ((-m[3] * a + m[0] * b) / det) * canvasRect.height)
+        const m = placement.toCanvas
+        const w = m[6] * px + m[7] * py + m[8]
+        return Qt.point(canvasRect.x + ((m[0] * px + m[1] * py + m[2]) / w) * canvasRect.width,
+                        canvasRect.y + ((m[3] * px + m[4] * py + m[5]) / w) * canvasRect.height)
     }
 
     // The box being dragged (item points), or the one drawn.

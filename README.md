@@ -79,6 +79,7 @@ The following improvements were completed after Phase 5:
 - Slice 24b: Drag and drop from Finder onto the timeline and player, and moving, resizing and rotating the selected clip by hand in the player.
 - Slice 24c: Timeline tools — J K L shuttle, typing a timecode, Mark In/Out, the blade tool, closing gaps, track height, pasting attributes and transitions, crossfades on sound tracks, and speeds from 0.01× to 100×.
 - Slice 24d: A source monitor (In and Out, insert, overwrite, append), compound clips opened in timeline tabs, projects imported as compound clips, and multicam clips with angle switching.
+- Slice 25a: The anchor point, corner pin, clip animation presets, pan and zoom, colour clips, and snapshots of the player.
 
 All previously identified feature gaps have been closed.
 
@@ -621,6 +622,15 @@ of its own; the tabs above the timeline take you back, the edits as one undo ste
 project, as a compound clip…" brings another project in as one clip. For a shoot with several
 cameras, line their clips up (Sync by sound), select them and make a multicam clip: press 1–9
 (or click an angle in the Inspector) to cut to that camera at the playhead.
+
+**Moving pictures.** A clip's anchor point (Transform, or ⌥-drag the cross in the player)
+is what it scales and turns about. Turn on "Drag the corners in the player" under Corner pin to
+move each corner on its own and stretch the picture in perspective, onto a screen in the shot,
+say. Animation gives a video or photo a ready-made way in, out or through (fades, slides,
+spins, pops, pulse, swing), and Pan and zoom moves slowly from one framing to another over
+the whole clip; both are written as keyframes you can change. The library's colour-clip button
+adds a clip of one colour or a gradient, and the camera button under the player saves the
+frame at the playhead as a picture in the library.
 
 **Placing clips by hand.** Select a clip and its frame shows in the player: drag inside it to
 move it (it snaps to the centre lines), a corner to resize it, the round knob to turn it (⇧ in

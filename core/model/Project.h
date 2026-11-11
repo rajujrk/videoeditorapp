@@ -27,6 +27,18 @@ inline constexpr Id kNoId = 0;
 
 enum class TrackKind { Video, Audio, Title };
 
+// A colour clip's picture (made by the app as a still): one colour, or a gradient between two
+// along an angle (linear) or out from the centre (radial).
+enum class ColourFillKind { Solid, Linear, Radial };
+struct ColourFill {
+    ColourFillKind kind = ColourFillKind::Solid;
+    std::array<double, 4> from{0.12, 0.44, 0.92, 1.0}; // RGBA 0..1
+    std::array<double, 4> to{0.95, 0.35, 0.37, 1.0};
+    double angle = 90.0; // degrees, a linear gradient's direction (0: left to right, 90: top to bottom)
+
+    friend bool operator==(const ColourFill&, const ColourFill&) = default;
+};
+
 // Where generated media came from (made by a cloud provider from a prompt): kept with it.
 struct GeneratedBy {
     std::string provider;  // "openai", "google", "elevenlabs"
@@ -72,6 +84,8 @@ struct MediaItem {
     std::optional<GeneratedBy> generated;
     // A template slot's stand-in picture (until media is put in the slot).
     bool placeholder = false;
+    // A colour clip's still: what it was drawn from (to change it later).
+    std::optional<ColourFill> colourFill;
 
     // A lighter copy of the pictures for the preview to decode instead (same frames and
     // times). Set only in the snapshots handed to playback; never saved.
@@ -90,12 +104,17 @@ inline constexpr double kMaxSpeed = 100.0;
 enum class BlendMode { Normal, Multiply, Screen, Overlay, Add, Darken, Lighten };
 
 // Where a clip's picture sits on the canvas. The picture is first fitted inside the canvas
-// (keeping its aspect ratio), then scaled about its center, rotated, and moved.
+// (keeping its aspect ratio), then scaled about its anchor point, rotated about it, and moved.
 struct ClipTransform {
     double x = 0.0;        // horizontal offset, in canvas widths (0 = centered)
     double y = 0.0;        // vertical offset, in canvas heights, positive is down
     double scale = 1.0;    // 1 = fitted to the canvas
     double rotation = 0.0; // degrees, clockwise
+    // The point scaling and rotation turn about, in the picture's widths and heights from
+    // its centre (-1..1; 0, 0: the centre). Moving it leaves an unscaled, unturned picture
+    // where it is.
+    double anchorX = 0.0;
+    double anchorY = 0.0;
 
     friend bool operator==(const ClipTransform&, const ClipTransform&) = default;
 };
@@ -108,6 +127,23 @@ struct ClipCrop {
     double bottom = 0.0;
 
     friend bool operator==(const ClipCrop&, const ClipCrop&) = default;
+};
+
+// Corner pin: each corner of the placed picture moved by this much (canvas widths and
+// heights), the picture stretched in perspective between them — onto a screen in the shot,
+// say. All zero: off.
+struct ClipCornerPin {
+    double topLeftX = 0.0, topLeftY = 0.0;
+    double topRightX = 0.0, topRightY = 0.0;
+    double bottomRightX = 0.0, bottomRightY = 0.0;
+    double bottomLeftX = 0.0, bottomLeftY = 0.0;
+
+    bool active() const
+    {
+        return topLeftX != 0.0 || topLeftY != 0.0 || topRightX != 0.0 || topRightY != 0.0 || bottomRightX != 0.0
+            || bottomRightY != 0.0 || bottomLeftX != 0.0 || bottomLeftY != 0.0;
+    }
+    friend bool operator==(const ClipCornerPin&, const ClipCornerPin&) = default;
 };
 
 // Where a 360° clip looks, in degrees: in a flat project the clip is reframed — the view in
@@ -131,6 +167,7 @@ struct ClipVisual {
     double opacity = 1.0;
     BlendMode blend = BlendMode::Normal;
     ClipSphereView sphere;
+    ClipCornerPin pin;
 
     friend bool operator==(const ClipVisual&, const ClipVisual&) = default;
 };

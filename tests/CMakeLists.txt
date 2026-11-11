@@ -32,6 +32,7 @@ add_executable(tve_core_tests
     core/test_render_cost.cpp
     core/test_track_commands.cpp
     core/test_sequence_edits.cpp
+    core/test_clip_animation.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)

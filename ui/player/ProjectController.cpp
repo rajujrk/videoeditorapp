@@ -70,6 +70,14 @@
 #include <set>
 #include <unistd.h>
 
+#include "StillRenderer.h"
+#include "model/ClipAnimation.h"
+
+#include <QCryptographicHash>
+#include <QLinearGradient>
+#include <QPainter>
+#include <QRadialGradient>
+
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -243,7 +251,30 @@ QVariantMap visualMap(const ClipVisual& v)
         {QStringLiteral("pitch"), v.sphere.pitch},
         {QStringLiteral("roll"), v.sphere.roll},
         {QStringLiteral("fov"), v.sphere.fov},
+        {QStringLiteral("anchorX"), v.transform.anchorX},
+        {QStringLiteral("anchorY"), v.transform.anchorY},
+        {QStringLiteral("pinTopLeftX"), v.pin.topLeftX},
+        {QStringLiteral("pinTopLeftY"), v.pin.topLeftY},
+        {QStringLiteral("pinTopRightX"), v.pin.topRightX},
+        {QStringLiteral("pinTopRightY"), v.pin.topRightY},
+        {QStringLiteral("pinBottomRightX"), v.pin.bottomRightX},
+        {QStringLiteral("pinBottomRightY"), v.pin.bottomRightY},
+        {QStringLiteral("pinBottomLeftX"), v.pin.bottomLeftX},
+        {QStringLiteral("pinBottomLeftY"), v.pin.bottomLeftY},
+        {QStringLiteral("pinned"), v.pin.active()},
     };
+}
+
+// A colour clip's fill, for QML.
+QVariantMap fillMap(const ColourFill& fill)
+{
+    const auto list = [](const std::array<double, 4>& c) { return QVariantList{c[0], c[1], c[2], c[3]}; };
+    return {{QStringLiteral("kind"), fill.kind == ColourFillKind::Solid    ? QStringLiteral("solid")
+                                     : fill.kind == ColourFillKind::Linear ? QStringLiteral("linear")
+                                                                           : QStringLiteral("radial")},
+            {QStringLiteral("from"), list(fill.from)},
+            {QStringLiteral("to"), list(fill.to)},
+            {QStringLiteral("angle"), fill.angle}};
 }
 
 QVariantList effectsList(const std::vector<ClipEffect>& effects)
@@ -608,6 +639,16 @@ double* visualField(ClipVisual& v, std::string_view id)
     if (id == property::kPitch) return &v.sphere.pitch;
     if (id == property::kRoll) return &v.sphere.roll;
     if (id == property::kFov) return &v.sphere.fov;
+    if (id == property::kAnchorX) return &v.transform.anchorX;
+    if (id == property::kAnchorY) return &v.transform.anchorY;
+    if (id == property::kPinTopLeftX) return &v.pin.topLeftX;
+    if (id == property::kPinTopLeftY) return &v.pin.topLeftY;
+    if (id == property::kPinTopRightX) return &v.pin.topRightX;
+    if (id == property::kPinTopRightY) return &v.pin.topRightY;
+    if (id == property::kPinBottomRightX) return &v.pin.bottomRightX;
+    if (id == property::kPinBottomRightY) return &v.pin.bottomRightY;
+    if (id == property::kPinBottomLeftX) return &v.pin.bottomLeftX;
+    if (id == property::kPinBottomLeftY) return &v.pin.bottomLeftY;
     return nullptr;
 }
 
@@ -1146,6 +1187,7 @@ QVariantList ProjectController::media() const
             {QStringLiteral("spherical"), item.spherical},
             {QStringLiteral("missing"), missing.contains(item.id)},
             {QStringLiteral("placeholder"), item.placeholder},
+            {QStringLiteral("colourFill"), item.colourFill ? QVariant(fillMap(*item.colourFill)) : QVariant()},
             {QStringLiteral("generated"),
              item.generated ? QVariant(QVariantMap{{QStringLiteral("provider"), QString::fromStdString(item.generated->provider)},
                                                    {QStringLiteral("model"), QString::fromStdString(item.generated->model)},
@@ -2312,6 +2354,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("spherical"), media && media->spherical && !clip->generated()},
             {QStringLiteral("isCompound"), sequence != nullptr},
             {QStringLiteral("isMulticam"), clip->multicam()},
+            {QStringLiteral("colourFill"), media && media->colourFill ? QVariant(fillMap(*media->colourFill)) : QVariant()},
             {QStringLiteral("angle"), clip->angle()},
             {QStringLiteral("angles"), angleListOf(m_project, *clip)},
             {QStringLiteral("groupId"), double(clip->groupId)},
@@ -2453,6 +2496,16 @@ std::optional<ClipVisual> ProjectController::visualFrom(Id clipId, const QVarian
     take("pitch", v.sphere.pitch);
     take("roll", v.sphere.roll);
     take("fov", v.sphere.fov);
+    take("anchorX", v.transform.anchorX);
+    take("anchorY", v.transform.anchorY);
+    take("pinTopLeftX", v.pin.topLeftX);
+    take("pinTopLeftY", v.pin.topLeftY);
+    take("pinTopRightX", v.pin.topRightX);
+    take("pinTopRightY", v.pin.topRightY);
+    take("pinBottomRightX", v.pin.bottomRightX);
+    take("pinBottomRightY", v.pin.bottomRightY);
+    take("pinBottomLeftX", v.pin.bottomLeftX);
+    take("pinBottomLeftY", v.pin.bottomLeftY);
     if (const auto it = values.constFind(QStringLiteral("blend")); it != values.constEnd()) {
         const QString name = it->toString();
         for (int i = 0; i < int(std::size(kBlendNames)); ++i) {
@@ -2818,14 +2871,16 @@ QVariantMap ProjectController::clipPlacement(double clipId) const
         return {};
     const LayerPlacement placement = placeLayer(clip->visualAt(ticks(m_playhead)), m_project.settings.width,
                                                 m_project.settings.height, width, height);
-    QVariantList m;
+    QVariantList m, toCanvas;
     for (double v : placement.canvasToLayer)
         m << v;
+    for (double v : placement.layerToCanvas)
+        toCanvas << v;
     QVariantList crop;
     for (double v : placement.cropRect)
         crop << v;
-    return {{QStringLiteral("m"), m}, {QStringLiteral("width"), width}, {QStringLiteral("height"), height},
-            {QStringLiteral("crop"), crop}};
+    return {{QStringLiteral("m"), m}, {QStringLiteral("toCanvas"), toCanvas}, {QStringLiteral("width"), width},
+            {QStringLiteral("height"), height}, {QStringLiteral("crop"), crop}};
 }
 
 double ProjectController::clipAtCanvas(double u, double v) const
@@ -2846,7 +2901,7 @@ double ProjectController::clipAtCanvas(double u, double v) const
                                                     m_project.settings.height, w, h);
         const auto [lu, lv] = placement.apply(u, v);
         const auto& c = placement.cropRect;
-        if (lu >= c[0] && lu <= c[2] && lv >= c[1] && lv <= c[3])
+        if (placement.inFront(u, v) && lu >= c[0] && lu <= c[2] && lv >= c[1] && lv <= c[3])
             return double(clip.id);
     }
     return 0;
@@ -7794,6 +7849,14 @@ void ProjectController::setPickingTrackArea(bool picking)
     emit editingChanged();
 }
 
+void ProjectController::setPinningCorners(bool pinning)
+{
+    if (pinning == m_pinningCorners)
+        return;
+    m_pinningCorners = pinning;
+    emit editingChanged();
+}
+
 bool ProjectController::setTrackArea(double clipId, const QVariantMap& box)
 {
     const Clip* clip = peopleClip(toId(clipId), false);
@@ -7996,10 +8059,7 @@ bool ProjectController::followTrack(double clipId, double sourceClipId, int trac
             continue;
         const auto shown = rawToSteady(source->stabilization, s.time, w, h, s.x, s.y);
         const LayerPlacement placement = placeLayer(source->visualAt(at), cw, ch, w, h);
-        const auto& m = placement.canvasToLayer;
-        const double det = m[0] * m[4] - m[1] * m[3];
-        const double a = shown[0] - m[2], b = shown[1] - m[5];
-        const double u = (m[4] * a - m[1] * b) / det, v = (-m[3] * a + m[0] * b) / det;
+        const auto [u, v] = placement.toCanvas(shown[0], shown[1]);
         points.push_back({at, u, v, std::sqrt(std::max(1e-9, s.width * s.height)), s.angle});
     }
     const Ticks first = std::max(follower->start, points.empty() ? follower->end() : points.front().time);
@@ -9779,4 +9839,344 @@ bool ProjectController::cutToAngle(int angle)
         return false;
     setSelectedClip(double(part));
     return true;
+}
+
+// --- Placing and moving pictures, colour clips, snapshots (25a) ---
+
+namespace {
+
+QString colourFolder()
+{
+    const QString overridden = qEnvironmentVariable("TVE_COLOURS_DIR");
+    return overridden.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/Colours")
+                                : overridden;
+}
+
+QString snapshotFolder()
+{
+    const QString overridden = qEnvironmentVariable("TVE_SNAPSHOT_DIR");
+    return overridden.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/Snapshots")
+                                : overridden;
+}
+
+std::optional<ColourFill> fillFrom(const QVariantMap& map, const ColourFill& base = {})
+{
+    ColourFill fill = base;
+    const QString kind = map.value(QStringLiteral("kind"), QString()).toString();
+    if (kind == QLatin1String("solid"))
+        fill.kind = ColourFillKind::Solid;
+    else if (kind == QLatin1String("linear"))
+        fill.kind = ColourFillKind::Linear;
+    else if (kind == QLatin1String("radial"))
+        fill.kind = ColourFillKind::Radial;
+    else if (!kind.isEmpty())
+        return std::nullopt;
+    for (const auto& [key, target] : {std::pair{QStringLiteral("from"), &fill.from}, std::pair{QStringLiteral("to"), &fill.to}}) {
+        if (!map.contains(key))
+            continue;
+        const QVariantList list = map.value(key).toList();
+        if (list.size() < 3)
+            return std::nullopt;
+        for (int i = 0; i < 4; ++i)
+            (*target)[std::size_t(i)] = std::clamp(i < list.size() ? list[i].toDouble() : 1.0, 0.0, 1.0);
+    }
+    if (map.contains(QStringLiteral("angle")))
+        fill.angle = std::fmod(map.value(QStringLiteral("angle")).toDouble(), 360.0);
+    return fill;
+}
+
+// Draws the fill at the canvas's size into the colours folder (one file per look and size).
+QString drawFill(const ColourFill& fill, int width, int height, QString* error)
+{
+    const QString key = QStringLiteral("%1|%2|%3|%4|%5x%6")
+                            .arg(int(fill.kind))
+                            .arg(QStringList{QString::number(fill.from[0]), QString::number(fill.from[1]),
+                                             QString::number(fill.from[2]), QString::number(fill.from[3])}
+                                     .join(QLatin1Char(',')),
+                                 QStringList{QString::number(fill.to[0]), QString::number(fill.to[1]),
+                                             QString::number(fill.to[2]), QString::number(fill.to[3])}
+                                     .join(QLatin1Char(',')))
+                            .arg(fill.angle)
+                            .arg(width)
+                            .arg(height);
+    const QString hash = QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex().left(12));
+    const auto hex = [](const std::array<double, 4>& c) {
+        return QColor::fromRgbF(float(c[0]), float(c[1]), float(c[2])).name().mid(1).toUpper();
+    };
+    const QString label = fill.kind == ColourFillKind::Solid ? QStringLiteral("Colour %1").arg(hex(fill.from))
+                                                             : QStringLiteral("Gradient %1-%2").arg(hex(fill.from), hex(fill.to));
+    // (In a folder of its own, so the file keeps a plain name.)
+    QDir folder(colourFolder() + QLatin1Char('/') + hash);
+    if (!folder.mkpath(QStringLiteral("."))) {
+        *error = QObject::tr("Could not make the folder %1").arg(folder.path());
+        return {};
+    }
+    const QString path = folder.filePath(label + QStringLiteral(".png"));
+    if (QFileInfo::exists(path))
+        return path;
+    QImage image(std::max(width, 16), std::max(height, 16), QImage::Format_ARGB32);
+    image.fill(Qt::transparent);
+    const auto colour = [](const std::array<double, 4>& c) {
+        return QColor::fromRgbF(float(c[0]), float(c[1]), float(c[2]), float(c[3]));
+    };
+    {
+        QPainter painter(&image);
+        const QRectF all(0, 0, image.width(), image.height());
+        if (fill.kind == ColourFillKind::Solid) {
+            painter.fillRect(all, colour(fill.from));
+        } else if (fill.kind == ColourFillKind::Linear) {
+            const double a = fill.angle * std::numbers::pi / 180.0;
+            const double dx = std::cos(a), dy = std::sin(a);
+            const double half = (std::abs(dx) * all.width() + std::abs(dy) * all.height()) / 2.0;
+            const QPointF centre = all.center();
+            QLinearGradient gradient(centre - QPointF(dx, dy) * half, centre + QPointF(dx, dy) * half);
+            gradient.setColorAt(0, colour(fill.from));
+            gradient.setColorAt(1, colour(fill.to));
+            painter.fillRect(all, gradient);
+        } else {
+            QRadialGradient gradient(all.center(), std::hypot(all.width(), all.height()) / 2.0);
+            gradient.setColorAt(0, colour(fill.from));
+            gradient.setColorAt(1, colour(fill.to));
+            painter.fillRect(all, gradient);
+        }
+    }
+    if (!image.save(path)) {
+        *error = QObject::tr("Could not write %1").arg(path);
+        return {};
+    }
+    return path;
+}
+
+} // namespace
+
+QVariantList ProjectController::clipAnimations() const
+{
+    QVariantList list;
+    for (const ClipAnimationPreset& preset : clipAnimationPresets())
+        list << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(preset.id)},
+                            {QStringLiteral("title"), coreText(preset.title)},
+                            {QStringLiteral("kind"), preset.kind == ClipAnimationKind::In    ? QStringLiteral("in")
+                                                     : preset.kind == ClipAnimationKind::Out ? QStringLiteral("out")
+                                                                                             : QStringLiteral("combo")}};
+    return list;
+}
+
+bool ProjectController::animateClip(double clipId, const QString& preset, double seconds)
+{
+    const auto location = m_project.locateClip(toId(clipId));
+    if (!location || location->track->kind == TrackKind::Audio) {
+        reportError(tr("Select a video or picture clip to animate"));
+        return false;
+    }
+    Clip after = *location->clip;
+    if (auto error = applyClipAnimation(after, preset.toStdString(), ticks(std::clamp(seconds, 0.1, 10.0)))) {
+        reportError(coreText(*error));
+        return false;
+    }
+    return commitAnimation(*location->clip, std::move(after), TVE_TR("core", "Animate Clip"));
+}
+
+bool ProjectController::clearClipAnimation(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip)
+        return false;
+    Clip after = *clip;
+    tve::clearClipAnimation(after);
+    return commitAnimation(*clip, std::move(after), TVE_TR("core", "Remove Animation"));
+}
+
+QVariantList ProjectController::panZoomPresets() const
+{
+    QVariantList list;
+    for (const PanZoomPreset& preset : tve::panZoomPresets()) {
+        const PanZoom& f = preset.framing;
+        list << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(preset.id)},
+                            {QStringLiteral("title"), coreText(preset.title)},
+                            {QStringLiteral("from"), QVariantMap{{QStringLiteral("scale"), f.fromScale},
+                                                                 {QStringLiteral("x"), f.fromX},
+                                                                 {QStringLiteral("y"), f.fromY}}},
+                            {QStringLiteral("to"), QVariantMap{{QStringLiteral("scale"), f.toScale},
+                                                               {QStringLiteral("x"), f.toX},
+                                                               {QStringLiteral("y"), f.toY}}}};
+    }
+    return list;
+}
+
+bool ProjectController::panZoom(double clipId, const QVariant& framing)
+{
+    const auto location = m_project.locateClip(toId(clipId));
+    if (!location || location->track->kind == TrackKind::Audio) {
+        reportError(tr("Select a video or picture clip to pan and zoom"));
+        return false;
+    }
+    PanZoom f;
+    if (framing.typeId() == QMetaType::QString) {
+        const auto& presets = tve::panZoomPresets();
+        const auto it = std::ranges::find(presets, framing.toString().toStdString(), [](const PanZoomPreset& p) { return std::string(p.id); });
+        if (it == presets.end()) {
+            reportError(coreText("there is no such animation"));
+            return false;
+        }
+        f = it->framing;
+    } else {
+        const QVariantMap m = framing.toMap();
+        f.fromScale = m.value(QStringLiteral("fromScale"), f.fromScale).toDouble();
+        f.fromX = m.value(QStringLiteral("fromX"), f.fromX).toDouble();
+        f.fromY = m.value(QStringLiteral("fromY"), f.fromY).toDouble();
+        f.toScale = m.value(QStringLiteral("toScale"), f.toScale).toDouble();
+        f.toX = m.value(QStringLiteral("toX"), f.toX).toDouble();
+        f.toY = m.value(QStringLiteral("toY"), f.toY).toDouble();
+    }
+    Clip after = *location->clip;
+    if (auto error = applyPanZoom(after, f)) {
+        reportError(coreText(*error));
+        return false;
+    }
+    return commitAnimation(*location->clip, std::move(after), TVE_TR("core", "Pan and Zoom"));
+}
+
+double ProjectController::addColorClip(const QVariantMap& map)
+{
+    const auto fill = fillFrom(map);
+    if (!fill) {
+        reportError(tr("Choose a colour, or two for a gradient"));
+        return 0;
+    }
+    QString error;
+    const QString path = drawFill(*fill, m_project.settings.width, m_project.settings.height, &error);
+    if (path.isEmpty()) {
+        reportError(error);
+        return 0;
+    }
+    Project after = m_project;
+    Id mediaId = kNoId;
+    if (const auto same = std::ranges::find(after.media, path.toStdString(), &MediaItem::path); same != after.media.end()) {
+        mediaId = same->id;
+    } else {
+        std::optional<MediaItem> item = describeMedia(path.toStdString(), &error);
+        if (!item) {
+            reportError(error);
+            return 0;
+        }
+        item->colourFill = *fill;
+        ImportMediaCommand import(std::move(*item));
+        if (auto failed = import.redo(after)) {
+            reportError(coreText(*failed));
+            return 0;
+        }
+        mediaId = import.mediaId();
+    }
+    const MediaItem* media = after.findMedia(mediaId);
+    const Ticks at = ticks(m_playhead);
+    Id target = kNoId;
+    for (const Track& track : after.tracks)
+        if (track.kind == TrackKind::Video && !track.locked && !track.overlaps(at, media->duration) && target == kNoId)
+            target = track.id;
+    if (target == kNoId) {
+        InsertTrackCommand track(TrackKind::Video,
+                                 "Video " + std::to_string(std::ranges::count(after.tracks, TrackKind::Video, &Track::kind) + 1),
+                                 after.tracks.size());
+        if (auto failed = track.redo(after)) {
+            reportError(coreText(*failed));
+            return 0;
+        }
+        target = track.trackId();
+    }
+    AddClipCommand add(target, mediaId, at, media->duration, 0);
+    if (auto failed = add.redo(after)) {
+        reportError(coreText(*failed));
+        return 0;
+    }
+    m_project.setNextId(after.nextId());
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Add Colour Clip"))))
+        return 0;
+    setSelectedClip(double(add.clipId()));
+    return double(add.clipId());
+}
+
+bool ProjectController::setColorClip(double clipId, const QVariantMap& map)
+{
+    const Clip* clip = findClip(toId(clipId));
+    const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+    if (!media || !media->colourFill) {
+        reportError(tr("Select a colour clip"));
+        return false;
+    }
+    const auto fill = fillFrom(map, *media->colourFill);
+    if (!fill) {
+        reportError(tr("Choose a colour, or two for a gradient"));
+        return false;
+    }
+    if (*fill == *media->colourFill)
+        return true;
+    QString error;
+    const QString path = drawFill(*fill, m_project.settings.width, m_project.settings.height, &error);
+    if (path.isEmpty()) {
+        reportError(error);
+        return false;
+    }
+    Project after = m_project;
+    Id mediaId = kNoId;
+    if (const auto same = std::ranges::find(after.media, path.toStdString(), &MediaItem::path); same != after.media.end()) {
+        mediaId = same->id;
+    } else {
+        std::optional<MediaItem> item = describeMedia(path.toStdString(), &error);
+        if (!item) {
+            reportError(error);
+            return false;
+        }
+        item->colourFill = *fill;
+        ImportMediaCommand import(std::move(*item));
+        if (auto failed = import.redo(after)) {
+            reportError(coreText(*failed));
+            return false;
+        }
+        mediaId = import.mediaId();
+    }
+    after.locateClip(clip->id)->clip->mediaId = mediaId;
+    m_project.setNextId(after.nextId());
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Change Colour")));
+}
+
+QString ProjectController::takeSnapshot(const QUrl& file)
+{
+    if (duration() <= 0) {
+        reportError(tr("There is nothing on the timeline to take a snapshot of"));
+        return {};
+    }
+    StillRenderer renderer;
+    if (!renderer.isValid()) {
+        reportError(tr("Could not take a snapshot: no GPU device"));
+        return {};
+    }
+    const QImage image = renderer.render(std::make_shared<const Project>(m_project), ticks(m_playhead),
+                                         QSize(m_project.settings.width, m_project.settings.height));
+    if (image.isNull()) {
+        reportError(tr("Could not take a snapshot of this frame"));
+        return {};
+    }
+    QString path;
+    if (!file.isEmpty()) {
+        path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+        if (QFileInfo(path).suffix().isEmpty())
+            path += QStringLiteral(".png");
+    } else {
+        QDir folder(snapshotFolder());
+        if (!folder.mkpath(QStringLiteral("."))) {
+            reportError(tr("Could not make the folder %1").arg(folder.path()));
+            return {};
+        }
+        const QString stem = QStringLiteral("%1 %2").arg(name(), timecode(m_playhead).replace(QLatin1Char(':'), QLatin1Char('.')));
+        path = folder.filePath(stem + QStringLiteral(".png"));
+        for (int n = 2; QFileInfo::exists(path); ++n)
+            path = folder.filePath(QStringLiteral("%1 (%2).png").arg(stem).arg(n));
+    }
+    if (!image.save(path, nullptr, 95)) {
+        reportError(tr("Could not write %1").arg(path));
+        return {};
+    }
+    if (file.isEmpty())
+        importMedia({QUrl::fromLocalFile(path)});
+    return path;
 }
