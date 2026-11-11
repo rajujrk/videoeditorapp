@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 import TechieVideoEditor.Player
@@ -155,11 +156,47 @@ Rectangle {
                 anchors.rightMargin: Theme.space.s
                 spacing: Theme.space.xs
 
-                Text {
-                    objectName: "playheadTimecode"
-                    text: panel.project.timecode(panel.project.playhead)
-                    font: Theme.type.mono
-                    color: Theme.color.textPrimary
+                // The playhead's timecode; click it to type a time to go to.
+                Item {
+                    implicitWidth: timecodeText.implicitWidth
+                    implicitHeight: timecodeText.implicitHeight
+                    Text {
+                        id: timecodeText
+                        objectName: "playheadTimecode"
+                        visible: !timecodeField.visible
+                        text: panel.project.timecode(panel.project.playhead)
+                        font: Theme.type.mono
+                        color: Theme.color.textPrimary
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.IBeamCursor
+                            onClicked: {
+                                timecodeField.text = timecodeText.text
+                                timecodeField.visible = true
+                                timecodeField.selectAll()
+                                timecodeField.forceActiveFocus()
+                            }
+                        }
+                        ToolTip.visible: false
+                    }
+                    TextField {
+                        id: timecodeField
+                        objectName: "timecodeField"
+                        visible: false
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: timecodeText.implicitWidth + 16
+                        font: Theme.type.mono
+                        padding: 2
+                        selectByMouse: true
+                        onAccepted: {
+                            const at = panel.project.parseTimecode(text)
+                            if (at >= 0)
+                                panel.project.seek(at)
+                            visible = false
+                        }
+                        onActiveFocusChanged: if (!activeFocus) visible = false
+                        Keys.onEscapePressed: visible = false
+                    }
                 }
                 Text {
                     text: "/ " + panel.project.timecode(panel.project.duration)
@@ -169,6 +206,7 @@ Rectangle {
 
                 Item { Layout.fillWidth: true }
 
+                IconButton { objectName: "markInButton"; iconName: "mark-in"; tip: qsTr("Mark In") + KeyMap.hints["markIn"]; enabled: panel.project.duration > 0; onClicked: panel.project.setMarkIn() }
                 IconButton { iconName: "skip-back"; tip: qsTr("Previous frame") + KeyMap.hints["frameBack"]; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(-1) }
                 IconButton {
                     objectName: "playButton"
@@ -179,6 +217,15 @@ Rectangle {
                     onClicked: panel.project.togglePlay()
                 }
                 IconButton { iconName: "skip-forward"; tip: qsTr("Next frame") + KeyMap.hints["frameForward"]; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(1) }
+                IconButton { objectName: "markOutButton"; iconName: "mark-out"; tip: qsTr("Mark Out") + KeyMap.hints["markOut"]; enabled: panel.project.duration > 0; onClicked: panel.project.setMarkOut() }
+                // Shuttling (J, L): its speed and direction.
+                Text {
+                    objectName: "shuttleBadge"
+                    visible: panel.project.shuttleRate !== 0 && panel.project.shuttleRate !== 1
+                    text: (panel.project.shuttleRate < 0 ? "◀ " : "▶ ") + Math.abs(panel.project.shuttleRate) + "×"
+                    font: Theme.type.mono
+                    color: Theme.color.accentText
+                }
 
                 Item { Layout.fillWidth: true }
 

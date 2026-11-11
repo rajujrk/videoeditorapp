@@ -9,6 +9,7 @@ import TechieVideoEditor.Player
 Item {
     id: menus
     required property var project
+    property var timeline: null // (its track height and blade)
 
     // A clip's menu acts on the selection when the clip is part of it (else on the clip).
     function openClipMenu(clip, track, item, x, y) {
@@ -22,6 +23,11 @@ Item {
         trackMenu.track = track
         trackMenu.popup(item, x, y)
     }
+    function openTransitionMenu(transition, item, x, y) {
+        transitionMenu.transition = transition
+        transitionMenu.popup(item, x, y)
+    }
+    function openPasteAttributes() { pasteBox.open() }
     function openLaneMenu(track, seconds, item, x, y) {
         laneMenu.track = track
         laneMenu.seconds = seconds
@@ -69,6 +75,17 @@ Item {
             onTriggered: menus.project.pasteClips(clipMenu.track ? clipMenu.track.id : -1)
         }
         AppMenuItem { objectName: "clipMenu:duplicate"; text: qsTr("Duplicate"); shortcut: KeyMap.text("duplicate"); onTriggered: menus.project.duplicateClips() }
+        AppMenuItem {
+            objectName: "clipMenu:copyAttributes"
+            text: qsTr("Copy attributes")
+            onTriggered: menus.project.copyAttributes(clipMenu.forClip.id)
+        }
+        AppMenuItem {
+            objectName: "clipMenu:pasteAttributes"
+            text: qsTr("Paste attributes…"); shortcut: KeyMap.text("pasteAttributes")
+            enabled: menus.project.hasCopiedAttributes
+            onTriggered: pasteBox.open()
+        }
         AppMenuItem { objectName: "clipMenu:delete"; text: qsTr("Delete"); shortcut: KeyMap.text("delete"); onTriggered: menus.project.deleteClip(clipMenu.forClip.id) }
         AppMenuItem {
             objectName: "clipMenu:rippleDelete"
@@ -101,6 +118,19 @@ Item {
             visible: clipMenu.forClip !== null && clipMenu.track !== null && clipMenu.track.kind === "video"
                      && clipMenu.forClip.hasAudio === true && clipMenu.forClip.audioEnabled === true && clipMenu.forClip.isCompound !== true
             onTriggered: menus.project.detachAudio(clipMenu.forClip.id)
+        }
+        AppMenuItem {
+            objectName: "clipMenu:crossfade"
+            text: qsTr("Crossfade from the clip before")
+            visible: clipMenu.track !== null && clipMenu.track.kind === "audio"
+            onTriggered: menus.project.addTransition("tve.transition.dissolve", clipMenu.forClip.id)
+        }
+        AppMenuItem {
+            objectName: "clipMenu:pasteTransition"
+            text: qsTr("Paste the transition into this clip")
+            enabled: menus.project.hasCopiedTransition
+            visible: clipMenu.track !== null && clipMenu.track.kind !== "title"
+            onTriggered: menus.project.pasteTransition(clipMenu.forClip.id)
         }
         AppMenu {
             id: speedMenu
@@ -218,6 +248,13 @@ Item {
             onTriggered: menus.project.setTrackFlag(trackMenu.track.id, "muted", !trackMenu.track.muted)
         }
         AppMenuItem {
+            objectName: "trackMenu:closeGaps"
+            text: qsTr("Close the gaps between its clips")
+            enabled: trackMenu.track !== null && trackMenu.track.clips.length > 1
+            onTriggered: menus.project.closeGaps(trackMenu.track.id)
+        }
+        TrackHeightMenu { objectName: "trackMenu:height" }
+        AppMenuItem {
             objectName: "trackMenu:selectAll"
             text: qsTr("Select every clip on this track")
             enabled: trackMenu.track !== null && trackMenu.track.clips.length > 0
@@ -252,6 +289,38 @@ Item {
             onTriggered: menus.project.addMarker(laneMenu.seconds)
         }
         AppMenuItem {
+            objectName: "laneMenu:closeGap"
+            text: qsTr("Close this gap")
+            enabled: laneMenu.track !== null
+            onTriggered: menus.project.closeGapAt(laneMenu.track.id, laneMenu.seconds)
+        }
+        AppMenuItem {
+            objectName: "laneMenu:closeGaps"
+            text: qsTr("Close every gap on this track")
+            enabled: laneMenu.track !== null && laneMenu.track.clips.length > 1
+            onTriggered: menus.project.closeGaps(laneMenu.track.id)
+        }
+        AppMenuSeparator {}
+        AppMenuItem {
+            objectName: "laneMenu:playRange"
+            text: qsTr("Play from In to Out")
+            enabled: menus.project.markIn >= 0 || menus.project.markOut >= 0
+            onTriggered: menus.project.playMarkedRange()
+        }
+        AppMenuItem {
+            objectName: "laneMenu:deleteRange"
+            text: qsTr("Delete from In to Out")
+            enabled: menus.project.markIn >= 0 && menus.project.markOut >= 0
+            onTriggered: menus.project.deleteMarkedRange()
+        }
+        AppMenuItem {
+            objectName: "laneMenu:clearMarks"
+            text: qsTr("Clear In and Out"); shortcut: KeyMap.text("clearMarks")
+            enabled: menus.project.markIn >= 0 || menus.project.markOut >= 0
+            onTriggered: menus.project.clearMarks()
+        }
+        AppMenuSeparator {}
+        AppMenuItem {
             objectName: "laneMenu:selectAll"
             text: qsTr("Select every clip"); shortcut: KeyMap.text("selectAll")
             onTriggered: menus.project.selectAllClips()
@@ -261,6 +330,99 @@ Item {
         AppMenuItem { objectName: "laneMenu:addAudio"; text: qsTr("Add an audio track"); onTriggered: menus.addTrack("audio", laneMenu.track) }
         AppMenuItem { objectName: "laneMenu:addTitle"; text: qsTr("Add a title track"); onTriggered: menus.addTrack("title", laneMenu.track) }
         AppMenuItem { objectName: "laneMenu:deleteEmpty"; text: qsTr("Delete empty tracks"); onTriggered: menus.project.removeEmptyTracks() }
+        TrackHeightMenu { objectName: "laneMenu:height" }
+    }
+
+    // Small, normal or large tracks (the whole timeline).
+    component TrackHeightMenu: AppMenu {
+        title: qsTr("Track height")
+        Repeater {
+            model: [{ key: "small", label: qsTr("Small"), scale: 0.7 }, { key: "normal", label: qsTr("Normal"), scale: 1.0 },
+                    { key: "large", label: qsTr("Large"), scale: 1.5 }]
+            delegate: AppMenuItem {
+                required property var modelData
+                objectName: "trackHeight:" + modelData.key
+                text: modelData.label
+                checkable: true
+                checked: menus.timeline !== null && Math.abs(menus.timeline.trackScale - modelData.scale) < 0.01
+                onTriggered: if (menus.timeline) menus.timeline.trackScale = modelData.scale
+            }
+        }
+    }
+
+    AppMenu {
+        id: transitionMenu
+        objectName: "transitionMenu"
+        property var transition: null
+        AppMenuItem {
+            objectName: "transitionMenu:copy"
+            text: qsTr("Copy the transition")
+            onTriggered: menus.project.copyTransition(transitionMenu.transition.clipId)
+        }
+        AppMenuItem {
+            objectName: "transitionMenu:remove"
+            text: qsTr("Remove the transition")
+            onTriggered: menus.project.removeTransition(transitionMenu.transition.clipId)
+        }
+    }
+
+    // Which attributes to paste onto the selected clips.
+    Popup {
+        id: pasteBox
+        objectName: "pasteAttributes"
+        modal: true
+        focus: true
+        anchors.centerIn: Overlay.overlay
+        width: 380
+        padding: Theme.space.l
+        readonly property var parts: [{ key: "visual", label: qsTr("Position, size and crop") }, { key: "color", label: qsTr("Colour and look") },
+                                      { key: "effects", label: qsTr("Effects") }, { key: "keying", label: qsTr("Chroma key and masks") },
+                                      { key: "audio", label: qsTr("Volume, fades and sound effects") }, { key: "speed", label: qsTr("Speed") }]
+        property var chosen: ["visual", "color", "effects", "keying", "audio"]
+        Overlay.modal: Rectangle { color: Qt.alpha("#000000", Theme.dark ? 0.55 : 0.35) }
+        background: Rectangle {
+            radius: Theme.radius.l
+            color: Theme.color.surfaceRaised
+            border.color: Theme.color.borderStrong
+        }
+        contentItem: ColumnLayout {
+            spacing: Theme.space.s
+            Text { text: qsTr("Paste attributes"); font: Theme.type.title; color: Theme.color.textPrimary }
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Onto the selected clips, from the clip you copied them from:")
+                font: Theme.type.body
+                color: Theme.color.textSecondary
+                wrapMode: Text.WordWrap
+            }
+            Repeater {
+                model: pasteBox.parts
+                delegate: CheckBox {
+                    required property var modelData
+                    objectName: "pastePart:" + modelData.key
+                    text: modelData.label
+                    font: Theme.type.body
+                    checked: pasteBox.chosen.indexOf(modelData.key) >= 0
+                    onToggled: pasteBox.chosen = checked ? pasteBox.chosen.concat([modelData.key])
+                                                         : pasteBox.chosen.filter((k) => k !== modelData.key)
+                }
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: Theme.space.s
+                TextButton { text: qsTr("Cancel"); onClicked: pasteBox.close() }
+                TextButton {
+                    objectName: "pasteAttributesAccept"
+                    text: qsTr("Paste")
+                    variant: "primary"
+                    enabled: pasteBox.chosen.length > 0
+                    onClicked: {
+                        if (menus.project.pasteAttributes(pasteBox.chosen))
+                            pasteBox.close()
+                    }
+                }
+            }
+        }
     }
 
     ConfirmDialog { id: confirm; objectName: "timelineConfirm" }

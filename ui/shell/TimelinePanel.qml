@@ -21,7 +21,13 @@ Rectangle {
     color: Theme.color.surface
 
     // Right-click menus: clips, track headers, empty lane space.
-    TimelineMenus { id: menus; objectName: "timelineMenus"; project: timeline.project }
+    TimelineMenus { id: menus; objectName: "timelineMenus"; project: timeline.project; timeline: timeline }
+
+    // The blade tool (B): clicking a clip cuts it there. V goes back to selecting.
+    property bool bladeMode: false
+    // Track height: 0.7 small, 1 normal, 1.5 large.
+    property real trackScale: 1.0
+    function pasteAttributes() { menus.openPasteAttributes() }
 
     function openRecorder() { recordPanel.open() }
 
@@ -31,7 +37,7 @@ Rectangle {
              : kind === "title" ? Theme.color.trackTitle : Theme.color.trackEffect
     }
     function trackHeight(kind) {
-        return kind === "video" ? Theme.size.videoTrack : Theme.size.audioTrack
+        return Math.round((kind === "video" ? Theme.size.videoTrack : Theme.size.audioTrack) * trackScale)
     }
     function rulerLabel(seconds) {
         const s = Math.floor(seconds)
@@ -63,7 +69,22 @@ Rectangle {
             Layout.rightMargin: Theme.space.m
             spacing: Theme.space.xxs
 
-            IconButton { iconName: "select"; tip: qsTr("Select (V)"); checkable: true; checked: true }
+            IconButton {
+                objectName: "selectToolButton"
+                iconName: "select"
+                tip: qsTr("Select") + KeyMap.hints["selectTool"]
+                checkable: true
+                checked: !timeline.bladeMode
+                onClicked: timeline.bladeMode = false
+            }
+            IconButton {
+                objectName: "bladeToolButton"
+                iconName: "blade"
+                tip: qsTr("Blade: click clips to cut them") + KeyMap.hints["blade"]
+                checkable: true
+                checked: timeline.bladeMode
+                onClicked: timeline.bladeMode = !timeline.bladeMode
+            }
             IconButton {
                 objectName: "splitButton"
                 iconName: "split"
@@ -419,6 +440,36 @@ Rectangle {
                             }
                         }
                         Divider { anchors.bottom: parent.bottom; width: parent.width }
+
+                        // In and Out: the range between them shaded, a bracket at each.
+                        Rectangle {
+                            objectName: "markedRange"
+                            readonly property real from: timeline.project.markIn >= 0 ? timeline.project.markIn : 0
+                            readonly property real to: timeline.project.markOut >= 0 ? timeline.project.markOut : timeline.project.duration
+                            visible: timeline.project.markIn >= 0 || timeline.project.markOut >= 0
+                            x: from * timeline.pixelsPerSecond
+                            width: Math.max(0, to - from) * timeline.pixelsPerSecond
+                            height: parent.height
+                            color: Qt.alpha(Theme.color.accent, 0.18)
+                            z: 2
+                        }
+                        Repeater {
+                            model: [{ key: "markIn", at: timeline.project.markIn }, { key: "markOut", at: timeline.project.markOut }]
+                            delegate: Rectangle {
+                                required property var modelData
+                                objectName: modelData.key + "Flag"
+                                visible: modelData.at >= 0
+                                x: modelData.at * timeline.pixelsPerSecond - (modelData.key === "markIn" ? 0 : width)
+                                width: 6
+                                height: ruler.height
+                                color: "transparent"
+                                border.width: 0
+                                z: 3
+                                Rectangle { x: modelData.key === "markIn" ? 0 : parent.width - 2; width: 2; height: parent.height; color: Theme.color.accent }
+                                Rectangle { x: 0; width: parent.width; height: 2; color: Theme.color.accent }
+                                Rectangle { x: 0; y: parent.height - 2; width: parent.width; height: 2; color: Theme.color.accent }
+                            }
+                        }
 
                         // Render files: heavy stretches not yet rendered (orange) and those
                         // rendered (blue), along the ruler's foot.
@@ -916,6 +967,14 @@ Rectangle {
         z: 6
         hoverEnabled: true
         onClicked: timeline.project.selectedTransition = transition.clipId
+        // Right-click: copy it (to paste onto another cut) or remove it.
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: (point) => {
+                timeline.project.selectedTransition = marker.transition.clipId
+                menus.openTransitionMenu(marker.transition, marker, point.position.x, point.position.y)
+            }
+        }
 
         ToolTip {
             visible: marker.hovered
@@ -1127,14 +1186,26 @@ Rectangle {
             }
         }
 
+        // The blade's cut line, where a click would cut.
+        Rectangle {
+            objectName: "bladeLine"
+            visible: timeline.bladeMode && moveArea.containsMouse
+            x: moveArea.x + moveArea.mouseX
+            width: 1
+            height: parent.height
+            color: Theme.color.danger
+            z: 8
+        }
+
         // Body: select and move (horizontally and to another track of the same kind)
         MouseArea {
             id: moveArea
             anchors.fill: parent
             anchors.leftMargin: 6
             anchors.rightMargin: 6
-            cursorShape: pressed && !rightPress ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            cursorShape: timeline.bladeMode ? Qt.CrossCursor : pressed && !rightPress ? Qt.ClosedHandCursor : Qt.OpenHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton
+            hoverEnabled: timeline.bladeMode
             property real pressX: 0
             property real pressY: 0
             property bool moved: false
@@ -1146,6 +1217,12 @@ Rectangle {
                 rightPress = mouse.button === Qt.RightButton
                 if (rightPress) {
                     menus.openClipMenu(item.clip, item.track, moveArea, mouse.x, mouse.y)
+                    return
+                }
+                // The blade: cut the clip where clicked (no drag).
+                if (timeline.bladeMode) {
+                    toggling = true
+                    timeline.project.splitClipAt(item.clip.id, item.clip.start + (moveArea.x + mouse.x) / timeline.pixelsPerSecond)
                     return
                 }
                 // ⇧ or ⌘: add the clip to (or take it out of) the selection, no drag.
@@ -1161,7 +1238,8 @@ Rectangle {
                 moved = false
             }
             onPositionChanged: (mouse) => {
-                if (toggling || rightPress)
+                // (Hovering, for the blade's line, is not a drag.)
+                if (!pressed || toggling || rightPress)
                     return
                 const p = mapToItem(content, mouse.x, mouse.y)
                 if (!moved && Math.abs(p.x - pressX) < 3 && Math.abs(p.y - pressY) < 3)

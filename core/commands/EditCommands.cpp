@@ -1247,7 +1247,7 @@ std::optional<std::string> SetClipSpeedCommand::redo(Project& project)
     if (const MediaItem* media = project.findMedia(location->clip->mediaId); media && media->still)
         return "a still image has no speed";
     if (m_speed < kMinSpeed || m_speed > kMaxSpeed)
-        return "speed must be between 0.1× and 10×";
+        return "speed must be between 0.01× and 100×";
 
     // The clip keeps playing the same source; its length on the timeline changes, and later
     // clips on the track move with its end.
@@ -1409,8 +1409,9 @@ std::optional<std::string> SetClipTransitionCommand::redo(Project& project)
         return error;
     Clip& clip = *location->clip;
     if (m_transition) {
-        if (location->track->kind != TrackKind::Video)
-            return "transitions go between video clips";
+        // On a sound track a transition is a crossfade between the two clips.
+        if (location->track->kind != TrackKind::Video && location->track->kind != TrackKind::Audio)
+            return "transitions go between video or audio clips";
         if (m_transition->transitionId.empty())
             return "no transition chosen";
         const auto& clips = location->track->clips;

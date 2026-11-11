@@ -56,6 +56,7 @@ Item {
             p.seek(1)
             const overlay = findChild(f.editor, "transformOverlay")
             tryVerify(() => overlay.frame !== null, 3000, "the frame never showed")
+            waitForRendering(f.editor) // (the frame drawn where the drags will press)
             return f
         }
 

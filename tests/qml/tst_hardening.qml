@@ -176,7 +176,7 @@ Item {
         }
 
         function test_the_keymap_changes_keys_and_keeps_them() {
-            compare(KeyMap.actions.length, 26)
+            compare(KeyMap.actions.length, 35)
             compare(KeyMap.sequences.split, ["S"])
             compare(KeyMap.sequences["delete"], ["Del", "Backspace"])
             compare(KeyMap.text("group"), "⌘G")
@@ -246,15 +246,15 @@ Item {
             // Click a key, press a new one: it is set.
             click(content, "shortcutKey:split")
             compare(dialog.recording, "split")
-            keyClick(Qt.Key_J)
+            keyClick(Qt.Key_Y)
             compare(dialog.recording, "")
-            compare(KeyMap.sequences.split, ["J"])
+            compare(KeyMap.sequences.split, ["Y"])
             verify(findChild(content, "shortcutReset:split").visible)
 
             // A key in use asks first; Replace moves it.
             click(content, "shortcutKey:split")
             keyClick(Qt.Key_M)
-            compare(KeyMap.sequences.split, ["J"]) // not yet
+            compare(KeyMap.sequences.split, ["Y"]) // not yet
             const conflict = settled(content, "shortcutConflict")
             verify(conflict.text.indexOf("Add a marker") >= 0, conflict.text)
             click(content, "shortcutReplace")

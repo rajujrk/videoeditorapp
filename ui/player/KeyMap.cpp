@@ -46,7 +46,15 @@ KeyMap::KeyMap(QObject* parent) : QObject(parent)
     add("previousMarker", QT_TRANSLATE_NOOP("KeyMap", "Previous marker"), "Playback", {QStringLiteral("Alt+Left")});
     add("nextMarker", QT_TRANSLATE_NOOP("KeyMap", "Next marker"), "Playback", {QStringLiteral("Alt+Right")});
     add("render", QT_TRANSLATE_NOOP("KeyMap", "Render the heavy stretches"), "Playback", {QStringLiteral("Ctrl+R")});
+    add("shuttleBack", QT_TRANSLATE_NOOP("KeyMap", "Play backwards (again: faster)"), "Playback", {QStringLiteral("J")});
+    add("shuttleStop", QT_TRANSLATE_NOOP("KeyMap", "Stop"), "Playback", {QStringLiteral("K")});
+    add("shuttleForward", QT_TRANSLATE_NOOP("KeyMap", "Play forwards (again: faster)"), "Playback", {QStringLiteral("L")});
+    add("markIn", QT_TRANSLATE_NOOP("KeyMap", "Mark In"), "Playback", {QStringLiteral("I")});
+    add("markOut", QT_TRANSLATE_NOOP("KeyMap", "Mark Out"), "Playback", {QStringLiteral("O")});
+    add("clearMarks", QT_TRANSLATE_NOOP("KeyMap", "Clear In and Out"), "Playback", {QStringLiteral("Alt+X")});
     add("split", QT_TRANSLATE_NOOP("KeyMap", "Split at the playhead"), "Editing", {QStringLiteral("S")});
+    add("blade", QT_TRANSLATE_NOOP("KeyMap", "Blade tool (click clips to cut them)"), "Editing", {QStringLiteral("B")});
+    add("selectTool", QT_TRANSLATE_NOOP("KeyMap", "Select tool"), "Editing", {QStringLiteral("V")});
     add("delete", QT_TRANSLATE_NOOP("KeyMap", "Delete the selection"), "Editing", {QStringLiteral("Del"), QStringLiteral("Backspace")});
     add("rippleDelete", QT_TRANSLATE_NOOP("KeyMap", "Ripple delete (close the gap)"), "Editing",
         {QStringLiteral("Shift+Del"), QStringLiteral("Shift+Backspace")});
@@ -54,6 +62,7 @@ KeyMap::KeyMap(QObject* parent) : QObject(parent)
     add("copy", QT_TRANSLATE_NOOP("KeyMap", "Copy"), "Editing", {QStringLiteral("Ctrl+C")});
     add("paste", QT_TRANSLATE_NOOP("KeyMap", "Paste at the playhead"), "Editing", {QStringLiteral("Ctrl+V")});
     add("duplicate", QT_TRANSLATE_NOOP("KeyMap", "Duplicate"), "Editing", {QStringLiteral("Ctrl+D")});
+    add("pasteAttributes", QT_TRANSLATE_NOOP("KeyMap", "Paste attributes"), "Editing", {QStringLiteral("Ctrl+Shift+V")});
     add("selectAll", QT_TRANSLATE_NOOP("KeyMap", "Select every clip"), "Editing", {QStringLiteral("Ctrl+A")});
     add("undo", QT_TRANSLATE_NOOP("KeyMap", "Undo"), "Editing", {QStringLiteral("Ctrl+Z")});
     add("redo", QT_TRANSLATE_NOOP("KeyMap", "Redo"), "Editing", {QStringLiteral("Ctrl+Shift+Z")});

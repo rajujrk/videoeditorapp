@@ -203,6 +203,21 @@ Rectangle {
     Shortcut { objectName: "shortcut:paste"; sequences: editor.keys.paste; enabled: editor.visible && !editor.typing && editor.project.canPaste; onActivated: editor.project.pasteClips() }
     Shortcut { objectName: "shortcut:duplicate"; sequences: editor.keys.duplicate; enabled: editor.visible && !editor.typing && editor.project.selectedClip > 0; onActivated: editor.project.duplicateClips() }
     Shortcut { objectName: "shortcut:selectAll"; sequences: editor.keys.selectAll; enabled: editor.visible && !editor.typing; onActivated: editor.project.selectAllClips() }
+    // Shuttle (J K L), In and Out, the blade, pasting attributes.
+    Shortcut { objectName: "shortcut:shuttleBack"; sequences: editor.keys.shuttleBack; enabled: editor.visible && !editor.typing; onActivated: editor.project.shuttle(-1) }
+    Shortcut { objectName: "shortcut:shuttleStop"; sequences: editor.keys.shuttleStop; enabled: editor.visible && !editor.typing; onActivated: editor.project.shuttle(0) }
+    Shortcut { objectName: "shortcut:shuttleForward"; sequences: editor.keys.shuttleForward; enabled: editor.visible && !editor.typing; onActivated: editor.project.shuttle(1) }
+    Shortcut { objectName: "shortcut:markIn"; sequences: editor.keys.markIn; enabled: editor.visible && !editor.typing; onActivated: editor.project.setMarkIn() }
+    Shortcut { objectName: "shortcut:markOut"; sequences: editor.keys.markOut; enabled: editor.visible && !editor.typing; onActivated: editor.project.setMarkOut() }
+    Shortcut { objectName: "shortcut:clearMarks"; sequences: editor.keys.clearMarks; enabled: editor.visible && !editor.typing; onActivated: editor.project.clearMarks() }
+    Shortcut { objectName: "shortcut:blade"; sequences: editor.keys.blade; enabled: editor.visible && !editor.typing; onActivated: timelinePanel.bladeMode = !timelinePanel.bladeMode }
+    Shortcut { objectName: "shortcut:selectTool"; sequences: editor.keys.selectTool; enabled: editor.visible && !editor.typing; onActivated: timelinePanel.bladeMode = false }
+    Shortcut {
+        objectName: "shortcut:pasteAttributes"
+        sequences: editor.keys.pasteAttributes
+        enabled: editor.visible && !editor.typing && editor.project.hasCopiedAttributes && editor.project.selectedClip > 0
+        onActivated: timelinePanel.pasteAttributes()
+    }
     Shortcut {
         sequences: editor.keys["delete"]
         enabled: editor.visible && !editor.typing

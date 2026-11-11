@@ -85,6 +85,15 @@ class ProjectController : public QObject {
 
     Q_PROPERTY(double playhead READ playhead NOTIFY playheadChanged)
     Q_PROPERTY(bool playing READ playing NOTIFY playingChanged)
+    // Shuttle (J, K, L): the rate the playhead moves at (0 still, 1 playing, ±2/4/8 shuttling
+    // silently through frames; negative is backwards).
+    Q_PROPERTY(double shuttleRate READ shuttleRate NOTIFY playingChanged)
+    // Mark In and Mark Out (seconds; -1 unset): a range to play, delete or export.
+    Q_PROPERTY(double markIn READ markIn NOTIFY marksChanged)
+    Q_PROPERTY(double markOut READ markOut NOTIFY marksChanged)
+    // Copied attributes (pasteAttributes) and a copied transition (pasteTransition).
+    Q_PROPERTY(bool hasCopiedAttributes READ hasCopiedAttributes NOTIFY clipboardChanged)
+    Q_PROPERTY(bool hasCopiedTransition READ hasCopiedTransition NOTIFY clipboardChanged)
     Q_PROPERTY(double selectedClip READ selectedClip WRITE setSelectedClip NOTIFY selectionChanged)
     // Every selected clip (the selected clip, its group, and any added with toggleClipSelection).
     Q_PROPERTY(QVariantList selectedClips READ selectedClips NOTIFY selectionChanged)
@@ -521,7 +530,7 @@ public:
     // Jumps the playhead to the clip's previous (-1) or next (+1) keyframe.
     Q_INVOKABLE bool seekKeyframe(double clipId, int direction);
 
-    // Speed (0.1–10) and direction; the clip's length changes and later clips follow.
+    // Speed (0.01–100) and direction; the clip's length changes and later clips follow.
     Q_INVOKABLE bool setClipSpeed(double clipId, double speed, bool reversed);
     // Inserts a still of the frame at the playhead into the clip under it (or the selected
     // clip) for `holdSeconds`.
@@ -935,6 +944,39 @@ public:
     Q_INVOKABLE void togglePlay();
     Q_INVOKABLE void seek(double seconds);
     Q_INVOKABLE void stepFrames(int frames);
+    // J (direction -1) and L (+1): play that way, each further press twice as fast (to 8×;
+    // backwards and faster than 1× shuttle through frames without sound); K stops.
+    Q_INVOKABLE void shuttle(int direction);
+    double shuttleRate() const;
+    // A typed time: HH:MM:SS:FF, MM:SS:FF, SS:FF or FF (frames), or seconds with a point;
+    // -1 if it is not one.
+    Q_INVOKABLE double parseTimecode(const QString& text) const;
+    // In and Out (at the playhead by default); clearMarks; playing just the range; taking it
+    // out of every unlocked track (later clips move back).
+    double markIn() const { return m_markIn; }
+    double markOut() const { return m_markOut; }
+    Q_INVOKABLE void setMarkIn(double seconds = -1);
+    Q_INVOKABLE void setMarkOut(double seconds = -1);
+    Q_INVOKABLE void clearMarks();
+    Q_INVOKABLE bool playMarkedRange();
+    Q_INVOKABLE bool deleteMarkedRange();
+    // Splits a clip at a time inside it (the blade tool).
+    Q_INVOKABLE bool splitClipAt(double clipId, double seconds);
+    // Gaps: every gap between clips on a track (or on every unlocked track) closed, later
+    // clips moving back; or the one gap at a time on a track. How many were closed.
+    Q_INVOKABLE int closeGaps(double trackId = -1);
+    Q_INVOKABLE bool closeGapAt(double trackId, double seconds);
+    // Attributes: a clip's look copied, then pasted onto the selection (or a clip), only the
+    // chosen parts: "visual" (position, size, crop, opacity, blend, their keyframes),
+    // "color" (look and grade), "effects", "keying" (key, masks), "audio" (volume, fades,
+    // sound effects), "speed".
+    Q_INVOKABLE bool copyAttributes(double clipId);
+    Q_INVOKABLE bool pasteAttributes(const QStringList& parts, double clipId = -1);
+    bool hasCopiedAttributes() const { return m_copiedAttributes.has_value(); }
+    // A transition copied from a cut, pasted onto another clip's start.
+    Q_INVOKABLE bool copyTransition(double clipId);
+    Q_INVOKABLE bool pasteTransition(double clipId);
+    bool hasCopiedTransition() const { return m_copiedTransition.has_value(); }
 
     // Nearest edit point or playhead within `tolerance` seconds of `seconds`, ignoring the
     // edges of `ignoreClipId`; returns `seconds` when nothing is close enough.
@@ -976,6 +1018,7 @@ signals:
     void playingChanged();
     void selectionChanged();
     void clipboardChanged();
+    void marksChanged();
     void selectedClipInfoChanged();
     void levelsChanged();
     void mixLevelsChanged();
@@ -1072,6 +1115,14 @@ private:
     tve::Id m_selectedClip = tve::kNoId;
     std::vector<tve::Id> m_selectedClips; // includes m_selectedClip
     std::vector<tve::CopiedClip> m_clipboard; // copied clips (copyClips/cutClips)
+    std::optional<tve::Clip> m_copiedAttributes;
+    std::optional<tve::ClipTransition> m_copiedTransition;
+    double m_markIn = -1;
+    double m_markOut = -1;
+    double m_playUntil = -1; // playing the marked range: where to stop
+    double m_shuttleRate = 0; // shuttling through frames (0: not)
+    QTimer m_shuttleTimer;
+    qint64 m_shuttleLast = 0; // when the shuttle last moved the playhead (ms)
     void selectClips(std::vector<tve::Id> ids);
     std::vector<tve::Id> clipsToCopy() const;
     tve::Id m_selectedTransition = tve::kNoId;

@@ -77,6 +77,7 @@ The following improvements were completed after Phase 5:
 - Slice 23c: MP3 audio export.
 - Slice 24a: Right-click menus on clips, tracks, empty timeline space and media; adding, renaming and deleting tracks; cut, copy, paste, duplicate and ripple delete with shortcuts; the home screen's Record screen and Instant mode.
 - Slice 24b: Drag and drop from Finder onto the timeline and player, and moving, resizing and rotating the selected clip by hand in the player.
+- Slice 24c: Timeline tools — J K L shuttle, typing a timecode, Mark In/Out, the blade tool, closing gaps, track height, pasting attributes and transitions, crossfades on sound tracks, and speeds from 0.01× to 100×.
 
 All previously identified feature gaps have been closed.
 
@@ -136,7 +137,7 @@ All previously identified feature gaps have been closed.
 
 ### 2.7 Speed and Playback Controls
 
-- Adjust clip playback speed from 0.1× to 10×.
+- Adjust clip playback speed from 0.01× to 100×.
 - Create speed ramps.
 - Play clips in reverse.
 - Insert freeze frames.
@@ -240,7 +241,7 @@ drag its left or right edge to trim; drag the round knobs at its top corners to 
 lengths; click or drag the ruler to scrub. The inspector's Audio tab sets volume and fades
 and detaches a video clip's sound to an audio track.
 
-The inspector's Speed tab sets a clip's speed (slider from 0.1× to 10×, or 0.5/1/2/4×
+The inspector's Speed tab sets a clip's speed (slider from 0.01× to 100×, or 0.5/1/2/4×
 presets) and direction; the clip gets shorter or longer and later clips on its track move
 with it. Reversed clips play their sound backwards too. "Freeze frame at playhead" splits
 the clip there and inserts a 2-second still (silent; trim it to change its length). Clip
@@ -600,6 +601,16 @@ library to add it at the playhead, at the end, show it in Finder, or remove it f
 project. ⌘X, ⌘C, ⌘V, ⌘D, ⌘A and ⇧⌫ cut, copy, paste at the playhead, duplicate, select all and
 ripple delete; pasted clips keep their spacing and tracks, moving up a track where something
 is in the way.
+
+**Timeline tools.** J, K and L shuttle: L plays, press again for 2×, 4×, 8×; J the same
+backwards; K stops. Click the timecode under the player to type a time to go to. I and O mark
+a range (⌥X clears it), shaded on the ruler: right-click the timeline to play it, delete it from
+every track, and export it ("In to Out"). B is the blade: click a clip to cut it there (V goes
+back to selecting). Right-click empty timeline space to close a gap, or every gap on a track,
+and to make tracks small, normal or large. Copy a clip's attributes and paste them (⇧⌘V) onto
+others, choosing position and size, colour, effects, keying, sound or speed; copy a
+transition from its marker and paste it into another clip. Sound clips crossfade with a
+transition between them. Speed runs from 0.01× to 100×.
 
 **Placing clips by hand.** Select a clip and its frame shows in the player: drag inside it to
 move it (it snaps to the centre lines), a corner to resize it, the round knob to turn it (⇧ in

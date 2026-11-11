@@ -114,8 +114,8 @@ Item {
             const f = createEditor()
             const p = f.project
             openSpeed(f)
-            verify(p.setClipSpeed(p.selectedClip, 50, false))
-            compare(p.selectedClipInfo.speed, 10)
+            verify(p.setClipSpeed(p.selectedClip, 500, false))
+            compare(p.selectedClipInfo.speed, 100) // 0.01× to 100×
         }
 
         function test_freeze_button_inserts_a_still() {

@@ -367,6 +367,18 @@ lines while a move snaps to them, dark and light:
 ![The transform frame, dark](images/transform-dark.png)
 ![The transform frame, light](images/transform-light.png)
 
+In and Out shade the ruler between two accent brackets; the blade tool (its own toolbar toggle
+beside Select) draws a red cut line under the pointer; Mark In and Mark Out buttons flank the
+frame-step buttons, dark and light:
+
+![In and Out with the blade, dark](images/in-out-blade-dark.png)
+![In and Out with the blade, light](images/in-out-blade-light.png)
+
+Pasting attributes: a short list of what to paste, the usual dialog surface, dark and light:
+
+![Paste attributes, dark](images/paste-attributes-dark.png)
+![Paste attributes, light](images/paste-attributes-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.
@@ -546,7 +558,7 @@ The app in Tamil: the Home screen with the Language menu at the foot of the rail
 
 ### Icons
 
-61 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+64 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.
