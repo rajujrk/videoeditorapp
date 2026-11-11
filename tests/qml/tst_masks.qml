@@ -89,8 +89,11 @@ Item {
             const overlay = findChild(f.editor, "maskOverlay")
             const r = overlay.canvasRect
             overlay.opacity = 0
+            const frame = findChild(f.editor, "transformOverlay") // (the selected clip's frame, too)
+            frame.opacity = 0
             const image = grabImage(root)
             overlay.opacity = 1
+            frame.opacity = 1
             const scale = image.width / root.width
             const p = overlay.mapToItem(root, r.x + u * r.width, r.y + v * r.height)
             return image.pixel(Math.round(p.x * scale), Math.round(p.y * scale))

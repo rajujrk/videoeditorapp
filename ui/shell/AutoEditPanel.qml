@@ -9,6 +9,7 @@ import TechieVideoEditor.Theme
 // following the subject, with captions). Each is a new project; the media is measured first.
 Popup {
     id: panel
+    signal importRequested() // (no media yet: the panel's Import button)
     required property var project
     property string mode: "instant" // "instant", "montage", "shorts"
     property var chosen: []          // media ids, in order
@@ -154,6 +155,13 @@ Popup {
                 text: panel.mode === "instant" ? qsTr("Import some pictures or videos first.") : qsTr("Import some videos first.")
                 font: Theme.type.caption
                 color: Theme.color.textDisabled
+            }
+            TextButton {
+                objectName: "autoEditImport"
+                visible: panel.media.length === 0
+                text: qsTr("Import media…")
+                iconName: "import"
+                onClicked: panel.importRequested()
             }
         }
 

@@ -350,6 +350,23 @@ it is a picture bitrate), dark and light:
 ![Export as MP3, dark](images/export-mp3-dark.png)
 ![Export as MP3, light](images/export-mp3-light.png)
 
+Menus use `AppMenu`, `AppMenuItem` and `AppMenuSeparator` (ui/theme): compact 30-pixel rows
+on the raised surface, the accent on the highlighted row, a check mark column, shortcuts on
+the right in the caption style, a › for submenus. A clip's right-click menu and a track
+header's, dark and light:
+
+![A clip's menu, dark](images/clip-menu-dark.png)
+![A clip's menu, light](images/clip-menu-light.png)
+![A track's menu, dark](images/track-menu-dark.png)
+![A track's menu, light](images/track-menu-light.png)
+
+Placing a clip by hand: its frame in the player in the accent colour over a dark line (to show
+on any picture), white corner handles to resize, the round knob to turn it, orange centre
+lines while a move snaps to them, dark and light:
+
+![The transform frame, dark](images/transform-dark.png)
+![The transform frame, light](images/transform-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

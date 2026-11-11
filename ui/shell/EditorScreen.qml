@@ -22,6 +22,9 @@ Rectangle {
     color: Theme.color.canvas
 
     function importMedia() { importDialog.open() }
+    // From the home screen's quick actions.
+    function openRecorder() { timelinePanel.openRecorder() }
+    function openInstantMode() { libraryPanel.openInstantMode() }
     function saveProject() {
         if (project.filePath !== "")
             project.save("")
@@ -91,6 +94,7 @@ Rectangle {
                 handle: Grip { vertical: true }
 
                 LibraryPanel {
+                    id: libraryPanel
                     SplitView.preferredWidth: Theme.size.libraryWidth
                     SplitView.minimumWidth: Theme.size.libraryMinWidth
                     player: playerPanel.player
@@ -114,6 +118,7 @@ Rectangle {
             }
 
             TimelinePanel {
+                id: timelinePanel
                 SplitView.preferredHeight: Theme.size.timelineHeight
                 SplitView.minimumHeight: Theme.size.timelineMinHeight
                 project: editor.project
@@ -187,6 +192,17 @@ Rectangle {
     readonly property var keys: KeyMap.sequences
     Shortcut { sequences: editor.keys.play; enabled: editor.visible && !editor.typing; onActivated: editor.project.togglePlay() }
     Shortcut { objectName: "shortcut:split"; sequences: editor.keys.split; enabled: editor.visible && !editor.typing; onActivated: editor.project.splitAtPlayhead() }
+    Shortcut {
+        objectName: "shortcut:rippleDelete"
+        sequences: editor.keys.rippleDelete
+        enabled: editor.visible && !editor.typing && editor.project.selectedClip > 0
+        onActivated: editor.project.rippleDeleteClip(editor.project.selectedClip)
+    }
+    Shortcut { objectName: "shortcut:cut"; sequences: editor.keys.cut; enabled: editor.visible && !editor.typing && editor.project.selectedClip > 0; onActivated: editor.project.cutClips() }
+    Shortcut { objectName: "shortcut:copy"; sequences: editor.keys.copy; enabled: editor.visible && !editor.typing && editor.project.selectedClip > 0; onActivated: editor.project.copyClips() }
+    Shortcut { objectName: "shortcut:paste"; sequences: editor.keys.paste; enabled: editor.visible && !editor.typing && editor.project.canPaste; onActivated: editor.project.pasteClips() }
+    Shortcut { objectName: "shortcut:duplicate"; sequences: editor.keys.duplicate; enabled: editor.visible && !editor.typing && editor.project.selectedClip > 0; onActivated: editor.project.duplicateClips() }
+    Shortcut { objectName: "shortcut:selectAll"; sequences: editor.keys.selectAll; enabled: editor.visible && !editor.typing; onActivated: editor.project.selectAllClips() }
     Shortcut {
         sequences: editor.keys["delete"]
         enabled: editor.visible && !editor.typing

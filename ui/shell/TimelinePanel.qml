@@ -20,6 +20,11 @@ Rectangle {
 
     color: Theme.color.surface
 
+    // Right-click menus: clips, track headers, empty lane space.
+    TimelineMenus { id: menus; objectName: "timelineMenus"; project: timeline.project }
+
+    function openRecorder() { recordPanel.open() }
+
     function trackColor(kind) {
         return kind === "video" ? Theme.color.trackVideo
              : kind === "audio" ? Theme.color.trackAudio
@@ -274,10 +279,19 @@ Rectangle {
                 Repeater {
                     model: timeline.project.trackModel
                     delegate: Rectangle {
+                        id: header
                         required property var track
+                        objectName: "trackHeader:" + track.name
                         Layout.fillWidth: true
                         Layout.preferredHeight: timeline.trackHeight(track.kind)
                         color: Theme.color.surface
+
+                        // Right-click: the track's menu (add, rename, lock, delete…).
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.RightButton
+                            onPressed: (mouse) => menus.openTrackMenu(header.track, this, mouse.x, mouse.y)
+                        }
 
                         Rectangle { width: 3; height: parent.height - 8; anchors.verticalCenter: parent.verticalCenter; radius: 2; color: timeline.trackColor(track.kind) }
 
@@ -460,10 +474,17 @@ Rectangle {
                         width: parent.width
                         height: parent.height - Theme.size.ruler
 
-                        // Clicking empty lane space clears the selection.
+                        // Clicking empty lane space clears the selection; right-clicking it opens
+                        // the lane's menu (paste here, a marker, tracks).
                         MouseArea {
+                            objectName: "laneSpace"
                             anchors.fill: parent
-                            onPressed: {
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            onPressed: (mouse) => {
+                                if (mouse.button === Qt.RightButton) {
+                                    menus.openLaneMenu(timeline.trackAtY(mouse.y), mouse.x / timeline.pixelsPerSecond, this, mouse.x, mouse.y)
+                                    return
+                                }
                                 timeline.project.selectedClip = 0
                                 timeline.project.selectedTransition = 0
                             }
@@ -513,10 +534,27 @@ Rectangle {
 
                         // Media and transitions dragged from the library
                         DropArea {
+                            id: laneDrop
+                            objectName: "laneDrop"
                             anchors.fill: parent
-                            keys: ["application/x-tve-media", "application/x-tve-transition", "application/x-tve-title"]
+                            keys: ["application/x-tve-media", "application/x-tve-transition", "application/x-tve-title", "text/uri-list"]
+                            // Where a drop would land (drawn while dragging): the track and time.
+                            property var dropTrack: null
+                            property real dropTime: 0
+                            onPositionChanged: (drag) => {
+                                dropTrack = timeline.trackAtY(drag.y)
+                                dropTime = Math.max(0, drag.x / timeline.pixelsPerSecond)
+                            }
+                            onExited: dropTrack = null
                             onDropped: (drop) => {
+                                dropTrack = null
                                 const track = timeline.trackAtY(drop.y)
+                                if (drop.keys.indexOf("text/uri-list") >= 0 && drop.keys.indexOf("application/x-tve-media") < 0) {
+                                    // Files from Finder: imported, then placed here one after another.
+                                    timeline.project.dropFilesAt(drop.urls, track ? track.id : -1, Math.max(0, drop.x / timeline.pixelsPerSecond))
+                                    drop.accept()
+                                    return
+                                }
                                 if (!track)
                                     return
                                 if (drop.keys.indexOf("application/x-tve-title") >= 0) {
@@ -547,8 +585,34 @@ Rectangle {
                                 const mediaId = drop.source && drop.source.mediaId !== undefined
                                               ? drop.source.mediaId
                                               : Number(drop.getDataAsString("application/x-tve-media"))
-                                timeline.project.addClip(mediaId, track.id, start)
+                                // On that track if it fits there; else on a track with room.
+                                timeline.project.dropMediaAt(mediaId, track.id, start)
                                 drop.accept()
+                            }
+                        }
+                        // The drop's place: the track under the pointer, and a line at the time.
+                        Rectangle {
+                            objectName: "dropIndicator"
+                            visible: laneDrop.containsDrag && laneDrop.dropTrack !== null
+                            x: laneDrop.dropTime * timeline.pixelsPerSecond
+                            y: {
+                                let top = 0
+                                for (const t of timeline.tracks) {
+                                    if (laneDrop.dropTrack && t.id === laneDrop.dropTrack.id)
+                                        return top
+                                    top += timeline.trackHeight(t.kind)
+                                }
+                                return 0
+                            }
+                            width: 2
+                            height: laneDrop.dropTrack ? timeline.trackHeight(laneDrop.dropTrack.kind) : 0
+                            color: Theme.color.accent
+                            z: 20
+                            Rectangle {
+                                x: 2
+                                width: laneArea.width - parent.x
+                                height: parent.height
+                                color: Qt.alpha(Theme.color.accent, 0.10)
                             }
                         }
                     }
@@ -1069,14 +1133,21 @@ Rectangle {
             anchors.fill: parent
             anchors.leftMargin: 6
             anchors.rightMargin: 6
-            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            cursorShape: pressed && !rightPress ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             property real pressX: 0
             property real pressY: 0
             property bool moved: false
 
             property bool toggling: false
+            property bool rightPress: false // a right-click opens the clip's menu, no drag
 
             onPressed: (mouse) => {
+                rightPress = mouse.button === Qt.RightButton
+                if (rightPress) {
+                    menus.openClipMenu(item.clip, item.track, moveArea, mouse.x, mouse.y)
+                    return
+                }
                 // ⇧ or ⌘: add the clip to (or take it out of) the selection, no drag.
                 toggling = (mouse.modifiers & (Qt.ShiftModifier | Qt.ControlModifier)) !== 0
                 if (toggling) {
@@ -1090,7 +1161,7 @@ Rectangle {
                 moved = false
             }
             onPositionChanged: (mouse) => {
-                if (toggling)
+                if (toggling || rightPress)
                     return
                 const p = mapToItem(content, mouse.x, mouse.y)
                 if (!moved && Math.abs(p.x - pressX) < 3 && Math.abs(p.y - pressY) < 3)
@@ -1107,7 +1178,7 @@ Rectangle {
                 }
             }
             onReleased: (mouse) => {
-                if (moved && !toggling) {
+                if (moved && !toggling && !rightPress) {
                     const p = mapToItem(laneArea, mouse.x, mouse.y)
                     const target = timeline.trackAtY(p.y) || item.track
                     const start = item.previewStart

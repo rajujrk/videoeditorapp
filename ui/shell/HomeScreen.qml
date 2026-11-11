@@ -11,6 +11,8 @@ Rectangle {
     property var project: null
     signal newProject(string name, int width, int height)
     signal openRequested()
+    signal recordRequested()  // a new project with the screen recorder open
+    signal instantRequested() // a new project with instant video open
     signal mediaDropped(url file)
     signal recoverRequested(string id)
 
@@ -283,8 +285,12 @@ Rectangle {
                     TextButton { objectName: "openProject"; text: qsTr("Open project…"); iconName: "folder"
                                  tip: qsTr("A project, or a timeline from another editor (OpenTimelineIO, Final Cut Pro XML)")
                                  onClicked: home.openRequested() }
-                    TextButton { text: qsTr("Record screen"); iconName: "record"; enabled: false; tip: qsTr("Recording arrives in Phase 4") }
-                    TextButton { text: qsTr("Instant mode"); iconName: "effects"; enabled: false; tip: qsTr("Instant mode arrives in Phase 4") }
+                    TextButton { objectName: "homeRecord"; text: qsTr("Record screen"); iconName: "record"
+                                 tip: qsTr("A new project with the screen and camera recorder open")
+                                 onClicked: home.recordRequested() }
+                    TextButton { objectName: "homeInstant"; text: qsTr("Instant mode"); iconName: "effects"
+                                 tip: qsTr("A new project that makes a video from your pictures and clips for you")
+                                 onClicked: home.instantRequested() }
                 }
 
                 // Recent projects (empty state until projects are saved in Phase 1)

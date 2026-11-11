@@ -282,6 +282,7 @@ Rectangle {
                 sourceComponent: TemplatesPage {
                     objectName: "templatesPage"
                     project: library.project
+                    onImportRequested: library.importRequested()
                 }
             }
             Loader {
@@ -995,8 +996,16 @@ Rectangle {
                             id: tileMouse
                             anchors.fill: parent
                             hoverEnabled: true
-                            drag.target: dragProxy
-                            onDoubleClicked: library.project.addClip(mediaTile.modelData.id)
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            drag.target: pressedButtons & Qt.RightButton ? null : dragProxy
+                            onPressed: (mouse) => {
+                                if (mouse.button === Qt.RightButton)
+                                    library.openMediaMenu(mediaTile.modelData, tileMouse, mouse.x, mouse.y)
+                            }
+                            onDoubleClicked: (mouse) => {
+                                if (mouse.button === Qt.LeftButton)
+                                    library.project.addClip(mediaTile.modelData.id)
+                            }
                         }
                         Item { id: dragProxy }
 
@@ -1005,7 +1014,7 @@ Rectangle {
                             delay: 800
                             text: (mediaTile.modelData.generated
                                    ? qsTr("Made by %1: “%2”").arg(mediaTile.modelData.generated.model).arg(mediaTile.modelData.generated.prompt) + "\n" : "")
-                                  + qsTr("Double-click to add to the timeline, or drag onto a track")
+                                  + qsTr("Double-click to add to the timeline, drag onto a track or the player, or right-click for more")
                         }
                         // Generated media: marked, its prompt and maker kept.
                         Rectangle {
@@ -1183,4 +1192,57 @@ Rectangle {
             }
         }
     }
+
+    // Instant mode: the Templates tab, with its instant-video panel open.
+    function openInstantMode() {
+        currentTab = tabs.findIndex((t) => t.key === "Templates")
+        Qt.callLater(() => { if (templatesPage.item) templatesPage.item.makeFor("instant") })
+    }
+
+    // A media item's right-click menu.
+    function openMediaMenu(media, item, x, y) {
+        mediaMenu.media = media
+        mediaMenu.popup(item, x, y)
+    }
+    AppMenu {
+        id: mediaMenu
+        objectName: "mediaMenu"
+        property var media: null
+        AppMenuItem {
+            objectName: "mediaMenu:atPlayhead"
+            text: qsTr("Add at the playhead")
+            enabled: mediaMenu.media !== null && mediaMenu.media.missing !== true
+            onTriggered: library.project.addMediaAt(mediaMenu.media.id)
+        }
+        AppMenuItem {
+            objectName: "mediaMenu:append"
+            text: qsTr("Add to the end of the timeline")
+            enabled: mediaMenu.media !== null && mediaMenu.media.missing !== true
+            onTriggered: library.project.addClip(mediaMenu.media.id)
+        }
+        AppMenuItem {
+            objectName: "mediaMenu:reveal"
+            text: qsTr("Show in Finder")
+            enabled: mediaMenu.media !== null && mediaMenu.media.missing !== true && mediaMenu.media.placeholder !== true
+            onTriggered: library.project.revealMedia(mediaMenu.media.id)
+        }
+        AppMenuSeparator {}
+        AppMenuItem {
+            objectName: "mediaMenu:remove"
+            text: qsTr("Remove from the project")
+            onTriggered: {
+                const media = mediaMenu.media
+                const used = library.project.clipsUsingMedia(media.id)
+                if (used === 0) {
+                    library.project.removeMedia(media.id)
+                    return
+                }
+                mediaConfirm.ask(qsTr("Remove \"%1\"?").arg(media.name),
+                                 used === 1 ? qsTr("A clip on the timeline uses it and goes with it. You can undo this.")
+                                            : qsTr("%1 clips on the timeline use it and go with it. You can undo this.").arg(Fmt.num(used)),
+                                 qsTr("Remove"), () => library.project.removeMedia(media.id))
+            }
+        }
+    }
+    ConfirmDialog { id: mediaConfirm; objectName: "mediaConfirm" }
 }

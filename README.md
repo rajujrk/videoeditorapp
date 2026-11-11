@@ -75,6 +75,8 @@ The following improvements were completed after Phase 5:
 - Slice 23a: Speed and transition support for compound clips.
 - Slice 23b: Transparent video export using WebM VP9 and HEVC.
 - Slice 23c: MP3 audio export.
+- Slice 24a: Right-click menus on clips, tracks, empty timeline space and media; adding, renaming and deleting tracks; cut, copy, paste, duplicate and ripple delete with shortcuts; the home screen's Record screen and Instant mode.
+- Slice 24b: Drag and drop from Finder onto the timeline and player, and moving, resizing and rotating the selected clip by hand in the player.
 
 All previously identified feature gaps have been closed.
 
@@ -172,7 +174,6 @@ The application has completed all five planned development phases, covering the 
 Additional enhancements have also closed the previously identified feature gaps.
 
 The application now provides a comprehensive video editing environment with multi-track editing, professional colour grading, visual effects, transitions, audio processing, AI-assisted editing, media generation, advanced compositing, project interchange and export capabilities.
-
 What's in the repo:
 
 - `core/` — project model (tracks, clips, media, keyframes with easing), undoable edit commands (add, move, trim,
@@ -588,6 +589,24 @@ with its key, by group, with a search. Click a key and press the new one (Esc ca
 another action has asks before it moves; reset one or all. Tooltips show the keys in use.
 Changes are kept for every project in `~/Library/Application Support/TechieVideoEditor/keymap.json`
 (only what differs from the defaults; `TVE_KEYMAP_FILE` moves it).
+
+**Right-click menus, tracks and the clipboard.** Right-click a clip for cut, copy, paste,
+duplicate, delete or ripple delete, splitting or trimming at the playhead, detaching its audio,
+its speed (¼× to 4×, reverse, freeze frame), grouping, compound clips, a marker, copying a
+colour grade, and showing its file in Finder. Right-click a track's header to add a video,
+audio or title track, rename, lock, hide or mute it, or delete it (or every empty track);
+right-click empty timeline space to paste there or add a marker; right-click media in the
+library to add it at the playhead, at the end, show it in Finder, or remove it from the
+project. ⌘X, ⌘C, ⌘V, ⌘D, ⌘A and ⇧⌫ cut, copy, paste at the playhead, duplicate, select all and
+ripple delete; pasted clips keep their spacing and tracks, moving up a track where something
+is in the way.
+
+**Placing clips by hand.** Select a clip and its frame shows in the player: drag inside it to
+move it (it snaps to the centre lines), a corner to resize it, the round knob to turn it (⇧ in
+15° steps). Click a picture in the player to select its clip. Drag files from Finder onto the
+timeline (they land where you drop them) or the player, and media from the library onto a
+track or the player. The home screen's Record screen and Instant mode open a new project with
+the recorder, or instant video, ready.
 
 **Markers, groups and compound clips.** Press M (or the flag button) to drop a marker at the
 playhead; it shows as a coloured flag on the ruler with a faint line down the lanes, clips snap
