@@ -212,7 +212,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, durati
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
                                                 chromaKey, masks, matte, cutout, faceMosaic, stabilization, deflicker,
                                                 denoise, motionTracks, processedVideo, cursor, audioEffects,
-                                                enhancedAudio, keepPitch, sequenceId, groupId, drawing)
+                                                enhancedAudio, keepPitch, sequenceId, groupId, drawing, angles)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips, audioEffects)
 NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {

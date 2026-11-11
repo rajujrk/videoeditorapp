@@ -70,6 +70,15 @@ KeyMap::KeyMap(QObject* parent) : QObject(parent)
     add("group", QT_TRANSLATE_NOOP("KeyMap", "Group the selected clips"), "Structure", {QStringLiteral("Ctrl+G")});
     add("ungroup", QT_TRANSLATE_NOOP("KeyMap", "Ungroup"), "Structure", {QStringLiteral("Ctrl+Shift+G")});
     add("compound", QT_TRANSLATE_NOOP("KeyMap", "Make or break apart a compound clip"), "Structure", {QStringLiteral("Ctrl+Alt+G")});
+    add("angle1", QT_TRANSLATE_NOOP("KeyMap", "Cut to angle 1 (multicam)"), "Structure", {QStringLiteral("1")});
+    add("angle2", QT_TRANSLATE_NOOP("KeyMap", "Cut to angle 2 (multicam)"), "Structure", {QStringLiteral("2")});
+    add("angle3", QT_TRANSLATE_NOOP("KeyMap", "Cut to angle 3 (multicam)"), "Structure", {QStringLiteral("3")});
+    add("angle4", QT_TRANSLATE_NOOP("KeyMap", "Cut to angle 4 (multicam)"), "Structure", {QStringLiteral("4")});
+    add("angle5", QT_TRANSLATE_NOOP("KeyMap", "Cut to angle 5 (multicam)"), "Structure", {QStringLiteral("5")});
+    add("angle6", QT_TRANSLATE_NOOP("KeyMap", "Cut to angle 6 (multicam)"), "Structure", {QStringLiteral("6")});
+    add("angle7", QT_TRANSLATE_NOOP("KeyMap", "Cut to angle 7 (multicam)"), "Structure", {QStringLiteral("7")});
+    add("angle8", QT_TRANSLATE_NOOP("KeyMap", "Cut to angle 8 (multicam)"), "Structure", {QStringLiteral("8")});
+    add("angle9", QT_TRANSLATE_NOOP("KeyMap", "Cut to angle 9 (multicam)"), "Structure", {QStringLiteral("9")});
     add("save", QT_TRANSLATE_NOOP("KeyMap", "Save the project"), "File", {QStringLiteral("Ctrl+S")});
     add("import", QT_TRANSLATE_NOOP("KeyMap", "Import media"), "File", {QStringLiteral("Ctrl+I")});
     add("export", QT_TRANSLATE_NOOP("KeyMap", "Export"), "File", {QStringLiteral("Ctrl+E")});

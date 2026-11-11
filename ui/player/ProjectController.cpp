@@ -1008,6 +1008,30 @@ double ProjectController::duration() const
     return seconds(m_project.duration());
 }
 
+namespace {
+
+// A multicam clip's angles: [{index, name, and its camera's file: mediaId, path, duration}].
+QVariantList angleListOf(const Project& project, const Clip& clip)
+{
+    QVariantList list;
+    for (std::size_t i = 0; i < clip.angles.size(); ++i) {
+        const Sequence* angle = project.findSequence(clip.angles[i]);
+        const MediaItem* media = nullptr;
+        if (angle)
+            for (const Track& track : angle->tracks)
+                if (track.kind == TrackKind::Video && !track.clips.empty() && !media)
+                    media = project.findMedia(track.clips.front().mediaId);
+        list << QVariantMap{{QStringLiteral("index"), int(i)},
+                            {QStringLiteral("name"), angle ? QString::fromStdString(angle->name) : QString()},
+                            {QStringLiteral("mediaId"), media ? double(media->id) : 0.0},
+                            {QStringLiteral("path"), media ? QString::fromStdString(media->path) : QString()},
+                            {QStringLiteral("duration"), media ? toSeconds(media->duration) : 0.0}};
+    }
+    return list;
+}
+
+} // namespace
+
 QVariantList ProjectController::tracks() const
 {
     const Id main = mainTrackId();
@@ -1040,6 +1064,9 @@ QVariantList ProjectController::tracks() const
                 {QStringLiteral("isDrawing"), clip.drawing.has_value()},
                 {QStringLiteral("isAdjustment"), clip.adjustment},
                 {QStringLiteral("isCompound"), sequence != nullptr},
+                {QStringLiteral("isMulticam"), clip.multicam()},
+                {QStringLiteral("angle"), clip.angle()},
+                {QStringLiteral("angles"), clip.multicam() ? angleListOf(m_project, clip) : QVariantList()},
                 {QStringLiteral("missing"), media && missing.contains(media->id)},
                 {QStringLiteral("groupId"), double(clip.groupId)},
                 {QStringLiteral("isStill"), media && media->still},
@@ -1271,8 +1298,12 @@ void ProjectController::resetProject(Project project, const QString& filePath)
     } else if (m_stack) {
         removeAutosave();
     }
+    const bool hadTabs = !m_openLevels.empty();
+    m_openLevels.clear(); // (open compound clips belonged to the project being replaced)
     m_project = std::move(project);
     m_stack = std::make_unique<CommandStack>(m_project);
+    if (hadTabs)
+        emit timelineTabsChanged();
     if (m_copilot)
         m_copilot->startOver(); // (its conversation was about the other project)
     m_filePath = filePath;
@@ -1361,6 +1392,8 @@ bool ProjectController::openTimeline(const QUrl& file)
 
 QVariantMap ProjectController::exportTimeline(const QUrl& file, const QString& format)
 {
+    if (!m_openLevels.empty())
+        closeCompoundClip(0); // (the whole project: back to the main timeline first)
     const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
     std::optional<InterchangeFormat> kind = format == QLatin1String("otio")     ? std::optional(InterchangeFormat::Otio)
                                           : format == QLatin1String("fcpxml") ? std::optional(InterchangeFormat::Fcpxml)
@@ -1396,13 +1429,19 @@ bool ProjectController::save(const QUrl& file)
     if (!path.endsWith(QLatin1String(".tve")))
         path += QLatin1String(".tve");
     try {
-        saveProject(m_project, path.toStdString());
+        saveProject(rootProject(), path.toStdString());
     } catch (const std::exception& e) {
         reportError(tr("Could not save: %1").arg(coreText(e.what())));
         return false;
     }
     m_filePath = path;
     m_stack->setClean();
+    // Saved inside an open compound clip: the file has its edits, which reach the histories
+    // it was opened from only when it closes.
+    for (OpenLevel& level : m_openLevels) {
+        level.savedInside = true;
+        level.stack->setUnsaved();
+    }
     removeAutosave(); // the file has it all now
     emit projectChanged();
     return true;
@@ -2053,7 +2092,7 @@ void ProjectController::autosaveNow()
         return;
     }
     try {
-        saveProject(m_project, autosavePath(m_sessionId, ".tve").toStdString());
+        saveProject(rootProject(), autosavePath(m_sessionId, ".tve").toStdString());
     } catch (const std::exception& e) {
         reportError(tr("Could not autosave: %1").arg(coreText(e.what())));
         return;
@@ -2272,6 +2311,9 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("isTitle"), clip->text.has_value()},
             {QStringLiteral("spherical"), media && media->spherical && !clip->generated()},
             {QStringLiteral("isCompound"), sequence != nullptr},
+            {QStringLiteral("isMulticam"), clip->multicam()},
+            {QStringLiteral("angle"), clip->angle()},
+            {QStringLiteral("angles"), angleListOf(m_project, *clip)},
             {QStringLiteral("groupId"), double(clip->groupId)},
             {QStringLiteral("text"), clip->text ? textMap(*clip->text) : QVariantMap()},
             {QStringLiteral("isDrawing"), clip->drawing.has_value()},
@@ -3984,6 +4026,8 @@ QVariantMap ProjectController::exportRange(const QVariantMap& options) const
 
 bool ProjectController::exportVideo(const QUrl& file, const QVariantMap& options)
 {
+    if (!m_openLevels.empty())
+        closeCompoundClip(0); // (the whole project: back to the main timeline first)
     const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
     if (path.isEmpty()) {
         reportError(tr("Choose where to save the video"));
@@ -4022,6 +4066,8 @@ bool ProjectController::exportVideo(const QUrl& file, const QVariantMap& options
 
 int ProjectController::exportMarkerRanges(const QUrl& folder, const QVariantMap& options)
 {
+    if (!m_openLevels.empty())
+        closeCompoundClip(0); // (the whole project: back to the main timeline first)
     const QString directory = folder.isLocalFile() ? folder.toLocalFile() : folder.toString();
     QString error;
     const auto planned = exportOptions(options, &error);
@@ -5106,6 +5152,8 @@ QVariantList ProjectController::templateCandidates() const
 QString ProjectController::saveAsTemplate(const QString& name, const QString& category, const QVariantList& slotClips,
                                           const QVariantList& textClips, double musicClip)
 {
+    if (!m_openLevels.empty())
+        closeCompoundClip(0); // (the whole project: back to the main timeline first)
     std::vector<Id> slotIds, textIds;
     for (const QVariant& id : slotClips)
         slotIds.push_back(toId(id.toDouble()));
@@ -6793,6 +6841,10 @@ QVariantList ProjectController::markers() const
 
 double ProjectController::addMarker(double at, const QString& note)
 {
+    if (!m_openLevels.empty()) {
+        reportError(tr("Markers go on the main timeline"));
+        return 0;
+    }
     tve::Marker marker;
     marker.time = at < 0 ? ticks(m_playhead) : ticks(at);
     marker.note = note.toStdString();
@@ -6930,7 +6982,9 @@ double ProjectController::createCompound()
         reportError(tr("Select the clips to put in a compound clip"));
         return 0;
     }
-    std::size_t number = m_project.sequences.size() + 1;
+    std::size_t number = std::size_t(std::ranges::count_if(m_project.sequences, [](const Sequence& s) {
+                             return s.name != kHolderSequenceName;
+                         })) + 1;
     const auto taken = [&](const std::string& name) {
         return std::ranges::any_of(m_project.sequences, [&](const Sequence& s) { return s.name == name; });
     };
@@ -8851,6 +8905,8 @@ std::vector<tve::CaptionBlock> ProjectController::captionBlocks() const
 
 bool ProjectController::exportSubtitles(const QUrl& file)
 {
+    if (!m_openLevels.empty())
+        closeCompoundClip(0); // (the whole project: back to the main timeline first)
     const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
     const auto blocks = captionBlocks();
     if (blocks.empty()) {
@@ -9491,5 +9547,236 @@ bool ProjectController::pasteTransition(double clipId)
     if (!apply(std::make_unique<SetClipTransitionCommand>(toId(clipId), *m_copiedTransition)))
         return false;
     setSelectedTransition(clipId);
+    return true;
+}
+
+// --- Source monitor, compound clips, multicam (24d) ---
+
+bool ProjectController::modified() const
+{
+    if (!m_stack->isClean())
+        return true;
+    return std::ranges::any_of(m_openLevels, [](const OpenLevel& l) { return !l.savedInside && !l.stack->isClean(); });
+}
+
+Project ProjectController::rootProject() const
+{
+    std::vector<OpenedSequence> open;
+    for (const OpenLevel& level : m_openLevels)
+        open.push_back(level.opened);
+    return withSequencesClosed(m_project, open);
+}
+
+QVariantList ProjectController::timelineTabs() const
+{
+    QVariantList tabs{QVariantMap{{QStringLiteral("name"), tr("Main timeline")}, {QStringLiteral("depth"), 0}}};
+    for (std::size_t i = 0; i < m_openLevels.size(); ++i)
+        tabs << QVariantMap{{QStringLiteral("name"), m_openLevels[i].name}, {QStringLiteral("depth"), int(i + 1)}};
+    return tabs;
+}
+
+double ProjectController::placeMediaRange(double mediaId, double from, double to, const QString& mode)
+{
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    if (!media) {
+        reportError(tr("Media not found"));
+        return 0;
+    }
+    Id track = mainTrackId();
+    if (!media->hasVideo) {
+        const auto audio = std::ranges::find(m_project.tracks, TrackKind::Audio, &Track::kind);
+        if (audio == m_project.tracks.end()) {
+            reportError(tr("Add an audio track for the sound first"));
+            return 0;
+        }
+        track = audio->id;
+    }
+    const Ticks in = std::max<Ticks>(0, ticks(from));
+    const Ticks out = to <= 0 ? (media->still ? in + ticks(5.0) : media->duration) : ticks(to);
+    const PlaceMode how = mode == QLatin1String("overwrite") ? PlaceMode::Overwrite
+                        : mode == QLatin1String("append")    ? PlaceMode::Append
+                                                             : PlaceMode::Insert;
+    Project after = m_project;
+    Id made = kNoId;
+    if (auto error = placeMedia(after, track, media->id, media->still ? 0 : in, out - in, ticks(m_playhead), how, &made)) {
+        reportError(coreText(*error));
+        return 0;
+    }
+    m_project.setNextId(after.nextId());
+    const char* label = how == PlaceMode::Overwrite ? TVE_TR("core", "Overwrite Clip")
+                      : how == PlaceMode::Append    ? TVE_TR("core", "Append Clip")
+                                                    : TVE_TR("core", "Insert Clip");
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), label)))
+        return 0;
+    setSelectedClip(double(made));
+    return double(made);
+}
+
+bool ProjectController::openCompoundClip(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->compound()) {
+        reportError(tr("Select a compound clip to open"));
+        return false;
+    }
+    pause();
+    clearMarks();
+    const Sequence* sequence = m_project.findSequence(clip->sequenceId);
+    OpenLevel level;
+    level.entry = m_project;
+    level.playhead = m_playhead;
+    level.name = sequence ? QString::fromStdString(sequence->name) : tr("Compound clip");
+    // The playhead stays on the same picture: where it was in the clip, in its insides.
+    const Ticks inside = std::clamp<Ticks>(clip->sourceTimeBeyond(ticks(m_playhead)), 0, sequence ? sequence->duration() : 0);
+    if (auto error = openSequence(m_project, clip->id, &level.opened)) {
+        m_project = level.entry;
+        reportError(coreText(*error));
+        return false;
+    }
+    level.stack = std::move(m_stack);
+    m_stack = std::make_unique<CommandStack>(m_project);
+    m_openLevels.push_back(std::move(level));
+    m_selectedClip = kNoId;
+    m_selectedClips.clear();
+    m_selectedTransition = kNoId;
+    publish();
+    emit selectionChanged();
+    emit timelineTabsChanged();
+    seek(seconds(inside));
+    return true;
+}
+
+void ProjectController::closeLevel()
+{
+    OpenLevel level = std::move(m_openLevels.back());
+    m_openLevels.pop_back();
+    const bool innerClean = m_stack->isClean();
+    Project after = m_project;
+    closeSequence(after, level.opened);
+    m_stack = std::move(level.stack);
+    m_project = std::move(level.entry);
+    m_project.setNextId(std::max(m_project.nextId(), after.nextId()));
+    if (!(after == m_project)) {
+        if (auto error = m_stack->push(std::make_unique<ApplyEditsCommand>(m_project, std::move(after),
+                                                                          TVE_TR("core", "Edit Compound Clip"))))
+            reportError(coreText(*error));
+    }
+    if (level.savedInside && innerClean)
+        m_stack->setClean(); // the file has it as it is now
+    m_playhead = level.playhead;
+    m_selectedClip = level.opened.clipId;
+    m_selectedClips = {level.opened.clipId};
+}
+
+bool ProjectController::closeCompoundClip(int depth)
+{
+    if (m_openLevels.empty())
+        return false;
+    const std::size_t to = depth < 0 ? m_openLevels.size() - 1 : std::min<std::size_t>(std::size_t(depth), m_openLevels.size());
+    if (to >= m_openLevels.size())
+        return false;
+    pause();
+    clearMarks();
+    double playhead = m_playhead;
+    while (m_openLevels.size() > to) {
+        playhead = m_openLevels.back().playhead;
+        closeLevel();
+    }
+    if (!findClip(m_selectedClip)) {
+        m_selectedClip = kNoId;
+        m_selectedClips.clear();
+    }
+    publish();
+    emit selectionChanged();
+    emit timelineTabsChanged();
+    seek(playhead);
+    return true;
+}
+
+double ProjectController::importProjectAsCompound(const QUrl& file)
+{
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    Project other;
+    try {
+        other = loadProject(path.toStdString());
+    } catch (const std::exception& e) {
+        reportError(tr("Could not open the project: %1").arg(coreText(e.what())));
+        return 0;
+    }
+    Project after = m_project;
+    Id made = kNoId;
+    if (auto error = tve::importProjectAsCompound(after, other, QFileInfo(path).completeBaseName().toStdString(),
+                                                  ticks(m_playhead), &made)) {
+        reportError(coreText(*error));
+        return 0;
+    }
+    m_project.setNextId(after.nextId());
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Import Project"))))
+        return 0;
+    setSelectedClip(double(made));
+    return double(made);
+}
+
+double ProjectController::makeMulticam(const QVariantList& clipIds)
+{
+    std::vector<Id> ids;
+    for (const QVariant& id : clipIds.isEmpty() ? selectedClips() : clipIds)
+        ids.push_back(toId(id.toDouble()));
+    Project after = m_project;
+    Id made = kNoId;
+    if (auto error = tve::makeMulticam(after, ids, &made)) {
+        reportError(coreText(*error));
+        return 0;
+    }
+    m_project.setNextId(after.nextId());
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Make Multicam Clip"))))
+        return 0;
+    setSelectedClip(double(made));
+    return double(made);
+}
+
+bool ProjectController::setClipAngle(double clipId, int angle)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (clip && clip->angle() == angle)
+        return true;
+    Project after = m_project;
+    if (auto error = setAngle(after, toId(clipId), angle)) {
+        reportError(coreText(*error));
+        return false;
+    }
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Switch Angle")));
+}
+
+bool ProjectController::cutToAngle(int angle)
+{
+    const Ticks at = ticks(m_playhead);
+    const auto covers = [&](const Clip& c) { return c.multicam() && c.start <= at && at < c.end(); };
+    const Clip* target = findClip(m_selectedClip);
+    if (!target || !covers(*target)) {
+        target = nullptr;
+        for (auto track = m_project.tracks.rbegin(); track != m_project.tracks.rend() && !target; ++track)
+            for (const Clip& clip : track->clips)
+                if (covers(clip)) {
+                    target = &clip;
+                    break;
+                }
+    }
+    if (!target) {
+        reportError(tr("There is no multicam clip at the playhead"));
+        return false;
+    }
+    if (target->angle() == angle)
+        return true;
+    Project after = m_project;
+    Id part = kNoId;
+    if (auto error = tve::cutToAngle(after, target->id, at, angle, &part)) {
+        reportError(coreText(*error));
+        return false;
+    }
+    m_project.setNextId(after.nextId());
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Cut to Angle"))))
+        return false;
+    setSelectedClip(double(part));
     return true;
 }

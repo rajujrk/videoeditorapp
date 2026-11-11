@@ -17,6 +17,8 @@ Rectangle {
     required property var project // ProjectController
     property alias player: playerPanel.player
     readonly property var hdrViewer: playerPanel.hdrViewer // the HDR viewer window, while open
+    // What the transport keys play: the timeline, or the source monitor while it is shown.
+    readonly property var transport: playerPanel.transport
     signal homeRequested()
 
     color: Theme.color.canvas
@@ -101,6 +103,7 @@ Rectangle {
                     project: editor.project
                     onImportRequested: editor.importMedia()
                     onImportFromRequested: (source) => importPanel.show(source)
+                    onSourceRequested: (media) => playerPanel.openSource(media)
                     onCloudSettingsRequested: cloudSettings.open()
                 }
                 PlayerPanel {
@@ -190,7 +193,7 @@ Rectangle {
                                    && Window.activeFocusItem.hasOwnProperty("cursorPosition")
     // Keys come from KeyMap (changed in the Keyboard shortcuts dialog).
     readonly property var keys: KeyMap.sequences
-    Shortcut { sequences: editor.keys.play; enabled: editor.visible && !editor.typing; onActivated: editor.project.togglePlay() }
+    Shortcut { sequences: editor.keys.play; enabled: editor.visible && !editor.typing; onActivated: editor.transport.togglePlay() }
     Shortcut { objectName: "shortcut:split"; sequences: editor.keys.split; enabled: editor.visible && !editor.typing; onActivated: editor.project.splitAtPlayhead() }
     Shortcut {
         objectName: "shortcut:rippleDelete"
@@ -204,12 +207,12 @@ Rectangle {
     Shortcut { objectName: "shortcut:duplicate"; sequences: editor.keys.duplicate; enabled: editor.visible && !editor.typing && editor.project.selectedClip > 0; onActivated: editor.project.duplicateClips() }
     Shortcut { objectName: "shortcut:selectAll"; sequences: editor.keys.selectAll; enabled: editor.visible && !editor.typing; onActivated: editor.project.selectAllClips() }
     // Shuttle (J K L), In and Out, the blade, pasting attributes.
-    Shortcut { objectName: "shortcut:shuttleBack"; sequences: editor.keys.shuttleBack; enabled: editor.visible && !editor.typing; onActivated: editor.project.shuttle(-1) }
-    Shortcut { objectName: "shortcut:shuttleStop"; sequences: editor.keys.shuttleStop; enabled: editor.visible && !editor.typing; onActivated: editor.project.shuttle(0) }
-    Shortcut { objectName: "shortcut:shuttleForward"; sequences: editor.keys.shuttleForward; enabled: editor.visible && !editor.typing; onActivated: editor.project.shuttle(1) }
-    Shortcut { objectName: "shortcut:markIn"; sequences: editor.keys.markIn; enabled: editor.visible && !editor.typing; onActivated: editor.project.setMarkIn() }
-    Shortcut { objectName: "shortcut:markOut"; sequences: editor.keys.markOut; enabled: editor.visible && !editor.typing; onActivated: editor.project.setMarkOut() }
-    Shortcut { objectName: "shortcut:clearMarks"; sequences: editor.keys.clearMarks; enabled: editor.visible && !editor.typing; onActivated: editor.project.clearMarks() }
+    Shortcut { objectName: "shortcut:shuttleBack"; sequences: editor.keys.shuttleBack; enabled: editor.visible && !editor.typing; onActivated: editor.transport.shuttle(-1) }
+    Shortcut { objectName: "shortcut:shuttleStop"; sequences: editor.keys.shuttleStop; enabled: editor.visible && !editor.typing; onActivated: editor.transport.shuttle(0) }
+    Shortcut { objectName: "shortcut:shuttleForward"; sequences: editor.keys.shuttleForward; enabled: editor.visible && !editor.typing; onActivated: editor.transport.shuttle(1) }
+    Shortcut { objectName: "shortcut:markIn"; sequences: editor.keys.markIn; enabled: editor.visible && !editor.typing; onActivated: editor.transport.setMarkIn() }
+    Shortcut { objectName: "shortcut:markOut"; sequences: editor.keys.markOut; enabled: editor.visible && !editor.typing; onActivated: editor.transport.setMarkOut() }
+    Shortcut { objectName: "shortcut:clearMarks"; sequences: editor.keys.clearMarks; enabled: editor.visible && !editor.typing; onActivated: editor.transport.clearMarks() }
     Shortcut { objectName: "shortcut:blade"; sequences: editor.keys.blade; enabled: editor.visible && !editor.typing; onActivated: timelinePanel.bladeMode = !timelinePanel.bladeMode }
     Shortcut { objectName: "shortcut:selectTool"; sequences: editor.keys.selectTool; enabled: editor.visible && !editor.typing; onActivated: timelinePanel.bladeMode = false }
     Shortcut {
@@ -226,10 +229,10 @@ Rectangle {
                      ? editor.project.removeTransition(editor.project.selectedTransition)
                      : editor.project.deleteClip(editor.project.selectedClip)
     }
-    Shortcut { sequences: editor.keys.frameBack; enabled: editor.visible && !editor.typing; onActivated: editor.project.stepFrames(-1) }
-    Shortcut { sequences: editor.keys.frameForward; enabled: editor.visible && !editor.typing; onActivated: editor.project.stepFrames(1) }
-    Shortcut { sequences: editor.keys.goToStart; enabled: editor.visible && !editor.typing; onActivated: editor.project.seek(0) }
-    Shortcut { sequences: editor.keys.goToEnd; enabled: editor.visible && !editor.typing; onActivated: editor.project.seek(editor.project.duration) }
+    Shortcut { sequences: editor.keys.frameBack; enabled: editor.visible && !editor.typing; onActivated: editor.transport.stepFrames(-1) }
+    Shortcut { sequences: editor.keys.frameForward; enabled: editor.visible && !editor.typing; onActivated: editor.transport.stepFrames(1) }
+    Shortcut { sequences: editor.keys.goToStart; enabled: editor.visible && !editor.typing; onActivated: editor.transport.seek(0) }
+    Shortcut { sequences: editor.keys.goToEnd; enabled: editor.visible && !editor.typing; onActivated: editor.transport.seek(editor.transport.duration) }
     Shortcut {
         objectName: "shortcut:render"
         sequences: editor.keys.render
@@ -248,6 +251,16 @@ Rectangle {
                      ? editor.project.breakCompound(editor.project.selectedClip)
                      : editor.project.createCompound()
     }
+    // Multicam: 1–9 cut to that angle at the playhead.
+    Shortcut { objectName: "shortcut:angle1"; sequences: editor.keys.angle1; enabled: editor.visible && !editor.typing; onActivated: editor.project.cutToAngle(0) }
+    Shortcut { objectName: "shortcut:angle2"; sequences: editor.keys.angle2; enabled: editor.visible && !editor.typing; onActivated: editor.project.cutToAngle(1) }
+    Shortcut { objectName: "shortcut:angle3"; sequences: editor.keys.angle3; enabled: editor.visible && !editor.typing; onActivated: editor.project.cutToAngle(2) }
+    Shortcut { objectName: "shortcut:angle4"; sequences: editor.keys.angle4; enabled: editor.visible && !editor.typing; onActivated: editor.project.cutToAngle(3) }
+    Shortcut { objectName: "shortcut:angle5"; sequences: editor.keys.angle5; enabled: editor.visible && !editor.typing; onActivated: editor.project.cutToAngle(4) }
+    Shortcut { objectName: "shortcut:angle6"; sequences: editor.keys.angle6; enabled: editor.visible && !editor.typing; onActivated: editor.project.cutToAngle(5) }
+    Shortcut { objectName: "shortcut:angle7"; sequences: editor.keys.angle7; enabled: editor.visible && !editor.typing; onActivated: editor.project.cutToAngle(6) }
+    Shortcut { objectName: "shortcut:angle8"; sequences: editor.keys.angle8; enabled: editor.visible && !editor.typing; onActivated: editor.project.cutToAngle(7) }
+    Shortcut { objectName: "shortcut:angle9"; sequences: editor.keys.angle9; enabled: editor.visible && !editor.typing; onActivated: editor.project.cutToAngle(8) }
     Shortcut { sequences: editor.keys.undo; enabled: editor.visible; onActivated: editor.project.undo() }
     Shortcut { sequences: editor.keys.redo; enabled: editor.visible; onActivated: editor.project.redo() }
     Shortcut {

@@ -99,6 +99,12 @@ float Clip::gainAt(Ticks time) const
     return gain;
 }
 
+int Clip::angle() const
+{
+    const auto it = std::ranges::find(angles, sequenceId);
+    return it == angles.end() ? -1 : int(it - angles.begin());
+}
+
 Ticks Clip::sourceSpan() const
 {
     return freeze ? 0 : Ticks(std::llround(double(duration) * speed));
@@ -239,6 +245,24 @@ const Sequence* Project::findSequence(Id sequenceId) const
 {
     auto it = std::ranges::find(sequences, sequenceId, &Sequence::id);
     return it == sequences.end() ? nullptr : &*it;
+}
+
+Sequence* Project::findSequence(Id sequenceId)
+{
+    auto it = std::ranges::find(sequences, sequenceId, &Sequence::id);
+    return it == sequences.end() ? nullptr : &*it;
+}
+
+bool Project::sequenceInUse(Id sequenceId) const
+{
+    const auto uses = [&](const std::vector<Track>& list) {
+        return std::ranges::any_of(list, [&](const Track& t) {
+            return std::ranges::any_of(t.clips, [&](const Clip& c) {
+                return c.sequenceId == sequenceId || std::ranges::find(c.angles, sequenceId) != c.angles.end();
+            });
+        });
+    };
+    return uses(tracks) || std::ranges::any_of(sequences, [&](const Sequence& s) { return uses(s.tracks); });
 }
 
 Marker* Project::findMarker(Id markerId)

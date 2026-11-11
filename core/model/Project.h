@@ -402,12 +402,18 @@ struct Clip {
     // A compound clip: plays a nested sequence (Project::sequences) instead of media; its
     // sourceIn and duration select part of that sequence.
     Id sequenceId = kNoId;
+    // A multicam clip: the sequences of its angles (cameras lined up in time, one each);
+    // sequenceId is the angle it shows. Empty: not multicam.
+    std::vector<Id> angles;
     // Clips sharing a group move and are deleted together (kNoId: not grouped).
     Id groupId = kNoId;
 
     // A clip with no media to play: a title, a drawing or an adjustment layer.
     bool generated() const { return text.has_value() || drawing.has_value() || adjustment; }
     bool compound() const { return sequenceId != kNoId; }
+    bool multicam() const { return !angles.empty(); }
+    // The angle shown (an index into angles), or -1.
+    int angle() const;
 
     // Animated properties (see animatableProperties()), by property id. A property with
     // keyframes takes its value from them; its static value above is then unused.
@@ -577,6 +583,9 @@ public:
     const MediaItem* findMedia(Id mediaId) const;
     std::optional<ClipLocation> locateClip(Id clipId);
     const Sequence* findSequence(Id sequenceId) const;
+    Sequence* findSequence(Id sequenceId);
+    // Whether a clip anywhere (the timeline, a sequence) plays the sequence or has it as an angle.
+    bool sequenceInUse(Id sequenceId) const;
     Marker* findMarker(Id markerId);
     // How much source a clip can play: its media's length, its sequence's, or none (titles,
     // adjustment layers, stills: any length).

@@ -12,6 +12,22 @@ Rectangle {
     property bool showStats: false
     property bool hdrViewerOpen: false
     readonly property var hdrViewer: hdrViewerLoader.item
+    // The source monitor (24d): a media item on its own, shown instead of the timeline while
+    // its tab is chosen; the transport (and its keys) then play it.
+    property bool showingSource: false
+    readonly property var source: sourceMonitor
+    readonly property var transport: showingSource && sourceMonitor.controller ? sourceMonitor.controller : project
+    function openSource(media) {
+        panel.project.pause()
+        sourceMonitor.load(media)
+        showingSource = true
+    }
+    onShowingSourceChanged: {
+        if (showingSource)
+            panel.project.pause()
+        else if (sourceMonitor.controller)
+            sourceMonitor.controller.pause()
+    }
 
     // The HDR viewer, a window of its own, while open.
     Loader {
@@ -107,9 +123,71 @@ Rectangle {
                 radius: Theme.radius.m
             }
 
+            SourceMonitor {
+                id: sourceMonitor
+                objectName: "sourceMonitor"
+                anchors.fill: parent
+                topInset: sourceTabs.height + Theme.space.s // (under the tabs: its own background)
+                visible: panel.showingSource
+                project: panel.project
+            }
+
+            // Timeline | Source, once a media item was opened in the source monitor.
+            Row {
+                id: sourceTabs
+                objectName: "playerTabs"
+                visible: sourceMonitor.media !== null
+                anchors { left: parent.left; top: parent.top; margins: Theme.space.s }
+                z: 5
+                spacing: Theme.space.xxs
+                Repeater {
+                    model: [{ key: "timeline", label: qsTr("Timeline"), icon: "timeline" },
+                            { key: "source", label: sourceMonitor.media ? qsTr("Source: %1").arg(sourceMonitor.media.name) : "", icon: "source" }]
+                    delegate: AbstractButton {
+                        id: playerTab
+                        required property var modelData
+                        readonly property bool current: (modelData.key === "source") === panel.showingSource
+                        objectName: "playerTab:" + modelData.key
+                        hoverEnabled: true
+                        implicitWidth: Math.min(240, playerTabRow.implicitWidth + Theme.space.m * 2)
+                        implicitHeight: 24
+                        onClicked: panel.showingSource = modelData.key === "source"
+                        background: Rectangle {
+                            radius: Theme.radius.s
+                            color: playerTab.current ? Theme.color.accentSubtle
+                                 : playerTab.hovered ? Theme.color.surfaceHover : Theme.color.surface
+                            border.color: playerTab.current ? Theme.color.accent : Theme.color.borderSubtle
+                        }
+                        contentItem: Item {
+                            clip: true
+                            Row {
+                                id: playerTabRow
+                                anchors.verticalCenter: parent.verticalCenter
+                                x: Theme.space.m - playerTab.leftPadding
+                                spacing: Theme.space.xs
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: playerTab.modelData.icon
+                                    size: Theme.size.iconSmall
+                                    color: playerTab.current ? Theme.color.accentText : Theme.color.textSecondary
+                                }
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: Math.min(implicitWidth, 190)
+                                    text: playerTab.modelData.label
+                                    font: Theme.type.caption
+                                    color: playerTab.current ? Theme.color.textPrimary : Theme.color.textSecondary
+                                    elide: Text.ElideMiddle
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Column {
                 anchors.centerIn: parent
-                visible: panel.project.duration === 0
+                visible: panel.project.duration === 0 && !panel.showingSource
                 spacing: Theme.space.s
                 Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "media"; size: 32; color: Theme.color.textDisabled }
                 Text {
@@ -164,7 +242,7 @@ Rectangle {
                         id: timecodeText
                         objectName: "playheadTimecode"
                         visible: !timecodeField.visible
-                        text: panel.project.timecode(panel.project.playhead)
+                        text: panel.transport.timecode(panel.transport.playhead)
                         font: Theme.type.mono
                         color: Theme.color.textPrimary
                         MouseArea {
@@ -189,9 +267,9 @@ Rectangle {
                         padding: 2
                         selectByMouse: true
                         onAccepted: {
-                            const at = panel.project.parseTimecode(text)
+                            const at = panel.transport.parseTimecode(text)
                             if (at >= 0)
-                                panel.project.seek(at)
+                                panel.transport.seek(at)
                             visible = false
                         }
                         onActiveFocusChanged: if (!activeFocus) visible = false
@@ -199,30 +277,30 @@ Rectangle {
                     }
                 }
                 Text {
-                    text: "/ " + panel.project.timecode(panel.project.duration)
+                    text: "/ " + panel.transport.timecode(panel.transport.duration)
                     font: Theme.type.mono
                     color: Theme.color.textSecondary
                 }
 
                 Item { Layout.fillWidth: true }
 
-                IconButton { objectName: "markInButton"; iconName: "mark-in"; tip: qsTr("Mark In") + KeyMap.hints["markIn"]; enabled: panel.project.duration > 0; onClicked: panel.project.setMarkIn() }
-                IconButton { iconName: "skip-back"; tip: qsTr("Previous frame") + KeyMap.hints["frameBack"]; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(-1) }
+                IconButton { objectName: "markInButton"; iconName: "mark-in"; tip: qsTr("Mark In") + KeyMap.hints["markIn"]; enabled: panel.transport.duration > 0; onClicked: panel.transport.setMarkIn() }
+                IconButton { iconName: "skip-back"; tip: qsTr("Previous frame") + KeyMap.hints["frameBack"]; enabled: panel.transport.duration > 0; onClicked: panel.transport.stepFrames(-1) }
                 IconButton {
                     objectName: "playButton"
-                    iconName: panel.project.playing ? "pause" : "play"
-                    tip: (panel.project.playing ? qsTr("Pause") : qsTr("Play")) + KeyMap.hints["play"]
-                    enabled: panel.project.duration > 0
+                    iconName: panel.transport.playing ? "pause" : "play"
+                    tip: (panel.transport.playing ? qsTr("Pause") : qsTr("Play")) + KeyMap.hints["play"]
+                    enabled: panel.transport.duration > 0
                     buttonSize: Theme.size.control + 4
-                    onClicked: panel.project.togglePlay()
+                    onClicked: panel.transport.togglePlay()
                 }
-                IconButton { iconName: "skip-forward"; tip: qsTr("Next frame") + KeyMap.hints["frameForward"]; enabled: panel.project.duration > 0; onClicked: panel.project.stepFrames(1) }
-                IconButton { objectName: "markOutButton"; iconName: "mark-out"; tip: qsTr("Mark Out") + KeyMap.hints["markOut"]; enabled: panel.project.duration > 0; onClicked: panel.project.setMarkOut() }
+                IconButton { iconName: "skip-forward"; tip: qsTr("Next frame") + KeyMap.hints["frameForward"]; enabled: panel.transport.duration > 0; onClicked: panel.transport.stepFrames(1) }
+                IconButton { objectName: "markOutButton"; iconName: "mark-out"; tip: qsTr("Mark Out") + KeyMap.hints["markOut"]; enabled: panel.transport.duration > 0; onClicked: panel.transport.setMarkOut() }
                 // Shuttling (J, L): its speed and direction.
                 Text {
                     objectName: "shuttleBadge"
-                    visible: panel.project.shuttleRate !== 0 && panel.project.shuttleRate !== 1
-                    text: (panel.project.shuttleRate < 0 ? "◀ " : "▶ ") + Math.abs(panel.project.shuttleRate) + "×"
+                    visible: panel.transport.shuttleRate !== 0 && panel.transport.shuttleRate !== 1
+                    text: (panel.transport.shuttleRate < 0 ? "◀ " : "▶ ") + Math.abs(panel.transport.shuttleRate) + "×"
                     font: Theme.type.mono
                     color: Theme.color.accentText
                 }
@@ -235,7 +313,7 @@ Rectangle {
                     spacing: 2
                     Layout.rightMargin: Theme.space.s
                     Repeater {
-                        model: [panel.project.levelLeft, panel.project.levelRight]
+                        model: [panel.transport.levelLeft, panel.transport.levelRight]
                         delegate: Rectangle {
                             required property real modelData
                             width: 64
