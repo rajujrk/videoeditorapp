@@ -63,7 +63,7 @@ struct Layer {
     ClipVisual visual;
 };
 
-Canvas compose(const std::vector<Layer>& layers)
+Canvas compose(const std::vector<Layer>& layers, bool transparent = false)
 {
     QRhi* rhi = gpu();
     REQUIRE(rhi);
@@ -81,7 +81,7 @@ Canvas compose(const std::vector<Layer>& layers)
         upload->uploadTexture(textures[i].get(), layers[i].image);
     cb->resourceUpdate(upload);
 
-    compositor.begin(cb, QSize(kCanvasW, kCanvasH));
+    compositor.begin(cb, QSize(kCanvasW, kCanvasH), transparent);
     for (std::size_t i = 0; i < layers.size(); ++i)
         compositor.draw(cb, textures[i].get(), layers[i].visual);
 
@@ -263,4 +263,14 @@ TEST_CASE("a corner-pinned picture is drawn in perspective")
     checkColor(c.at(2, 2), kBlue);    // the left edge as it was
     checkColor(c.at(61, 3), kBlack);  // the right edge squeezed to the middle
     checkColor(c.at(61, 18), kBlue);
+}
+
+TEST_CASE("accumulated draws average (motion blur's samples)")
+{
+    // Red and blue at half weight each, on a transparent canvas: purple.
+    ClipVisual red, blue;
+    red.blend = blue.blend = BlendMode::Accumulate;
+    red.opacity = blue.opacity = 0.5;
+    const Canvas c = compose({{solid(32, 18, Qt::red), red}, {solid(32, 18, Qt::blue), blue}}, true);
+    checkColor(c.at(20, 18), Rgb{0.5f, 0.0f, 0.5f});
 }

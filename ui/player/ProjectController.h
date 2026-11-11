@@ -1002,6 +1002,10 @@ public:
     // one, into the snapshots folder and the media library. Its path ("" if it failed).
     Q_INVOKABLE QString takeSnapshot(const QUrl& file = {});
 
+    // Motion blur where the clip's keyframes move it: the shutter as a share of a frame (0: off,
+    // 0.5: 180°, 1: 360°). One undo step.
+    Q_INVOKABLE bool setClipMotionBlur(double clipId, double shutter);
+
     // --- Source monitor, compound clips, multicam (24d) ---
     // A part of a media item (from–to seconds; to <= 0: to its end) put on the main track (a
     // sound-only file on the first audio track) at the playhead: mode "insert" (later clips

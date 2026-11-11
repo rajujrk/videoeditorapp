@@ -2951,6 +2951,18 @@
         <translation>இணைப்பு</translation>
     </message>
     <message>
+        <source>Motion blur</source>
+        <translation>இயக்க மங்கல்</translation>
+    </message>
+    <message>
+        <source>Off</source>
+        <translation>அணை</translation>
+    </message>
+    <message>
+        <source>%1° shutter</source>
+        <translation>%1° ஷட்டர்</translation>
+    </message>
+    <message>
         <source>Length</source>
         <translation>நீளம்</translation>
     </message>
@@ -3044,6 +3056,14 @@
         <translation> (தலைகீழ்)</translation>
     </message>
     <message>
+        <source> · effects</source>
+        <translation> · விளைவுகள்</translation>
+    </message>
+    <message>
+        <source> · colour</source>
+        <translation> · நிறம்</translation>
+    </message>
+    <message>
         <source>Centre X</source>
         <translation>மையம் X</translation>
     </message>
@@ -3070,6 +3090,26 @@
     <message>
         <source>Drag the points on the player; click between them to add one, double-click one to remove it.</source>
         <translation>பிளேயரில் புள்ளிகளை இழுக்கவும்; ஒன்றைச் சேர்க்க அவற்றுக்கு இடையே கிளிக் செய்யவும், ஒன்றை அகற்ற இருமுறை கிளிக் செய்யவும்.</translation>
+    </message>
+    <message>
+        <source>Applies to</source>
+        <translation>பொருந்துவது</translation>
+    </message>
+    <message>
+        <source>The picture</source>
+        <translation>படம்</translation>
+    </message>
+    <message>
+        <source>Effects only</source>
+        <translation>விளைவுகள் மட்டும்</translation>
+    </message>
+    <message>
+        <source>Colour only</source>
+        <translation>நிறம் மட்டும்</translation>
+    </message>
+    <message>
+        <source>The picture: what is outside is cut away. Effects or colour: the clip&apos;s effects, or its look and grade, only inside; the picture stays as it was outside.</source>
+        <translation>படம்: வெளியே உள்ளது வெட்டி நீக்கப்படும். விளைவுகள் அல்லது நிறம்: கிளிப்பின் விளைவுகள், அல்லது அதன் தோற்றமும் நிறத் திருத்தமும், உள்ளே மட்டும்; வெளியே படம் முன்பிருந்தபடியே இருக்கும்.</translation>
     </message>
     <message>
         <source>Invert</source>
@@ -4654,8 +4694,32 @@
         <translation>இயக்கப் புள்ளிவிவரங்கள்</translation>
     </message>
     <message>
-        <source>Fit to window</source>
-        <translation>சாளரத்துக்குப் பொருத்து</translation>
+        <source>Guides: thirds, centre lines, safe areas and rulers (shown here only, never exported)</source>
+        <translation>வழிகாட்டிகள்: மூன்றில் ஒரு பங்குக் கோடுகள், மையக் கோடுகள், பாதுகாப்புப் பகுதிகள், அளவுகோல்கள் (இங்கே மட்டும் காட்டப்படும், ஏற்றுமதியில் இல்லை)</translation>
+    </message>
+    <message>
+        <source>Rule of thirds</source>
+        <translation>மூன்றில் ஒரு பங்கு விதி</translation>
+    </message>
+    <message>
+        <source>Centre lines</source>
+        <translation>மையக் கோடுகள்</translation>
+    </message>
+    <message>
+        <source>Safe areas (action 90 %, titles 80 %)</source>
+        <translation>பாதுகாப்புப் பகுதிகள் (செயல் 90 %, தலைப்புகள் 80 %)</translation>
+    </message>
+    <message>
+        <source>Rulers</source>
+        <translation>அளவுகோல்கள்</translation>
+    </message>
+    <message>
+        <source>Fit</source>
+        <translation>பொருத்து</translation>
+    </message>
+    <message>
+        <source>Zoom the player (100 %: a pixel of the picture to a pixel of the screen); scroll to look around</source>
+        <translation>பிளேயரைப் பெரிதாக்கு (100 %: படத்தின் ஒரு பிக்சல் திரையின் ஒரு பிக்சலுக்கு); சுற்றிப் பார்க்க உருட்டவும்</translation>
     </message>
 </context>
 <context>
@@ -5675,6 +5739,10 @@
     <message>
         <source>Could not write %1</source>
         <translation>%1 ஐ எழுத முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Select a video or picture clip</source>
+        <translation>ஒரு வீடியோ அல்லது படக் கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
     </message>
 </context>
 <context>
@@ -10434,6 +10502,10 @@ The Journey</source>
     <message>
         <source>Change Colour</source>
         <translation>நிறத்தை மாற்று</translation>
+    </message>
+    <message>
+        <source>Motion Blur</source>
+        <translation>இயக்க மங்கல்</translation>
     </message>
     <message>
         <source>Ramp up</source>

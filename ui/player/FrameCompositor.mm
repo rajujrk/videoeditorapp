@@ -481,6 +481,19 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     // One clip's picture (decoded video, a still, a title's text, or a compound clip's
     // sequence drawn on a canvas of its own), through its colour, key and masks, and picture
     // effects (with any live preview). Its canvas effects are kept in `canvasEffects` for place().
+    // `changed` inside `masks`, `unchanged` elsewhere (the same size): an effect or colour mask.
+    std::size_t maskMixIndex = 0;
+    const auto keepInside = [&](QRhiCommandBuffer* cb, QRhiTexture* changed, QRhiTexture* unchanged,
+                                const std::vector<tve::ClipMask>& masks) -> QRhiTexture* {
+        QRhiTexture* inside = m_masks->apply(cb, changed, {}, masks);
+        if (m_maskMixes.size() <= maskMixIndex)
+            m_maskMixes.push_back(std::make_unique<tve::Compositor>(m_rhi));
+        tve::Compositor& mix = *m_maskMixes[maskMixIndex++];
+        mix.begin(cb, changed->pixelSize(), true);
+        mix.draw(cb, unchanged, tve::ClipVisual{});
+        mix.draw(cb, inside, tve::ClipVisual{});
+        return mix.result();
+    };
     const auto clipPicture = [&](tve::Id clipId, const tve::DecodedFrame& decoded, tve::ClipVisual& visual,
                                  std::vector<tve::ClipEffect> effects, tve::ColorGrade grade, tve::ColorGrade look,
                                  const std::optional<tve::ClipText>& text = std::nullopt,
@@ -563,9 +576,23 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         if (spherical && !canvasBelow && !nested)
             picture = frame.spherical ? m_sphere->turn(cb, picture, visual.sphere)
                                       : m_sphere->reframe(cb, picture, visual.sphere, m_canvasSize);
+        // Masks keeping the colour or the effects to inside them (the rest cut the picture).
+        std::vector<tve::ClipMask> colourMasks, effectMasks;
+        std::erase_if(masks, [&](const tve::ClipMask& m) {
+            if (m.target == tve::MaskTarget::Colour)
+                colourMasks.push_back(m);
+            else if (m.target == tve::MaskTarget::Effects)
+                effectMasks.push_back(m);
+            return m.target != tve::MaskTarget::Picture;
+        });
+        if (canvasBelow)
+            colourMasks.clear(), effectMasks.clear(); // (an adjustment layer covers the canvas)
         if (!text) { // colour first (the look, then the grade), then the key and masks, then effects
+            QRhiTexture* uncoloured = picture;
             picture = m_grader->apply(cb, picture, look);
             picture = m_grader->apply(cb, picture, grade);
+            if (!colourMasks.empty() && picture != uncoloured)
+                picture = keepInside(cb, picture, uncoloured, colourMasks);
         }
         if (!canvasBelow)
             picture = m_masks->apply(cb, picture, key, masks);
@@ -588,16 +615,23 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             if (!chain)
                 chain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
             chain->setInstances(std::move(instances));
+            QRhiTexture* unaffected = picture;
             picture = chain->process(cb, picture, seconds);
+            if (!effectMasks.empty() && picture != unaffected)
+                picture = keepInside(cb, picture, unaffected, effectMasks);
             liveClips.insert(clipId);
         }
         return picture;
     };
-    // Draws a clip's picture onto `target` by `visual`: directly, or, with canvas effects,
-    // placed on a transparent canvas of its own that the effects then work on.
-    const auto place = [&](tve::Compositor& target, tve::Id clipId, QRhiTexture* picture, tve::ClipVisual visual) {
+    // Draws a clip's picture onto `target` by `visual`: directly, or, with canvas effects or
+    // motion blur (`blur`: its placements across the shutter, averaged), placed on a
+    // transparent canvas of its own first.
+    const auto place = [&](tve::Compositor& target, tve::Id clipId, QRhiTexture* picture, tve::ClipVisual visual,
+                           const std::vector<tve::ClipVisual>* blur = nullptr) {
         const auto found = canvasEffects.find(clipId);
-        if (found == canvasEffects.end() || found->second.empty()) {
+        const bool effectsAfter = found != canvasEffects.end() && !found->second.empty();
+        const bool blurred = blur && blur->size() > 1;
+        if (!effectsAfter && !blurred) {
             target.draw(cb, picture, visual);
             return;
         }
@@ -608,7 +642,19 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         whole.blend = visual.blend;
         visual.blend = tve::BlendMode::Normal;
         own.begin(cb, m_canvasSize, true);
-        own.draw(cb, picture, visual);
+        if (blurred) {
+            for (tve::ClipVisual sample : *blur) {
+                sample.blend = tve::BlendMode::Accumulate;
+                sample.opacity = visual.opacity / double(blur->size());
+                own.draw(cb, picture, sample);
+            }
+        } else {
+            own.draw(cb, picture, visual);
+        }
+        if (!effectsAfter) {
+            target.draw(cb, own.result(), whole);
+            return;
+        }
         // Where the placed picture lies on the canvas, for effects that fill around it.
         const tve::LayerPlacement placement = tve::placeLayer(visual, m_canvasSize.width(), m_canvasSize.height(),
                                                               picture->pixelSize().width(), picture->pixelSize().height());
@@ -683,8 +729,11 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                 continue;
             }
             if (!layer.transition) {
+                // (While a placement is being dragged, the preview shows it unblurred.)
+                const bool blur = !layer.blurVisuals.empty() && visual.transform == layer.visual.transform
+                                  && visual.pin == layer.visual.pin;
                 if (picture)
-                    place(target, layer.clipId, picture, visual);
+                    place(target, layer.clipId, picture, visual, blur ? &layer.blurVisuals : nullptr);
                 continue;
             }
 

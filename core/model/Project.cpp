@@ -109,6 +109,23 @@ float Clip::gainAt(Ticks time) const
     return gain;
 }
 
+std::vector<ClipVisual> motionBlurVisuals(const Clip& clip, Ticks time, Ticks frame)
+{
+    if (clip.motionBlur <= 0.0 || clip.keyframes.empty())
+        return {};
+    const Ticks shutter = Ticks(std::llround(double(frame) * std::clamp(clip.motionBlur, 0.0, 1.0)));
+    std::vector<ClipVisual> visuals;
+    bool moves = false;
+    for (int i = 0; i < kMotionBlurSamples; ++i) {
+        const Ticks at = time - shutter / 2 + shutter * i / (kMotionBlurSamples - 1);
+        ClipVisual v = clip.visualAt(std::clamp(at, clip.start, clip.end()));
+        v.opacity = clip.visualAt(time).opacity; // (the blur smears where it is, not how strongly)
+        moves = moves || (!visuals.empty() && (v.transform != visuals.front().transform || v.pin != visuals.front().pin));
+        visuals.push_back(v);
+    }
+    return moves ? visuals : std::vector<ClipVisual>{};
+}
+
 int Clip::angle() const
 {
     const auto it = std::ranges::find(angles, sequenceId);

@@ -171,6 +171,7 @@ private:
     std::map<tve::Id, std::unique_ptr<tve::EffectChain>> m_canvasChains; // canvas effects
     // Per clip with canvas effects within a frame: its own canvas.
     std::vector<std::unique_ptr<tve::Compositor>> m_effectCanvases;
+    std::vector<std::unique_ptr<tve::Compositor>> m_maskMixes; // effect and colour masks
     // Per compound clip within a frame: the canvas its sequence is drawn on.
     std::vector<std::unique_ptr<tve::Compositor>> m_nestedCanvases;
 };

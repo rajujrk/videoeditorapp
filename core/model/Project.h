@@ -101,7 +101,8 @@ inline constexpr float kMaxGainDb = 12.0f;
 inline constexpr double kMinSpeed = 0.01;
 inline constexpr double kMaxSpeed = 100.0;
 
-enum class BlendMode { Normal, Multiply, Screen, Overlay, Add, Darken, Lighten };
+// (Accumulate is the renderer's own, for motion blur's samples, never a clip's.)
+enum class BlendMode { Normal, Multiply, Screen, Overlay, Add, Darken, Lighten, Accumulate };
 
 // Where a clip's picture sits on the canvas. The picture is first fitted inside the canvas
 // (keeping its aspect ratio), then scaled about its anchor point, rotated about it, and moved.
@@ -444,6 +445,9 @@ struct Clip {
     std::vector<Id> angles;
     // Clips sharing a group move and are deleted together (kNoId: not grouped).
     Id groupId = kNoId;
+    // Motion blur where keyframes move it (position, size, rotation, corner pin): how long the
+    // shutter is open, as a share of a frame (0: off; 0.5 is a film camera's 180°).
+    double motionBlur = 0.0;
 
     // A clip with no media to play: a title, a drawing or an adjustment layer.
     bool generated() const { return text.has_value() || drawing.has_value() || adjustment; }
@@ -600,6 +604,11 @@ struct TemplateInfo {
 
     friend bool operator==(const TemplateInfo&, const TemplateInfo&) = default;
 };
+
+// A clip's placements for motion blur at `time`: kMotionBlurSamples across its shutter, if it
+// moves there (keyframes on its position, size, rotation or corner pin); else none.
+inline constexpr int kMotionBlurSamples = 16;
+std::vector<ClipVisual> motionBlurVisuals(const Clip& clip, Ticks time, Ticks frame);
 
 class Project {
 public:

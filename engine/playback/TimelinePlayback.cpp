@@ -218,6 +218,26 @@ void TimelinePlayback::prefetch(const Project& project, Ticks time)
 void TimelinePlayback::buildLayers(const Project& project, const std::vector<Track>& tracks, Ticks time,
                                    std::vector<VideoLayer>& out, int depth, std::set<Id>& live)
 {
+    const std::size_t firstNew = out.size();
+    buildLayersOf(project, tracks, time, out, depth, live);
+    // Motion blur: a moving clip's placements across the shutter, drawn and averaged.
+    const Ticks frame = frameDuration(project.settings.frameRate);
+    for (std::size_t i = firstNew; i < out.size(); ++i) {
+        VideoLayer& layer = out[i];
+        if (layer.transition || layer.adjustment)
+            continue;
+        const Clip* clip = nullptr;
+        for (const Track& track : tracks)
+            if (!clip)
+                clip = track.findClip(layer.clipId);
+        if (clip)
+            layer.blurVisuals = motionBlurVisuals(*clip, time, frame);
+    }
+}
+
+void TimelinePlayback::buildLayersOf(const Project& project, const std::vector<Track>& tracks, Ticks time,
+                                     std::vector<VideoLayer>& out, int depth, std::set<Id>& live)
+{
     const auto pictureOf = [&](const Clip& clip, Ticks sourceTime) {
         return this->pictureOf(m_layers[clip.id], project, clip, sourceTime);
     };

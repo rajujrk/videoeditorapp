@@ -11,6 +11,7 @@ qt_add_qml_module(tve_shell
         LibraryPanel.qml
         PlayerPanel.qml
         SourceMonitor.qml
+        GuidesOverlay.qml
         InspectorPanel.qml
         TimelinePanel.qml
         TimelineMenus.qml

@@ -105,3 +105,33 @@ TEST_CASE("the anchor point, corner pin and colour fills are saved", "[animation
     CHECK(loaded.media == project.media);
     CHECK(loaded.tracks.front().clips.front().visualAt(0).pin.topLeftY == Catch::Approx(0.2));
 }
+
+TEST_CASE("motion blur samples a moving clip across its shutter", "[animation]")
+{
+    Clip clip = picture();
+    const Ticks frame = kSec / 30;
+    clip.motionBlur = 0.5;
+    CHECK(motionBlurVisuals(clip, kSec, frame).empty()); // not moving: none
+    clip.keyframes["x"] = {{0, 0.0}, {2 * kSec, 1.0}};
+    const auto samples = motionBlurVisuals(clip, kSec, frame);
+    REQUIRE(samples.size() == std::size_t(kMotionBlurSamples));
+    // Half a frame wide, centred on the frame's time: x 0.5 ± a quarter frame's move.
+    const double move = 0.5 / 30.0; // canvas widths a frame
+    CHECK(samples.front().transform.x == Catch::Approx(0.5 - move / 4).margin(1e-4));
+    CHECK(samples.back().transform.x == Catch::Approx(0.5 + move / 4).margin(1e-4));
+    clip.motionBlur = 0;
+    CHECK(motionBlurVisuals(clip, kSec, frame).empty());
+}
+
+TEST_CASE("motion blur and a mask's target are saved", "[animation]")
+{
+    Project project;
+    Clip clip = picture();
+    clip.motionBlur = 0.75;
+    clip.masks.push_back(ClipMask{.target = MaskTarget::Colour});
+    clip.masks.push_back(ClipMask{.invert = true, .target = MaskTarget::Effects});
+    project.tracks.push_back(Track{.id = 2, .clips = {clip}});
+    project.setNextId(3);
+    const Project loaded = projectFromJson(projectToJson(project));
+    CHECK(loaded.tracks == project.tracks);
+}

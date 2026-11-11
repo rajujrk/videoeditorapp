@@ -9,6 +9,10 @@ namespace tve {
 
 enum class MaskShape { Rectangle, Ellipse, Line, Star, Heart, Pen };
 
+// What a mask does: keeps part of the picture (the others are cut away), or keeps the clip's
+// effects, or its colour (look and grade), to inside it — the picture as it was elsewhere.
+enum class MaskTarget { Picture, Effects, Colour };
+
 // A mask on a clip's picture: what is inside its shape stays visible (or, inverted, what is
 // outside). Positions are fractions of the whole picture (before cropping, origin top left),
 // so the mask moves, scales and turns with the clip.
@@ -23,6 +27,7 @@ struct ClipMask {
     double feather = 0.02;  // soft edge, a fraction of the picture's shorter side, 0..0.5
     bool invert = false;
     std::vector<std::array<double, 2>> points; // Pen: the outline's corners, 3..32
+    MaskTarget target = MaskTarget::Picture;
 
     friend bool operator==(const ClipMask&, const ClipMask&) = default;
 };
