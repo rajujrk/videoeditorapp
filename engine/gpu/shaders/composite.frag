@@ -1,7 +1,7 @@
 #version 440
 
 // Draws one layer over the canvas: samples the canvas so far and the layer (through the
-// canvas→layer mapping from LayerPlacement), then blends with opacity and blend mode.
+// canvas→layer mapping from LayerPlacement, projective), then blends with opacity and blend mode.
 
 layout(location = 0) in vec2 v_uv;
 layout(location = 0) out vec4 fragColor;
@@ -12,6 +12,7 @@ layout(std140, binding = 0) uniform EffectParams {
     float tve_flipY;
     vec4 mapU;     // layer.u = dot(mapU.xyz, vec3(uv, 1))
     vec4 mapV;     // layer.v = dot(mapV.xyz, vec3(uv, 1))
+    vec4 mapW;     // divided by dot(mapW.xyz, vec3(uv, 1)) (a corner pin's perspective)
     vec4 cropRect; // left, top, right, bottom of the visible layer region
     float opacity;
     int blendMode; // BlendMode order: normal, multiply, screen, overlay, add, darken, lighten
@@ -41,8 +42,9 @@ void main()
 {
     vec4 canvas = texture(tve_source, v_uv);
     vec3 p = vec3(v_uv, 1.0);
-    vec2 layerUv = vec2(dot(mapU.xyz, p), dot(mapV.xyz, p));
-    if (layerUv.x < cropRect.x || layerUv.y < cropRect.y || layerUv.x > cropRect.z || layerUv.y > cropRect.w) {
+    float w = dot(mapW.xyz, p);
+    vec2 layerUv = vec2(dot(mapU.xyz, p), dot(mapV.xyz, p)) / max(abs(w), 1e-9);
+    if (w <= 0.0 || layerUv.x < cropRect.x || layerUv.y < cropRect.y || layerUv.x > cropRect.z || layerUv.y > cropRect.w) {
         fragColor = canvas;
         return;
     }

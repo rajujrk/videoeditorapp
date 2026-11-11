@@ -399,6 +399,19 @@ accent, dark and light:
 ![Multicam angles, dark](images/multicam-dark.png)
 ![Multicam angles, light](images/multicam-light.png)
 
+Corner pin and the anchor point: the frame follows the pinned corners; the anchor point is a
+white cross in a ring (on a dark ring, to show on any picture); Corner pin and Animation in the
+inspector, dark and light:
+
+![Corner pin, dark](images/corner-pin-dark.png)
+![Corner pin, light](images/corner-pin-light.png)
+
+A colour clip's fill: the kind, the existing swatch rows for its colours, and the gradient's
+direction, dark and light:
+
+![A colour clip, dark](images/colour-clip-dark.png)
+![A colour clip, light](images/colour-clip-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.
@@ -578,7 +591,7 @@ The app in Tamil: the Home screen with the Language menu at the foot of the rail
 
 ### Icons
 
-67 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+69 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.

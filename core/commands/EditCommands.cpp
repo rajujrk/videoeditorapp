@@ -689,6 +689,14 @@ std::optional<std::string> validateVisual(const ClipVisual& v)
         return "the 360° direction is out of range";
     if (s.fov < 20.0 || s.fov > 150.0)
         return "the field of view must be between 20° and 150°";
+    const ClipTransform& t = v.transform;
+    if (!(t.anchorX >= -1.0 && t.anchorX <= 1.0 && t.anchorY >= -1.0 && t.anchorY <= 1.0))
+        return TVE_TR("core", "the anchor point must be on the picture or near it");
+    const ClipCornerPin& p = v.pin;
+    for (double o : {p.topLeftX, p.topLeftY, p.topRightX, p.topRightY, p.bottomRightX, p.bottomRightY, p.bottomLeftX,
+                     p.bottomLeftY})
+        if (!(o >= -2.0 && o <= 2.0))
+            return TVE_TR("core", "a pinned corner is too far off the canvas");
     return std::nullopt;
 }
 

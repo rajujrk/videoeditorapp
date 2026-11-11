@@ -104,6 +104,16 @@ const std::vector<AnimatableProperty>& animatableProperties()
         {property::kPitch, -90.0, 90.0, true},
         {property::kRoll, -180.0, 180.0, true},
         {property::kFov, 20.0, 150.0, true},
+        {property::kAnchorX, -1.0, 1.0, true},
+        {property::kAnchorY, -1.0, 1.0, true},
+        {property::kPinTopLeftX, -2.0, 2.0, true},
+        {property::kPinTopLeftY, -2.0, 2.0, true},
+        {property::kPinTopRightX, -2.0, 2.0, true},
+        {property::kPinTopRightY, -2.0, 2.0, true},
+        {property::kPinBottomRightX, -2.0, 2.0, true},
+        {property::kPinBottomRightY, -2.0, 2.0, true},
+        {property::kPinBottomLeftX, -2.0, 2.0, true},
+        {property::kPinBottomLeftY, -2.0, 2.0, true},
     };
     return properties;
 }

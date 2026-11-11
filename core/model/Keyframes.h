@@ -87,6 +87,17 @@ inline constexpr std::string_view kYaw = "yaw";
 inline constexpr std::string_view kPitch = "pitch";
 inline constexpr std::string_view kRoll = "roll";
 inline constexpr std::string_view kFov = "fov";
+// The anchor point (ClipTransform), and the corner pin's offsets (ClipCornerPin).
+inline constexpr std::string_view kAnchorX = "anchorX";
+inline constexpr std::string_view kAnchorY = "anchorY";
+inline constexpr std::string_view kPinTopLeftX = "pinTopLeftX";
+inline constexpr std::string_view kPinTopLeftY = "pinTopLeftY";
+inline constexpr std::string_view kPinTopRightX = "pinTopRightX";
+inline constexpr std::string_view kPinTopRightY = "pinTopRightY";
+inline constexpr std::string_view kPinBottomRightX = "pinBottomRightX";
+inline constexpr std::string_view kPinBottomRightY = "pinBottomRightY";
+inline constexpr std::string_view kPinBottomLeftX = "pinBottomLeftX";
+inline constexpr std::string_view kPinBottomLeftY = "pinBottomLeftY";
 } // namespace property
 
 const std::vector<AnimatableProperty>& animatableProperties();

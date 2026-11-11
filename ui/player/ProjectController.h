@@ -186,6 +186,8 @@ class ProjectController : public QObject {
     // Drawing the box to track on the player (TrackOverlay), and the box drawn: {clipId, x,
     // y, width, height} (picture fractions, as shown).
     Q_PROPERTY(bool pickingTrackArea READ pickingTrackArea WRITE setPickingTrackArea NOTIFY editingChanged)
+    // The player's frame handles move the selected clip's corners one by one (corner pin).
+    Q_PROPERTY(bool pinningCorners READ pinningCorners WRITE setPinningCorners NOTIFY editingChanged)
     // Drawing over the player (brush, line, arrow, rectangle, ellipse).
     Q_PROPERTY(bool drawingMode READ drawingMode WRITE setDrawingMode NOTIFY editingChanged)
     Q_PROPERTY(QVariantMap trackArea READ trackArea NOTIFY editingChanged)
@@ -371,6 +373,8 @@ public:
     bool drawingMode() const { return m_drawingMode; }
     void setDrawingMode(bool drawing);
     void setPickingTrackArea(bool picking);
+    bool pinningCorners() const { return m_pinningCorners; }
+    void setPinningCorners(bool pinning);
     QVariantMap trackArea() const { return m_trackArea; }
     QVariantMap scenes() const { return m_scenes; }
     QVariantMap beats() const { return m_beats; }
@@ -978,6 +982,26 @@ public:
     // sound effects), "speed".
     Q_INVOKABLE bool copyAttributes(double clipId);
 
+    // --- Placing and moving pictures, colour clips, snapshots (25a) ---
+    // Animation presets for a video or picture clip: [{id, title, kind: "in" | "out" | "combo"}];
+    // one written on a clip as keyframes (seconds: an in's or out's length), or every
+    // keyframe they write taken off. One undo step each.
+    Q_INVOKABLE QVariantList clipAnimations() const;
+    Q_INVOKABLE bool animateClip(double clipId, const QString& preset, double seconds = 0.6);
+    Q_INVOKABLE bool clearClipAnimation(double clipId);
+    // Pan and zoom (Ken Burns): [{id, title, from: {scale, x, y}, to: {…}}]; applied by a
+    // preset's id or {fromScale, fromX, fromY, toScale, toX, toY}, over the whole clip.
+    Q_INVOKABLE QVariantList panZoomPresets() const;
+    Q_INVOKABLE bool panZoom(double clipId, const QVariant& framing);
+    // A colour clip: a still of one colour or a gradient, at the playhead on a picture track
+    // with room. fill: {kind: "solid" | "linear" | "radial", from: [r, g, b, a], to: [...],
+    // angle}. Its clip id. setColorClip draws it again with other colours.
+    Q_INVOKABLE double addColorClip(const QVariantMap& fill);
+    Q_INVOKABLE bool setColorClip(double clipId, const QVariantMap& fill);
+    // The frame at the playhead as a picture (PNG, or JPEG by the name): to `file`, or, without
+    // one, into the snapshots folder and the media library. Its path ("" if it failed).
+    Q_INVOKABLE QString takeSnapshot(const QUrl& file = {});
+
     // --- Source monitor, compound clips, multicam (24d) ---
     // A part of a media item (from–to seconds; to <= 0: to its end) put on the main track (a
     // sound-only file on the first audio track) at the playhead: mode "insert" (later clips
@@ -1320,6 +1344,7 @@ private:
     std::map<std::string, std::vector<tve::SubjectSample>> m_subjects;
     std::map<std::string, tve::MotionAnalysis> m_motion; // per media fingerprint
     bool m_pickingTrackArea = false;
+    bool m_pinningCorners = false;
     bool m_drawingMode = false;
     QTimer* m_upscaleWatch = nullptr; // polls the model's download
     QVariantMap m_trackArea;

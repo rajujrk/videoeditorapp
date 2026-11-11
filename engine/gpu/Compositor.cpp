@@ -26,12 +26,13 @@ struct Uniforms {
     float flipY;
     float mapU[4];
     float mapV[4];
+    float mapW[4]; // (the projective row: 0, 0, 1 without a corner pin)
     float cropRect[4];
     float opacity;
     std::int32_t blendMode;
     float padding[2];
 };
-static_assert(sizeof(Uniforms) == 80);
+static_assert(sizeof(Uniforms) == 96);
 
 } // namespace
 
@@ -137,6 +138,9 @@ void Compositor::draw(QRhiCommandBuffer* cb, QRhiTexture* layer, const ClipVisua
     u.mapV[0] = float(m[3]);
     u.mapV[1] = float(m[4]);
     u.mapV[2] = float(m[5]);
+    u.mapW[0] = float(m[6]);
+    u.mapW[1] = float(m[7]);
+    u.mapW[2] = float(m[8]);
     for (int i = 0; i < 4; ++i)
         u.cropRect[i] = float(placement.cropRect[std::size_t(i)]);
     u.opacity = float(visual.opacity);

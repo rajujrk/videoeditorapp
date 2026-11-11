@@ -2919,6 +2919,86 @@
         <translation>இயக்கக்குறியில் %1 க்கு மாறு</translation>
     </message>
     <message>
+        <source>Anchor X</source>
+        <translation>நங்கூரம் X</translation>
+    </message>
+    <message>
+        <source>Anchor Y</source>
+        <translation>நங்கூரம் Y</translation>
+    </message>
+    <message>
+        <source>Corner pin</source>
+        <translation>மூலைப் பொருத்தம்</translation>
+    </message>
+    <message>
+        <source>Drag each corner in the player to stretch the picture in perspective — onto a screen or a sign in the shot. Keyframe them to follow it.</source>
+        <translation>படத்தைத் தூரநோக்குடன் நீட்ட, பிளேயரில் ஒவ்வொரு மூலையையும் இழுக்கவும் — காட்சியில் உள்ள திரை அல்லது பலகையின் மேல். அதைப் பின்தொடர கீஃப்ரேம்கள் இடவும்.</translation>
+    </message>
+    <message>
+        <source>Drag the corners in the player</source>
+        <translation>பிளேயரில் மூலைகளை இழு</translation>
+    </message>
+    <message>
+        <source>Put the corners back</source>
+        <translation>மூலைகளை முன்பிருந்தபடி வை</translation>
+    </message>
+    <message>
+        <source>Choose how the clip arrives, leaves or moves; it is written as keyframes you can change.</source>
+        <translation>கிளிப் எப்படி வருகிறது, விலகுகிறது அல்லது நகர்கிறது என்பதைத் தேர்ந்தெடுக்கவும்; அது நீங்கள் மாற்றக்கூடிய கீஃப்ரேம்களாக எழுதப்படும்.</translation>
+    </message>
+    <message>
+        <source>Combo</source>
+        <translation>இணைப்பு</translation>
+    </message>
+    <message>
+        <source>Length</source>
+        <translation>நீளம்</translation>
+    </message>
+    <message>
+        <source>%1 s</source>
+        <translation>%1 வி</translation>
+    </message>
+    <message>
+        <source>Remove the animation</source>
+        <translation>அசைவூட்டத்தை அகற்று</translation>
+    </message>
+    <message>
+        <source>Takes off the position, size, rotation and opacity keyframes</source>
+        <translation>நிலை, அளவு, சுழற்சி, ஒளிபுகாமை கீஃப்ரேம்களை அகற்றும்</translation>
+    </message>
+    <message>
+        <source>Pan and zoom</source>
+        <translation>நகர்த்தி பெரிதாக்கு</translation>
+    </message>
+    <message>
+        <source>Colour</source>
+        <translation>நிறம்</translation>
+    </message>
+    <message>
+        <source>Fill</source>
+        <translation>நிரப்பு</translation>
+    </message>
+    <message>
+        <source>One colour</source>
+        <translation>ஒரே நிறம்</translation>
+    </message>
+    <message>
+        <source>Linear gradient</source>
+        <translation>நேர்கோட்டுச் சாய்வு</translation>
+    </message>
+    <message>
+        <source>Radial gradient</source>
+        <translation>வட்டச் சாய்வு</translation>
+    </message>
+    <message>
+        <source>From</source>
+        <translation>இருந்து</translation>
+    </message>
+    <message>
+        <source>To</source>
+        <translation>வரை</translation>
+    </message>
+    <message>
         <source>Lighten</source>
         <translation>ஒளிர்வாக்கு</translation>
     </message>
@@ -3999,6 +4079,10 @@
         <translation>மீடியாவை இறக்குமதி செய் (⌘I)</translation>
     </message>
     <message>
+        <source>Add a colour clip at the playhead (choose its colours or gradient in the inspector)</source>
+        <translation>இயக்கக்குறியில் ஒரு நிறக் கிளிப்பைச் சேர் (அதன் நிறங்கள் அல்லது சாய்வை ஆய்வியில் தேர்ந்தெடுக்கவும்)</translation>
+    </message>
+    <message>
         <source>Import from Photos, Music or a device</source>
         <translation>Photos, Music அல்லது ஒரு சாதனத்திலிருந்து இறக்குமதி செய்</translation>
     </message>
@@ -4528,6 +4612,10 @@
     <message>
         <source>Mark Out</source>
         <translation>முடிவுக்குறி இடு</translation>
+    </message>
+    <message>
+        <source>Snapshot: the frame at the playhead as a picture, into the media library</source>
+        <translation>ஸ்னாப்ஷாட்: இயக்கக்குறியில் உள்ள ஃப்ரேம் ஒரு படமாக, மீடியா நூலகத்துக்குள்</translation>
     </message>
     <message>
         <source>Playing proxies of large media where ready (export uses the originals)</source>
@@ -5552,6 +5640,53 @@
         <source>There is no multicam clip at the playhead</source>
         <translation>இயக்கக்குறியில் பல்கேமரா கிளிப் எதுவும் இல்லை</translation>
     </message>
+    <message>
+        <source>Select a video or picture clip to animate</source>
+        <translation>அசைவூட்ட ஒரு வீடியோ அல்லது படக் கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Select a video or picture clip to pan and zoom</source>
+        <translation>நகர்த்தி பெரிதாக்க ஒரு வீடியோ அல்லது படக் கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Choose a colour, or two for a gradient</source>
+        <translation>ஒரு நிறத்தையோ, சாய்வுக்கு இரண்டையோ தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Select a colour clip</source>
+        <translation>ஒரு நிறக் கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>There is nothing on the timeline to take a snapshot of</source>
+        <translation>ஸ்னாப்ஷாட் எடுக்க காலவரிசையில் எதுவும் இல்லை</translation>
+    </message>
+    <message>
+        <source>Could not take a snapshot: no GPU device</source>
+        <translation>ஸ்னாப்ஷாட் எடுக்க முடியவில்லை: GPU சாதனம் இல்லை</translation>
+    </message>
+    <message>
+        <source>Could not take a snapshot of this frame</source>
+        <translation>இந்த ஃப்ரேமின் ஸ்னாப்ஷாட் எடுக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Could not make the folder %1</source>
+        <translation>%1 கோப்புறையை உருவாக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Could not write %1</source>
+        <translation>%1 ஐ எழுத முடியவில்லை</translation>
+    </message>
+</context>
+<context>
+    <name>QObject</name>
+    <message>
+        <source>Could not make the folder %1</source>
+        <translation>%1 கோப்புறையை உருவாக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Could not write %1</source>
+        <translation>%1 ஐ எழுத முடியவில்லை</translation>
+    </message>
 </context>
 <context>
     <name>RecordPanel</name>
@@ -6463,6 +6598,10 @@
     <message>
         <source>Add a marker here</source>
         <translation>இங்கே ஒரு குறியீட்டைச் சேர்</translation>
+    </message>
+    <message>
+        <source>Add a colour clip here</source>
+        <translation>இங்கே ஒரு நிறக் கிளிப்பைச் சேர்</translation>
     </message>
     <message>
         <source>Close this gap</source>
@@ -10277,6 +10416,26 @@ The Journey</source>
         <translation>கோணத்துக்கு மாறு</translation>
     </message>
     <message>
+        <source>Animate Clip</source>
+        <translation>கிளிப்பை அசைவூட்டு</translation>
+    </message>
+    <message>
+        <source>Remove Animation</source>
+        <translation>அசைவூட்டத்தை அகற்று</translation>
+    </message>
+    <message>
+        <source>Pan and Zoom</source>
+        <translation>நகர்த்தி பெரிதாக்கு</translation>
+    </message>
+    <message>
+        <source>Add Colour Clip</source>
+        <translation>நிறக் கிளிப்பைச் சேர்</translation>
+    </message>
+    <message>
+        <source>Change Colour</source>
+        <translation>நிறத்தை மாற்று</translation>
+    </message>
+    <message>
         <source>Ramp up</source>
         <translation>வேகமாக்கு</translation>
     </message>
@@ -10585,8 +10744,148 @@ The Journey</source>
         <translation>அலை</translation>
     </message>
     <message>
+        <source>Fade in</source>
+        <translation>மங்கித் தோன்று</translation>
+    </message>
+    <message>
+        <source>Grow in</source>
+        <translation>வளர்ந்து தோன்று</translation>
+    </message>
+    <message>
+        <source>Shrink in</source>
+        <translation>சுருங்கித் தோன்று</translation>
+    </message>
+    <message>
+        <source>Slide in from the left</source>
+        <translation>இடமிருந்து சறுக்கி வா</translation>
+    </message>
+    <message>
+        <source>Slide in from the right</source>
+        <translation>வலமிருந்து சறுக்கி வா</translation>
+    </message>
+    <message>
+        <source>Slide in from the top</source>
+        <translation>மேலிருந்து சறுக்கி வா</translation>
+    </message>
+    <message>
+        <source>Slide in from the bottom</source>
+        <translation>கீழிருந்து சறுக்கி வா</translation>
+    </message>
+    <message>
+        <source>Drop in</source>
+        <translation>விழுந்து தோன்று</translation>
+    </message>
+    <message>
+        <source>Spin in</source>
+        <translation>சுழன்று தோன்று</translation>
+    </message>
+    <message>
+        <source>Pop in</source>
+        <translation>பாப் எனத் தோன்று</translation>
+    </message>
+    <message>
+        <source>Fade out</source>
+        <translation>மங்கி மறை</translation>
+    </message>
+    <message>
+        <source>Shrink out</source>
+        <translation>சுருங்கி மறை</translation>
+    </message>
+    <message>
+        <source>Grow out</source>
+        <translation>வளர்ந்து மறை</translation>
+    </message>
+    <message>
+        <source>Slide out to the left</source>
+        <translation>இடப்புறம் சறுக்கி மறை</translation>
+    </message>
+    <message>
+        <source>Slide out to the right</source>
+        <translation>வலப்புறம் சறுக்கி மறை</translation>
+    </message>
+    <message>
+        <source>Slide out to the top</source>
+        <translation>மேல்புறம் சறுக்கி மறை</translation>
+    </message>
+    <message>
+        <source>Slide out to the bottom</source>
+        <translation>கீழ்ப்புறம் சறுக்கி மறை</translation>
+    </message>
+    <message>
+        <source>Drop out</source>
+        <translation>விழுந்து மறை</translation>
+    </message>
+    <message>
+        <source>Spin out</source>
+        <translation>சுழன்று மறை</translation>
+    </message>
+    <message>
+        <source>Pop out</source>
+        <translation>பாப் என மறை</translation>
+    </message>
+    <message>
+        <source>Fade in and out</source>
+        <translation>மங்கித் தோன்றி மறை</translation>
+    </message>
+    <message>
+        <source>Pop in and out</source>
+        <translation>பாப் எனத் தோன்றி மறை</translation>
+    </message>
+    <message>
+        <source>Slide through</source>
+        <translation>ஊடாகச் சறுக்கு</translation>
+    </message>
+    <message>
+        <source>Grow in, shrink out</source>
+        <translation>வளர்ந்து தோன்றி, சுருங்கி மறை</translation>
+    </message>
+    <message>
         <source>Pulse</source>
         <translation>துடிப்பு</translation>
+    </message>
+    <message>
+        <source>an animation needs a length</source>
+        <translation>அசைவூட்டத்துக்கு ஒரு நீளம் தேவை</translation>
+    </message>
+    <message>
+        <source>there is no such animation</source>
+        <translation>அப்படி ஒரு அசைவூட்டம் இல்லை</translation>
+    </message>
+    <message>
+        <source>Zoom in</source>
+        <translation>பெரிதாக்கு</translation>
+    </message>
+    <message>
+        <source>Zoom out</source>
+        <translation>சிறிதாக்கு</translation>
+    </message>
+    <message>
+        <source>Pan left</source>
+        <translation>இடப்புறம் நகர்த்து</translation>
+    </message>
+    <message>
+        <source>Pan right</source>
+        <translation>வலப்புறம் நகர்த்து</translation>
+    </message>
+    <message>
+        <source>Pan up</source>
+        <translation>மேலே நகர்த்து</translation>
+    </message>
+    <message>
+        <source>Pan down</source>
+        <translation>கீழே நகர்த்து</translation>
+    </message>
+    <message>
+        <source>Zoom in to the left</source>
+        <translation>இடப்புறம் நோக்கிப் பெரிதாக்கு</translation>
+    </message>
+    <message>
+        <source>Zoom in to the right</source>
+        <translation>வலப்புறம் நோக்கிப் பெரிதாக்கு</translation>
+    </message>
+    <message>
+        <source>the pan and zoom framing is out of range</source>
+        <translation>நகர்த்தி பெரிதாக்கும் சட்டகம் வரம்புக்கு வெளியே உள்ளது</translation>
     </message>
     <message>
         <source>Flicker</source>
@@ -10739,6 +11038,14 @@ The Journey</source>
     <message>
         <source>Change Track</source>
         <translation>டிராக்கை மாற்று</translation>
+    </message>
+    <message>
+        <source>the anchor point must be on the picture or near it</source>
+        <translation>நங்கூரப் புள்ளி படத்தின் மேல் அல்லது அருகில் இருக்க வேண்டும்</translation>
+    </message>
+    <message>
+        <source>a pinned corner is too far off the canvas</source>
+        <translation>பொருத்திய மூலை கேன்வாஸுக்கு மிகவும் வெளியே உள்ளது</translation>
     </message>
     <message>
         <source>Remove Transition</source>

@@ -38,16 +38,15 @@ Item {
         const m = placement.m
         const u = (x - canvasRect.x) / canvasRect.width
         const v = (y - canvasRect.y) / canvasRect.height
-        return Qt.point(m[0] * u + m[1] * v + m[2], m[3] * u + m[4] * v + m[5])
+        const w = m[6] * u + m[7] * v + m[8]
+        return Qt.point((m[0] * u + m[1] * v + m[2]) / w, (m[3] * u + m[4] * v + m[5]) / w)
     }
     // Picture fraction → item point (the placement's inverse).
     function fromPicture(px, py) {
-        const m = placement.m
-        const det = m[0] * m[4] - m[1] * m[3]
-        const a = px - m[2]
-        const b = py - m[5]
-        const u = (m[4] * a - m[1] * b) / det
-        const v = (-m[3] * a + m[0] * b) / det
+        const m = placement.toCanvas
+        const w = m[6] * px + m[7] * py + m[8]
+        const u = (m[0] * px + m[1] * py + m[2]) / w
+        const v = (m[3] * px + m[4] * py + m[5]) / w
         return Qt.point(canvasRect.x + u * canvasRect.width, canvasRect.y + v * canvasRect.height)
     }
     // A point in the shape's own frame (picture pixels, before rotation) → item point.

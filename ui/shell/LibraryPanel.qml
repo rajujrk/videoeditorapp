@@ -158,6 +158,13 @@ Rectangle {
                     onClicked: library.importRequested()
                 }
                 IconButton {
+                    objectName: "colourClipButton"
+                    iconName: "colour-clip"
+                    tip: qsTr("Add a colour clip at the playhead (choose its colours or gradient in the inspector)")
+                    visible: library.currentTab === 0
+                    onClicked: library.project.addColorClip({ kind: "solid", from: [0.12, 0.44, 0.92, 1] })
+                }
+                IconButton {
                     objectName: "importFromButton"
                     iconName: "chevron-down"
                     tip: qsTr("Import from Photos, Music or a device")

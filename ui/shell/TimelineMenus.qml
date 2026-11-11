@@ -323,6 +323,14 @@ Item {
             onTriggered: menus.project.addMarker(laneMenu.seconds)
         }
         AppMenuItem {
+            objectName: "laneMenu:colourClip"
+            text: qsTr("Add a colour clip here")
+            onTriggered: {
+                menus.project.seek(laneMenu.seconds)
+                menus.project.addColorClip({ kind: "solid", from: [0.12, 0.44, 0.92, 1] })
+            }
+        }
+        AppMenuItem {
             objectName: "laneMenu:closeGap"
             text: qsTr("Close this gap")
             enabled: laneMenu.track !== null

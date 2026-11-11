@@ -331,6 +331,14 @@ Rectangle {
                     }
                 }
                 IconButton {
+                    objectName: "snapshotButton"
+                    iconName: "snapshot"
+                    visible: !panel.showingSource
+                    tip: qsTr("Snapshot: the frame at the playhead as a picture, into the media library")
+                    enabled: panel.project.duration > 0
+                    onClicked: panel.project.takeSnapshot()
+                }
+                IconButton {
                     objectName: "proxyToggle"
                     iconName: "proxy"
                     tip: panel.project.useProxies
