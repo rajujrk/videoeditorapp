@@ -24,6 +24,7 @@
 #include "capture/CaptureRecorder.h"
 #include "audio/AudioRecorder.h"
 #include "commands/CommandStack.h"
+#include "commands/SequenceEdits.h"
 #include "commands/TrackCommands.h"
 #include "encode/MediaWriter.h"
 #include "model/Project.h"
@@ -142,6 +143,10 @@ class ProjectController : public QObject {
     // there by a session that crashed, quit, or moved on without saving is listed in
     // recoverableProjects: [{id, name, originalPath, savedAt (ms since epoch), clipCount}],
     // newest first.
+    // Compound clips opened on the timeline, as tabs: [{name, depth}], the main timeline
+    // (depth 0) first. While one is open every edit works on its insides (undone there);
+    // going back puts them in as one undo step ("Edit Compound Clip").
+    Q_PROPERTY(QVariantList timelineTabs READ timelineTabs NOTIFY timelineTabsChanged)
     Q_PROPERTY(bool autosaveEnabled READ autosaveEnabled WRITE setAutosaveEnabled NOTIFY recoveryChanged)
     Q_PROPERTY(QString autosaveDirectory READ autosaveDirectory WRITE setAutosaveDirectory NOTIFY recoveryChanged)
     Q_PROPERTY(QVariantList recoverableProjects READ recoverableProjects NOTIFY recoveryChanged)
@@ -292,7 +297,8 @@ public:
 
     QString name() const;
     QString filePath() const { return m_filePath; }
-    bool modified() const { return !m_stack->isClean(); }
+    bool modified() const;
+    QVariantList timelineTabs() const;
     int canvasWidth() const { return m_project.settings.width; }
     int canvasHeight() const { return m_project.settings.height; }
     double frameRate() const;
@@ -971,6 +977,24 @@ public:
     // "color" (look and grade), "effects", "keying" (key, masks), "audio" (volume, fades,
     // sound effects), "speed".
     Q_INVOKABLE bool copyAttributes(double clipId);
+
+    // --- Source monitor, compound clips, multicam (24d) ---
+    // A part of a media item (from–to seconds; to <= 0: to its end) put on the main track (a
+    // sound-only file on the first audio track) at the playhead: mode "insert" (later clips
+    // move), "overwrite" (over what is there) or "append" (after the last clip). Its clip id.
+    Q_INVOKABLE double placeMediaRange(double mediaId, double from, double to, const QString& mode);
+    // Opens a compound clip (or a multicam clip's angle) on the timeline, in a tab of its own.
+    Q_INVOKABLE bool openCompoundClip(double clipId);
+    // Back to tab `depth` (0: the main timeline; -1: the one before).
+    Q_INVOKABLE bool closeCompoundClip(int depth = -1);
+    // A .tve project's timeline as a compound clip at the playhead (its media brought in).
+    Q_INVOKABLE double importProjectAsCompound(const QUrl& file);
+    // Multicam: the selected clips (or these), lined up on their tracks, as one clip with an
+    // angle for each camera; its angle switched (the whole clip), or cut to at the playhead
+    // (the multicam clip there: the selected one, else the topmost).
+    Q_INVOKABLE double makeMulticam(const QVariantList& clipIds = {});
+    Q_INVOKABLE bool setClipAngle(double clipId, int angle);
+    Q_INVOKABLE bool cutToAngle(int angle);
     Q_INVOKABLE bool pasteAttributes(const QStringList& parts, double clipId = -1);
     bool hasCopiedAttributes() const { return m_copiedAttributes.has_value(); }
     // A transition copied from a cut, pasted onto another clip's start.
@@ -1019,6 +1043,7 @@ signals:
     void selectionChanged();
     void clipboardChanged();
     void marksChanged();
+    void timelineTabsChanged();
     void selectedClipInfoChanged();
     void levelsChanged();
     void mixLevelsChanged();
@@ -1099,6 +1124,20 @@ private:
 
     tve::Project m_project;
     std::unique_ptr<tve::CommandStack> m_stack;
+    // Compound clips open on the timeline, the innermost last: each with the undo history it
+    // was opened from (resumed when it closes), the project as it was then, and the playhead.
+    struct OpenLevel {
+        tve::OpenedSequence opened;
+        std::unique_ptr<tve::CommandStack> stack;
+        tve::Project entry;
+        double playhead = 0;
+        QString name;
+        bool savedInside = false; // saved while it was open (the file has the edits made inside)
+    };
+    std::vector<OpenLevel> m_openLevels;
+    // The project with every open compound clip closed: what is saved, autosaved, exported.
+    tve::Project rootProject() const;
+    void closeLevel();
     TrackListModel m_trackModel;
     std::shared_ptr<tve::TimelinePlayback> m_playback;
     std::unique_ptr<tve::AudioOutput> m_audioOutput;

@@ -379,6 +379,26 @@ Pasting attributes: a short list of what to paste, the usual dialog surface, dar
 ![Paste attributes, dark](images/paste-attributes-dark.png)
 ![Paste attributes, light](images/paste-attributes-light.png)
 
+The source monitor: the player's Timeline / Source tabs (the current one in the accent's subtle
+fill with an accent border), a scrubber with In to Out shaded in the accent, and Insert (primary),
+Overwrite and Append beside the marked length, dark and light:
+
+![The source monitor, dark](images/source-monitor-dark.png)
+![The source monitor, light](images/source-monitor-light.png)
+
+A compound clip open on the timeline: a strip of tabs under the toolbar, "Main timeline › Compound
+1", the open one marked like the player's tabs with × to close it, dark and light:
+
+![A compound clip's tab, dark](images/compound-tab-dark.png)
+![A compound clip's tab, light](images/compound-tab-light.png)
+
+Multicam: each part of the clip carries the multicam mark and its angle; the Inspector shows a
+tile per camera (its thumbnail and number), the one showing at the playhead outlined in the
+accent, dark and light:
+
+![Multicam angles, dark](images/multicam-dark.png)
+![Multicam angles, light](images/multicam-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.
@@ -558,7 +578,7 @@ The app in Tamil: the Home screen with the Language menu at the foot of the rail
 
 ### Icons
 
-64 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+67 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.

@@ -501,6 +501,7 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.text = clip.text;
     right.adjustment = clip.adjustment;
     right.sequenceId = clip.sequenceId;
+    right.angles = clip.angles;
     right.groupId = clip.groupId;
     right.keyframes = clip.keyframes; // both halves animate as the whole did
     shiftKeyframes(right, leftDuration);

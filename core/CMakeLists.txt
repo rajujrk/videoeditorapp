@@ -45,6 +45,8 @@ add_library(tve_core STATIC
     commands/StructureCommands.cpp
     commands/TrackCommands.h
     commands/TrackCommands.cpp
+    commands/SequenceEdits.h
+    commands/SequenceEdits.cpp
     commands/TemplateCommands.h
     commands/TemplateCommands.cpp
     commands/DrawingCommands.h

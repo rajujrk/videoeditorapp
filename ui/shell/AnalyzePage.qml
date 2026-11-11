@@ -177,12 +177,22 @@ ScrollView {
                       .arg(Fmt.num(page.project.selectedClips.length))
                 color: Theme.color.textSecondary
             }
-            TextButton {
-                objectName: "syncBySound"
-                text: qsTr("Line up by sound")
-                variant: "primary"
-                enabled: !page.project.analyzing
-                onClicked: page.project.syncBySound(page.project.selectedClips)
+            RowLayout {
+                TextButton {
+                    objectName: "syncBySound"
+                    text: qsTr("Line up by sound")
+                    variant: "primary"
+                    enabled: !page.project.analyzing
+                    onClicked: page.project.syncBySound(page.project.selectedClips)
+                }
+                TextButton {
+                    objectName: "makeMulticam"
+                    text: qsTr("Make a multicam clip")
+                    variant: "secondary"
+                    tip: qsTr("One clip with an angle for each camera, cut between at the playhead (1–9)")
+                    enabled: !page.project.analyzing
+                    onClicked: page.project.makeMulticam(page.project.selectedClips)
+                }
             }
         }
 

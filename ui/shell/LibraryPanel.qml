@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 import "TitleTemplates.js" as TitleTemplates
@@ -16,6 +17,7 @@ Rectangle {
     signal importRequested()
     // "photos", "music" or "devices"
     signal importFromRequested(string source)
+    signal sourceRequested(var media) // open it in the player's source monitor
     signal cloudSettingsRequested()
     onCurrentTabChanged: searchField.text = ""
 
@@ -166,6 +168,7 @@ Rectangle {
                         MenuItem { objectName: "importFrom:photos"; text: qsTr("From Photos…"); onTriggered: library.importFromRequested("photos") }
                         MenuItem { objectName: "importFrom:music"; text: qsTr("From Music…"); onTriggered: library.importFromRequested("music") }
                         MenuItem { objectName: "importFrom:devices"; text: qsTr("From an iPhone, camera or card…"); onTriggered: library.importFromRequested("devices") }
+                        MenuItem { objectName: "importFrom:project"; text: qsTr("A project, as a compound clip…"); onTriggered: projectDialog.open() }
                     }
                 }
             }
@@ -1003,7 +1006,12 @@ Rectangle {
                                     library.openMediaMenu(mediaTile.modelData, tileMouse, mouse.x, mouse.y)
                             }
                             onDoubleClicked: (mouse) => {
-                                if (mouse.button === Qt.LeftButton)
+                                if (mouse.button !== Qt.LeftButton)
+                                    return
+                                // ⌥: into the source monitor, to choose a part (In and Out) first.
+                                if (mouse.modifiers & Qt.AltModifier)
+                                    library.sourceRequested(mediaTile.modelData)
+                                else
                                     library.project.addClip(mediaTile.modelData.id)
                             }
                         }
@@ -1014,7 +1022,7 @@ Rectangle {
                             delay: 800
                             text: (mediaTile.modelData.generated
                                    ? qsTr("Made by %1: “%2”").arg(mediaTile.modelData.generated.model).arg(mediaTile.modelData.generated.prompt) + "\n" : "")
-                                  + qsTr("Double-click to add to the timeline, drag onto a track or the player, or right-click for more")
+                                  + qsTr("Double-click to add to the timeline (⌥: open in the source monitor), drag onto a track or the player, or right-click for more")
                         }
                         // Generated media: marked, its prompt and maker kept.
                         Rectangle {
@@ -1221,6 +1229,12 @@ Rectangle {
             onTriggered: library.project.addClip(mediaMenu.media.id)
         }
         AppMenuItem {
+            objectName: "mediaMenu:source"
+            text: qsTr("Open in the source monitor")
+            enabled: mediaMenu.media !== null && mediaMenu.media.missing !== true && mediaMenu.media.placeholder !== true
+            onTriggered: library.sourceRequested(mediaMenu.media)
+        }
+        AppMenuItem {
             objectName: "mediaMenu:reveal"
             text: qsTr("Show in Finder")
             enabled: mediaMenu.media !== null && mediaMenu.media.missing !== true && mediaMenu.media.placeholder !== true
@@ -1245,4 +1259,12 @@ Rectangle {
         }
     }
     ConfirmDialog { id: mediaConfirm; objectName: "mediaConfirm" }
+    // Another project's timeline, brought in as one compound clip at the playhead.
+    FileDialog {
+        id: projectDialog
+        title: qsTr("Import a project as a compound clip")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("TechieVideoEditor projects (*.tve)")]
+        onAccepted: library.project.importProjectAsCompound(selectedFile)
+    }
 }

@@ -184,6 +184,40 @@ Item {
                                                            : menus.project.createCompound()
         }
         AppMenuItem {
+            objectName: "clipMenu:openCompound"
+            text: clipMenu.forClip !== null && clipMenu.forClip.isMulticam === true ? qsTr("Open this angle in the timeline")
+                                                                              : qsTr("Open in the timeline")
+            visible: clipMenu.forClip !== null && clipMenu.forClip.isCompound === true
+            onTriggered: menus.project.openCompoundClip(clipMenu.forClip.id)
+        }
+        AppMenuItem {
+            objectName: "clipMenu:multicam"
+            text: qsTr("Make a multicam clip")
+            visible: clipMenu.forClip !== null && clipMenu.forClip.isMulticam !== true
+            enabled: menus.project.selectedClips.length > 1
+            onTriggered: menus.project.makeMulticam()
+        }
+        AppMenu {
+            id: anglesMenu
+            objectName: "clipMenu:angles"
+            title: qsTr("Angle")
+            enabled: clipMenu.forClip !== null && clipMenu.forClip.isMulticam === true
+            Instantiator {
+                model: clipMenu.forClip !== null && clipMenu.forClip.isMulticam === true ? clipMenu.forClip.angles : []
+                delegate: AppMenuItem {
+                    required property var modelData
+                    objectName: "clipMenu:angle:" + modelData.index
+                    text: (modelData.index + 1) + "  " + modelData.name
+                    checkable: true
+                    checked: clipMenu.forClip !== null && clipMenu.forClip.angle === modelData.index
+                    shortcut: KeyMap.text("angle" + (modelData.index + 1))
+                    onTriggered: menus.project.setClipAngle(clipMenu.forClip.id, modelData.index)
+                }
+                onObjectAdded: (index, object) => anglesMenu.insertItem(index, object)
+                onObjectRemoved: (index, object) => anglesMenu.removeItem(object)
+            }
+        }
+        AppMenuItem {
             objectName: "clipMenu:marker"
             text: qsTr("Add a marker at the playhead"); shortcut: KeyMap.text("addMarker")
             onTriggered: menus.project.addMarker()

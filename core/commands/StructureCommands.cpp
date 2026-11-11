@@ -342,11 +342,9 @@ std::optional<std::string> BreakCompoundCommand::redo(Project& project)
             target.insertClip(*kept);
         }
     }
-    // The sequence goes once no compound clip plays it any more (split halves share it).
-    const bool stillUsed = std::ranges::any_of(project.tracks, [&](const Track& t) {
-        return std::ranges::any_of(t.clips, [&](const Clip& c) { return c.sequenceId == compound.sequenceId; });
-    });
-    if (!stillUsed)
+    // The sequence goes once no clip plays it any more (split halves share it; a multicam
+    // clip's other parts may still show that angle, a sequence still hold a copy).
+    if (!project.sequenceInUse(compound.sequenceId))
         std::erase_if(project.sequences, [&](const Sequence& s) { return s.id == compound.sequenceId; });
     return std::nullopt;
 }

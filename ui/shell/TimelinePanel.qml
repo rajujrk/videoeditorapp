@@ -154,6 +154,13 @@ Rectangle {
                 onClicked: compound ? timeline.project.breakCompound(timeline.project.selectedClip)
                                     : timeline.project.createCompound()
             }
+            IconButton {
+                objectName: "multicamButton"
+                iconName: "multicam"
+                tip: qsTr("Make a multicam clip of the selected clips, one angle per camera (line them up by sound first); then 1–9 cut to an angle at the playhead")
+                enabled: timeline.project.selectedClips.length >= 2
+                onClicked: timeline.project.makeMulticam()
+            }
             Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
             IconButton {
                 id: voiceOverButton
@@ -276,6 +283,85 @@ Rectangle {
                 onValueChanged: timeline.pixelsPerSecond = value
             }
             IconButton { iconName: "zoom-in"; tip: qsTr("Zoom in"); onClicked: zoom.value = Math.min(zoom.to, zoom.value * 1.5) }
+        }
+
+        // Tabs: the main timeline and each compound clip opened inside it (click one to go
+        // back to it; the last one is being edited).
+        Rectangle {
+            objectName: "timelineTabs"
+            visible: timeline.project.timelineTabs.length > 1
+            Layout.fillWidth: true
+            implicitHeight: visible ? Theme.size.toolBar - 6 : 0
+            color: Theme.color.surfaceSunken
+            Divider { anchors.top: parent.top; width: parent.width }
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                x: Theme.space.s
+                spacing: Theme.space.xxs
+                Repeater {
+                    model: timeline.project.timelineTabs
+                    delegate: Row {
+                        id: tabRow
+                        required property var modelData
+                        required property int index
+                        readonly property bool current: index === timeline.project.timelineTabs.length - 1
+                        spacing: Theme.space.xxs
+                        Text {
+                            visible: tabRow.index > 0
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "›"
+                            font: Theme.type.body
+                            color: Theme.color.textDisabled
+                        }
+                        AbstractButton {
+                            id: tabButton
+                            objectName: "timelineTab:" + tabRow.modelData.depth
+                            hoverEnabled: true
+                            implicitWidth: tabLabel.implicitWidth + Theme.space.m * 2 + (tabRow.current && tabRow.index > 0 ? 18 : 0)
+                            implicitHeight: 24
+                            onClicked: if (!tabRow.current) timeline.project.closeCompoundClip(tabRow.modelData.depth)
+                            ToolTip.visible: hovered && !tabRow.current
+                            ToolTip.delay: 600
+                            ToolTip.text: qsTr("Back to %1 (the edits inside stay, one undo step)").arg(tabRow.modelData.name)
+                            background: Rectangle {
+                                radius: Theme.radius.s
+                                color: tabRow.current ? Theme.color.accentSubtle
+                                     : tabButton.hovered ? Theme.color.surfaceHover : "transparent"
+                                border.color: tabRow.current ? Theme.color.accent : "transparent"
+                            }
+                            contentItem: Item {
+                                Row {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    x: Theme.space.m - tabButton.leftPadding
+                                    spacing: Theme.space.xs
+                                    Icon {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        name: tabRow.index === 0 ? "timeline" : "compound"
+                                        size: Theme.size.iconSmall
+                                        color: tabRow.current ? Theme.color.accentText : Theme.color.textSecondary
+                                    }
+                                    Text {
+                                        id: tabLabel
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: tabRow.modelData.name
+                                        font: Theme.type.caption
+                                        color: tabRow.current ? Theme.color.textPrimary : Theme.color.textSecondary
+                                    }
+                                }
+                            }
+                        }
+                        IconButton {
+                            objectName: "closeTimelineTab"
+                            visible: tabRow.current && tabRow.index > 0
+                            anchors.verticalCenter: parent.verticalCenter
+                            iconName: "close"
+                            buttonSize: 20
+                            tip: qsTr("Close the compound clip (back to %1)").arg(timeline.project.timelineTabs[Math.max(0, tabRow.index - 1)].name)
+                            onClicked: timeline.project.closeCompoundClip(-1)
+                        }
+                    }
+                }
+            }
         }
 
         Divider { Layout.fillWidth: true }
@@ -1164,10 +1250,10 @@ Rectangle {
                     x: Theme.space.s
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Theme.space.xs
-                    Icon { name: "compound"; size: Theme.size.iconSmall; color: "#FFFFFF" }
+                    Icon { name: item.clip.isMulticam === true ? "multicam" : "compound"; size: Theme.size.iconSmall; color: "#FFFFFF" }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: qsTr("Compound clip")
+                        text: item.clip.isMulticam === true ? qsTr("Multicam · angle %1").arg(item.clip.angle + 1) : qsTr("Compound clip")
                         font: Theme.type.caption
                         color: "#FFFFFF"
                     }
@@ -1272,6 +1358,11 @@ Rectangle {
                 item.previewYOffset = 0
                 timeline.dragGroup = 0
                 timeline.dragDelta = 0
+            }
+            // A compound (or multicam) clip opens on the timeline, in a tab of its own.
+            onDoubleClicked: (mouse) => {
+                if (mouse.button === Qt.LeftButton && !timeline.bladeMode && item.clip.isCompound === true)
+                    timeline.project.openCompoundClip(item.clip.id)
             }
         }
 

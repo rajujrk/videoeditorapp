@@ -64,6 +64,14 @@
         <translation>ஒலியால் வரிசைப்படுத்து</translation>
     </message>
     <message>
+        <source>Make a multicam clip</source>
+        <translation>பல்கேமரா கிளிப்பை உருவாக்கு</translation>
+    </message>
+    <message>
+        <source>One clip with an angle for each camera, cut between at the playhead (1–9)</source>
+        <translation>ஒவ்வொரு கேமராவுக்கும் ஒரு கோணத்துடன் ஒரே கிளிப்; இயக்கக்குறியில் அவற்றிடையே மாறலாம் (1–9)</translation>
+    </message>
+    <message>
         <source>Cutout</source>
         <translation>வெட்டியெடு</translation>
     </message>
@@ -2899,6 +2907,18 @@
         <translation>இருட்டாக்கு</translation>
     </message>
     <message>
+        <source>Multicam</source>
+        <translation>பல்கேமரா</translation>
+    </message>
+    <message>
+        <source>Click an angle to cut to it at the playhead (or press 1–9 while it plays). The clip&apos;s menu switches the whole clip; double-click the clip to edit an angle.</source>
+        <translation>இயக்கக்குறியில் ஒரு கோணத்துக்கு மாற அதைக் கிளிக் செய்யவும் (அல்லது இயங்கும்போது 1–9 ஐ அழுத்தவும்). கிளிப்பின் மெனு முழுக் கிளிப்பையும் மாற்றும்; ஒரு கோணத்தைத் திருத்த கிளிப்பை இருமுறை கிளிக் செய்யவும்.</translation>
+    </message>
+    <message>
+        <source>Cut to %1 at the playhead</source>
+        <translation>இயக்கக்குறியில் %1 க்கு மாறு</translation>
+    </message>
+    <message>
         <source>Lighten</source>
         <translation>ஒளிர்வாக்கு</translation>
     </message>
@@ -3746,6 +3766,42 @@
         <translation>கூட்டுக் கிளிப்பை உருவாக்கு அல்லது பிரி</translation>
     </message>
     <message>
+        <source>Cut to angle 1 (multicam)</source>
+        <translation>கோணம் 1 க்கு மாறு (பல்கேமரா)</translation>
+    </message>
+    <message>
+        <source>Cut to angle 2 (multicam)</source>
+        <translation>கோணம் 2 க்கு மாறு (பல்கேமரா)</translation>
+    </message>
+    <message>
+        <source>Cut to angle 3 (multicam)</source>
+        <translation>கோணம் 3 க்கு மாறு (பல்கேமரா)</translation>
+    </message>
+    <message>
+        <source>Cut to angle 4 (multicam)</source>
+        <translation>கோணம் 4 க்கு மாறு (பல்கேமரா)</translation>
+    </message>
+    <message>
+        <source>Cut to angle 5 (multicam)</source>
+        <translation>கோணம் 5 க்கு மாறு (பல்கேமரா)</translation>
+    </message>
+    <message>
+        <source>Cut to angle 6 (multicam)</source>
+        <translation>கோணம் 6 க்கு மாறு (பல்கேமரா)</translation>
+    </message>
+    <message>
+        <source>Cut to angle 7 (multicam)</source>
+        <translation>கோணம் 7 க்கு மாறு (பல்கேமரா)</translation>
+    </message>
+    <message>
+        <source>Cut to angle 8 (multicam)</source>
+        <translation>கோணம் 8 க்கு மாறு (பல்கேமரா)</translation>
+    </message>
+    <message>
+        <source>Cut to angle 9 (multicam)</source>
+        <translation>கோணம் 9 க்கு மாறு (பல்கேமரா)</translation>
+    </message>
+    <message>
         <source>Save the project</source>
         <translation>திட்டத்தைச் சேமி</translation>
     </message>
@@ -3959,6 +4015,10 @@
         <translation>iPhone, கேமரா அல்லது கார்டிலிருந்து…</translation>
     </message>
     <message>
+        <source>A project, as a compound clip…</source>
+        <translation>ஒரு திட்டம், கூட்டுக் கிளிப்பாக…</translation>
+    </message>
+    <message>
         <source>Search %1</source>
         <translation>%1 தேடு</translation>
     </message>
@@ -4043,8 +4103,12 @@
         <translation>%1 உருவாக்கியது: “%2”</translation>
     </message>
     <message>
-        <source>Double-click to add to the timeline, drag onto a track or the player, or right-click for more</source>
-        <translation>காலவரிசையில் சேர்க்க இருமுறை சொடுக்கவும், ஒரு டிராக்கிலோ இயக்கியிலோ இழுத்து விடவும், அல்லது மேலும் பல வசதிகளுக்கு வலது சொடுக்கவும்</translation>
+        <source>Import a project as a compound clip</source>
+        <translation>ஒரு திட்டத்தைக் கூட்டுக் கிளிப்பாக இறக்குமதி செய்</translation>
+    </message>
+    <message>
+        <source>TechieVideoEditor projects (*.tve)</source>
+        <translation>TechieVideoEditor திட்டங்கள் (*.tve)</translation>
     </message>
     <message>
         <source>Add at the playhead</source>
@@ -4053,6 +4117,10 @@
     <message>
         <source>Add to the end of the timeline</source>
         <translation>காலவரிசையின் இறுதியில் சேர்</translation>
+    </message>
+    <message>
+        <source>Open in the source monitor</source>
+        <translation>மூலத் திரையில் திற</translation>
     </message>
     <message>
         <source>Show in Finder</source>
@@ -4081,6 +4149,10 @@
     <message>
         <source>AI</source>
         <translation>AI</translation>
+    </message>
+    <message>
+        <source>Double-click to add to the timeline (⌥: open in the source monitor), drag onto a track or the player, or right-click for more</source>
+        <translation>காலவரிசையில் சேர்க்க இருமுறை கிளிக் செய்யவும் (⌥: மூலத் திரையில் திறக்கும்), டிராக் அல்லது பிளேயர் மீது இழுக்கவும், அல்லது மேலும் விருப்பங்களுக்கு வலது கிளிக் செய்யவும்</translation>
     </message>
     <message>
         <source>HDR media: shown tone-mapped in this SDR project. Make the project HDR in Color to keep its highlights.</source>
@@ -4405,6 +4477,14 @@
 </context>
 <context>
     <name>PlayerPanel</name>
+    <message>
+        <source>Timeline</source>
+        <translation>காலவரிசை</translation>
+    </message>
+    <message>
+        <source>Source: %1</source>
+        <translation>மூலம்: %1</translation>
+    </message>
     <message>
         <source>Drop video files here, or import them in the media library</source>
         <translation>வீடியோ கோப்புகளை இங்கே விடவும், அல்லது மீடியா நூலகத்தில் இறக்குமதி செய்யவும்</translation>
@@ -5105,6 +5185,10 @@
         <translation>தெரியாத ஸ்டிக்கர் %1</translation>
     </message>
     <message>
+        <source>Markers go on the main timeline</source>
+        <translation>குறிப்பான்கள் முதன்மைக் காலவரிசையில் மட்டுமே இடம்பெறும்</translation>
+    </message>
+    <message>
         <source>Select two or more clips (⇧-click) to group them</source>
         <translation>குழுவாக்க இரண்டு அல்லது அதற்கு மேற்பட்ட கிளிப்புகளைத் தேர்ந்தெடுக்கவும் (⇧-கிளிக்)</translation>
     </message>
@@ -5444,6 +5528,30 @@
         <source>Copy a transition first</source>
         <translation>முதலில் ஒரு மாற்றத்தை நகலெடுக்கவும்</translation>
     </message>
+    <message>
+        <source>Main timeline</source>
+        <translation>முதன்மைக் காலவரிசை</translation>
+    </message>
+    <message>
+        <source>Add an audio track for the sound first</source>
+        <translation>முதலில் ஒலிக்காக ஒரு ஆடியோ டிராக்கைச் சேர்க்கவும்</translation>
+    </message>
+    <message>
+        <source>Select a compound clip to open</source>
+        <translation>திறக்க ஒரு கூட்டுக் கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Compound clip</source>
+        <translation>கூட்டுக் கிளிப்</translation>
+    </message>
+    <message>
+        <source>Could not open the project: %1</source>
+        <translation>திட்டத்தைத் திறக்க முடியவில்லை: %1</translation>
+    </message>
+    <message>
+        <source>There is no multicam clip at the playhead</source>
+        <translation>இயக்கக்குறியில் பல்கேமரா கிளிப் எதுவும் இல்லை</translation>
+    </message>
 </context>
 <context>
     <name>RecordPanel</name>
@@ -5776,6 +5884,41 @@
     <message>
         <source>The sound could not be played.</source>
         <translation>ஒலியை இயக்க முடியவில்லை.</translation>
+    </message>
+</context>
+<context>
+    <name>SourceMonitor</name>
+    <message>
+        <source>%1 · %2 marked</source>
+        <translation>%1 · %2 குறிக்கப்பட்டது</translation>
+    </message>
+    <message>
+        <source>%1 · mark In and Out (I, O) to take a part</source>
+        <translation>%1 · ஒரு பகுதியை எடுக்க தொடக்கம், முடிவைக் குறிக்கவும் (I, O)</translation>
+    </message>
+    <message>
+        <source>Insert</source>
+        <translation>செருகு</translation>
+    </message>
+    <message>
+        <source>At the playhead on the main track; later clips move to make room</source>
+        <translation>முதன்மை டிராக்கில் இயக்கக்குறியில்; இடம் தர பின்வரும் கிளிப்புகள் நகரும்</translation>
+    </message>
+    <message>
+        <source>Overwrite</source>
+        <translation>மேலெழுது</translation>
+    </message>
+    <message>
+        <source>At the playhead on the main track, over what is there</source>
+        <translation>முதன்மை டிராக்கில் இயக்கக்குறியில், அங்குள்ளதன் மேல்</translation>
+    </message>
+    <message>
+        <source>Append</source>
+        <translation>இறுதியில் சேர்</translation>
+    </message>
+    <message>
+        <source>After the last clip on the main track</source>
+        <translation>முதன்மை டிராக்கின் கடைசிக் கிளிப்புக்குப் பின்</translation>
     </message>
 </context>
 <context>
@@ -6226,6 +6369,22 @@
         <translation>கூட்டுக் கிளிப்பை உருவாக்கு</translation>
     </message>
     <message>
+        <source>Open this angle in the timeline</source>
+        <translation>இந்தக் கோணத்தைக் காலவரிசையில் திற</translation>
+    </message>
+    <message>
+        <source>Open in the timeline</source>
+        <translation>காலவரிசையில் திற</translation>
+    </message>
+    <message>
+        <source>Make a multicam clip</source>
+        <translation>பல்கேமரா கிளிப்பை உருவாக்கு</translation>
+    </message>
+    <message>
+        <source>Angle</source>
+        <translation>கோணம்</translation>
+    </message>
+    <message>
         <source>Add a marker at the playhead</source>
         <translation>இயக்கக்குறியில் ஒரு குறியீட்டைச் சேர்</translation>
     </message>
@@ -6469,6 +6628,10 @@
         <translation>தேர்ந்தெடுத்த கிளிப்புகளை ஒரு கூட்டுக் கிளிப்பாக்கு</translation>
     </message>
     <message>
+        <source>Make a multicam clip of the selected clips, one angle per camera (line them up by sound first); then 1–9 cut to an angle at the playhead</source>
+        <translation>தேர்ந்தெடுத்த கிளிப்புகளிலிருந்து பல்கேமரா கிளிப்பை உருவாக்கு, ஒரு கேமராவுக்கு ஒரு கோணம் (முதலில் ஒலியால் வரிசைப்படுத்தவும்); பின் 1–9 இயக்கக்குறியில் ஒரு கோணத்துக்கு மாற்றும்</translation>
+    </message>
+    <message>
         <source>Record voice-over</source>
         <translation>பின்னணிக் குரலைப் பதிவுசெய்</translation>
     </message>
@@ -6515,6 +6678,14 @@
     <message>
         <source>Zoom in</source>
         <translation>பெரிதாக்கு</translation>
+    </message>
+    <message>
+        <source>Back to %1 (the edits inside stay, one undo step)</source>
+        <translation>%1 க்குத் திரும்பு (உள்ளே செய்த திருத்தங்கள் இருக்கும், ஒரே செயல்தவிர்ப்பு படியாக)</translation>
+    </message>
+    <message>
+        <source>Close the compound clip (back to %1)</source>
+        <translation>கூட்டுக் கிளிப்பை மூடு (%1 க்குத் திரும்பு)</translation>
     </message>
     <message>
         <source>Unlock track</source>
@@ -6611,6 +6782,10 @@
     <message>
         <source>Compound clip</source>
         <translation>கூட்டுக் கிளிப்</translation>
+    </message>
+    <message>
+        <source>Multicam · angle %1</source>
+        <translation>பல்கேமரா · கோணம் %1</translation>
     </message>
 </context>
 <context>
@@ -10070,6 +10245,38 @@ The Journey</source>
         <translation>பண்புகளை ஒட்டு</translation>
     </message>
     <message>
+        <source>Overwrite Clip</source>
+        <translation>கிளிப்பை மேலெழுது</translation>
+    </message>
+    <message>
+        <source>Append Clip</source>
+        <translation>கிளிப்பை இறுதியில் சேர்</translation>
+    </message>
+    <message>
+        <source>Insert Clip</source>
+        <translation>கிளிப்பைச் செருகு</translation>
+    </message>
+    <message>
+        <source>Edit Compound Clip</source>
+        <translation>கூட்டுக் கிளிப்பைத் திருத்து</translation>
+    </message>
+    <message>
+        <source>Import Project</source>
+        <translation>திட்டத்தை இறக்குமதி செய்</translation>
+    </message>
+    <message>
+        <source>Make Multicam Clip</source>
+        <translation>பல்கேமரா கிளிப்பை உருவாக்கு</translation>
+    </message>
+    <message>
+        <source>Switch Angle</source>
+        <translation>கோணத்தை மாற்று</translation>
+    </message>
+    <message>
+        <source>Cut to Angle</source>
+        <translation>கோணத்துக்கு மாறு</translation>
+    </message>
+    <message>
         <source>Ramp up</source>
         <translation>வேகமாக்கு</translation>
     </message>
@@ -10772,6 +10979,62 @@ The Journey</source>
     <message>
         <source>Remove Media</source>
         <translation>மீடியாவை அகற்று</translation>
+    </message>
+    <message>
+        <source>clip not found</source>
+        <translation>கிளிப் கிடைக்கவில்லை</translation>
+    </message>
+    <message>
+        <source>only a compound clip opens on the timeline</source>
+        <translation>கூட்டுக் கிளிப் மட்டுமே காலவரிசையில் திறக்கும்</translation>
+    </message>
+    <message>
+        <source>the compound clip&apos;s insides are missing</source>
+        <translation>கூட்டுக் கிளிப்பின் உள்ளடக்கம் காணவில்லை</translation>
+    </message>
+    <message>
+        <source>track is locked</source>
+        <translation>டிராக் பூட்டப்பட்டுள்ளது</translation>
+    </message>
+    <message>
+        <source>titles, drawings, adjustment layers and multicam clips cannot be angles</source>
+        <translation>தலைப்புகள், வரைபடங்கள், சரிசெய்தல் அடுக்குகள், பல்கேமரா கிளிப்புகள் கோணங்களாக இருக்க முடியாது</translation>
+    </message>
+    <message>
+        <source>only picture and sound clips make a multicam clip</source>
+        <translation>படம் மற்றும் ஒலி கிளிப்புகள் மட்டுமே பல்கேமரா கிளிப்பை உருவாக்கும்</translation>
+    </message>
+    <message>
+        <source>a multicam clip needs two or more picture clips (one per camera)</source>
+        <translation>பல்கேமரா கிளிப்புக்கு இரண்டு அல்லது அதற்கு மேற்பட்ட படக் கிளிப்புகள் தேவை (ஒரு கேமராவுக்கு ஒன்று)</translation>
+    </message>
+    <message>
+        <source>only a multicam clip has angles</source>
+        <translation>பல்கேமரா கிளிப்புக்கு மட்டுமே கோணங்கள் உண்டு</translation>
+    </message>
+    <message>
+        <source>that angle is missing</source>
+        <translation>அந்தக் கோணம் காணவில்லை</translation>
+    </message>
+    <message>
+        <source>the playhead is not over the multicam clip</source>
+        <translation>இயக்கக்குறி பல்கேமரா கிளிப்பின் மேல் இல்லை</translation>
+    </message>
+    <message>
+        <source>that project&apos;s timeline is empty</source>
+        <translation>அந்தத் திட்டத்தின் காலவரிசை காலியாக உள்ளது</translation>
+    </message>
+    <message>
+        <source>media not found</source>
+        <translation>மீடியா கிடைக்கவில்லை</translation>
+    </message>
+    <message>
+        <source>track not found</source>
+        <translation>டிராக் கிடைக்கவில்லை</translation>
+    </message>
+    <message>
+        <source>choose a part of the media to place (In before Out)</source>
+        <translation>வைக்க மீடியாவின் ஒரு பகுதியைத் தேர்ந்தெடுக்கவும் (முடிவுக்கு முன் தொடக்கம்)</translation>
     </message>
 </context>
 </TS>

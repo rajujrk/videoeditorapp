@@ -748,6 +748,64 @@ Rectangle {
                         font: Theme.type.body
                         color: Theme.color.textSecondary
                     }
+                    // Multicam: an angle for each camera; a click cuts to it at the playhead.
+                    Section {
+                        objectName: "multicamSection"
+                        visible: inspector.clipInfo.isMulticam === true
+                        title: qsTr("Multicam")
+                        Text {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: qsTr("Click an angle to cut to it at the playhead (or press 1–9 while it plays). The clip's menu switches the whole clip; double-click the clip to edit an angle.")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.s
+                            Repeater {
+                                model: inspector.clipInfo.angles || []
+                                delegate: AbstractButton {
+                                    id: angleTile
+                                    required property var modelData
+                                    readonly property bool shown: inspector.clipInfo.angle === modelData.index
+                                    objectName: "angle:" + modelData.index
+                                    width: 104
+                                    height: 78
+                                    hoverEnabled: true
+                                    onClicked: inspector.project.cutToAngle(modelData.index)
+                                    ToolTip.visible: hovered
+                                    ToolTip.delay: 600
+                                    ToolTip.text: qsTr("Cut to %1 at the playhead").arg(modelData.name) + KeyMap.hints["angle" + (modelData.index + 1)]
+                                    background: Rectangle {
+                                        radius: Theme.radius.m
+                                        color: Theme.color.surfaceSunken
+                                        border.width: angleTile.shown ? 2 : 1
+                                        border.color: angleTile.shown ? Theme.color.accent
+                                                    : angleTile.hovered ? Theme.color.borderStrong : Theme.color.borderSubtle
+                                    }
+                                    contentItem: Item {
+                                        Image {
+                                            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 3 }
+                                            height: 52
+                                            asynchronous: true
+                                            fillMode: Image.PreserveAspectFit
+                                            source: angleTile.modelData.path !== ""
+                                                    ? "image://tvethumb/" + encodeURIComponent(angleTile.modelData.path) + "@"
+                                                      + (angleTile.modelData.duration * 0.3).toFixed(2) + "@104" : ""
+                                        }
+                                        Text {
+                                            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 4 }
+                                            text: (angleTile.modelData.index + 1) + "  " + angleTile.modelData.name
+                                            font: Theme.type.caption
+                                            color: angleTile.shown ? Theme.color.accentText : Theme.color.textPrimary
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     // 360° media: reframed to a flat view in a flat project (its direction and field
                     // of view, keyframable), or turned on a 360° project's sphere.
                     Section {

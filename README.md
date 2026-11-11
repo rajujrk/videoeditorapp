@@ -78,6 +78,7 @@ The following improvements were completed after Phase 5:
 - Slice 24a: Right-click menus on clips, tracks, empty timeline space and media; adding, renaming and deleting tracks; cut, copy, paste, duplicate and ripple delete with shortcuts; the home screen's Record screen and Instant mode.
 - Slice 24b: Drag and drop from Finder onto the timeline and player, and moving, resizing and rotating the selected clip by hand in the player.
 - Slice 24c: Timeline tools — J K L shuttle, typing a timecode, Mark In/Out, the blade tool, closing gaps, track height, pasting attributes and transitions, crossfades on sound tracks, and speeds from 0.01× to 100×.
+- Slice 24d: A source monitor (In and Out, insert, overwrite, append), compound clips opened in timeline tabs, projects imported as compound clips, and multicam clips with angle switching.
 
 All previously identified feature gaps have been closed.
 
@@ -611,6 +612,15 @@ and to make tracks small, normal or large. Copy a clip's attributes and paste th
 others, choosing position and size, colour, effects, keying, sound or speed; copy a
 transition from its marker and paste it into another clip. Sound clips crossfade with a
 transition between them. Speed runs from 0.01× to 100×.
+
+**Source monitor, compound tabs, multicam.** ⌥-double-click a media item (or choose "Open in
+the source monitor" from its menu) to play it on its own in the player's Source tab; mark In and
+Out with I and O, then Insert it at the playhead (later clips move), Overwrite what is there, or
+Append it after the last clip. Double-click a compound clip to edit its insides in a timeline tab
+of its own; the tabs above the timeline take you back, the edits as one undo step. Import ▾ "A
+project, as a compound clip…" brings another project in as one clip. For a shoot with several
+cameras, line their clips up (Sync by sound), select them and make a multicam clip: press 1–9
+(or click an angle in the Inspector) to cut to that camera at the playhead.
 
 **Placing clips by hand.** Select a clip and its frame shows in the player: drag inside it to
 move it (it snaps to the centre lines), a corner to resize it, the round knob to turn it (⇧ in
