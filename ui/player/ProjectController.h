@@ -24,6 +24,7 @@
 #include "capture/CaptureRecorder.h"
 #include "audio/AudioRecorder.h"
 #include "commands/CommandStack.h"
+#include "commands/TrackCommands.h"
 #include "encode/MediaWriter.h"
 #include "model/Project.h"
 
@@ -87,6 +88,7 @@ class ProjectController : public QObject {
     Q_PROPERTY(double selectedClip READ selectedClip WRITE setSelectedClip NOTIFY selectionChanged)
     // Every selected clip (the selected clip, its group, and any added with toggleClipSelection).
     Q_PROPERTY(QVariantList selectedClips READ selectedClips NOTIFY selectionChanged)
+    Q_PROPERTY(bool canPaste READ canPaste NOTIFY clipboardChanged)
     // {id, time, duration, color, note, chapter} in time order (seconds).
     Q_PROPERTY(QVariantList markers READ markers NOTIFY projectChanged)
     Q_PROPERTY(QStringList markerColors READ markerColors CONSTANT)
@@ -562,6 +564,9 @@ public:
     // (picture.u = m0·u + m1·v + m2, picture.v = m3·u + m4·v + m5, canvas and picture as
     // 0–1 fractions), width, height (the picture's pixels)}; empty for no picture.
     Q_INVOKABLE QVariantMap clipPlacement(double clipId) const;
+    // The topmost clip whose picture is at canvas point (u, v) (0..1) at the playhead (titles,
+    // drawings and adjustment layers left out: they cover the canvas); 0 if none.
+    Q_INVOKABLE double clipAtCanvas(double u, double v) const;
     // Places the pictures at the playhead (top track first) in the layout's regions, as one
     // step; a picture-in-picture sets only the top one.
     Q_INVOKABLE bool applyLayout(const QString& layoutId);
@@ -641,6 +646,38 @@ public:
     // Makes the selected clips one compound clip ("Compound N"); returns its id (0 on failure).
     Q_INVOKABLE double createCompound();
     Q_INVOKABLE bool breakCompound(double clipId);
+
+    // Tracks: a new one ("video", "audio" or "title") above or below another (or on top),
+    // returning its id (0 on failure); deleted with its clips; renamed; empty ones cleared.
+    Q_INVOKABLE double addTrack(const QString& kind, double besideTrackId = -1, bool above = true);
+    Q_INVOKABLE bool removeTrack(double trackId);
+    Q_INVOKABLE bool renameTrack(double trackId, const QString& name);
+    Q_INVOKABLE int removeEmptyTracks();
+    // The clipboard: the selected clips (or the selected one) copied or cut, pasted at a time
+    // (default the playhead) from a track (default the selected clip's, else the main one),
+    // or duplicated right after themselves. The pasted clips become the selection.
+    Q_INVOKABLE bool copyClips();
+    Q_INVOKABLE bool cutClips();
+    Q_INVOKABLE bool pasteClips(double trackId = -1, double seconds = -1);
+    Q_INVOKABLE bool duplicateClips();
+    bool canPaste() const { return !m_clipboard.empty(); }
+    // Deletes a clip and closes the gap it leaves, on any track.
+    Q_INVOKABLE bool rippleDeleteClip(double clipId);
+    // Selects every clip (on one track, or on all of them).
+    Q_INVOKABLE int selectAllClips(double trackId = -1);
+    // Media: how many clips use it; taken out of the project with them; shown in Finder.
+    Q_INVOKABLE int clipsUsingMedia(double mediaId) const;
+    Q_INVOKABLE bool removeMedia(double mediaId);
+    Q_INVOKABLE bool revealMedia(double mediaId);
+    // Places media at a time (default the playhead): on the lowest track of its kind with
+    // room there (sound-only media on a sound track), else on a new track; one undo step.
+    // Returns the new clip's id (0 on failure) and selects it.
+    Q_INVOKABLE double addMediaAt(double mediaId, double seconds = -1);
+    // Puts media dropped on a track at a time: there if it fits (its kind, free), else where
+    // addMediaAt finds room. Files (from Finder) are imported first and placed one after
+    // another from that time. Returns how many clips were placed.
+    Q_INVOKABLE bool dropMediaAt(double mediaId, double trackId, double seconds);
+    Q_INVOKABLE int dropFilesAt(const QList<QUrl>& files, double trackId, double seconds);
 
     // Makes (in the background) or deletes the proxy of a video.
     // Voice-over. openVoiceOver asks for microphone access first if it has not been given
@@ -938,6 +975,7 @@ signals:
     void playheadChanged();
     void playingChanged();
     void selectionChanged();
+    void clipboardChanged();
     void selectedClipInfoChanged();
     void levelsChanged();
     void mixLevelsChanged();
@@ -1033,6 +1071,9 @@ private:
     bool m_relinkDifferent = false;
     tve::Id m_selectedClip = tve::kNoId;
     std::vector<tve::Id> m_selectedClips; // includes m_selectedClip
+    std::vector<tve::CopiedClip> m_clipboard; // copied clips (copyClips/cutClips)
+    void selectClips(std::vector<tve::Id> ids);
+    std::vector<tve::Id> clipsToCopy() const;
     tve::Id m_selectedTransition = tve::kNoId;
     double m_playhead = 0;
     bool m_canvasChosen = false; // false: the first video clip sets the canvas

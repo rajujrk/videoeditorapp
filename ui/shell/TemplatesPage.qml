@@ -11,6 +11,9 @@ import TechieVideoEditor.Theme
 // slots, texts and music (SaveTemplateDialog.qml).
 ScrollView {
     id: page
+    signal importRequested()
+    // Opens one of the "make it for me" panels ("instant", "montage" or "shorts").
+    function makeFor(which) { autoEdit.show(which) }
     required property var project
     readonly property var library: project.templates
     readonly property var info: project.templateInfo
@@ -46,7 +49,7 @@ ScrollView {
         }
     }
     SaveTemplateDialog { id: saveDialog; objectName: "saveTemplateDialog"; project: page.project }
-    AutoEditPanel { id: autoEdit; objectName: "autoEditPanel"; project: page.project }
+    AutoEditPanel { id: autoEdit; objectName: "autoEditPanel"; project: page.project; onImportRequested: page.importRequested() }
     ShapePicker { id: shapePicker; objectName: "shapePicker"; project: page.project }
 
     component Chip: AbstractButton {

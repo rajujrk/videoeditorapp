@@ -809,6 +809,10 @@
         <translation>முதலில் சில வீடியோக்களை இறக்குமதி செய்யவும்.</translation>
     </message>
     <message>
+        <source>Import media…</source>
+        <translation>மீடியாவை இறக்குமதி செய்…</translation>
+    </message>
+    <message>
         <source>Style</source>
         <translation>பாணி</translation>
     </message>
@@ -1378,6 +1382,13 @@
     <message>
         <source>The recording can&apos;t be read.</source>
         <translation>பதிவைப் படிக்க முடியவில்லை.</translation>
+    </message>
+</context>
+<context>
+    <name>ConfirmDialog</name>
+    <message>
+        <source>Cancel</source>
+        <translation>ரத்துசெய்</translation>
     </message>
 </context>
 <context>
@@ -2274,16 +2285,16 @@
         <translation>திரையைப் பதிவுசெய்</translation>
     </message>
     <message>
-        <source>Recording arrives in Phase 4</source>
-        <translation>பதிவுசெய்தல் கட்டம் 4-இல் வரும்</translation>
+        <source>A new project with the screen and camera recorder open</source>
+        <translation>திரை மற்றும் கேமரா பதிவி திறந்த நிலையில் ஒரு புதிய திட்டம்</translation>
+    </message>
+    <message>
+        <source>A new project that makes a video from your pictures and clips for you</source>
+        <translation>உங்கள் படங்கள், கிளிப்புகளிலிருந்து உங்களுக்காக ஒரு வீடியோவை உருவாக்கும் புதிய திட்டம்</translation>
     </message>
     <message>
         <source>Instant mode</source>
         <translation>உடனடி முறை</translation>
-    </message>
-    <message>
-        <source>Instant mode arrives in Phase 4</source>
-        <translation>உடனடி முறை கட்டம் 4-இல் வரும்</translation>
     </message>
     <message>
         <source>Recent projects</source>
@@ -3647,6 +3658,30 @@
         <translation>தேர்ந்தெடுத்ததை நீக்கு</translation>
     </message>
     <message>
+        <source>Ripple delete (close the gap)</source>
+        <translation>அலை நீக்கம் (இடைவெளியை மூடு)</translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation>வெட்டு</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>நகலெடு</translation>
+    </message>
+    <message>
+        <source>Paste at the playhead</source>
+        <translation>இயக்கக்குறியில் ஒட்டு</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>நகல் உருவாக்கு</translation>
+    </message>
+    <message>
+        <source>Select every clip</source>
+        <translation>எல்லாக் கிளிப்புகளையும் தேர்ந்தெடு</translation>
+    </message>
+    <message>
         <source>Undo</source>
         <translation>செயல்தவிர்</translation>
     </message>
@@ -3968,8 +4003,40 @@
         <translation>%1 உருவாக்கியது: “%2”</translation>
     </message>
     <message>
-        <source>Double-click to add to the timeline, or drag onto a track</source>
-        <translation>காலவரிசையில் சேர்க்க இருமுறை கிளிக் செய்யவும், அல்லது ஒரு டிராக்குக்கு இழுக்கவும்</translation>
+        <source>Double-click to add to the timeline, drag onto a track or the player, or right-click for more</source>
+        <translation>காலவரிசையில் சேர்க்க இருமுறை சொடுக்கவும், ஒரு டிராக்கிலோ இயக்கியிலோ இழுத்து விடவும், அல்லது மேலும் பல வசதிகளுக்கு வலது சொடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Add at the playhead</source>
+        <translation>இயக்கக்குறியில் சேர்</translation>
+    </message>
+    <message>
+        <source>Add to the end of the timeline</source>
+        <translation>காலவரிசையின் இறுதியில் சேர்</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>Finder-இல் காட்டு</translation>
+    </message>
+    <message>
+        <source>Remove from the project</source>
+        <translation>திட்டத்திலிருந்து அகற்று</translation>
+    </message>
+    <message>
+        <source>Remove &quot;%1&quot;?</source>
+        <translation>&quot;%1&quot;-ஐ அகற்றவா?</translation>
+    </message>
+    <message>
+        <source>A clip on the timeline uses it and goes with it. You can undo this.</source>
+        <translation>காலவரிசையில் ஒரு கிளிப் இதைப் பயன்படுத்துகிறது; அதுவும் சேர்ந்து நீங்கும். இதைச் செயல்தவிர்க்கலாம்.</translation>
+    </message>
+    <message>
+        <source>%1 clips on the timeline use it and go with it. You can undo this.</source>
+        <translation>காலவரிசையில் %1 கிளிப்புகள் இதைப் பயன்படுத்துகின்றன; அவையும் சேர்ந்து நீங்கும். இதைச் செயல்தவிர்க்கலாம்.</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>அகற்று</translation>
     </message>
     <message>
         <source>AI</source>
@@ -4053,6 +4120,14 @@
     <message>
         <source>TechieVideoEditor</source>
         <translation>TechieVideoEditor</translation>
+    </message>
+    <message>
+        <source>Screen recording</source>
+        <translation>திரைப் பதிவு</translation>
+    </message>
+    <message>
+        <source>Instant video</source>
+        <translation>உடனடி வீடியோ</translation>
     </message>
     <message>
         <source>Open project</source>
@@ -5241,6 +5316,34 @@
         <source>There are no captions to export</source>
         <translation>ஏற்றுமதி செய்ய வசனங்கள் இல்லை</translation>
     </message>
+    <message>
+        <source>There are no empty tracks to remove</source>
+        <translation>அகற்றுவதற்கு வெற்று டிராக்குகள் இல்லை</translation>
+    </message>
+    <message>
+        <source>Select the clips to copy</source>
+        <translation>நகலெடுக்க வேண்டிய கிளிப்புகளைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Select the clips to cut</source>
+        <translation>வெட்ட வேண்டிய கிளிப்புகளைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>A clip to cut is on a locked track</source>
+        <translation>வெட்ட வேண்டிய ஒரு கிளிப் பூட்டப்பட்ட டிராக்கில் உள்ளது</translation>
+    </message>
+    <message>
+        <source>Copy or cut some clips first</source>
+        <translation>முதலில் சில கிளிப்புகளை நகலெடுக்கவும் அல்லது வெட்டவும்</translation>
+    </message>
+    <message>
+        <source>Select the clips to duplicate</source>
+        <translation>நகல் உருவாக்க வேண்டிய கிளிப்புகளைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>The file is not where it was</source>
+        <translation>கோப்பு முன்பிருந்த இடத்தில் இல்லை</translation>
+    </message>
 </context>
 <context>
     <name>RecordPanel</name>
@@ -5918,6 +6021,185 @@
     <message>
         <source>%1 slots · %2 · %3</source>
         <translation>%1 இடங்கள் · %2 · %3</translation>
+    </message>
+</context>
+<context>
+    <name>TimelineMenus</name>
+    <message>
+        <source>Delete &quot;%1&quot;?</source>
+        <translation>&quot;%1&quot;-ஐ நீக்கவா?</translation>
+    </message>
+    <message>
+        <source>Its clip goes with it. You can undo this.</source>
+        <translation>அதன் கிளிப்பும் சேர்ந்து நீங்கும். இதைச் செயல்தவிர்க்கலாம்.</translation>
+    </message>
+    <message>
+        <source>Its %1 clips go with it. You can undo this.</source>
+        <translation>அதன் %1 கிளிப்புகளும் சேர்ந்து நீங்கும். இதைச் செயல்தவிர்க்கலாம்.</translation>
+    </message>
+    <message>
+        <source>Delete track</source>
+        <translation>டிராக்கை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation>வெட்டு</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>நகலெடு</translation>
+    </message>
+    <message>
+        <source>Paste at the playhead</source>
+        <translation>இயக்கக்குறியில் ஒட்டு</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>நகல் உருவாக்கு</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>நீக்கு</translation>
+    </message>
+    <message>
+        <source>Ripple delete (close the gap)</source>
+        <translation>அலை நீக்கம் (இடைவெளியை மூடு)</translation>
+    </message>
+    <message>
+        <source>Split at the playhead</source>
+        <translation>இயக்கக்குறியில் பிரி</translation>
+    </message>
+    <message>
+        <source>Trim the start to the playhead</source>
+        <translation>தொடக்கத்தை இயக்கக்குறி வரை வெட்டு</translation>
+    </message>
+    <message>
+        <source>Trim the end to the playhead</source>
+        <translation>முடிவை இயக்கக்குறி வரை வெட்டு</translation>
+    </message>
+    <message>
+        <source>Detach audio</source>
+        <translation>ஒலியைப் பிரி</translation>
+    </message>
+    <message>
+        <source>Speed</source>
+        <translation>வேகம்</translation>
+    </message>
+    <message>
+        <source>Reverse</source>
+        <translation>பின்னோக்கு</translation>
+    </message>
+    <message>
+        <source>Freeze frame at the playhead</source>
+        <translation>இயக்கக்குறியில் சட்டகத்தை உறைய வை</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>குழுவாக்கு</translation>
+    </message>
+    <message>
+        <source>Ungroup</source>
+        <translation>குழுவைப் பிரி</translation>
+    </message>
+    <message>
+        <source>Break apart the compound clip</source>
+        <translation>கூட்டுக் கிளிப்பைப் பிரி</translation>
+    </message>
+    <message>
+        <source>Make a compound clip</source>
+        <translation>கூட்டுக் கிளிப்பை உருவாக்கு</translation>
+    </message>
+    <message>
+        <source>Add a marker at the playhead</source>
+        <translation>இயக்கக்குறியில் ஒரு குறியீட்டைச் சேர்</translation>
+    </message>
+    <message>
+        <source>Copy the colour grade</source>
+        <translation>நிறத் திருத்தத்தை நகலெடு</translation>
+    </message>
+    <message>
+        <source>Paste the colour grade</source>
+        <translation>நிறத் திருத்தத்தை ஒட்டு</translation>
+    </message>
+    <message>
+        <source>Select every clip on this track</source>
+        <translation>இந்த டிராக்கின் எல்லாக் கிளிப்புகளையும் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Show the file in Finder</source>
+        <translation>கோப்பை Finder-இல் காட்டு</translation>
+    </message>
+    <message>
+        <source>Add a video track</source>
+        <translation>ஒரு வீடியோ டிராக்கைச் சேர்</translation>
+    </message>
+    <message>
+        <source>Add an audio track</source>
+        <translation>ஒரு ஒலி டிராக்கைச் சேர்</translation>
+    </message>
+    <message>
+        <source>Add a title track</source>
+        <translation>ஒரு தலைப்பு டிராக்கைச் சேர்</translation>
+    </message>
+    <message>
+        <source>Rename…</source>
+        <translation>மறுபெயரிடு…</translation>
+    </message>
+    <message>
+        <source>Unlock</source>
+        <translation>பூட்டைத் திற</translation>
+    </message>
+    <message>
+        <source>Lock</source>
+        <translation>பூட்டு</translation>
+    </message>
+    <message>
+        <source>Show</source>
+        <translation>காட்டு</translation>
+    </message>
+    <message>
+        <source>Hide</source>
+        <translation>மறை</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>ஒலியை இயக்கு</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>ஒலியடக்கு</translation>
+    </message>
+    <message>
+        <source>Delete this track</source>
+        <translation>இந்த டிராக்கை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Delete empty tracks</source>
+        <translation>வெற்று டிராக்குகளை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Paste here</source>
+        <translation>இங்கே ஒட்டு</translation>
+    </message>
+    <message>
+        <source>Add a marker here</source>
+        <translation>இங்கே ஒரு குறியீட்டைச் சேர்</translation>
+    </message>
+    <message>
+        <source>Select every clip</source>
+        <translation>எல்லாக் கிளிப்புகளையும் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Rename the track</source>
+        <translation>டிராக்கை மறுபெயரிடு</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>ரத்துசெய்</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>மறுபெயரிடு</translation>
     </message>
 </context>
 <context>
@@ -9556,6 +9838,22 @@ The Journey</source>
         <translation>வசனங்களை இறக்குமதி செய்</translation>
     </message>
     <message>
+        <source>Delete Empty Tracks</source>
+        <translation>வெற்று டிராக்குகளை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation>வெட்டு</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>ஒட்டு</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>நகல் உருவாக்கு</translation>
+    </message>
+    <message>
         <source>Ramp up</source>
         <translation>வேகமாக்கு</translation>
     </message>
@@ -10246,6 +10544,18 @@ The Journey</source>
     <message>
         <source>The manifest could not be written.</source>
         <translation>மேனிஃபெஸ்ட்டை எழுத முடியவில்லை.</translation>
+    </message>
+    <message>
+        <source>Remove Track</source>
+        <translation>டிராக்கை அகற்று</translation>
+    </message>
+    <message>
+        <source>Rename Track</source>
+        <translation>டிராக்கை மறுபெயரிடு</translation>
+    </message>
+    <message>
+        <source>Remove Media</source>
+        <translation>மீடியாவை அகற்று</translation>
     </message>
 </context>
 </TS>

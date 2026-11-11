@@ -49,6 +49,7 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
+#include <QProcess>
 #include <QJsonDocument>
 #include <QGuiApplication>
 #include <QJsonObject>
@@ -2755,9 +2756,10 @@ QVariantMap ProjectController::clipPlacement(double clipId) const
     if (!clip || clip->adjustment)
         return {};
     const MediaItem* media = m_project.findMedia(clip->mediaId);
-    // A title is drawn at canvas size.
-    const double width = clip->text ? m_project.settings.width : media ? media->width : 0;
-    const double height = clip->text ? m_project.settings.height : media ? media->height : 0;
+    // A title (and a compound clip's sequence) is drawn at canvas size.
+    const bool canvasSized = clip->text || clip->compound();
+    const double width = canvasSized ? m_project.settings.width : media ? media->width : 0;
+    const double height = canvasSized ? m_project.settings.height : media ? media->height : 0;
     if (width <= 0 || height <= 0)
         return {};
     const LayerPlacement placement = placeLayer(clip->visualAt(ticks(m_playhead)), m_project.settings.width,
@@ -2765,7 +2767,35 @@ QVariantMap ProjectController::clipPlacement(double clipId) const
     QVariantList m;
     for (double v : placement.canvasToLayer)
         m << v;
-    return {{QStringLiteral("m"), m}, {QStringLiteral("width"), width}, {QStringLiteral("height"), height}};
+    QVariantList crop;
+    for (double v : placement.cropRect)
+        crop << v;
+    return {{QStringLiteral("m"), m}, {QStringLiteral("width"), width}, {QStringLiteral("height"), height},
+            {QStringLiteral("crop"), crop}};
+}
+
+double ProjectController::clipAtCanvas(double u, double v) const
+{
+    // Top layer first: the first whose visible picture holds the point. Titles, drawings and
+    // adjustment layers cover the whole canvas, so they are passed over.
+    const auto layers = visibleVideoLayersAt(m_project, ticks(m_playhead));
+    for (auto layer = layers.rbegin(); layer != layers.rend(); ++layer) {
+        const Clip& clip = *layer->clip;
+        if (clip.generated() || layer->track->locked)
+            continue;
+        const MediaItem* media = m_project.findMedia(clip.mediaId);
+        const double w = clip.compound() ? m_project.settings.width : media ? media->width : 0;
+        const double h = clip.compound() ? m_project.settings.height : media ? media->height : 0;
+        if (w <= 0 || h <= 0)
+            continue;
+        const LayerPlacement placement = placeLayer(clip.visualAt(ticks(m_playhead)), m_project.settings.width,
+                                                    m_project.settings.height, w, h);
+        const auto [lu, lv] = placement.apply(u, v);
+        const auto& c = placement.cropRect;
+        if (lu >= c[0] && lu <= c[2] && lv >= c[1] && lv <= c[3])
+            return double(clip.id);
+    }
+    return 0;
 }
 
 namespace {
@@ -8823,4 +8853,300 @@ bool ProjectController::importSubtitles(const QUrl& file)
         return false;
     }
     return apply(std::make_unique<SetCaptionsCommand>(*blocks, TVE_TR("core", "Import Captions")));
+}
+
+// --- Tracks, the clipboard and media (right-click menus) ---
+
+void ProjectController::selectClips(std::vector<Id> ids)
+{
+    std::erase_if(ids, [&](Id id) { return !findClip(id); });
+    m_selectedClips = std::move(ids);
+    m_selectedClip = m_selectedClips.empty() ? kNoId : m_selectedClips.front();
+    m_selectedTransition = kNoId;
+    emit selectionChanged();
+    emit selectedClipInfoChanged();
+}
+
+std::vector<Id> ProjectController::clipsToCopy() const
+{
+    std::vector<Id> ids;
+    for (Id id : m_selectedClips)
+        if (findClip(id))
+            ids.push_back(id);
+    if (ids.empty() && findClip(m_selectedClip))
+        ids.push_back(m_selectedClip);
+    return ids;
+}
+
+double ProjectController::addTrack(const QString& kind, double besideTrackId, bool above)
+{
+    const TrackKind trackKind = kind == QLatin1String("audio") ? TrackKind::Audio
+                              : kind == QLatin1String("title") ? TrackKind::Title
+                                                                : TrackKind::Video;
+    std::size_t index = m_project.tracks.size();
+    if (const auto beside = m_project.trackIndex(toId(besideTrackId)))
+        index = *beside + (above ? 1 : 0);
+    const auto count = std::ranges::count(m_project.tracks, trackKind, &Track::kind);
+    const char* name = trackKind == TrackKind::Audio ? "Audio" : trackKind == TrackKind::Title ? "Title" : "Video";
+    auto command = std::make_unique<InsertTrackCommand>(trackKind, std::string(name) + " " + std::to_string(count + 1), index);
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return 0;
+    return double(raw->trackId());
+}
+
+bool ProjectController::removeTrack(double trackId)
+{
+    const Id id = toId(trackId);
+    const bool hadSelection = std::ranges::any_of(m_selectedClips, [&](Id clip) {
+        const auto location = m_project.locateClip(clip);
+        return location && location->track->id == id;
+    });
+    if (!apply(std::make_unique<RemoveTrackCommand>(id)))
+        return false;
+    if (hadSelection)
+        setSelectedClip(0);
+    return true;
+}
+
+bool ProjectController::renameTrack(double trackId, const QString& name)
+{
+    return apply(std::make_unique<RenameTrackCommand>(toId(trackId), name.toStdString()));
+}
+
+int ProjectController::removeEmptyTracks()
+{
+    // Empty, unlocked ones; a video track always stays (the lowest, the main track).
+    std::vector<std::unique_ptr<Command>> steps;
+    auto videos = std::ranges::count(m_project.tracks, TrackKind::Video, &Track::kind);
+    for (auto track = m_project.tracks.rbegin(); track != m_project.tracks.rend(); ++track) {
+        if (!track->clips.empty() || track->locked)
+            continue;
+        if (track->kind == TrackKind::Video) {
+            if (videos == 1)
+                continue;
+            --videos;
+        }
+        steps.push_back(std::make_unique<RemoveTrackCommand>(track->id));
+    }
+    if (steps.empty()) {
+        reportError(tr("There are no empty tracks to remove"));
+        return 0;
+    }
+    const int removed = int(steps.size());
+    if (!apply(std::make_unique<CompositeCommand>(std::move(steps), TVE_TR("core", "Delete Empty Tracks"))))
+        return 0;
+    return removed;
+}
+
+bool ProjectController::copyClips()
+{
+    const std::vector<Id> ids = clipsToCopy();
+    if (ids.empty()) {
+        reportError(tr("Select the clips to copy"));
+        return false;
+    }
+    m_clipboard = tve::copyClips(m_project, ids);
+    emit clipboardChanged();
+    return true;
+}
+
+bool ProjectController::cutClips()
+{
+    const std::vector<Id> ids = clipsToCopy();
+    if (ids.empty()) {
+        reportError(tr("Select the clips to cut"));
+        return false;
+    }
+    if (std::ranges::any_of(ids, [&](Id id) { return m_project.locateClip(id)->track->locked; })) {
+        reportError(tr("A clip to cut is on a locked track"));
+        return false;
+    }
+    m_clipboard = tve::copyClips(m_project, ids);
+    emit clipboardChanged();
+    // Latest first, so closing gaps on the main track moves none still to go.
+    std::vector<std::pair<Ticks, Id>> order;
+    for (Id id : ids)
+        order.emplace_back(m_project.locateClip(id)->clip->start, id);
+    std::ranges::sort(order, std::greater{});
+    std::vector<std::unique_ptr<Command>> steps;
+    for (const auto& [start, id] : order)
+        steps.push_back(std::make_unique<DeleteClipCommand>(id, m_project.locateClip(id)->track->id == mainTrackId()));
+    if (!apply(std::make_unique<CompositeCommand>(std::move(steps), TVE_TR("core", "Cut"))))
+        return false;
+    setSelectedClip(0);
+    return true;
+}
+
+bool ProjectController::pasteClips(double trackId, double seconds)
+{
+    if (m_clipboard.empty()) {
+        reportError(tr("Copy or cut some clips first"));
+        return false;
+    }
+    Id target = toId(trackId);
+    if (trackId < 0) {
+        const auto location = m_project.locateClip(m_selectedClip);
+        target = location ? location->track->id : mainTrackId();
+    }
+    const Ticks at = ticks(seconds < 0 ? m_playhead : seconds);
+    auto command = std::make_unique<PasteClipsCommand>(m_clipboard, at, target, TVE_TR("core", "Paste"));
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return false;
+    selectClips(raw->pastedIds());
+    return true;
+}
+
+bool ProjectController::duplicateClips()
+{
+    const std::vector<Id> ids = clipsToCopy();
+    if (ids.empty()) {
+        reportError(tr("Select the clips to duplicate"));
+        return false;
+    }
+    const std::vector<CopiedClip> copies = tve::copyClips(m_project, ids);
+    // Right after them, counted from the track the first lane-0 copy came from.
+    Ticks end = 0;
+    for (Id id : ids)
+        end = std::max(end, m_project.locateClip(id)->clip->end());
+    Id target = m_project.locateClip(copies.front().clip.id)->track->id;
+    for (const CopiedClip& copy : copies) {
+        if (copy.lane == 0 && copy.kind == copies.front().kind) {
+            target = m_project.locateClip(copy.clip.id)->track->id;
+            break;
+        }
+    }
+    auto command = std::make_unique<PasteClipsCommand>(copies, end, target, TVE_TR("core", "Duplicate"));
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return false;
+    selectClips(raw->pastedIds());
+    return true;
+}
+
+bool ProjectController::rippleDeleteClip(double clipId)
+{
+    if (!findClip(toId(clipId))) {
+        reportError(tr("Select a clip to delete"));
+        return false;
+    }
+    if (!apply(std::make_unique<DeleteClipCommand>(toId(clipId), true)))
+        return false;
+    setSelectedClip(0);
+    return true;
+}
+
+int ProjectController::selectAllClips(double trackId)
+{
+    std::vector<Id> ids;
+    for (const Track& track : m_project.tracks) {
+        if (trackId >= 0 && track.id != toId(trackId))
+            continue;
+        for (const Clip& clip : track.clips)
+            ids.push_back(clip.id);
+    }
+    selectClips(ids);
+    return int(m_selectedClips.size());
+}
+
+int ProjectController::clipsUsingMedia(double mediaId) const
+{
+    return int(tve::clipsUsingMedia(m_project, toId(mediaId)));
+}
+
+bool ProjectController::removeMedia(double mediaId)
+{
+    if (!apply(std::make_unique<RemoveMediaCommand>(toId(mediaId))))
+        return false;
+    if (!findClip(m_selectedClip) || std::ranges::any_of(m_selectedClips, [&](Id id) { return !findClip(id); }))
+        selectClips(clipsToCopy());
+    return true;
+}
+
+bool ProjectController::revealMedia(double mediaId)
+{
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    if (!media || !QFileInfo::exists(QString::fromStdString(media->path))) {
+        reportError(tr("The file is not where it was"));
+        return false;
+    }
+    return QProcess::startDetached(QStringLiteral("/usr/bin/open"), {QStringLiteral("-R"), QString::fromStdString(media->path)});
+}
+
+double ProjectController::addMediaAt(double mediaId, double seconds)
+{
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    if (!media) {
+        reportError(tr("Media not found"));
+        return 0;
+    }
+    const TrackKind kind = media->hasVideo ? TrackKind::Video : TrackKind::Audio;
+    const Ticks at = std::max<Ticks>(0, ticks(seconds < 0 ? m_playhead : seconds));
+    Project after = m_project;
+    Id target = kNoId;
+    for (const Track& track : after.tracks) {
+        if (track.kind == kind && !track.locked && !track.overlaps(at, media->duration)) {
+            target = track.id;
+            break;
+        }
+    }
+    if (target == kNoId) {
+        // Pictures on a new track on top; sound on a new one at the bottom.
+        const auto count = std::ranges::count(after.tracks, kind, &Track::kind);
+        InsertTrackCommand track(kind, std::string(kind == TrackKind::Audio ? "Audio " : "Video ") + std::to_string(count + 1),
+                                 kind == TrackKind::Audio ? 0 : after.tracks.size());
+        if (auto error = track.redo(after)) {
+            reportError(coreText(*error));
+            return 0;
+        }
+        target = track.trackId();
+    }
+    AddClipCommand add(target, media->id, at, media->duration, 0);
+    if (auto error = add.redo(after)) {
+        reportError(coreText(*error));
+        return 0;
+    }
+    m_project.setNextId(after.nextId()); // (the ids the edit took stay taken)
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Add Clip"))))
+        return 0;
+    setSelectedClip(double(add.clipId()));
+    return double(add.clipId());
+}
+
+bool ProjectController::dropMediaAt(double mediaId, double trackId, double seconds)
+{
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    const Track* track = m_project.findTrack(toId(trackId));
+    if (!media) {
+        reportError(tr("Media not found"));
+        return false;
+    }
+    const Ticks at = std::max<Ticks>(0, ticks(seconds));
+    // (Pictures go on video tracks, sound on audio tracks.)
+    const bool fits = track && (track->kind == TrackKind::Video ? media->hasVideo
+                                : track->kind == TrackKind::Audio && media->hasAudio && !media->hasVideo);
+    if (fits && !track->locked && !track->overlaps(at, media->duration))
+        return addClip(double(media->id), double(track->id), ::seconds(at));
+    return addMediaAt(double(media->id), ::seconds(at)) > 0;
+}
+
+int ProjectController::dropFilesAt(const QList<QUrl>& files, double trackId, double seconds)
+{
+    int placed = 0;
+    double at = std::max(0.0, seconds);
+    for (const QUrl& file : files) {
+        if (importMedia({file}) == 0)
+            continue;
+        const std::string path = (file.isLocalFile() ? file.toLocalFile() : file.toString()).toStdString();
+        const auto media = std::ranges::find(m_project.media, path, &MediaItem::path);
+        if (media == m_project.media.end())
+            continue;
+        const double length = ::seconds(media->duration);
+        if (dropMediaAt(double(media->id), trackId, at)) {
+            ++placed;
+            at += length;
+        }
+    }
+    return placed;
 }

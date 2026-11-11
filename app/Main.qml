@@ -67,6 +67,16 @@ ApplicationWindow {
                 root.screen = "editor"
             }
             onOpenRequested: openDialog.open()
+            onRecordRequested: {
+                project.newProject(1920, 1080, qsTr("Screen recording"))
+                root.screen = "editor"
+                editorScreen.openRecorder()
+            }
+            onInstantRequested: {
+                project.newProject(1920, 1080, qsTr("Instant video"))
+                root.screen = "editor"
+                editorScreen.openInstantMode()
+            }
             onMediaDropped: (file) => {
                 project.newProject(1920, 1080)
                 project.importAndAppend(file)

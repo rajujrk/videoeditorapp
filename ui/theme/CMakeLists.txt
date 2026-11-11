@@ -20,6 +20,9 @@ qt_add_qml_module(tve_theme
         Section.qml
         PlaceholderBox.qml
         ToggleSwitch.qml
+        AppMenu.qml
+        AppMenuItem.qml
+        AppMenuSeparator.qml
     RESOURCES
         ${TVE_THEME_ICONS}
 )

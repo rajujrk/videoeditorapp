@@ -12,6 +12,8 @@ qt_add_qml_module(tve_shell
         PlayerPanel.qml
         InspectorPanel.qml
         TimelinePanel.qml
+        TimelineMenus.qml
+        ConfirmDialog.qml
         ClipEffectCard.qml
         ParamControl.qml
         ExportDialog.qml
@@ -38,6 +40,7 @@ qt_add_qml_module(tve_shell
         ColorWheelControl.qml
         ToneCurveEditor.qml
         MaskOverlay.qml
+        TransformOverlay.qml
         DrawingOverlay.qml
         StorePage.qml
         TrackOverlay.qml

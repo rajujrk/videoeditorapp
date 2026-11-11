@@ -40,38 +40,70 @@ Rectangle {
                 anchors.margins: Theme.space.s
             }
 
+            // Move, scale and rotate the selected clip by hand (beneath the editing overlays).
+            TransformOverlay {
+                objectName: "transformOverlay"
+                anchors.fill: video
+                project: panel.project
+                blocked: maskOverlay.visible || trackOverlay.visible || drawingOverlay.visible || sphereOverlay.visible
+            }
+
             MaskOverlay {
+                id: maskOverlay
                 objectName: "maskOverlay"
                 anchors.fill: video
                 project: panel.project
             }
 
             TrackOverlay {
+                id: trackOverlay
                 objectName: "trackOverlay"
                 anchors.fill: video
                 project: panel.project
             }
 
             DrawingOverlay {
+                id: drawingOverlay
                 objectName: "drawingOverlay"
                 anchors.fill: video
                 project: panel.project
             }
 
             SphereOverlay {
+                id: sphereOverlay
                 objectName: "sphereOverlay"
                 anchors.fill: video
                 project: panel.project
                 player: video
             }
 
+            // Files from Finder: imported and added to the end; media from the library: placed
+            // at the playhead (on a track with room there).
             DropArea {
+                id: playerDrop
+                objectName: "playerDrop"
                 anchors.fill: parent
-                keys: ["text/uri-list"]
+                keys: ["text/uri-list", "application/x-tve-media"]
                 onDropped: (drop) => {
+                    if (drop.keys.indexOf("application/x-tve-media") >= 0) {
+                        const mediaId = drop.source && drop.source.mediaId !== undefined
+                                      ? drop.source.mediaId : Number(drop.getDataAsString("application/x-tve-media"))
+                        panel.project.addMediaAt(mediaId)
+                        drop.accept()
+                        return
+                    }
                     for (const url of drop.urls)
                         panel.project.importAndAppend(url)
+                    drop.accept()
                 }
+            }
+            Rectangle {
+                anchors.fill: video
+                visible: playerDrop.containsDrag
+                color: Qt.alpha(Theme.color.accent, 0.12)
+                border.color: Theme.color.accent
+                border.width: 2
+                radius: Theme.radius.m
             }
 
             Column {
