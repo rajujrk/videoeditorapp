@@ -3,21 +3,175 @@
 A desktop video editor for macOS (Apple Silicon first). See
 [docs/TechieVideoEditor_Build_Plan.md](docs/TechieVideoEditor_Build_Plan.md) for the full plan.
 
-**Status: Phase 1 (MVP editor) complete — slices 1–4 and 5a–5e (export, autosave and
-crash recovery, proxies, voice-over, still images). Phase 2: keyframes (6a), curves with effect keyframes (6b), speed ramps (6c), colour grading (7a), HSL, hue curves and scopes (7b), looks, overlays and adjustment layers (7c), masks, keying and split screens (8a), the effects library (8b), audio effects, mixing and loudness (9a), the titles system (9b), 60 transitions (10a), stickers (10b), markers, groups and compound clips (11a) delivery — export formats, presets, ranges and a render queue (11b) — and hardening — relinking missing media, a shortcut editor and a 531-case golden-frame suite (11c) — done. Phase 3: analysis — pauses, scene changes, the beat and ducking (12a) — speech to text with captions and SRT/VTT (12b), caption styles with editing by transcript (12c), audio AI — speech enhancement and noise reduction (13a) — people — portrait cutout, covering faces and auto reframe (13b) — motion — stabilization, flicker removal, temporal denoise and tracking (13c) — and advanced vision — multicam sync by sound, smart cutout, upscaling, smooth slow motion and object removal (14a) — done; the Phase 3 slices are complete. Phase 4: screen and camera recording with cursor effects (15a) the music and sound library with imports from Photos, Music and devices (15b), AI writing, caption translation and voices with your own keys (16a), generated pictures, stickers, video, music and sound effects (16b), templates in six shapes (17a), instant videos, highlight montages and smart shorts (17b), drawing, paths and overlay transitions (18a), and the pack store (18b) done — the Phase 4 slices are complete. Phase 5: audio plug-ins — Audio Units and VST3 (19a) — video plug-ins — OpenFX (19b) — colour management with HDR — PQ and HLG, an HDR viewer and 10-bit HEVC export (20a) — 360° video — reframing, looking around and 360° export (20b) — interchange — OpenTimelineIO and Final Cut Pro XML both ways, EDL out (21a) — the AI copilot — editing by asking Claude, every change shown first (21b) — voice cloning with consent (22a) — localization — the app in English and Tamil (22b) — and performance hardening — render files for heavy stretches, a half-resolution preview and measured budgets (22c) — done; the Phase 5 slices are complete. Since then: speed and transitions on compound clips (23a), transparent WebM VP9 and HEVC video (23b) and MP3 export (23c) — the known gaps are closed.** You can import video, audio and image files, arrange them on a multi-track timeline
-(move, trim, split, delete with ripple on the main track, undo/redo), layer clips with
-position, scale, rotation, crop, opacity and blend modes (animated with keyframes, as is
-volume), grade each clip's colour (basic corrections, wheels, curves, HSL, hue curves, LUTs) with
-scopes, put looks (filters) and overlays on clips or on adjustment layers above them, cut clips out with shape and pen masks, a chroma key or a track matte, arrange clips side by side or picture in picture, give each clip its own effects from a library of 61 (with shadows, outlines and fills that reach outside the picture),
-put any of 60 transitions on the cuts between clips (one on every cut at once, or a random one each) (with a constant-power sound
-crossfade), add titles (font, size, colour, bold/italic, alignment, letter and line
-spacing, outline, shadow, a shape or bubble behind them, in/out/loop text animations by
-letter, word or line, rolling credits and tickers; 40 templates), change a clip's speed (0.1–10×) or ramp it, play it in reverse or insert
-freeze frames, hear and see their sound (waveforms, volume, fades, detach audio, track
-mute/hide/lock, meter), see thumbnails in the media bin and on the timeline, play and
-scrub, save/open `.tve` projects (unsaved work is autosaved and recoverable after a crash),
-edit heavy 4K media smoothly through proxies, record voice-overs from a microphone at the
-playhead, and export MP4 files (H.264 or HEVC with AAC sound).
+# Project Status and Feature Overview
+
+## 1. Development Status
+
+**Phase 1 – MVP Editor: Complete**
+
+- Slices 1–4: Core MVP editor functionality.
+- Slices 5a–5e:
+  - Export
+  - Autosave and crash recovery
+  - Proxy media support
+  - Voice-over recording
+  - Still images
+
+**Phase 2 – Advanced Editing Features: Complete**
+
+- Slice 6a: Keyframes.
+- Slice 6b: Curves with effect keyframes.
+- Slice 6c: Speed ramps.
+- Slice 7a: Colour grading.
+- Slice 7b: HSL, hue curves and scopes.
+- Slice 7c: Looks, overlays and adjustment layers.
+- Slice 8a: Masks, keying and split screens.
+- Slice 8b: Effects library.
+- Slice 9a: Audio effects, mixing and loudness.
+- Slice 9b: Titles system.
+- Slice 10a: 60 transitions.
+- Slice 10b: Stickers.
+- Slice 11a: Markers, groups and compound clips.
+- Slice 11b: Delivery features, including export formats, presets, ranges and render queue.
+- Slice 11c: Hardening, including missing-media relinking, shortcut editor and a 531-case golden-frame test suite.
+
+**Phase 3 – AI-Powered Editing and Advanced Media Processing: Complete**
+
+- Slice 12a: Analysis features, including pauses, scene changes, beat detection and audio ducking.
+- Slice 12b: Speech-to-text with captions and SRT/VTT support.
+- Slice 12c: Caption styles and transcript-based editing.
+- Slice 13a: Audio AI, including speech enhancement and noise reduction.
+- Slice 13b: People-related features, including portrait cutout, face covering and automatic reframing.
+- Slice 13c: Motion processing, including stabilization, flicker removal, temporal denoising and tracking.
+- Slice 14a: Advanced vision features, including multicam synchronization by sound, smart cutout, upscaling, smooth slow motion and object removal.
+
+**Phase 4 – Recording, Generative AI and Creative Tools: Complete**
+
+- Slice 15a: Screen and camera recording with cursor effects.
+- Slice 15b: Music and sound library, with imports from Photos, Music and connected devices.
+- Slice 16a: AI writing, caption translation and AI voices using user-provided API keys.
+- Slice 16b: AI-generated pictures, stickers, videos, music and sound effects.
+- Slice 17a: Templates in six aspect ratios.
+- Slice 17b: Instant videos, highlight montages and smart shorts.
+- Slice 18a: Drawing, paths and overlay transitions.
+- Slice 18b: Asset and template pack store.
+
+**Phase 5 – Professional Editing and Extensibility: Complete**
+
+- Slice 19a: Audio plug-ins supporting Audio Units and VST3.
+- Slice 19b: Video plug-ins supporting OpenFX.
+- Slice 20a: Colour management with HDR support, including PQ and HLG, an HDR viewer and 10-bit HEVC export.
+- Slice 20b: 360° video support, including reframing, navigation and 360° export.
+- Slice 21a: Project interchange supporting OpenTimelineIO and Final Cut Pro XML import/export, plus EDL export.
+- Slice 21b: AI copilot supporting natural-language editing through Claude, with every proposed change displayed for review before application.
+- Slice 22a: Voice cloning with consent.
+- Slice 22b: Application localization in English and Tamil.
+- Slice 22c: Performance hardening, including render files for resource-intensive sections, half-resolution previews and measured performance budgets.
+
+**Additional Enhancements – Complete**
+
+The following improvements were completed after Phase 5:
+
+- Slice 23a: Speed and transition support for compound clips.
+- Slice 23b: Transparent video export using WebM VP9 and HEVC.
+- Slice 23c: MP3 audio export.
+
+All previously identified feature gaps have been closed.
+
+---
+
+## 2. Implemented Application Capabilities
+
+### 2.1 Media Import and Timeline Editing
+
+- Import video, audio and image files.
+- Arrange media on a multi-track timeline.
+- Move, trim, split and delete clips.
+- Support ripple deletion on the main track.
+- Undo and redo editing operations.
+- Layer clips with support for position, scale, rotation, crop, opacity and blend modes.
+- Animate clip properties using keyframes, including volume.
+
+### 2.2 Colour Grading and Visual Adjustments
+
+- Apply individual colour grading to each clip.
+- Support basic colour corrections, colour wheels, curves, HSL adjustments and hue curves.
+- Apply LUTs (Look-Up Tables).
+- Display colour scopes for accurate grading.
+- Apply looks (filters) and overlays to individual clips.
+- Add adjustment layers above clips to apply effects across multiple clips.
+
+### 2.3 Masks, Keying and Compositing
+
+- Cut out clips using shape masks and pen-based masks.
+- Support chroma keying and track mattes.
+- Arrange clips side by side.
+- Create picture-in-picture compositions.
+
+### 2.4 Effects Library
+
+- Access a library of 61 visual effects.
+- Apply individual effects to each clip.
+- Support shadows, outlines and fills that extend beyond the original picture boundaries.
+
+### 2.5 Transitions
+
+- Apply any of the 60 available transitions between clips.
+- Apply a selected transition to every cut simultaneously.
+- Randomly assign transitions across cuts.
+- Support constant-power audio crossfades.
+
+### 2.6 Titles and Text
+
+- Customize fonts, sizes, colours, bold and italic styles.
+- Configure text alignment, letter spacing and line spacing.
+- Add outlines and shadows.
+- Add shapes or speech bubbles behind text.
+- Apply entrance, exit and looping text animations.
+- Animate text by individual letters, words or lines.
+- Create rolling credits and tickers.
+- Choose from 40 built-in title templates.
+
+### 2.7 Speed and Playback Controls
+
+- Adjust clip playback speed from 0.1× to 10×.
+- Create speed ramps.
+- Play clips in reverse.
+- Insert freeze frames.
+
+### 2.8 Audio Editing and Mixing
+
+- Display audio waveforms.
+- Adjust clip volume and audio fades.
+- Detach audio from video clips.
+- Mute, hide and lock individual tracks.
+- Display audio level meters.
+- Record voice-overs directly from a microphone at the current playhead position.
+
+### 2.9 Media Management and Preview
+
+- Display thumbnails in the media bin and timeline.
+- Play and scrub through video content.
+- Edit heavy 4K media smoothly using proxy files.
+- Save and reopen `.tve` project files.
+- Automatically save unsaved work.
+- Recover projects after unexpected application crashes.
+
+### 2.10 Export and Delivery
+
+- Export videos in MP4 format.
+- Support H.264 and HEVC video encoding.
+- Support AAC audio encoding.
+
+---
+
+## 3. Overall Completion Summary
+
+The application has completed all five planned development phases, covering the MVP editor, professional editing capabilities, AI-powered media processing, generative AI tools, advanced integrations and performance optimization.
+
+Additional enhancements have also closed the previously identified feature gaps.
+
+The application now provides a comprehensive video editing environment with multi-track editing, professional colour grading, visual effects, transitions, audio processing, AI-assisted editing, media generation, advanced compositing, project interchange and export capabilities.
 
 What's in the repo:
 
