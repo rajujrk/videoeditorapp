@@ -412,6 +412,20 @@ direction, dark and light:
 ![A colour clip, dark](images/colour-clip-dark.png)
 ![A colour clip, light](images/colour-clip-light.png)
 
+Guides over the player: thirds in white, safe areas in the accent (action solid, titles
+dashed), rulers on a dark band, each line on a darker one so it shows on any picture; a mask
+applying to effects only (black and white outside an ellipse), its chip saying so, dark and
+light:
+
+![Effect mask and guides, dark](images/effect-mask-dark.png)
+![Effect mask and guides, light](images/effect-mask-light.png)
+
+Motion blur: a disc flying across with a 360° shutter, the slider under Animation, dark and
+light:
+
+![Motion blur, dark](images/motion-blur-dark.png)
+![Motion blur, light](images/motion-blur-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.
@@ -591,7 +605,7 @@ The app in Tamil: the Home screen with the Language menu at the foot of the rail
 
 ### Icons
 
-69 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+70 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.

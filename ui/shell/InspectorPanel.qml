@@ -927,6 +927,15 @@ Rectangle {
                             }
                         }
                         AudioSlider {
+                            objectName: "motionBlur"
+                            label: qsTr("Motion blur")
+                            from: 0
+                            to: 1
+                            value: inspector.clipInfo.motionBlur || 0
+                            format: (v) => v <= 0 ? qsTr("Off") : qsTr("%1° shutter").arg(Math.round(v * 360))
+                            onCommitted: (v) => inspector.project.setClipMotionBlur(inspector.clipInfo.id, v)
+                        }
+                        AudioSlider {
                             objectName: "animationLength"
                             label: qsTr("Length")
                             from: 0.2
@@ -1097,6 +1106,7 @@ Rectangle {
                                         id: chipText
                                         text: (maskChip.index + 1) + " · " + maskChip.mask.shape.charAt(0).toUpperCase()
                                               + maskChip.mask.shape.slice(1) + (maskChip.mask.invert ? qsTr(" (inverted)") : "")
+                                              + (maskChip.mask.target === "effects" ? qsTr(" · effects") : maskChip.mask.target === "colour" ? qsTr(" · colour") : "")
                                         font: Theme.type.label
                                         color: Theme.color.textPrimary
                                         horizontalAlignment: Text.AlignHCenter
@@ -1136,6 +1146,21 @@ Rectangle {
                                 text: qsTr("Drag the points on the player; click between them to add one, double-click one to remove it.")
                                 font: Theme.type.caption
                                 color: Theme.color.textSecondary
+                            }
+                            // What it does: cuts the picture, or keeps the effects or the colour to inside it.
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text { text: qsTr("Applies to"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                                ComboBox {
+                                    objectName: "maskTarget"
+                                    readonly property var targets: ["picture", "effects", "colour"]
+                                    model: [qsTr("The picture"), qsTr("Effects only"), qsTr("Colour only")]
+                                    currentIndex: Math.max(0, targets.indexOf(maskSection.mask !== null ? (maskSection.mask.target || "picture") : "picture"))
+                                    onActivated: (index) => maskSection.commit({ target: targets[index] })
+                                    ToolTip.visible: hovered
+                                    ToolTip.delay: 600
+                                    ToolTip.text: qsTr("The picture: what is outside is cut away. Effects or colour: the clip's effects, or its look and grade, only inside; the picture stays as it was outside.")
+                                }
                             }
                             RowLayout {
                                 Layout.fillWidth: true

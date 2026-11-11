@@ -746,6 +746,9 @@ QVariantMap maskMap(const ClipMask& m)
         {QStringLiteral("feather"), m.feather},
         {QStringLiteral("invert"), m.invert},
         {QStringLiteral("points"), points},
+        {QStringLiteral("target"), m.target == MaskTarget::Effects ? QStringLiteral("effects")
+                                   : m.target == MaskTarget::Colour ? QStringLiteral("colour")
+                                                                    : QStringLiteral("picture")},
     };
 }
 
@@ -776,6 +779,12 @@ ClipMask maskWith(ClipMask m, const QVariantMap& changes)
     number("feather", m.feather);
     if (const auto it = changes.constFind(QStringLiteral("invert")); it != changes.constEnd())
         m.invert = it->toBool();
+    if (const auto it = changes.constFind(QStringLiteral("target")); it != changes.constEnd()) {
+        const QString target = it->toString();
+        m.target = target == QLatin1String("effects") ? MaskTarget::Effects
+                 : target == QLatin1String("colour")  ? MaskTarget::Colour
+                                                      : MaskTarget::Picture;
+    }
     if (const auto it = changes.constFind(QStringLiteral("points")); it != changes.constEnd()) {
         m.points.clear();
         for (const QVariant& point : it->toList()) {
@@ -2354,6 +2363,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("spherical"), media && media->spherical && !clip->generated()},
             {QStringLiteral("isCompound"), sequence != nullptr},
             {QStringLiteral("isMulticam"), clip->multicam()},
+            {QStringLiteral("motionBlur"), clip->motionBlur},
             {QStringLiteral("colourFill"), media && media->colourFill ? QVariant(fillMap(*media->colourFill)) : QVariant()},
             {QStringLiteral("angle"), clip->angle()},
             {QStringLiteral("angles"), angleListOf(m_project, *clip)},
@@ -10179,4 +10189,23 @@ QString ProjectController::takeSnapshot(const QUrl& file)
     if (file.isEmpty())
         importMedia({QUrl::fromLocalFile(path)});
     return path;
+}
+
+bool ProjectController::setClipMotionBlur(double clipId, double shutter)
+{
+    const auto location = m_project.locateClip(toId(clipId));
+    if (!location || location->track->kind == TrackKind::Audio) {
+        reportError(tr("Select a video or picture clip"));
+        return false;
+    }
+    if (location->track->locked) {
+        reportError(coreText("track is locked"));
+        return false;
+    }
+    const double value = std::clamp(std::round(shutter * 100.0) / 100.0, 0.0, 1.0);
+    if (value == location->clip->motionBlur)
+        return true;
+    Project after = m_project;
+    after.locateClip(toId(clipId))->clip->motionBlur = value;
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Motion Blur")));
 }

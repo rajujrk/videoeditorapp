@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 import TechieVideoEditor.Player
+import QtQuick.Window
 
 // Center panel: the live preview and its transport bar.
 Rectangle {
@@ -15,6 +16,9 @@ Rectangle {
     // The source monitor (24d): a media item on its own, shown instead of the timeline while
     // its tab is chosen; the transport (and its keys) then play it.
     property bool showingSource: false
+    // The player's zoom: 0 fits the picture; else device pixels a canvas pixel (1: 100 %).
+    property real zoom: 0
+    readonly property var guides: guidesOverlay
     readonly property var source: sourceMonitor
     readonly property var transport: showingSource && sourceMonitor.controller ? sourceMonitor.controller : project
     function openSource(media) {
@@ -50,48 +54,92 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            VideoView {
-                id: video
-                objectName: "player"
+            // The picture, at the player's size (fit) or zoomed (scrolled in a viewport of its own),
+            // with the editing overlays and guides on it.
+            Flickable {
+                id: viewport
+                objectName: "playerViewport"
                 anchors.fill: parent
-                anchors.margins: Theme.space.s
-            }
+                clip: true
+                interactive: false // (the overlays take the drags; scroll bars and the wheel pan)
+                readonly property bool zoomed: panel.zoom > 0
+                contentWidth: Math.max(width, stage.width)
+                contentHeight: Math.max(height, stage.height)
+                ScrollBar.horizontal: ScrollBar { policy: viewport.zoomed && stage.width > viewport.width ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff }
+                ScrollBar.vertical: ScrollBar { policy: viewport.zoomed && stage.height > viewport.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff }
+                WheelHandler {
+                    enabled: viewport.zoomed
+                    onWheel: (event) => {
+                        viewport.contentX = Math.max(0, Math.min(viewport.contentWidth - viewport.width, viewport.contentX - event.angleDelta.x / 2))
+                        viewport.contentY = Math.max(0, Math.min(viewport.contentHeight - viewport.height, viewport.contentY - event.angleDelta.y / 2))
+                    }
+                }
+                // Zooming keeps the middle of the view in the middle.
+                onContentWidthChanged: contentX = Math.max(0, (contentWidth - width) / 2)
+                onContentHeightChanged: contentY = Math.max(0, (contentHeight - height) / 2)
 
-            // Move, scale and rotate the selected clip by hand (beneath the editing overlays).
-            TransformOverlay {
-                objectName: "transformOverlay"
-                anchors.fill: video
-                project: panel.project
-                blocked: maskOverlay.visible || trackOverlay.visible || drawingOverlay.visible || sphereOverlay.visible
-            }
+                Item {
+                    id: stage
+                    objectName: "playerStage"
+                    // Fit: the viewport; zoomed: the canvas at that many device pixels a pixel.
+                    readonly property real margin: Theme.space.s
+                    width: viewport.zoomed ? panel.project.canvasWidth * panel.zoom / Screen.devicePixelRatio + margin * 2 : viewport.width
+                    height: viewport.zoomed ? panel.project.canvasHeight * panel.zoom / Screen.devicePixelRatio + margin * 2 : viewport.height
+                    x: Math.max(0, (viewport.width - width) / 2)
+                    y: Math.max(0, (viewport.height - height) / 2)
 
-            MaskOverlay {
-                id: maskOverlay
-                objectName: "maskOverlay"
-                anchors.fill: video
-                project: panel.project
-            }
+                    VideoView {
+                        id: video
+                        objectName: "player"
+                        anchors.fill: parent
+                        anchors.margins: Theme.space.s
+                    }
 
-            TrackOverlay {
-                id: trackOverlay
-                objectName: "trackOverlay"
-                anchors.fill: video
-                project: panel.project
-            }
+                    // Move, scale and rotate the selected clip by hand (beneath the editing overlays).
+                    TransformOverlay {
+                        objectName: "transformOverlay"
+                        anchors.fill: video
+                        project: panel.project
+                        blocked: maskOverlay.visible || trackOverlay.visible || drawingOverlay.visible || sphereOverlay.visible
+                    }
 
-            DrawingOverlay {
-                id: drawingOverlay
-                objectName: "drawingOverlay"
-                anchors.fill: video
-                project: panel.project
-            }
+                    MaskOverlay {
+                        id: maskOverlay
+                        objectName: "maskOverlay"
+                        anchors.fill: video
+                        project: panel.project
+                    }
 
-            SphereOverlay {
-                id: sphereOverlay
-                objectName: "sphereOverlay"
-                anchors.fill: video
-                project: panel.project
-                player: video
+                    TrackOverlay {
+                        id: trackOverlay
+                        objectName: "trackOverlay"
+                        anchors.fill: video
+                        project: panel.project
+                    }
+
+                    DrawingOverlay {
+                        id: drawingOverlay
+                        objectName: "drawingOverlay"
+                        anchors.fill: video
+                        project: panel.project
+                    }
+
+                    SphereOverlay {
+                        id: sphereOverlay
+                        objectName: "sphereOverlay"
+                        anchors.fill: video
+                        project: panel.project
+                        player: video
+                    }
+
+
+                    GuidesOverlay {
+                        id: guidesOverlay
+                        objectName: "guidesOverlay"
+                        anchors.fill: video
+                        project: panel.project
+                    }
+                }
             }
 
             // Files from Finder: imported and added to the end; media from the library: placed
@@ -385,7 +433,33 @@ Rectangle {
                     checked: panel.showStats
                     onToggled: panel.showStats = checked
                 }
-                IconButton { iconName: "fit"; tip: qsTr("Fit to window"); checkable: true; checked: true; enabled: false }
+                IconButton {
+                    objectName: "guidesButton"
+                    iconName: "guides"
+                    tip: qsTr("Guides: thirds, centre lines, safe areas and rulers (shown here only, never exported)")
+                    checkable: true
+                    checked: guidesOverlay.any
+                    onClicked: guidesMenu.popup(this, 0, -guidesMenu.implicitHeight)
+                    AppMenu {
+                        id: guidesMenu
+                        objectName: "guidesMenu"
+                        AppMenuItem { objectName: "guides:thirds"; text: qsTr("Rule of thirds"); checkable: true; checked: guidesOverlay.thirds; onTriggered: guidesOverlay.thirds = !guidesOverlay.thirds }
+                        AppMenuItem { objectName: "guides:centre"; text: qsTr("Centre lines"); checkable: true; checked: guidesOverlay.centre; onTriggered: guidesOverlay.centre = !guidesOverlay.centre }
+                        AppMenuItem { objectName: "guides:safe"; text: qsTr("Safe areas (action 90 %, titles 80 %)"); checkable: true; checked: guidesOverlay.safeAreas; onTriggered: guidesOverlay.safeAreas = !guidesOverlay.safeAreas }
+                        AppMenuItem { objectName: "guides:rulers"; text: qsTr("Rulers"); checkable: true; checked: guidesOverlay.rulers; onTriggered: guidesOverlay.rulers = !guidesOverlay.rulers }
+                    }
+                }
+                ComboBox {
+                    objectName: "playerZoom"
+                    readonly property var zooms: [0, 0.25, 0.5, 1, 2, 4]
+                    model: [qsTr("Fit"), "25%", "50%", "100%", "200%", "400%"]
+                    currentIndex: Math.max(0, zooms.indexOf(panel.zoom))
+                    implicitWidth: 92
+                    onActivated: (index) => panel.zoom = zooms[index]
+                    ToolTip.visible: hovered
+                    ToolTip.delay: 600
+                    ToolTip.text: qsTr("Zoom the player (100 %: a pixel of the picture to a pixel of the screen); scroll to look around")
+                }
             }
         }
     }

@@ -107,6 +107,9 @@ struct VideoLayer {
     std::optional<ClipDrawing> drawing;
     // 360° media: reframed by visual.sphere in a flat project, turned by it in a 360° one.
     bool spherical = false;
+    // Motion blur: the clip's placements across the shutter (empty: none, or not moving),
+    // drawn and averaged instead of `visual`.
+    std::vector<ClipVisual> blurVisuals;
 };
 
 // Everything visible at one timeline time, bottom layer first. No layers means black.

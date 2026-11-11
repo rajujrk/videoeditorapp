@@ -147,8 +147,13 @@ NLOHMANN_JSON_SERIALIZE_ENUM(MaskShape, {
     {MaskShape::Heart, "heart"},
     {MaskShape::Pen, "pen"},
 })
+NLOHMANN_JSON_SERIALIZE_ENUM(MaskTarget, {
+    {MaskTarget::Picture, "picture"},
+    {MaskTarget::Effects, "effects"},
+    {MaskTarget::Colour, "colour"},
+})
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipMask, shape, x, y, width, height, rotation, roundness, feather,
-                                                invert, points)
+                                                invert, points, target)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChromaKey, enabled, color, tolerance, softness, spill)
 NLOHMANN_JSON_SERIALIZE_ENUM(MatteMode, {
     {MatteMode::None, "none"},
@@ -220,7 +225,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, durati
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
                                                 chromaKey, masks, matte, cutout, faceMosaic, stabilization, deflicker,
                                                 denoise, motionTracks, processedVideo, cursor, audioEffects,
-                                                enhancedAudio, keepPitch, sequenceId, groupId, drawing, angles)
+                                                enhancedAudio, keepPitch, sequenceId, groupId, drawing, angles, motionBlur)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips, audioEffects)
 NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {

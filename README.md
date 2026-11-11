@@ -80,6 +80,7 @@ The following improvements were completed after Phase 5:
 - Slice 24c: Timeline tools — J K L shuttle, typing a timecode, Mark In/Out, the blade tool, closing gaps, track height, pasting attributes and transitions, crossfades on sound tracks, and speeds from 0.01× to 100×.
 - Slice 24d: A source monitor (In and Out, insert, overwrite, append), compound clips opened in timeline tabs, projects imported as compound clips, and multicam clips with angle switching.
 - Slice 25a: The anchor point, corner pin, clip animation presets, pan and zoom, colour clips, and snapshots of the player.
+- Slice 25b: Motion blur that follows keyframed movement, effect and colour masks, and player guides, safe areas, rulers and zoom.
 
 All previously identified feature gaps have been closed.
 
@@ -631,6 +632,12 @@ spins, pops, pulse, swing), and Pan and zoom moves slowly from one framing to an
 the whole clip; both are written as keyframes you can change. The library's colour-clip button
 adds a clip of one colour or a gradient, and the camera button under the player saves the
 frame at the playhead as a picture in the library.
+
+**Masks, motion blur and guides.** A mask can apply to the picture (cutting it, as before), to
+the clip's effects only, or to its colour only: black and white everywhere but a face, say, or
+a grade on the sky alone. Motion blur (under Animation) smears a clip where its keyframes move
+it, like a real camera's shutter. The grid button under the player shows thirds, centre lines,
+safe areas and rulers, and the zoom menu beside it takes the player from Fit to 400 %.
 
 **Placing clips by hand.** Select a clip and its frame shows in the player: drag inside it to
 move it (it snaps to the centre lines), a corner to resize it, the round knob to turn it (⇧ in

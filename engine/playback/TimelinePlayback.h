@@ -86,6 +86,8 @@ private:
     // sequence, nested. `live` collects every clip shown (their decoders stay open).
     void buildLayers(const Project& project, const std::vector<Track>& tracks, Ticks time,
                      std::vector<VideoLayer>& out, int depth, std::set<Id>& live);
+    void buildLayersOf(const Project& project, const std::vector<Track>& tracks, Ticks time,
+                     std::vector<VideoLayer>& out, int depth, std::set<Id>& live);
     static constexpr int kMaxNesting = 8; // compound clips inside compound clips
     // Rendered stretches' decoders, apart from clips' (ids count down from here).
     static constexpr Id kRenderedLayerId = ~Id(0);

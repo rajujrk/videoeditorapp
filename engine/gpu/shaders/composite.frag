@@ -15,7 +15,7 @@ layout(std140, binding = 0) uniform EffectParams {
     vec4 mapW;     // divided by dot(mapW.xyz, vec3(uv, 1)) (a corner pin's perspective)
     vec4 cropRect; // left, top, right, bottom of the visible layer region
     float opacity;
-    int blendMode; // BlendMode order: normal, multiply, screen, overlay, add, darken, lighten
+    int blendMode; // BlendMode order: normal, multiply, screen, overlay, add, darken, lighten, accumulate
 };
 
 layout(binding = 1) uniform sampler2D tve_source; // canvas so far
@@ -50,6 +50,14 @@ void main()
     }
     vec4 layer = texture(layerTex, layerUv);
     float alpha = layer.a * opacity;
+    if (blendMode == 7) {
+        // Accumulate (motion blur's samples, weighted by opacity): a premultiplied sum, kept
+        // straight.
+        float sum = canvas.a + alpha;
+        vec3 rgb = sum > 0.0 ? (canvas.rgb * canvas.a + layer.rgb * alpha) / sum : vec3(0.0);
+        fragColor = vec4(rgb, min(sum, 1.0));
+        return;
+    }
     // Straight-alpha "over". Blend modes act where there is canvas below; over a
     // transparent canvas the layer shows as is. On an opaque canvas this is
     // mix(canvas, blended, alpha).

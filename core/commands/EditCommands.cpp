@@ -502,6 +502,7 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.adjustment = clip.adjustment;
     right.sequenceId = clip.sequenceId;
     right.angles = clip.angles;
+    right.motionBlur = clip.motionBlur;
     right.groupId = clip.groupId;
     right.keyframes = clip.keyframes; // both halves animate as the whole did
     shiftKeyframes(right, leftDuration);
@@ -689,6 +690,8 @@ std::optional<std::string> validateVisual(const ClipVisual& v)
         return "the 360° direction is out of range";
     if (s.fov < 20.0 || s.fov > 150.0)
         return "the field of view must be between 20° and 150°";
+    if (v.blend == BlendMode::Accumulate)
+        return "that blend mode is not for clips";
     const ClipTransform& t = v.transform;
     if (!(t.anchorX >= -1.0 && t.anchorX <= 1.0 && t.anchorY >= -1.0 && t.anchorY <= 1.0))
         return TVE_TR("core", "the anchor point must be on the picture or near it");
