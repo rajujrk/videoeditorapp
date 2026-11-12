@@ -1,5 +1,6 @@
 #pragma once
 
+#include "model/ImageSequence.h"
 #include "model/ColorGrade.h"
 #include "model/Colour.h"
 #include "model/Keyframes.h"
@@ -86,6 +87,9 @@ struct MediaItem {
     bool placeholder = false;
     // A colour clip's still: what it was drawn from (to change it later).
     std::optional<ColourFill> colourFill;
+    // Numbered pictures played as video (model/ImageSequence.h): `path` is the first frame,
+    // `frameRate` the rate chosen at import and `duration` its frames at that rate.
+    std::optional<ImageSequence> sequence;
 
     // A lighter copy of the pictures for the preview to decode instead (same frames and
     // times). Set only in the snapshots handed to playback; never saved.

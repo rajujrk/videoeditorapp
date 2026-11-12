@@ -51,6 +51,7 @@ qt_add_qml_module(tve_shell
         HdrViewer.qml
         TeleprompterWindow.qml
         LiveDrawing.qml
+        ImageSequenceDialog.qml
         SphereOverlay.qml
         InterchangeDialog.qml
         CopilotPage.qml

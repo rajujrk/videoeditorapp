@@ -177,9 +177,10 @@ Rectangle {
         id: importDialog
         title: qsTr("Import media")
         fileMode: FileDialog.OpenFiles
-        nameFilters: [qsTr("Media files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp)"),
+        nameFilters: [qsTr("Media files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.svg *.exr *.dng *.cr2 *.cr3 *.crw *.nef *.nrw *.arw *.srf *.sr2 *.raf *.orf *.rw2 *.rwl *.pef *.srw *.3fr *.fff *.iiq *.erf *.mos)"),
                       qsTr("Videos (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif)"),
-                      qsTr("Images (*.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.gif)"),
+                      qsTr("Images (*.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.gif *.svg *.exr)"),
+                      qsTr("Camera RAW photos (*.dng *.cr2 *.cr3 *.crw *.nef *.nrw *.arw *.srf *.sr2 *.raf *.orf *.rw2 *.rwl *.pef *.srw *.3fr *.fff *.iiq *.erf *.mos)"),
                       qsTr("Audio (*.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg)"), qsTr("All files (*)")]
         onAccepted: editor.project.importMedia(selectedFiles)
     }

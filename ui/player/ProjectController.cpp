@@ -1,12 +1,14 @@
 #include "ProjectController.h"
 
 #include "Language.h"
+#include "model/ImageSequence.h"
 #include "model/RenderCost.h"
 #include "VideoView.h"
 #include "audio/AudioOutput.h"
 #include "audio/AudioRecorder.h"
 #include "commands/EditCommands.h"
 #include "commands/StructureCommands.h"
+#include "decode/ImageFile.h"
 #include "decode/AudioDecoder.h"
 #include "decode/VideoDecoder.h"
 #include "io/Interchange.h"
@@ -45,6 +47,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <filesystem>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
@@ -156,6 +159,12 @@ QString mediaName(const std::string& path)
 {
     const QString title = stickers::titleOf(QString::fromStdString(path));
     return title.isEmpty() ? fileName(path) : title;
+}
+
+// An image sequence by its pattern ("shot_####.png"), not its first frame's name.
+QString mediaName(const MediaItem& media)
+{
+    return media.sequence ? QString::fromStdString(tve::sequenceDisplayName(*media.sequence)) : mediaName(media.path);
 }
 
 QString mediaColourLabel(const ColourSpace& colour)
@@ -1107,7 +1116,7 @@ QVariantList ProjectController::tracks() const
                                   : clip.adjustment ? tr("Adjustment layer")
                                   : clip.drawing ? tr("Drawing")
                                   : sequence       ? QString::fromStdString(sequence->name)
-                                  : media          ? mediaName(media->path)
+                                  : media          ? mediaName(*media)
                                                    : tr("Missing media");
             const bool sequenceSound = sequence && std::ranges::any_of(sequence->tracks, [&](const Track& t) {
                 return std::ranges::any_of(t.clips, [&](const Clip& c) {
@@ -1188,7 +1197,7 @@ QVariantList ProjectController::media() const
     for (const MediaItem& item : m_project.media) {
         list << QVariantMap{
             {QStringLiteral("id"), double(item.id)},
-            {QStringLiteral("name"), mediaName(item.path)},
+            {QStringLiteral("name"), mediaName(item)},
             {QStringLiteral("path"), QString::fromStdString(item.path)},
             {QStringLiteral("duration"), seconds(item.duration)},
             {QStringLiteral("width"), item.width},
@@ -1199,6 +1208,8 @@ QVariantList ProjectController::media() const
             {QStringLiteral("still"), item.still},
             {QStringLiteral("sticker"), item.lottie},
             {QStringLiteral("alpha"), item.alpha},
+            // An image sequence's frame count (0: not one).
+            {QStringLiteral("sequenceFrames"), item.sequence ? double(item.sequence->length()) : 0.0},
             // "HDR · PQ", "HDR · HLG", "Display P3", "Rec.2020" or "" (SDR Rec.709).
             {QStringLiteral("colour"), mediaColourLabel(item.colour)},
             {QStringLiteral("hdr"), isHdr(item.colour.transfer)},
@@ -1541,7 +1552,7 @@ QVariantList ProjectController::missingMedia() const
     for (const MediaItem* item : tve::missingMedia(m_project)) {
         const QFileInfo file(QString::fromStdString(item->path));
         list << QVariantMap{{QStringLiteral("id"), double(item->id)},
-                            {QStringLiteral("name"), file.fileName()},
+                            {QStringLiteral("name"), mediaName(*item)},
                             {QStringLiteral("path"), file.filePath()},
                             {QStringLiteral("folder"), file.path()}};
     }
@@ -1558,7 +1569,24 @@ bool ProjectController::relinkMedia(double mediaId, const QUrl& file, bool force
     }
     const std::string path = (file.isLocalFile() ? file.toLocalFile() : file.toString()).toStdString();
     QString error;
-    std::optional<MediaItem> item = describeMedia(path, &error);
+    std::optional<MediaItem> item;
+    if (media->sequence) {
+        // An image sequence: the run of numbered pictures the chosen one is in, at the rate
+        // it had (any frame of it can be chosen).
+        const auto sequence = tve::findImageSequence(path);
+        if (!sequence) {
+            reportError(tr("%1 has no other numbered pictures beside it in its folder")
+                            .arg(QFileInfo(QString::fromStdString(path)).fileName()));
+            return false;
+        }
+        item = *media;
+        item->path = tve::sequenceFrameFile(std::filesystem::path(path).parent_path().string(), *sequence, sequence->first);
+        item->sequence = sequence;
+        item->duration = sequence->length() * tve::frameDuration(media->frameRate);
+        item->fingerprint = fingerprintFile(item->path).value_or(std::string());
+    } else {
+        item = describeMedia(path, &error);
+    }
     if (!item) {
         reportError(error);
         return false;
@@ -1625,6 +1653,83 @@ int ProjectController::importMedia(const QList<QUrl>& files)
     }
     requestAutoProxies();
     return imported;
+}
+
+QVariantMap ProjectController::findImageSequence(const QUrl& frame) const
+{
+    const std::string path = (frame.isLocalFile() ? frame.toLocalFile() : frame.toString()).toStdString();
+    const auto sequence = tve::findImageSequence(path);
+    if (!sequence)
+        return {{QStringLiteral("found"), false},
+                {QStringLiteral("error"), tr("%1 has no other numbered pictures beside it in its folder")
+                                              .arg(QFileInfo(QString::fromStdString(path)).fileName())}};
+    const std::string folder = std::filesystem::path(path).parent_path().string();
+    const std::string first = tve::sequenceFrameFile(folder, *sequence, sequence->first);
+    std::int64_t missing = 0;
+    for (std::int64_t n = sequence->first; n <= sequence->last; ++n) {
+        std::error_code error;
+        if (!std::filesystem::is_regular_file(tve::sequenceFrameFile(folder, *sequence, n), error))
+            ++missing;
+    }
+    const auto info = tve::imagefile::probe(first);
+    if (!info)
+        return {{QStringLiteral("found"), false},
+                {QStringLiteral("error"), tr("%1 is not a picture this app can read")
+                                              .arg(QFileInfo(QString::fromStdString(first)).fileName())}};
+    return {{QStringLiteral("found"), true},
+            {QStringLiteral("name"), QString::fromStdString(tve::sequenceDisplayName(*sequence))},
+            {QStringLiteral("firstFile"), QFileInfo(QString::fromStdString(first)).fileName()},
+            {QStringLiteral("lastFile"),
+             QFileInfo(QString::fromStdString(tve::sequenceFrameFile(folder, *sequence, sequence->last))).fileName()},
+            {QStringLiteral("frames"), double(sequence->length())},
+            {QStringLiteral("missing"), double(missing)},
+            {QStringLiteral("width"), info->width},
+            {QStringLiteral("height"), info->height},
+            {QStringLiteral("alpha"), info->alpha}};
+}
+
+double ProjectController::importImageSequence(const QUrl& frame, int rateNum, int rateDen)
+{
+    const std::string chosen = (frame.isLocalFile() ? frame.toLocalFile() : frame.toString()).toStdString();
+    const auto sequence = tve::findImageSequence(chosen);
+    if (!sequence) {
+        reportError(tr("%1 has no other numbered pictures beside it in its folder")
+                        .arg(QFileInfo(QString::fromStdString(chosen)).fileName()));
+        return -1;
+    }
+    if (rateNum <= 0 || rateDen <= 0 || rateNum / rateDen > 240) {
+        reportError(tr("Choose a frame rate from 1 to 240 frames a second"));
+        return -1;
+    }
+    const std::string folder = std::filesystem::path(chosen).parent_path().string();
+    const std::string first = tve::sequenceFrameFile(folder, *sequence, sequence->first);
+    const tve::FrameRate rate{rateNum, rateDen};
+    // Imported already at this rate: that one.
+    for (const MediaItem& m : m_project.media)
+        if (m.path == first && m.sequence == sequence && m.frameRate == rate)
+            return double(m.id);
+    // (Its numbers are the files found, so the first is a file there.)
+    const auto info = tve::imagefile::probe(first);
+    if (!info) {
+        reportError(tr("%1 is not a picture this app can read").arg(QFileInfo(QString::fromStdString(first)).fileName()));
+        return -1;
+    }
+    MediaItem item{.path = first,
+                   .duration = sequence->length() * tve::frameDuration(rate),
+                   .hasVideo = true,
+                   .hasAudio = false,
+                   // (Even sizes for opaque ones, as the decoder makes them: NV12 halves them.)
+                   .width = info->alpha ? info->width : std::max(2, info->width & ~1),
+                   .height = info->alpha ? info->height : std::max(2, info->height & ~1),
+                   .frameRate = rate,
+                   .alpha = info->alpha};
+    item.sequence = sequence;
+    item.fingerprint = fingerprintFile(item.path).value_or(std::string());
+    tve::registerImageSequence(item.path, *sequence, rate); // before the library asks for its thumbnail
+    if (!apply(std::make_unique<ImportMediaCommand>(std::move(item))))
+        return -1;
+    requestAutoProxies();
+    return double(m_project.media.back().id);
 }
 
 bool ProjectController::addClip(double mediaId, double trackId, double start)
@@ -1823,6 +1928,11 @@ constexpr int kAutoProxyAbove = 1080;
 
 std::shared_ptr<const Project> ProjectController::playbackSnapshot() const
 {
+    // Decoders are given only a path: a sequence's first frame is told to play the run
+    // (model/ImageSequence.h), whether imported now, loaded or brought back by undo.
+    for (const MediaItem& media : m_project.media)
+        if (media.sequence)
+            tve::registerImageSequence(media.path, *media.sequence, media.frameRate);
     auto snapshot = std::make_shared<Project>(m_project);
     if (m_useProxies) {
         for (MediaItem& media : snapshot->media) {
@@ -2366,7 +2476,7 @@ QVariantMap ProjectController::selectedClipInfo() const
                                       : clip->drawing    ? tr("Drawing")
                                       : clip->adjustment ? tr("Adjustment layer")
                                       : sequence         ? QString::fromStdString(sequence->name)
-                                      : media            ? mediaName(media->path)
+                                      : media            ? mediaName(*media)
                                                          : QString()},
             {QStringLiteral("isTitle"), clip->text.has_value()},
             {QStringLiteral("spherical"), media && media->spherical && !clip->generated()},
@@ -5537,7 +5647,7 @@ QVariantMap ProjectController::templateInfo() const
                                 {QStringLiteral("start"), seconds(clip->start)},
                                 {QStringLiteral("duration"), seconds(clip->duration)},
                                 {QStringLiteral("path"), media ? QString::fromStdString(media->path) : QString()},
-                                {QStringLiteral("name"), media ? mediaName(media->path) : QString()},
+                                {QStringLiteral("name"), media ? mediaName(*media) : QString()},
                                 {QStringLiteral("still"), media && media->still},
                                 {QStringLiteral("sourceIn"), seconds(clip->sourceIn)},
                                 {QStringLiteral("speed"), clip->speed},
@@ -5557,7 +5667,7 @@ QVariantMap ProjectController::templateInfo() const
     if (const auto [clip, media] = clipMedia(info.musicClipId); clip && media)
         music = {{QStringLiteral("clipId"), double(clip->id)},
                  {QStringLiteral("path"), QString::fromStdString(media->path)},
-                 {QStringLiteral("name"), mediaName(media->path)},
+                 {QStringLiteral("name"), mediaName(*media)},
                  {QStringLiteral("sourceIn"), seconds(clip->sourceIn)},
                  {QStringLiteral("duration"), seconds(clip->duration)},
                  {QStringLiteral("mediaDuration"), seconds(media->duration)}};
@@ -5656,7 +5766,7 @@ bool ProjectController::setTemplateMusic(double mediaId)
     }
     const Clip* clip = findClip(m_project.templateInfo->musicClipId);
     if (media->duration < clip->duration) {
-        reportError(QStringLiteral("%1 is shorter than the video").arg(mediaName(media->path)));
+        reportError(QStringLiteral("%1 is shorter than the video").arg(mediaName(*media)));
         return false;
     }
     return apply(std::make_unique<ReplaceClipSourceCommand>(clip->id, media->id, 0, 1.0, std::nullopt, std::nullopt, TVE_TR("core", "Replace Music")));
@@ -5693,7 +5803,7 @@ QVariantList ProjectController::templateCandidates() const
             list << QVariantMap{{QStringLiteral("clipId"), double(clip.id)},
                                 {QStringLiteral("kind"), kind},
                                 {QStringLiteral("label"), clip.text ? QString::fromStdString(clip.text->text).section(QLatin1Char('\n'), 0, 0)
-                                                                    : mediaName(media->path)},
+                                                                    : mediaName(*media)},
                                 {QStringLiteral("track"), QString::fromStdString(track->name)},
                                 {QStringLiteral("start"), seconds(clip.start)},
                                 {QStringLiteral("duration"), seconds(clip.duration)}};
@@ -5925,7 +6035,7 @@ bool ProjectController::makeShorts(const QVariantMap& options)
         return false;
     }
     if (double(media->duration) / kTicksPerSecond < seconds * 0.6) {
-        reportError(QStringLiteral("%1 is too short for shorts of %2 s").arg(mediaName(media->path)).arg(seconds));
+        reportError(QStringLiteral("%1 is too short for shorts of %2 s").arg(mediaName(*media)).arg(seconds));
         return false;
     }
     const int count = std::clamp(options.value(QStringLiteral("count"), 3).toInt(), 1, 5);
@@ -6135,7 +6245,7 @@ bool ProjectController::generateVideo(const QString& prompt, const QVariantMap& 
             return false;
         }
         video.previous = QString::fromStdString(media->generated->reference);
-        sources = mediaName(media->path);
+        sources = mediaName(*media);
     } else {
         const auto inputs = stillInputs(m_project, options.value(QStringLiteral("images")).toList());
         const qsizetype wanted = video.mode == QLatin1String("image") ? 1 : video.mode == QLatin1String("frames") ? 2 : 0;
@@ -7753,11 +7863,11 @@ const Clip* ProjectController::analysableClip(Id clipId, bool needsSound, bool n
         return nullptr;
     }
     if (needsSound && !media->hasAudio) {
-        reportError(QStringLiteral("%1 has no sound").arg(mediaName(media->path)));
+        reportError(QStringLiteral("%1 has no sound").arg(mediaName(*media)));
         return nullptr;
     }
     if (needsPictures && (!media->hasVideo || media->still)) {
-        reportError(QStringLiteral("%1 has no moving pictures").arg(mediaName(media->path)));
+        reportError(QStringLiteral("%1 has no moving pictures").arg(mediaName(*media)));
         return nullptr;
     }
     if (clip->speed != 1.0 || clip->reversed || clip->freeze || !clip->speedRamp.empty()) {
@@ -7765,7 +7875,7 @@ const Clip* ProjectController::analysableClip(Id clipId, bool needsSound, bool n
         return nullptr;
     }
     if (!QFileInfo::exists(QString::fromStdString(media->path))) {
-        reportError(QStringLiteral("%1 is missing: relink it first").arg(mediaName(media->path)));
+        reportError(QStringLiteral("%1 is missing: relink it first").arg(mediaName(*media)));
         return nullptr;
     }
     return clip;
@@ -8087,7 +8197,7 @@ const Clip* ProjectController::peopleClip(Id clipId, bool needsFile)
         return nullptr;
     }
     if (needsFile && !QFileInfo::exists(QString::fromStdString(media->path))) {
-        reportError(QStringLiteral("%1 is missing: relink it first").arg(mediaName(media->path)));
+        reportError(QStringLiteral("%1 is missing: relink it first").arg(mediaName(*media)));
         return nullptr;
     }
     return clip;
@@ -8254,7 +8364,7 @@ bool ProjectController::autoReframe(double clipId, const QVariantMap& options)
     }
     const MediaItem& media = *m_project.findMedia(clip->mediaId);
     if (media.width <= 0 || media.height <= 0) {
-        reportError(tr("The size of %1 is not known").arg(mediaName(media.path)));
+        reportError(tr("The size of %1 is not known").arg(mediaName(media)));
         return false;
     }
     // The canvas: the shape asked for, its shorter side kept (even sizes, for encoders).
@@ -8671,7 +8781,7 @@ QVariantList ProjectController::tracksToFollow(double clipId) const
             for (const MotionTrack& t : clip.motionTracks)
                 list << QVariantMap{{QStringLiteral("clipId"), double(clip.id)},
                                     {QStringLiteral("trackId"), t.id},
-                                    {QStringLiteral("label"), (media ? mediaName(media->path) : QStringLiteral("Clip"))
+                                    {QStringLiteral("label"), (media ? mediaName(*media) : QStringLiteral("Clip"))
                                                                   + QStringLiteral(" · track %1 (%2)").arg(t.id).arg(
                                                                       t.surface ? QStringLiteral("surface") : QStringLiteral("object"))}};
         }
@@ -8982,8 +9092,8 @@ bool ProjectController::syncBySound(const QVariantList& clipIds)
             const auto found = tve::findAudioOffset(featuresOf(*reference), featuresOf(*location->clip));
             if (!found || found->confidence < 0.15) {
                 reportError(QStringLiteral("%1 and %2 do not share enough sound to line up")
-                                .arg(mediaName(m_project.findMedia(reference->mediaId)->path),
-                                     mediaName(m_project.findMedia(location->clip->mediaId)->path)));
+                                .arg(mediaName(*m_project.findMedia(reference->mediaId)),
+                                     mediaName(*m_project.findMedia(location->clip->mediaId))));
                 emit analysisFinished(false, lastError());
                 return;
             }

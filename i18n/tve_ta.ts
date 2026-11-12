@@ -1607,16 +1607,20 @@
         <translation>மீடியாவை இறக்குமதி செய்</translation>
     </message>
     <message>
-        <source>Media files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp)</source>
-        <translation>மீடியா கோப்புகள் (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp)</translation>
+        <source>Media files (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.svg *.exr *.dng *.cr2 *.cr3 *.crw *.nef *.nrw *.arw *.srf *.sr2 *.raf *.orf *.rw2 *.rwl *.pef *.srw *.3fr *.fff *.iiq *.erf *.mos)</source>
+        <translation>மீடியா கோப்புகள் (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif *.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.svg *.exr *.dng *.cr2 *.cr3 *.crw *.nef *.nrw *.arw *.srf *.sr2 *.raf *.orf *.rw2 *.rwl *.pef *.srw *.3fr *.fff *.iiq *.erf *.mos)</translation>
+    </message>
+    <message>
+        <source>Images (*.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.gif *.svg *.exr)</source>
+        <translation>படங்கள் (*.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.gif *.svg *.exr)</translation>
+    </message>
+    <message>
+        <source>Camera RAW photos (*.dng *.cr2 *.cr3 *.crw *.nef *.nrw *.arw *.srf *.sr2 *.raf *.orf *.rw2 *.rwl *.pef *.srw *.3fr *.fff *.iiq *.erf *.mos)</source>
+        <translation>கேமரா RAW புகைப்படங்கள் (*.dng *.cr2 *.cr3 *.crw *.nef *.nrw *.arw *.srf *.sr2 *.raf *.orf *.rw2 *.rwl *.pef *.srw *.3fr *.fff *.iiq *.erf *.mos)</translation>
     </message>
     <message>
         <source>Videos (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif)</source>
         <translation>வீடியோக்கள் (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif)</translation>
-    </message>
-    <message>
-        <source>Images (*.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.gif)</source>
-        <translation>படங்கள் (*.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff *.bmp *.gif)</translation>
     </message>
     <message>
         <source>Audio (*.wav *.mp3 *.m4a *.aac *.flac *.aif *.aiff *.ogg)</source>
@@ -2319,6 +2323,65 @@
     <message>
         <source>Drop a video here to start a project with it</source>
         <translation>ஒரு வீடியோவுடன் திட்டத்தைத் தொடங்க அதை இங்கே விடவும்</translation>
+    </message>
+</context>
+<context>
+    <name>ImageSequenceDialog</name>
+    <message>
+        <source>Import an image sequence</source>
+        <translation>படத் தொடரை இறக்குமதி செய்</translation>
+    </message>
+    <message>
+        <source>Close (Esc)</source>
+        <translation>மூடு (Esc)</translation>
+    </message>
+    <message>
+        <source>Pictures</source>
+        <translation>படங்கள்</translation>
+    </message>
+    <message>
+        <source>Frames</source>
+        <translation>சட்டகங்கள்</translation>
+    </message>
+    <message>
+        <source>%1 frames, %2 to %3</source>
+        <translation>%1 சட்டகங்கள், %2 முதல் %3 வரை</translation>
+    </message>
+    <message>
+        <source>Size</source>
+        <translation>அளவு</translation>
+    </message>
+    <message>
+        <source>%1 × %2, with transparency</source>
+        <translation>%1 × %2, ஒளிபுகும்தன்மையுடன்</translation>
+    </message>
+    <message>
+        <source>%1 × %2</source>
+        <translation>%1 × %2</translation>
+    </message>
+    <message>
+        <source>Frame rate</source>
+        <translation>சட்டக வீதம்</translation>
+    </message>
+    <message>
+        <source>%1 long</source>
+        <translation>%1 நீளம்</translation>
+    </message>
+    <message>
+        <source>1 number has no picture; the frame before it is shown there.</source>
+        <translation>1 எண்ணுக்குப் படம் இல்லை; அங்கே அதற்கு முந்தைய சட்டகம் காட்டப்படும்.</translation>
+    </message>
+    <message>
+        <source>%1 numbers have no picture; the frame before each is shown there.</source>
+        <translation>%1 எண்களுக்குப் படம் இல்லை; ஒவ்வொன்றின் இடத்திலும் அதற்கு முந்தைய சட்டகம் காட்டப்படும்.</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>ரத்துசெய்</translation>
+    </message>
+    <message>
+        <source>Import</source>
+        <translation>இறக்குமதி</translation>
     </message>
 </context>
 <context>
@@ -4471,6 +4534,10 @@ Third, 4</source>
         <translation>ஒரு திட்டம், கூட்டுக் கிளிப்பாக…</translation>
     </message>
     <message>
+        <source>An image sequence…</source>
+        <translation>ஒரு படத் தொடர்…</translation>
+    </message>
+    <message>
         <source>Search %1</source>
         <translation>%1 தேடு</translation>
     </message>
@@ -4589,6 +4656,18 @@ Third, 4</source>
     <message>
         <source>TechieVideoEditor projects (*.tve)</source>
         <translation>TechieVideoEditor திட்டங்கள் (*.tve)</translation>
+    </message>
+    <message>
+        <source>Choose one picture of the sequence</source>
+        <translation>தொடரின் ஒரு படத்தைத் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Pictures (*.png *.jpg *.jpeg *.tif *.tiff *.exr *.bmp *.tga *.webp *.heic)</source>
+        <translation>படங்கள் (*.png *.jpg *.jpeg *.tif *.tiff *.exr *.bmp *.tga *.webp *.heic)</translation>
+    </message>
+    <message>
+        <source>All files (*)</source>
+        <translation>அனைத்துக் கோப்புகளும் (*)</translation>
     </message>
     <message>
         <source>Add at the playhead</source>
@@ -5188,8 +5267,20 @@ Third, 4</source>
         <translation>மீடியா கிடைக்கவில்லை</translation>
     </message>
     <message>
+        <source>%1 has no other numbered pictures beside it in its folder</source>
+        <translation>%1-இன் கோப்புறையில் அதனுடன் எண்ணிடப்பட்ட வேறு படங்கள் இல்லை</translation>
+    </message>
+    <message>
         <source>None of the missing files are in %1</source>
         <translation>காணாமல் போன கோப்புகள் எதுவும் %1-இல் இல்லை</translation>
+    </message>
+    <message>
+        <source>%1 is not a picture this app can read</source>
+        <translation>%1 இந்தச் செயலியால் படிக்கக்கூடிய படம் அல்ல</translation>
+    </message>
+    <message>
+        <source>Choose a frame rate from 1 to 240 frames a second</source>
+        <translation>நொடிக்கு 1 முதல் 240 சட்டகங்கள் வரையிலான சட்டக வீதத்தைத் தேர்ந்தெடு</translation>
     </message>
     <message>
         <source>Track not found</source>

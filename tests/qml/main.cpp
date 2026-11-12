@@ -26,6 +26,9 @@
 #include "audio/SoundPacks.h"
 #include "encode/MediaWriter.h"
 #include "packs/Packs.h"
+#include "../engine/TestDng.h"
+#include <CoreGraphics/CoreGraphics.h>
+#include <ImageIO/ImageIO.h>
 
 #include <QDirIterator>
 #include <QTcpServer>
@@ -40,10 +43,36 @@ Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ThemePlugin)
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_PlayerPlugin)
 Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ShellPlugin)
 
+// `image` as an OpenEXR file (Qt writes none), by ImageIO.
+void writeExr(const QImage& image, const QString& path)
+{
+    const QImage rgba = image.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+    CGColorSpaceRef srgb = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    CGContextRef context = CGBitmapContextCreate(const_cast<uchar*>(rgba.constBits()), std::size_t(rgba.width()),
+                                                 std::size_t(rgba.height()), 8, std::size_t(rgba.bytesPerLine()), srgb,
+                                                 CGBitmapInfo(kCGImageAlphaNoneSkipLast) | kCGBitmapByteOrder32Big);
+    CGImageRef cgImage = CGBitmapContextCreateImage(context);
+    const QByteArray file = path.toUtf8();
+    CFURLRef url = CFURLCreateFromFileSystemRepresentation(nullptr, reinterpret_cast<const UInt8*>(file.constData()),
+                                                           file.size(), false);
+    if (CGImageDestinationRef destination = CGImageDestinationCreateWithURL(url, CFSTR("com.ilm.openexr-image"), 1, nullptr)) {
+        CGImageDestinationAddImage(destination, cgImage, nullptr);
+        CGImageDestinationFinalize(destination);
+        CFRelease(destination);
+    }
+    CFRelease(url);
+    CGImageRelease(cgImage);
+    CGContextRelease(context);
+    CGColorSpaceRelease(srgb);
+}
+
 // Still images for the tests, written at start-up: a 400 × 200 picture, red on the left and
-// blue on the right, as PNG, JPEG, WebP, TIFF and HEIC; the same JPEG with an EXIF tag saying
-// "turn a quarter clockwise" (so it shows 200 × 400, red on top); and a PNG with a
-// transparent background around a green disc.
+// blue on the right, as PNG, JPEG, WebP, TIFF, HEIC and OpenEXR; the same JPEG with an EXIF
+// tag saying "turn a quarter clockwise" (so it shows 200 × 400, red on top); a PNG with a
+// transparent background around a green disc; an SVG drawing 40 × 20 by its own measure,
+// red and blue halves with a hard edge; a camera RAW photo (DNG, 256 × 192, red then blue:
+// tests/engine/TestDng.h); and sequence/shot_0001.png … shot_0012.png (320 × 180), red to
+// 5 and blue from 7, 0006 missing.
 void writeStills(const QString& dir)
 {
     QImage halves(400, 200, QImage::Format_RGB32);
@@ -52,6 +81,22 @@ void writeStills(const QString& dir)
             halves.setPixel(x, y, x < 200 ? qRgb(220, 30, 30) : qRgb(30, 60, 220));
     for (const char* format : {"png", "jpg", "webp", "tiff", "heic"})
         halves.save(dir + QStringLiteral("/halves.") + QLatin1String(format), format, 95);
+    writeExr(halves, dir + QStringLiteral("/halves.exr"));
+    QFile svg(dir + QStringLiteral("/drawing.svg"));
+    if (svg.open(QIODevice::WriteOnly))
+        svg.write("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"20\" viewBox=\"0 0 40 20\">"
+                  "<rect x=\"0\" y=\"0\" width=\"20\" height=\"20\" fill=\"#dc1e1e\"/>"
+                  "<rect x=\"20\" y=\"0\" width=\"20\" height=\"20\" fill=\"#1e3cdc\"/></svg>");
+    svg.close();
+    tve::testing::writeTestDng((dir + QStringLiteral("/photo.dng")).toStdString());
+    QDir(dir).mkpath(QStringLiteral("sequence"));
+    for (int n = 1; n <= 12; ++n) {
+        if (n == 6)
+            continue;
+        QImage frame(320, 180, QImage::Format_RGB32);
+        frame.fill(n <= 5 ? qRgb(220, 30, 30) : qRgb(30, 60, 220));
+        frame.save(dir + QStringLiteral("/sequence/shot_%1.png").arg(n, 4, 10, QLatin1Char('0')));
+    }
 
     // An Exif APP1 segment with Orientation = 6, after the JPEG's start-of-image marker.
     QFile jpeg(dir + QStringLiteral("/halves.jpg"));

@@ -88,6 +88,7 @@ The following improvements were completed after Phase 5:
 - Slice 27b: Audio visualisers — bars, mirrored bars, a wave or a ring moving with the spectrum of the music.
 - Slice 28a: A teleprompter that scrolls your script while you record, left out of screen recordings.
 - Slice 28b: Drawing on the screen while recording it — pen, highlighter and arrow, fading away or kept.
+- Slice 29a: Importing image sequences, SVG drawings, camera RAW photos and OpenEXR pictures.
 
 All previously identified feature gaps have been closed.
 
@@ -98,6 +99,7 @@ All previously identified feature gaps have been closed.
 ### 2.1 Media Import and Timeline Editing
 
 - Import video, audio and image files.
+- Import numbered image sequences as one video, SVG drawings, camera RAW photos and OpenEXR.
 - Arrange media on a multi-track timeline.
 - Move, trim, split and delete clips.
 - Support ripple deletion on the main track.
@@ -284,13 +286,25 @@ moves them) to apply to other clips. Sliders preview
 live and each change is one undo step.
 
 **Images.** Photos and graphics import like video: PNG, JPEG, HEIC/HEIF, WebP, TIFF and BMP
-(and a GIF of one frame), from the Import button (⌘I) or by dropping them on the editor. A
-photo taken on its side is turned upright by its EXIF tag. The media bin marks them
+(and a GIF of one frame), SVG drawings, OpenEXR, and camera RAW photos (CR2, CR3, NEF, ARW, RAF,
+ORF, RW2, DNG and the others macOS reads, developed by macOS's own RAW support), from the Import
+button (⌘I) or by dropping them on the editor. An SVG is drawn at the size it is shown, so it
+stays sharp however large it is placed. A photo taken on its side is turned upright by its EXIF
+tag. The media bin marks them
 "Image"; on the timeline an image becomes a 5-second clip you can trim to any length. It
 has no speed, but everything else applies — placement and crop, keyframes (a slow push in or
 pan), colour, looks, effects, transitions, export — and transparency in PNGs shows what is
 below. An animated GIF plays as a video. Images do not set the project's canvas; the first
 video does.
+
+**Image sequences.** Import ▾ **An image sequence…** takes numbered pictures — `shot_0001.png`,
+`shot_0002.png`… from a render or a time-lapse, in PNG, JPEG, TIFF, OpenEXR, WebP, HEIC or any
+other format above — and plays them as one video. Choose any one of them: the dialog finds the
+rest in its folder (the last number in the name; padded like `0001` or not), shows how many
+frames there are, their size and any numbers with no picture (a gap shows the frame before it),
+and asks the frame rate (23.976 to 60; the project's is chosen). The bin names it by its pattern
+(`shot_####.png`); it plays, proxies and exports like any video, and pictures with transparency
+keep it. Moved, it is relinked by choosing any picture of it in its new place.
 
 **Stickers and transparent video.** The library's Stickers tab holds 100 original animated
 stickers — 25 designs (star, heart, sparkle, burst, gem, highlight ring, arrows, check, cross,

@@ -36,6 +36,8 @@ add_library(tve_core STATIC
     model/Masks.cpp
     model/TextAnimation.h
     model/TextAnimation.cpp
+    model/ImageSequence.h
+    model/ImageSequence.cpp
     model/Project.h
     model/Project.cpp
     model/TimelineQuery.h

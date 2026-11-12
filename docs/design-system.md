@@ -480,6 +480,16 @@ ringed in `accent`), three widths, Fade away and the bin — dark and light:
 ![Drawing on the screen, dark](images/live-drawing-dark.png)
 ![Drawing on the screen, light](images/live-drawing-light.png)
 
+Importing an image sequence: a modal `surfaceRaised` card with a `borderStrong` edge over the
+editor — the run's pattern in `mono` type, its frames and size in `body`, the frame-rate box with
+the length beside it in `mono`, a gap noted in `warning` caption type, Cancel (`ghost`) and Import.
+Behind it the bin shows the sequence named by its pattern with its rate, a camera RAW photo, an SVG
+drawing (at its own 40 × 20 measure) and an OpenEXR picture, and the timeline the sequence and the
+photo — dark and light:
+
+![Importing an image sequence, dark](images/image-sequence-dark.png)
+![Importing an image sequence, light](images/image-sequence-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.
