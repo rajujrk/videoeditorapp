@@ -74,11 +74,15 @@ Item {
             }
             return null
         }
+        // Runs a menu entry, and closes its menu (and any it opened from) as a click on it does:
+        // a menu left open when its editor goes swallows the next test's first click.
         function trigger(f, name) {
             const entry = testCase.entry(f, name)
             verify(entry, name)
             verify(entry.enabled, name + " is disabled")
             entry.triggered()
+            if (entry.menu)
+                entry.menu.dismiss()
         }
 
         function test_home_quick_actions_are_on_and_say_what_they_do() {
