@@ -295,8 +295,13 @@ struct MediaWriter::Impl {
         // ProRes: VideoToolbox's encoder where the system has one, else FFmpeg's own.
         // With transparency kept, FFmpeg's own (its 4444 has an alpha channel).
         const bool withAlpha = s.codec == VideoCodec::ProRes && s.proRes == ProResProfile::P4444 && s.alpha;
+        // Aiming under a size: a constant bitrate first (macOS 13), else an average with a
+        // ceiling for every second.
+        const bool sized = (s.codec == VideoCodec::H264 || s.codec == VideoCodec::Hevc) && s.maxVideoBitrate > 0;
         for (int attempt = withAlpha ? 1 : 0; attempt < 2; ++attempt) {
-            if (attempt == 1) {
+            if (attempt == 1 && sized) {
+                avcodec_free_context(&video);
+            } else if (attempt == 1) {
                 if (s.codec != VideoCodec::ProRes)
                     break;
                 avcodec_free_context(&video);
@@ -321,6 +326,12 @@ struct MediaWriter::Impl {
                 video->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
             if (s.codec == VideoCodec::H264 || s.codec == VideoCodec::Hevc) {
                 video->bit_rate = s.videoBitrate > 0 ? s.videoBitrate : defaultVideoBitrate(s);
+                // Made for a size: the bitrate held constant, or (where the encoder will not)
+                // a ceiling for any one second (VideoToolbox's data rate limit).
+                if (sized && attempt == 0)
+                    av_opt_set_int(video->priv_data, "constant_bit_rate", 1, 0);
+                else if (sized)
+                    video->rc_max_rate = s.maxVideoBitrate;
                 video->gop_size = s.keyframeInterval > 0
                                       ? s.keyframeInterval
                                       : std::max(1, 2 * s.frameRate.num / std::max(1, s.frameRate.den)); // 2 s

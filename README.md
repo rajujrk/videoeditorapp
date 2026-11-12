@@ -89,6 +89,7 @@ The following improvements were completed after Phase 5:
 - Slice 28a: A teleprompter that scrolls your script while you record, left out of screen recordings.
 - Slice 28b: Drawing on the screen while recording it — pen, highlighter and arrow, fading away or kept.
 - Slice 29a: Importing image sequences, SVG drawings, camera RAW photos and OpenEXR pictures.
+- Slice 29b: Exporting to a file size, in several formats at once, and as a Live Photo.
 
 All previously identified feature gaps have been closed.
 
@@ -183,6 +184,7 @@ All previously identified feature gaps have been closed.
 - Export videos in MP4 format.
 - Support H.264 and HEVC video encoding.
 - Support AAC audio encoding.
+- Export under a chosen file size, in several formats in one go, or as a Live Photo.
 
 ---
 
@@ -917,6 +919,21 @@ MP4, MOV and M4A get the chapter markers in the range as chapters, and MP3 as ID
 MP3 is encoded by LAME (LGPL, built by vcpkg into FFmpeg), with its gapless header so players
 keep the exact length. Imported ProRes 422 and 4444 now preview and show
 thumbnails too. From the command line:
+
+**File size, several formats, Live Photos.** Quality **File size** aims an H.264 or HEVC file
+under a number of megabytes: the pictures get what is left over the range's length once the
+sound and the file's own overhead are taken out, at a constant bitrate; encoders overshoot short
+or busy pictures, so a file that comes out larger is made again with less, up to three times, and
+one that still cannot fit (a size too small for what is in the pictures) is refused, saying so.
+A size too small for the length at all is refused before starting, with the least it needs.
+**Also as** exports the same thing in more formats at once — click the chips (HEVC, ProRes, a
+GIF, WAV, MP3…) — each a job in the queue named like the main file with its own extension, or
+"Name - HEVC.mp4" when two share one; a GIF keeps its own small size and 15 fps. The format
+**Live Photo** makes a key photo of the frame at the playhead (HEIC) and a 3-second movie around
+it (MOV · H.264, at most 1080 on its short side, kept inside the timeline at its ends), paired by
+a content identifier the way Photos pairs an iPhone's, so Photos — on the Mac, or an iPhone it
+syncs with — shows them as one Live Photo; **Add to Photos** puts it in your library (asking for
+add-only access the first time; `TVE_LIVE_PHOTO_LIBRARY` names a folder to copy into instead).
 
 ```bash
 build/macos-release/app/TechieVideoEditor.app/Contents/MacOS/TechieVideoEditor project.tve --export out.mp4 --export-size 1920x1080 --export-codec h264

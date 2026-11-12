@@ -490,6 +490,21 @@ photo — dark and light:
 ![Importing an image sequence, dark](images/image-sequence-dark.png)
 ![Importing an image sequence, light](images/image-sequence-light.png)
 
+Exporting to a file size in several formats at once: **File size** beside High / Standard /
+Small (the chosen one `primary`) with a sunken megabytes field, and **Also as** — a chip per other
+format, round, `surface` with a `borderSubtle` edge, chosen ones filled `accent` with
+`textOnAccent` text — dark and light:
+
+![Export to a file size in several formats, dark](images/export-size-dark.png)
+![Export to a file size in several formats, light](images/export-size-light.png)
+
+Exporting a Live Photo: the format named for what it makes, the Range row replaced by **Key
+photo** — where it is and the movie's span, an Add to Photos switch and a caption saying what
+the files are — and the estimate for 3 seconds, dark and light:
+
+![Export a Live Photo, dark](images/export-live-photo-dark.png)
+![Export a Live Photo, light](images/export-live-photo-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

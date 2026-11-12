@@ -24,6 +24,7 @@
 #include "TitleRenderer.h"
 #include "decode/AudioDecoder.h"
 #include "audio/SoundPacks.h"
+#include "encode/LivePhoto.h"
 #include "encode/MediaWriter.h"
 #include "packs/Packs.h"
 #include "../engine/TestDng.h"
@@ -166,6 +167,22 @@ public:
         QFile file(path);
         return file.open(QIODevice::ReadOnly) ? QString::fromUtf8(file.readAll()) : QString();
     }
+    // Bytes in a file (-1: none).
+    Q_INVOKABLE double size(const QString& path) const
+    {
+        const QFileInfo info(path);
+        return info.exists() ? double(info.size()) : -1.0;
+    }
+    // A Live Photo's two files as Photos sees them: {stillId, movieId, stillTime (seconds into
+    // the movie, -1 when unmarked), accepted (Photos takes them for one Live Photo)}.
+    Q_INVOKABLE QVariantMap livePhoto(const QString& still, const QString& movie) const
+    {
+        const auto time = tve::livephoto::movieStillTime(movie.toStdString());
+        return {{QStringLiteral("stillId"), QString::fromStdString(tve::livephoto::stillIdentifier(still.toStdString()))},
+                {QStringLiteral("movieId"), QString::fromStdString(tve::livephoto::movieIdentifier(movie.toStdString()))},
+                {QStringLiteral("stillTime"), time ? tve::toSeconds(*time) : -1.0},
+                {QStringLiteral("accepted"), tve::livephoto::photosAcceptsPair(still.toStdString(), movie.toStdString())}};
+    }
 
 private:
     bool inside(const QString& path) const
@@ -182,6 +199,7 @@ private:
 //   hum.wav              7 s of a quiet 220 Hz tone (music to duck)
 //   scenes.mov           three one-second shots at 30 fps, each moving
 //   long.mov             40 s in four 10 s shots, a disc moving across; loud from 22 to 30 s
+//   noise.mov            2 s of 640 × 360 noise, the talk under it
 void writeAnalysisMedia(const QString& dir)
 {
     using namespace tve;
@@ -255,6 +273,31 @@ void writeAnalysisMedia(const QString& dir)
                 p[3] = 255;
             }
     });
+    // noise.mov: 2 s of 640 × 360 noise (as hard to compress as pictures get) with the talk.
+    {
+        MediaSettings settings;
+        settings.container = Container::Mov;
+        settings.codec = VideoCodec::ProRes;
+        settings.proRes = ProResProfile::Proxy;
+        settings.width = 640;
+        settings.height = 360;
+        settings.audioCodec = AudioCodec::Pcm16;
+        auto writer = MediaWriter::open((dir + QStringLiteral("/noise.mov")).toStdString(), settings);
+        std::mt19937 grain(11);
+        std::vector<std::uint8_t> rgba(640 * 360 * 4);
+        std::vector<float> samples(std::size_t(audio::kSampleRate / 30) * 2);
+        for (int f = 0; f < 60; ++f) {
+            for (std::size_t i = 0; i < rgba.size(); i += 4) {
+                const std::uint32_t v = grain();
+                rgba[i] = std::uint8_t(v), rgba[i + 1] = std::uint8_t(v >> 8), rgba[i + 2] = std::uint8_t(v >> 16), rgba[i + 3] = 255;
+            }
+            writer->writeVideoRgba(rgba.data(), 640 * 4);
+            for (std::size_t i = 0; i < samples.size() / 2; ++i)
+                samples[i * 2] = samples[i * 2 + 1] = talkAt(f / 30.0 + double(i) / audio::kSampleRate);
+            writer->writeAudio(samples.data(), int(samples.size() / 2));
+        }
+        writer->finish();
+    }
     // long.mov: 40 s in four shots (a new colour every 10 s) with a disc moving across; a
     // quiet hum, loud from 22 to 30 s.
     std::mt19937 hiss(7);
@@ -530,6 +573,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("consentDir"), qEnvironmentVariable("TVE_CONSENT_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("languageFile"), qEnvironmentVariable("TVE_LANGUAGE_FILE"));
         engine->rootContext()->setContextProperty(QStringLiteral("teleprompterFile"), qEnvironmentVariable("TVE_TELEPROMPTER_FILE"));
+        engine->rootContext()->setContextProperty(QStringLiteral("livePhotoLibrary"), qEnvironmentVariable("TVE_LIVE_PHOTO_LIBRARY"));
         engine->rootContext()->setContextProperty(QStringLiteral("renderFilesDir"), qEnvironmentVariable("TVE_RENDER_CACHE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("keyStoreDir"), qEnvironmentVariable("TVE_KEY_STORE"));
         engine->rootContext()->setContextProperty(QStringLiteral("importFixturesDir"), qEnvironmentVariable("TVE_TEST_IMPORTS_DIR"));
@@ -646,6 +690,8 @@ int main(int argc, char** argv)
     // The language setting in a scratch file (the app's own isn't touched).
     QTemporaryDir teleprompterSettings; // the teleprompter's script and settings
     qputenv("TVE_TELEPROMPTER_FILE", (teleprompterSettings.path() + QStringLiteral("/teleprompter.json")).toLocal8Bit());
+    QTemporaryDir livePhotoLibrary; // Live Photos "added to Photos" land here, not in the library
+    qputenv("TVE_LIVE_PHOTO_LIBRARY", QDir(livePhotoLibrary.path()).canonicalPath().toLocal8Bit());
     QTemporaryDir languageSettings;
     qputenv("TVE_LANGUAGE_FILE", (languageSettings.path() + QStringLiteral("/language.json")).toLocal8Bit());
     {
