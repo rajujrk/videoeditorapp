@@ -75,6 +75,13 @@ struct Beats {
 // The tempo (searched between 60 and 200 BPM) and a beat grid that follows the music.
 Beats findBeats(const AudioFeatures& features);
 
+// How hard music hits, for text that moves with it: `count` values (0..1) at `rate` a second
+// from media time `start`: 70 % a pulse on each beat (fading over a tenth of a second or
+// so), 30 % the loudness (relative to the quiet and loud of the span); without a beat,
+// the loudness alone. Values outside `within` (media time) are 0.
+std::vector<float> musicLevels(const AudioFeatures& features, Ticks start, std::size_t count, double rate,
+                               TimeRange within);
+
 // How two recordings of the same sound line up: `other`'s media time t shows the same sound
 // as `reference`'s at t + offset. From their onset strength (what starts when), correlated
 // over lags up to ±maxLag seconds; confidence 0..1 (how far the best match stands out).

@@ -137,6 +137,13 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantList stickers READ stickers NOTIFY stickersChanged)
     // Title text animations: [{id, title, loop}] (loops keep moving; the others arrive or leave).
     Q_PROPERTY(QVariantList textAnimations READ textAnimations NOTIFY languageChanged)
+    // Title presets saved from the user's own titles: [{name, style}] (style as addTitle takes
+    // it, with x, y and duration), one file each in titlePresetDirectory (Application
+    // Support/…/Title Presets; TVE_TITLE_PRESET_DIR overrides).
+    Q_PROPERTY(QVariantList titlePresets READ titlePresets NOTIFY titlePresetsChanged)
+    Q_PROPERTY(QString titlePresetDirectory READ titlePresetDirectory CONSTANT)
+    // Logo reveals (a logo picture and a tagline animated together): [{id, title}].
+    Q_PROPERTY(QVariantList logoReveals READ logoReveals NOTIFY languageChanged)
 
     // Autosave: unsaved work is written to `autosaveDirectory` a moment after edits settle
     // (default: Application Support/…/Autosave; TVE_AUTOSAVE_DIR overrides). Work left
@@ -336,6 +343,9 @@ public:
     QVariantList availableTransitions() const;
     QVariantList overlayTransitions() const;
     QStringList titleFonts() const;
+    QVariantList titlePresets() const;
+    QString titlePresetDirectory() const;
+    QVariantList logoReveals() const;
     QVariantList textAnimations() const;
     QVariantList stickers() const;
     QVariantList speedRampPresets() const;
@@ -649,6 +659,24 @@ public:
     Q_INVOKABLE bool addSticker(const QString& stickerId);
     // Applies the text fields in `changes` to a title clip (one undo step).
     Q_INVOKABLE bool setClipText(double clipId, const QVariantMap& changes);
+    // Title presets: the title clip's look saved under `name` (replacing one of that name),
+    // put on another title (its text, and a chart's values, kept), or deleted.
+    Q_INVOKABLE bool saveTitlePreset(double clipId, const QString& name);
+    Q_INVOKABLE bool applyTitlePreset(double clipId, const QString& name);
+    Q_INVOKABLE bool deleteTitlePreset(const QString& name);
+    // Text that moves with the music: measures the music (in the background, like the other
+    // analysis; analysisFinished reports) and makes the title react to it. options: kind
+    // ("pulse", "bounce", "flash", "shake"; "none" stops it), amount (0..1), musicClipId (the
+    // clip whose sound to follow; absent: the clip with sound playing longest under the
+    // title, on an audio track first). One undo step.
+    Q_INVOKABLE bool reactToMusic(double clipId, const QVariantMap& options = {});
+    // A chart title's values from a text or CSV file (a label and a value on each line); a
+    // title without a chart becomes a bar chart.
+    Q_INVOKABLE bool loadChartData(double clipId, const QUrl& file);
+    // A logo reveal at the playhead: the picture `logo` (imported if new) on a free picture
+    // track and `tagline` under it (none if empty), animated by preset `revealId`, grouped,
+    // one undo step; the logo's clip is selected.
+    Q_INVOKABLE bool addLogoReveal(const QString& revealId, const QUrl& logo, const QString& tagline = {});
 
     // Markers. addMarker puts one at `seconds` (the playhead when negative) and returns its
     // id (0 on failure). setMarker takes any of time, duration, color, note, chapter.
@@ -1098,6 +1126,7 @@ signals:
     void colorClipboardChanged();
     void editingChanged();
     void colorPresetsChanged();
+    void titlePresetsChanged();
     void inputLevelChanged();
     // ok: `message` is the file's path; otherwise the error, or empty when cancelled.
     void exportFinished(bool ok, const QString& message, double jobId);
@@ -1235,6 +1264,9 @@ private:
     // Colour
     std::optional<tve::ColorGrade> gradeWith(tve::Id clipId, const QVariantMap& changes) const;
     QString colorPresetPath(const QString& name) const;
+    QString titlePresetPath(const QString& name) const;
+    // The clip with sound playing longest under a title (on an audio track first), or kNoId.
+    tve::Id musicUnder(const tve::Clip& title) const;
     std::optional<tve::ColorGrade> m_copiedGrade;
     int m_activeMask = -1;
     bool m_pickingKeyColor = false;

@@ -667,6 +667,231 @@ Rectangle {
                         }
                     }
 
+                    // A chart under the text (the heading): bars or a line through the values.
+                    Section {
+                        id: chartSection
+                        objectName: "titleChartSection"
+                        visible: inspector.clipInfo.isTitle === true
+                        Layout.fillWidth: true
+                        expanded: !!textSection.text.chart
+                        title: qsTr("Chart")
+                        readonly property var chart: textSection.text.chart || null
+                        function change(fields) { textSection.change({ chart: fields }) }
+                        TextButton {
+                            objectName: "titleMakeChart"
+                            visible: !chartSection.chart
+                            text: qsTr("Make it a chart")
+                            iconName: "chart"
+                            variant: "secondary"
+                            onClicked: chartSection.change({ kind: "bar", data: qsTr("First, 3\nSecond, 5\nThird, 4") })
+                        }
+                        RowLayout {
+                            visible: !!chartSection.chart
+                            Layout.fillWidth: true
+                            Repeater {
+                                model: [{ key: "bar", label: qsTr("Bars") }, { key: "line", label: qsTr("Line") }]
+                                delegate: TextButton {
+                                    required property var modelData
+                                    objectName: "titleChartKind:" + modelData.key
+                                    text: modelData.label
+                                    variant: chartSection.chart && chartSection.chart.kind === modelData.key ? "primary" : "secondary"
+                                    onClicked: chartSection.change({ kind: modelData.key })
+                                }
+                            }
+                            Item { Layout.fillWidth: true }
+                            IconButton {
+                                objectName: "titleRemoveChart"
+                                iconName: "delete"
+                                tip: qsTr("Back to plain text")
+                                onClicked: textSection.change({ chart: null })
+                            }
+                        }
+                        Text {
+                            visible: !!chartSection.chart
+                            Layout.fillWidth: true
+                            text: qsTr("A label and a value on each line, like “March, 42”.")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+                        TextArea {
+                            id: chartData
+                            objectName: "titleChartData"
+                            visible: !!chartSection.chart
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.max(84, implicitHeight)
+                            wrapMode: TextEdit.NoWrap
+                            font: Theme.type.mono
+                            color: Theme.color.textPrimary
+                            background: Rectangle {
+                                radius: Theme.radius.s
+                                color: Theme.color.surfaceSunken
+                                border.color: chartData.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
+                            }
+                            Binding on text { value: chartSection.chart ? chartSection.chart.data : ""; when: !chartData.activeFocus }
+                            onTextChanged: if (activeFocus) chartCommit.restart()
+                            onActiveFocusChanged: if (!activeFocus && chartCommit.running) { chartCommit.stop(); chartSection.change({ data: text }) }
+                            Timer {
+                                id: chartCommit
+                                interval: 800
+                                onTriggered: chartSection.change({ data: chartData.text })
+                            }
+                        }
+                        TextButton {
+                            objectName: "titleChartFile"
+                            visible: !!chartSection.chart
+                            text: qsTr("Values from a file…")
+                            variant: "secondary"
+                            onClicked: chartFile.open()
+                        }
+                        FileDialog {
+                            id: chartFile
+                            title: qsTr("Values to chart (a label and a number on each line)")
+                            fileMode: FileDialog.OpenFile
+                            nameFilters: [qsTr("Tables (*.csv *.tsv *.txt)")]
+                            onAccepted: inspector.project.loadChartData(inspector.clipInfo.id, selectedFile)
+                        }
+                        Text { visible: !!chartSection.chart; text: qsTr("Bars or line"); font: Theme.type.label; color: Theme.color.textSecondary }
+                        Swatches {
+                            objectName: "titleChartColor"
+                            visible: !!chartSection.chart
+                            current: chartSection.chart ? chartSection.chart.color : [0.32, 0.62, 1, 1]
+                            onPicked: (c) => chartSection.change({ color: c })
+                        }
+                        AudioSlider {
+                            objectName: "titleChartGrow"
+                            visible: !!chartSection.chart
+                            label: qsTr("Grows in over")
+                            from: 0
+                            to: 5
+                            value: chartSection.chart ? chartSection.chart.grow : 1.5
+                            format: (v) => v < 0.05 ? qsTr("At once") : qsTr("%1 s").arg(v.toFixed(1))
+                            onCommitted: (v) => chartSection.change({ grow: v < 0.05 ? 0 : v })
+                        }
+                        ToggleSwitch {
+                            objectName: "titleChartValues"
+                            visible: !!chartSection.chart
+                            text: qsTr("Show the values")
+                            checked: !!chartSection.chart && chartSection.chart.values
+                            onToggled: chartSection.change({ values: checked })
+                        }
+                    }
+
+                    // Moving with the music: the title reacting to the sound under it.
+                    Section {
+                        id: musicSection
+                        objectName: "titleMusicSection"
+                        visible: inspector.clipInfo.isTitle === true
+                        Layout.fillWidth: true
+                        expanded: musicSection.react.kind !== "none"
+                        title: qsTr("Move with the music")
+                        readonly property var react: textSection.text.react || ({ kind: "none", amount: 0.5, measured: false })
+                        readonly property var kinds: ["none", "pulse", "bounce", "flash", "shake"]
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: qsTr("Moves"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            ComboBox {
+                                objectName: "titleReactKind"
+                                model: [qsTr("Not at all"), qsTr("Pulse"), qsTr("Bouncing letters"), qsTr("Flash"), qsTr("Shake")]
+                                currentIndex: Math.max(0, musicSection.kinds.indexOf(musicSection.react.kind))
+                                onActivated: (index) => {
+                                    const kind = musicSection.kinds[index]
+                                    // The first time, the music is measured; after that only the kind changes.
+                                    if (kind === "none" || !musicSection.react.measured)
+                                        inspector.project.reactToMusic(inspector.clipInfo.id, { kind: kind, amount: musicSection.react.amount })
+                                    else
+                                        textSection.change({ react: { kind: kind } })
+                                }
+                            }
+                        }
+                        AudioSlider {
+                            objectName: "titleReactAmount"
+                            visible: musicSection.react.kind !== "none"
+                            label: qsTr("How much")
+                            from: 0
+                            to: 1
+                            value: musicSection.react.amount
+                            format: (v) => Math.round(v * 100) + "%"
+                            onCommitted: (v) => textSection.change({ react: { amount: v } })
+                        }
+                        Text {
+                            visible: musicSection.react.kind !== "none"
+                            Layout.fillWidth: true
+                            text: inspector.project.analyzing ? qsTr("Listening to the music…")
+                                : musicSection.react.measured ? qsTr("Following the music under the title. Moved the music? Listen again.")
+                                : qsTr("Put music under the title, then listen to it.")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+                        TextButton {
+                            objectName: "titleReactListen"
+                            visible: musicSection.react.kind !== "none"
+                            enabled: !inspector.project.analyzing
+                            text: qsTr("Listen again")
+                            variant: "secondary"
+                            onClicked: inspector.project.reactToMusic(inspector.clipInfo.id, { kind: musicSection.react.kind, amount: musicSection.react.amount })
+                        }
+                    }
+
+                    // Saving this title's look to use again, or giving it a saved one.
+                    Section {
+                        id: titlePresetSection
+                        objectName: "titlePresetSection"
+                        visible: inspector.clipInfo.isTitle === true
+                        Layout.fillWidth: true
+                        title: qsTr("Title presets")
+                        readonly property var names: inspector.project.titlePresets.map((p) => p.name)
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            ComboBox {
+                                id: titlePresetPicker
+                                objectName: "titlePresetPicker"
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                                model: titlePresetSection.names
+                                enabled: count > 0
+                                displayText: count > 0 ? currentText : qsTr("No presets yet")
+                            }
+                            TextButton {
+                                objectName: "applyTitlePreset"
+                                text: qsTr("Apply")
+                                variant: "secondary"
+                                enabled: titlePresetPicker.count > 0
+                                onClicked: inspector.project.applyTitlePreset(inspector.clipInfo.id, titlePresetPicker.currentText)
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            TextField {
+                                id: titlePresetName
+                                objectName: "titlePresetName"
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                                placeholderText: qsTr("Preset name")
+                            }
+                            TextButton {
+                                objectName: "saveTitlePreset"
+                                text: qsTr("Save")
+                                variant: "secondary"
+                                enabled: titlePresetName.text.trim() !== ""
+                                onClicked: {
+                                    if (inspector.project.saveTitlePreset(inspector.clipInfo.id, titlePresetName.text))
+                                        titlePresetName.text = ""
+                                }
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTr("Saved presets are also in the Titles library, under My presets.")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+
                     // A shape behind the text: boxes, a pill, bubbles, a banner and more.
                     Section {
                         id: shapeSection

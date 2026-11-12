@@ -162,8 +162,8 @@ Rectangle {
                     drop.accept()
                 }
             }
-            Rectangle {
-                anchors.fill: video
+            Rectangle { // over the viewport (the picture itself scrolls inside it)
+                anchors.fill: viewport
                 visible: playerDrop.containsDrag
                 color: Qt.alpha(Theme.color.accent, 0.12)
                 border.color: Theme.color.accent

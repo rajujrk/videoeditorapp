@@ -3116,6 +3116,118 @@
         <translation>கோடு</translation>
     </message>
     <message>
+        <source>Chart</source>
+        <translation>விளக்கப்படம்</translation>
+    </message>
+    <message>
+        <source>Make it a chart</source>
+        <translation>விளக்கப்படமாக்கு</translation>
+    </message>
+    <message>
+        <source>First, 3
+Second, 5
+Third, 4</source>
+        <translation>முதல், 3
+இரண்டாம், 5
+மூன்றாம், 4</translation>
+    </message>
+    <message>
+        <source>Bars</source>
+        <translation>பட்டைகள்</translation>
+    </message>
+    <message>
+        <source>Back to plain text</source>
+        <translation>வெறும் உரைக்குத் திரும்பு</translation>
+    </message>
+    <message>
+        <source>A label and a value on each line, like “March, 42”.</source>
+        <translation>ஒவ்வொரு வரியிலும் ஒரு பெயரும் ஒரு மதிப்பும், “மார்ச், 42” போல.</translation>
+    </message>
+    <message>
+        <source>Values from a file…</source>
+        <translation>கோப்பிலிருந்து மதிப்புகள்…</translation>
+    </message>
+    <message>
+        <source>Values to chart (a label and a number on each line)</source>
+        <translation>விளக்கப்படத்துக்கான மதிப்புகள் (ஒவ்வொரு வரியிலும் ஒரு பெயரும் ஒரு எண்ணும்)</translation>
+    </message>
+    <message>
+        <source>Tables (*.csv *.tsv *.txt)</source>
+        <translation>அட்டவணைகள் (*.csv *.tsv *.txt)</translation>
+    </message>
+    <message>
+        <source>Bars or line</source>
+        <translation>பட்டைகள் அல்லது கோடு</translation>
+    </message>
+    <message>
+        <source>Grows in over</source>
+        <translation>வளர்ந்து வரும் நேரம்</translation>
+    </message>
+    <message>
+        <source>At once</source>
+        <translation>உடனே</translation>
+    </message>
+    <message>
+        <source>Show the values</source>
+        <translation>மதிப்புகளைக் காட்டு</translation>
+    </message>
+    <message>
+        <source>Move with the music</source>
+        <translation>இசையோடு அசைதல்</translation>
+    </message>
+    <message>
+        <source>Moves</source>
+        <translation>அசைவு</translation>
+    </message>
+    <message>
+        <source>Not at all</source>
+        <translation>இல்லை</translation>
+    </message>
+    <message>
+        <source>Pulse</source>
+        <translation>துடிப்பு</translation>
+    </message>
+    <message>
+        <source>Bouncing letters</source>
+        <translation>துள்ளும் எழுத்துகள்</translation>
+    </message>
+    <message>
+        <source>Flash</source>
+        <translation>மின்னல்</translation>
+    </message>
+    <message>
+        <source>Shake</source>
+        <translation>நடுக்கம்</translation>
+    </message>
+    <message>
+        <source>How much</source>
+        <translation>எவ்வளவு</translation>
+    </message>
+    <message>
+        <source>Listening to the music…</source>
+        <translation>இசையைக் கேட்கிறது…</translation>
+    </message>
+    <message>
+        <source>Following the music under the title. Moved the music? Listen again.</source>
+        <translation>தலைப்பின் கீழுள்ள இசையைப் பின்தொடர்கிறது. இசையை நகர்த்தினீர்களா? மீண்டும் கேளுங்கள்.</translation>
+    </message>
+    <message>
+        <source>Put music under the title, then listen to it.</source>
+        <translation>தலைப்பின் கீழ் இசையை வைத்து, பின் அதைக் கேளுங்கள்.</translation>
+    </message>
+    <message>
+        <source>Listen again</source>
+        <translation>மீண்டும் கேள்</translation>
+    </message>
+    <message>
+        <source>Title presets</source>
+        <translation>தலைப்பு முன்னமைவுகள்</translation>
+    </message>
+    <message>
+        <source>Saved presets are also in the Titles library, under My presets.</source>
+        <translation>சேமித்த முன்னமைவுகள் தலைப்புகள் நூலகத்திலும், என் முன்னமைவுகள் என்பதின் கீழ் உள்ளன.</translation>
+    </message>
+    <message>
         <source>Star</source>
         <translation>நட்சத்திரம்</translation>
     </message>
@@ -4303,6 +4415,14 @@
         <translation>இந்தத் தோற்றத்தைத் தேர்ந்தெடுத்த கிளிப்பில் வை</translation>
     </message>
     <message>
+        <source>Click to choose your logo; it is revealed at the playhead</source>
+        <translation>உங்கள் சின்னத்தைத் தேர்ந்தெடுக்கச் சொடுக்கவும்; அது இயக்கக் குறியில் வெளிப்படும்</translation>
+    </message>
+    <message>
+        <source>Click to add at the playhead, or drag onto a track. Right-click to delete.</source>
+        <translation>இயக்கக் குறியில் சேர்க்கச் சொடுக்கவும், அல்லது ஒரு தடத்தின் மீது இழுக்கவும். நீக்க வலது சொடுக்கு.</translation>
+    </message>
+    <message>
         <source>Click to add at the playhead, or drag onto a track</source>
         <translation>இயக்கக்குறியில் சேர்க்க கிளிக் செய்யவும், அல்லது ஒரு டிராக்குக்கு இழுக்கவும்</translation>
     </message>
@@ -4353,6 +4473,22 @@
     <message>
         <source>Made by %1: “%2”</source>
         <translation>%1 உருவாக்கியது: “%2”</translation>
+    </message>
+    <message>
+        <source>Delete this preset</source>
+        <translation>இந்த முன்னமைவை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Choose your logo</source>
+        <translation>உங்கள் சின்னத்தைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Images (*.png *.jpg *.jpeg *.heic *.webp *.tif *.tiff *.bmp)</source>
+        <translation>படங்கள் (*.png *.jpg *.jpeg *.heic *.webp *.tif *.tiff *.bmp)</translation>
+    </message>
+    <message>
+        <source>Your tagline</source>
+        <translation>உங்கள் வாசகம்</translation>
     </message>
     <message>
         <source>Import a project as a compound clip</source>
@@ -5063,6 +5199,54 @@
     <message>
         <source>Put the playhead on a video clip to freeze a frame</source>
         <translation>ஒரு சட்டகத்தை உறையவைக்க, இயக்கக்குறியை ஒரு வீடியோ கிளிப்பில் வைக்கவும்</translation>
+    </message>
+    <message>
+        <source>Select a title to save as a preset</source>
+        <translation>முன்னமைவாகச் சேமிக்க ஒரு தலைப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Select a title to restyle</source>
+        <translation>பாணி மாற்ற ஒரு தலைப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>No title preset named %1</source>
+        <translation>%1 என்ற தலைப்பு முன்னமைவு இல்லை</translation>
+    </message>
+    <message>
+        <source>Select a title to move with the music</source>
+        <translation>இசையோடு அசைய ஒரு தலைப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Put music under the title first</source>
+        <translation>முதலில் தலைப்பின் கீழ் இசையை வைக்கவும்</translation>
+    </message>
+    <message>
+        <source>Listening to the music</source>
+        <translation>இசையைக் கேட்கிறது</translation>
+    </message>
+    <message>
+        <source>Select a title to chart</source>
+        <translation>விளக்கப்படமாக்க ஒரு தலைப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Could not read %1</source>
+        <translation>%1 ஐப் படிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>%1 has no values to chart: put a label and a number on each line</source>
+        <translation>%1 இல் விளக்கப்படத்துக்கு மதிப்புகள் இல்லை: ஒவ்வொரு வரியிலும் ஒரு பெயரும் ஒரு எண்ணும் வையுங்கள்</translation>
+    </message>
+    <message>
+        <source>Unknown logo reveal %1</source>
+        <translation>தெரியாத சின்ன வெளிப்பாடு %1</translation>
+    </message>
+    <message>
+        <source>Could not open %1</source>
+        <translation>%1 ஐத் திறக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Choose a picture of the logo</source>
+        <translation>சின்னத்தின் படத்தைத் தேர்ந்தெடுக்கவும்</translation>
     </message>
     <message>
         <source>Unknown transition %1</source>
@@ -7190,6 +7374,22 @@
         <translation>அசையும்</translation>
     </message>
     <message>
+        <source>With the music</source>
+        <translation>இசையோடு</translation>
+    </message>
+    <message>
+        <source>Charts</source>
+        <translation>விளக்கப்படங்கள்</translation>
+    </message>
+    <message>
+        <source>Logo reveals</source>
+        <translation>சின்ன வெளிப்பாடுகள்</translation>
+    </message>
+    <message>
+        <source>My presets</source>
+        <translation>என் முன்னமைவுகள்</translation>
+    </message>
+    <message>
         <source>Title</source>
         <translation>தலைப்பு</translation>
     </message>
@@ -7540,6 +7740,62 @@ The Journey</source>
     <message>
         <source>One word at a time</source>
         <translation>ஒரு நேரத்தில் ஒரு சொல்</translation>
+    </message>
+    <message>
+        <source>Beat Pulse</source>
+        <translation>தாளத் துடிப்பு</translation>
+    </message>
+    <message>
+        <source>FEEL IT</source>
+        <translation>உணருங்கள்</translation>
+    </message>
+    <message>
+        <source>Bouncing Letters</source>
+        <translation>துள்ளும் எழுத்துகள்</translation>
+    </message>
+    <message>
+        <source>Dance with me</source>
+        <translation>என்னுடன் ஆடுங்கள்</translation>
+    </message>
+    <message>
+        <source>Beat Flash</source>
+        <translation>தாள மின்னல்</translation>
+    </message>
+    <message>
+        <source>DROP</source>
+        <translation>இறங்கு</translation>
+    </message>
+    <message>
+        <source>Bass Shake</source>
+        <translation>அதிர்வு நடுக்கம்</translation>
+    </message>
+    <message>
+        <source>LOUDER</source>
+        <translation>இன்னும் சத்தமாக</translation>
+    </message>
+    <message>
+        <source>Bar Chart</source>
+        <translation>பட்டை விளக்கப்படம்</translation>
+    </message>
+    <message>
+        <source>Views each quarter</source>
+        <translation>ஒவ்வொரு காலாண்டின் பார்வைகள்</translation>
+    </message>
+    <message>
+        <source>Line Chart</source>
+        <translation>கோட்டு விளக்கப்படம்</translation>
+    </message>
+    <message>
+        <source>Growth</source>
+        <translation>வளர்ச்சி</translation>
+    </message>
+    <message>
+        <source>Results</source>
+        <translation>முடிவுகள்</translation>
+    </message>
+    <message>
+        <source>And the votes are in</source>
+        <translation>வாக்குகள் வந்துவிட்டன</translation>
     </message>
 </context>
 <context>
@@ -10216,6 +10472,14 @@ The Journey</source>
         <translation>கீஃப்ரேமை நகர்த்து</translation>
     </message>
     <message>
+        <source>Move With the Music</source>
+        <translation>இசையோடு அசை</translation>
+    </message>
+    <message>
+        <source>Add Logo Reveal</source>
+        <translation>சின்ன வெளிப்பாட்டைச் சேர்</translation>
+    </message>
+    <message>
         <source>Add Overlay</source>
         <translation>மேலடுக்கைச் சேர்</translation>
     </message>
@@ -10944,8 +11208,24 @@ The Journey</source>
         <translation>எழு</translation>
     </message>
     <message>
+        <source>Clean fade</source>
+        <translation>தெளிவான மங்கல்</translation>
+    </message>
+    <message>
+        <source>Spin and settle</source>
+        <translation>சுழன்று நிலைகொள்</translation>
+    </message>
+    <message>
         <source>Drop</source>
         <translation>விழு</translation>
+    </message>
+    <message>
+        <source>Zoom through</source>
+        <translation>பெரிதாகி ஊடுருவு</translation>
+    </message>
+    <message>
+        <source>Slide and type</source>
+        <translation>நகர்ந்து தட்டச்சு</translation>
     </message>
     <message>
         <source>Slide left</source>
@@ -11326,6 +11606,30 @@ The Journey</source>
     <message>
         <source>choose a picture to fill the text with</source>
         <translation>எழுத்துகளை நிரப்ப ஒரு படத்தைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>how much it moves with the music must be between 0% and 100%</source>
+        <translation>இசையோடு அசையும் அளவு 0% முதல் 100% வரை இருக்க வேண்டும்</translation>
+    </message>
+    <message>
+        <source>a chart needs at least one value</source>
+        <translation>ஒரு விளக்கப்படத்துக்குக் குறைந்தது ஒரு மதிப்பு தேவை</translation>
+    </message>
+    <message>
+        <source>a chart can show at most 50 values</source>
+        <translation>ஒரு விளக்கப்படம் அதிகபட்சம் 50 மதிப்புகளைக் காட்டலாம்</translation>
+    </message>
+    <message>
+        <source>chart values must be numbers</source>
+        <translation>விளக்கப்பட மதிப்புகள் எண்களாக இருக்க வேண்டும்</translation>
+    </message>
+    <message>
+        <source>a chart label is too long</source>
+        <translation>ஒரு விளக்கப்படப் பெயர் மிக நீளமாக உள்ளது</translation>
+    </message>
+    <message>
+        <source>a chart grows in over at most 30 seconds</source>
+        <translation>ஒரு விளக்கப்படம் அதிகபட்சம் 30 வினாடிகளில் வளர்ந்து வரும்</translation>
     </message>
     <message>
         <source>Add Marker</source>

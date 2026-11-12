@@ -121,11 +121,25 @@ NLOHMANN_JSON_SERIALIZE_ENUM(TextFillKind, {
     {TextFillKind::Image, "image"},
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TextFill, kind, to, angle, imagePath)
+NLOHMANN_JSON_SERIALIZE_ENUM(TextReactKind, {
+    {TextReactKind::None, "none"},
+    {TextReactKind::Pulse, "pulse"},
+    {TextReactKind::Bounce, "bounce"},
+    {TextReactKind::Flash, "flash"},
+    {TextReactKind::Shake, "shake"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TextReact, kind, amount, levels)
+NLOHMANN_JSON_SERIALIZE_ENUM(ChartKind, {
+    {ChartKind::Bar, "bar"},
+    {ChartKind::Line, "line"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChartPoint, label, value)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TextChart, kind, points, color, grow, values)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipText, text, fontFamily, size, bold, italic, color, alignment,
                                                 lineSpacing, letterSpacing, outlineColor, outlineWidth, shadow, shape,
                                                 animationIn, animationOut, animationLoop, scroll, words,
                                                 captionMotion, highlightColor, path, fill, underline, vertical, curve,
-                                                depth, depthColor, tiltX, tiltY)
+                                                depth, depthColor, tiltX, tiltY, react, chart)
 NLOHMANN_JSON_SERIALIZE_ENUM(PathKind, {
     {PathKind::Brush, "brush"},
     {PathKind::Line, "line"},

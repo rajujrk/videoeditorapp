@@ -423,7 +423,7 @@ TEST_CASE("start-up: the app launched to its Home screen drawn", "[perf]")
     QDir().mkpath(root);
     for (const char* name : {"TVE_AUTOSAVE_DIR", "TVE_PROXY_DIR", "TVE_RECORDING_DIR", "TVE_VOICE_DIR", "TVE_MODEL_DIR",
                              "TVE_GENERATED_DIR", "TVE_IMPORT_DIR", "TVE_PROCESSED_DIR", "TVE_ENHANCED_DIR",
-                             "TVE_ANALYSIS_DIR", "TVE_COLOR_PRESET_DIR", "TVE_OVERLAY_CACHE_DIR", "TVE_SOUND_CACHE_DIR",
+                             "TVE_ANALYSIS_DIR", "TVE_COLOR_PRESET_DIR", "TVE_TITLE_PRESET_DIR", "TVE_OVERLAY_CACHE_DIR", "TVE_SOUND_CACHE_DIR",
                              "TVE_SOUND_PACK_DIR", "TVE_TEMPLATE_DIR", "TVE_TEMPLATE_CACHE_DIR", "TVE_PACKS_DIR",
                              "TVE_CONSENT_DIR", "TVE_KEY_STORE", "TVE_RENDER_CACHE_DIR"}) {
         const QString dir = root + QLatin1Char('/') + QString::fromLatin1(name);

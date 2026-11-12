@@ -1478,7 +1478,29 @@ std::optional<std::string> validateText(const ClipText& text)
         return TVE_TR("core", "the tilt must be between -60° and 60°");
     if (text.fill.kind == TextFillKind::Image && text.fill.imagePath.empty())
         return TVE_TR("core", "choose a picture to fill the text with");
-    for (const ColorRgba& c : {text.color, text.outlineColor, text.shape.color, text.fill.to, text.depthColor}) {
+    if (!(text.react.amount >= 0.0 && text.react.amount <= 1.0))
+        return TVE_TR("core", "how much it moves with the music must be between 0% and 100%");
+    if (text.react.levels.size() > TextReact::kMaxLevels
+        || std::ranges::any_of(text.react.levels, [](float v) { return !(v >= 0.0f && v <= 1.0f); }))
+        return "music levels must be between 0 and 1";
+    ColorRgba chartColor = text.color;
+    if (text.chart) {
+        const TextChart& chart = *text.chart;
+        if (chart.points.empty())
+            return TVE_TR("core", "a chart needs at least one value");
+        if (chart.points.size() > TextChart::kMaxPoints)
+            return TVE_TR("core", "a chart can show at most 50 values");
+        for (const ChartPoint& point : chart.points) {
+            if (!std::isfinite(point.value) || std::abs(point.value) > 1e12)
+                return TVE_TR("core", "chart values must be numbers");
+            if (point.label.size() > TextChart::kMaxLabel)
+                return TVE_TR("core", "a chart label is too long");
+        }
+        if (!(chart.grow >= 0.0 && chart.grow <= 30.0))
+            return TVE_TR("core", "a chart grows in over at most 30 seconds");
+        chartColor = chart.color;
+    }
+    for (const ColorRgba& c : {text.color, text.outlineColor, text.shape.color, text.fill.to, text.depthColor, chartColor}) {
         for (double v : {c.r, c.g, c.b, c.a}) {
             if (v < 0.0 || v > 1.0)
                 return "colours must be between 0 and 1";

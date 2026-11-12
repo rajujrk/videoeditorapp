@@ -83,6 +83,7 @@ The following improvements were completed after Phase 5:
 - Slice 25b: Motion blur that follows keyframed movement, effect and colour masks, and player guides, safe areas, rulers and zoom.
 - Slice 25c: One-click auto colour and colour match, HDR colour wheels, and lens-correction presets for wide cameras.
 - Slice 26a: Curved and vertical text, an underline style, gradient and picture fills, and 3D titles.
+- Slice 26b: Title presets of your own, titles that move with the music, animated bar and line charts from your data, and logo reveals.
 
 All previously identified feature gaps have been closed.
 
@@ -138,7 +139,9 @@ All previously identified feature gaps have been closed.
 - Apply entrance, exit and looping text animations.
 - Animate text by individual letters, words or lines.
 - Create rolling credits and tickers.
-- Choose from 40 built-in title templates.
+- Choose from 47 built-in title templates, six logo reveals and presets saved from your own titles.
+- Make titles pulse, bounce, flash or shake with the music under them.
+- Draw animated bar and line charts from typed values or a CSV file.
 
 ### 2.7 Speed and Playback Controls
 
@@ -651,6 +654,15 @@ camera, phone, drone or fisheye lens to straighten its curved lines.
 an arch or a sag with the Curve slider. Under Fill its letters take a gradient or a picture
 instead of one colour, and under 3D they gain depth in a colour of their own and the whole
 title tilts back or turns in perspective.
+
+**Presets, music and charts.** Under Title presets on the Video tab, save a title's look by
+name; it appears in the Titles library under My presets (right-click to delete) and can be put
+on another title, which keeps its own words. Under Move with the music, a title pulses, bounces
+letter by letter, flashes to its highlight colour or shakes on the beat of the music under it
+(the With the music templates listen as soon as they are added). Make it a chart turns a title
+into a heading over bars or a line that grow in: type a label and a value on each line, or
+load them from a CSV or text file. The Logo reveals in the Titles library ask for your logo and
+animate it in with a tagline under it, grouped so they move together.
 
 **Placing clips by hand.** Select a clip and its frame shows in the player: drag inside it to
 move it (it snaps to the centre lines), a corner to resize it, the round knob to turn it (⇧ in
