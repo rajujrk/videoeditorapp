@@ -18,6 +18,8 @@ add_library(tve_engine STATIC
     encode/GifPalette.cpp
     encode/Proxy.h
     encode/Proxy.cpp
+    encode/LivePhoto.h
+    encode/LivePhoto.mm
     encode/WavWriter.h
     encode/WavWriter.cpp
     encode/VideoProcessing.h
@@ -173,3 +175,5 @@ target_link_libraries(tve_engine
         "-framework ImageCaptureCore"
 )
 tve_set_warnings(tve_engine)
+# (Written for automatic reference counting; the rest of the engine counts by hand.)
+set_source_files_properties(encode/LivePhoto.mm PROPERTIES COMPILE_OPTIONS -fobjc-arc)

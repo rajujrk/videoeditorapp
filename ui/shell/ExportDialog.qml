@@ -38,13 +38,19 @@ Popup {
         rangePicker.currentIndex = 0
         soundSwitch.checked = true
         quality = "standard"
+        targetField.text = "25"
+        alsoFormats = []
+        alsoQueued = 0
+        addToPhotosSwitch.checked = false
         fromField.text = "0"
         toField.text = project.duration.toFixed(2)
         file = StandardPaths.writableLocation(StandardPaths.MoviesLocation) + "/" + baseName() + "." + format.extension
     }
     onAboutToShow: prepare()
 
-    property string quality: "standard"
+    property string quality: "standard" // or "size": aim under targetField's megabytes
+    property var alsoFormats: [] // more formats exported in one go (exportFormats ids)
+    property int alsoQueued: 0
     readonly property var format: project.exportFormats[Math.max(0, formatPicker.currentIndex)]
     readonly property bool hdrProject: project.projectColour !== "sdr" && format.video
     readonly property bool hevc: format.id.indexOf("hevc") >= 0
@@ -100,7 +106,9 @@ Popup {
         height: size.height,
         fill: size.fill,
         frameRate: rates[Math.max(0, ratePicker.currentIndex)].fps,
-        quality: quality,
+        quality: quality === "size" ? "standard" : quality,
+        targetSize: quality === "size" && format.quality ? Number(targetField.text) : 0,
+        addToPhotos: addToPhotosSwitch.checked,
         audio: soundSwitch.checked,
         hdr: hdrSwitch.checked,
         normalizeLoudness: loudnessSwitch.checked,
@@ -167,12 +175,28 @@ Popup {
             message = project.lastError
             return
         }
+        const mainJob = project.exportJobs[project.exportJobs.length - 1].id
+        queueAlso()
         if (!watch) {
             close()
             return
         }
-        jobId = project.exportJobs[project.exportJobs.length - 1].id
+        jobId = mainJob
         stage = "exporting"
+    }
+    // The other formats chosen, queued after the main file.
+    function queueAlso() {
+        alsoQueued = alsoFormats.length > 0 && range.range !== "each" && !format.livePhoto
+                     ? project.exportAlso(file, options, alsoFormats) : 0
+    }
+    function toggleAlso(id) {
+        const next = alsoFormats.slice()
+        const at = next.indexOf(id)
+        if (at >= 0)
+            next.splice(at, 1)
+        else
+            next.push(id)
+        alsoFormats = next
     }
 
     Connections {
@@ -272,6 +296,56 @@ Popup {
                 }
             }
 
+            // More formats in one go: the same export again in each one chosen.
+            Text {
+                visible: !dialog.format.livePhoto && dialog.range.range !== "each"
+                Layout.alignment: Qt.AlignTop
+                text: qsTr("Also as")
+                font: Theme.type.label
+                color: Theme.color.textSecondary
+            }
+            Flow {
+                objectName: "exportAlsoFormats"
+                visible: !dialog.format.livePhoto && dialog.range.range !== "each"
+                Layout.fillWidth: true
+                spacing: Theme.space.xs
+                Repeater {
+                    model: dialog.project.exportFormats.filter((f) => f.id !== dialog.format.id && !f.livePhoto)
+                    delegate: AbstractButton {
+                        id: chip
+                        required property var modelData
+                        readonly property bool chosen: dialog.alsoFormats.indexOf(modelData.id) >= 0
+                        objectName: "exportAlso:" + modelData.id
+                        checkable: false
+                        hoverEnabled: true
+                        implicitHeight: 24
+                        implicitWidth: chipLabel.implicitWidth + Theme.space.m * 2
+                        onClicked: dialog.toggleAlso(modelData.id)
+                        ToolTip.visible: hovered
+                        ToolTip.delay: 600
+                        ToolTip.text: modelData.label
+                        background: Rectangle {
+                            radius: height / 2
+                            color: chip.chosen ? Theme.color.accent : chip.hovered ? Theme.color.surfaceHover : Theme.color.surface
+                            border.color: chip.chosen ? Theme.color.accent : Theme.color.borderSubtle
+                        }
+                        contentItem: Text {
+                            id: chipLabel
+                            // "MOV · ProRes LT" → "ProRes LT"; "MP4 · HEVC (smaller files)" → "MP4 HEVC"
+                            text: {
+                                const parts = chip.modelData.label.split(" · ")
+                                const kind = (parts[1] || parts[0]).split(" (")[0].split(",")[0]
+                                return parts.length > 1 && !kind.startsWith(parts[0]) ? parts[0] + " " + kind : kind
+                            }
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            font: Theme.type.caption
+                            color: chip.chosen ? Theme.color.textOnAccent : Theme.color.textPrimary
+                        }
+                    }
+                }
+            }
+
             Text { visible: dialog.format.video; text: qsTr("Size"); font: Theme.type.label; color: Theme.color.textSecondary }
             ComboBox {
                 id: sizePicker
@@ -299,7 +373,8 @@ Popup {
                 visible: dialog.format.quality
                 spacing: Theme.space.xs
                 Repeater {
-                    model: [{ id: "high", label: qsTr("High") }, { id: "standard", label: qsTr("Standard") }, { id: "small", label: qsTr("Small") }]
+                    model: [{ id: "high", label: qsTr("High") }, { id: "standard", label: qsTr("Standard") }, { id: "small", label: qsTr("Small") },
+                            { id: "size", label: qsTr("File size") }]
                     delegate: TextButton {
                         required property var modelData
                         objectName: "exportQuality:" + modelData.id
@@ -310,6 +385,33 @@ Popup {
                             presetPicker.currentIndex = 0
                         }
                     }
+                }
+                // Aim under a size: the bitrate is worked out from the range's length.
+                TextField {
+                    id: targetField
+                    objectName: "exportTargetSize"
+                    visible: dialog.quality === "size"
+                    implicitWidth: 60
+                    text: "25"
+                    horizontalAlignment: TextInput.AlignRight
+                    validator: DoubleValidator { bottom: 0.1; top: 100000 }
+                    color: Theme.color.textPrimary
+                    selectByMouse: true
+                    background: Rectangle {
+                        implicitHeight: 32
+                        radius: Theme.radius.s
+                        color: Theme.color.surfaceSunken
+                        border.color: targetField.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
+                    }
+                    ToolTip.visible: hovered
+                    ToolTip.delay: 600
+                    ToolTip.text: qsTr("The file stays under this many megabytes")
+                }
+                Text {
+                    visible: dialog.quality === "size"
+                    text: qsTr("MB")
+                    font: Theme.type.body
+                    color: Theme.color.textSecondary
                 }
             }
 
@@ -392,8 +494,42 @@ Popup {
                 }
             }
 
-            Text { text: qsTr("Range"); font: Theme.type.label; color: Theme.color.textSecondary }
+            // A Live Photo: the key photo at the playhead, 3 seconds around it.
+            Text { visible: !!dialog.format.livePhoto; Layout.alignment: Qt.AlignTop; text: qsTr("Key photo"); font: Theme.type.label; color: Theme.color.textSecondary }
             ColumnLayout {
+                visible: !!dialog.format.livePhoto
+                Layout.fillWidth: true
+                spacing: Theme.space.xs
+                Text {
+                    objectName: "exportLivePhotoKey"
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: qsTr("At the playhead (%1), with the movie from %2 to %3")
+                          .arg(dialog.project.timecode(dialog.project.playhead))
+                          .arg(dialog.project.timecode(dialog.project.exportRange(dialog.options).from || 0))
+                          .arg(dialog.project.timecode(dialog.project.exportRange(dialog.options).to || 0))
+                    font: Theme.type.body
+                    color: Theme.color.textPrimary
+                }
+                RowLayout {
+                    ToggleSwitch {
+                        id: addToPhotosSwitch
+                        objectName: "exportAddToPhotos"
+                        text: qsTr("Add to Photos")
+                    }
+                }
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: qsTr("Saved as a .heic key photo and a .mov beside it, which Photos shows as one Live Photo.")
+                    font: Theme.type.caption
+                    color: Theme.color.textSecondary
+                }
+            }
+
+            Text { visible: !dialog.format.livePhoto; text: qsTr("Range"); font: Theme.type.label; color: Theme.color.textSecondary }
+            ColumnLayout {
+                visible: !dialog.format.livePhoto
                 Layout.fillWidth: true
                 spacing: Theme.space.xs
                 ComboBox {
@@ -481,7 +617,11 @@ Popup {
             visible: dialog.stage === "done" || dialog.stage === "failed"
             objectName: "exportResult"
             Layout.fillWidth: true
-            text: dialog.stage === "done" ? qsTr("Saved %1.").arg(dialog.fileName(dialog.file)) : dialog.message
+            text: dialog.stage !== "done" ? dialog.message
+                : dialog.format.livePhoto ? qsTr("Saved %1 and its key photo.").arg(dialog.fileName(dialog.file))
+                : dialog.alsoQueued === 1 ? qsTr("Saved %1. 1 more format is in the queue.").arg(dialog.fileName(dialog.file))
+                : dialog.alsoQueued > 1 ? qsTr("Saved %1. %2 more formats are in the queue.").arg(dialog.fileName(dialog.file)).arg(dialog.alsoQueued)
+                : qsTr("Saved %1.").arg(dialog.fileName(dialog.file))
             font: Theme.type.body
             color: dialog.stage === "failed" ? Theme.color.danger : Theme.color.textPrimary
             wrapMode: Text.WordWrap

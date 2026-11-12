@@ -76,7 +76,7 @@ Item {
         function test_presets_and_formats() {
             const f = createEditor()
             const p = f.project
-            compare(p.exportFormats.length, 15)
+            compare(p.exportFormats.length, 16) // 15 files, and a Live Photo
             compare(p.exportPresets.length, 13)
             for (const preset of p.exportPresets) {
                 verify(preset.title.length > 0, preset.id)

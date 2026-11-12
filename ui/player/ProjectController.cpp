@@ -4541,6 +4541,14 @@ QVariantList ProjectController::exportFormats() const
             {QStringLiteral("quality"), settings.hasVideo() && (format.codec == VideoCodec::H264 || format.codec == VideoCodec::Hevc)},
         };
     }
+    // A key photo and a 3-second movie around the playhead (MOV · H.264), as Photos pairs them.
+    list << QVariantMap{{QStringLiteral("id"), QStringLiteral("live-photo")},
+                        {QStringLiteral("label"), tr("Live Photo · a key photo and 3 seconds around it")},
+                        {QStringLiteral("extension"), QStringLiteral("mov")},
+                        {QStringLiteral("video"), true},
+                        {QStringLiteral("sound"), true},
+                        {QStringLiteral("quality"), false},
+                        {QStringLiteral("livePhoto"), true}};
     return list;
 }
 
@@ -4565,6 +4573,14 @@ std::optional<Exporter::Options> ProjectController::exportOptions(const QVariant
         options.insert(it.key(), it.value());
 
     QString formatId = options.value(QStringLiteral("format")).toString();
+    // A Live Photo's movie is a MOV · H.264, at most 1080 on its short side.
+    const bool livePhoto = formatId == QLatin1String("live-photo");
+    if (livePhoto) {
+        formatId = QStringLiteral("mov-h264");
+        if (options.value(QStringLiteral("width")).toInt() <= 0 && options.value(QStringLiteral("shortSide")).toInt() <= 0
+            && std::min(m_project.settings.width, m_project.settings.height) > 1080)
+            options.insert(QStringLiteral("shortSide"), 1080);
+    }
     if (formatId.isEmpty())
         formatId = options.value(QStringLiteral("codec")).toString() == QLatin1String("hevc") ? QStringLiteral("mp4-hevc")
                                                                                               : QStringLiteral("mp4-h264");
@@ -4659,8 +4675,45 @@ std::optional<Exporter::Options> ProjectController::exportOptions(const QVariant
     }
     if (end == 0)
         return refuse(tr("Add something to the timeline to export"));
+    // A Live Photo: 3 seconds with the key photo (keyTime, in seconds; the playhead when not
+    // given) in the middle, moved inside the timeline at its ends.
+    if (livePhoto) {
+        const Ticks frame = frameDuration(settings.frameRate);
+        const Ticks key = std::clamp<Ticks>(options.contains(QStringLiteral("keyTime"))
+                                                ? ticks(options.value(QStringLiteral("keyTime")).toDouble())
+                                                : ticks(m_playhead),
+                                            0, std::max<Ticks>(0, end - frame));
+        const Ticks length = std::min<Ticks>(3 * kTicksPerSecond, end);
+        result.from = std::clamp<Ticks>(key - length / 2, 0, end - length);
+        result.to = result.from + length;
+        result.livePhotoKey = key;
+        result.addToPhotos = options.value(QStringLiteral("addToPhotos")).toBool();
+    }
     if (result.to <= result.from)
         return refuse(tr("There is nothing to export in that range"));
+
+    // A file size (megabytes, as Finder counts them): the pictures get what is left of it over
+    // the range's length once the sound and the file's own overhead (3 %) are taken out, as
+    // their average and as a ceiling for every second, so the file stays under it.
+    const double targetMegabytes = options.value(QStringLiteral("targetSize")).toDouble();
+    if (targetMegabytes > 0 && settings.hasVideo() && (settings.codec == VideoCodec::H264 || settings.codec == VideoCodec::Hevc)) {
+        const double length = toSeconds(result.to - result.from);
+        const double budget = targetMegabytes * 8e6 * 0.97 / length; // bits a second
+        // A small file: lighter sound leaves more for the pictures.
+        if (settings.hasAudio() && settings.audioCodec == AudioCodec::Aac && budget < 2'000'000)
+            settings.audioBitrate = 96'000;
+        const double video = budget - double(audioBitrate(settings));
+        constexpr double kLeast = 150'000; // below this the pictures fall apart
+        if (video < kLeast) {
+            const double needed = (kLeast + double(audioBitrate(settings))) * length / 8e6 / 0.97;
+            return refuse(tr("%1 MB is too small for %2 seconds of video: make it at least %3 MB")
+                              .arg(QLocale().toString(targetMegabytes, 'g', 4))
+                              .arg(QLocale().toString(length, 'f', 1))
+                              .arg(QLocale().toString(std::ceil(needed * 10) / 10, 'f', 1)));
+        }
+        settings.videoBitrate = settings.maxVideoBitrate = std::int64_t(video);
+        result.targetBytes = std::int64_t(targetMegabytes * 1e6);
+    }
     return result;
 }
 
@@ -4718,12 +4771,55 @@ bool ProjectController::exportVideo(const QUrl& file, const QVariantMap& options
             && (format.codec != VideoCodec::ProRes || format.proRes == planned->settings.proRes))
             job.format = tr(format.label).section(QStringLiteral(" ("), 0, 0);
     }
+    if (planned->livePhotoKey)
+        job.format = tr("Live Photo");
     job.options = std::move(*planned);
     job.snapshot = std::make_shared<const Project>(m_project);
     m_exportJobs.push_back(std::move(job));
     emit exportChanged();
     startNextExport();
     return true;
+}
+
+int ProjectController::exportAlso(const QUrl& file, const QVariantMap& options, const QStringList& formats)
+{
+    const QFileInfo main(file.isLocalFile() ? file.toLocalFile() : file.toString());
+    const QString base = main.dir().filePath(main.completeBaseName());
+    // Names taken: the main file's, then each one given out here.
+    std::set<QString> used{main.absoluteFilePath()};
+    for (const ExportJob& job : m_exportJobs)
+        if (job.state == QLatin1String("waiting") || job.state == QLatin1String("running"))
+            used.insert(QFileInfo(job.path).absoluteFilePath());
+    int count = 0;
+    for (const QString& id : formats) {
+        const ExportFormat* format = findExportFormat(id);
+        if (!format || id == options.value(QStringLiteral("format")).toString())
+            continue;
+        const QString extension = QString::fromLatin1(fileExtension(format->container));
+        // "Holiday.mp4", or (that taken) "Holiday - HEVC.mp4", by the format's name.
+        QString path = base + QLatin1Char('.') + extension;
+        if (used.contains(QFileInfo(path).absoluteFilePath())) {
+            QString tag = QString::fromUtf8(format->label).section(QStringLiteral(" · "), 1);
+            tag = tag.section(QStringLiteral(" ("), 0, 0).section(QLatin1Char(','), 0, 0).trimmed();
+            path = base + QStringLiteral(" - ") + tag + QLatin1Char('.') + extension;
+        }
+        for (int n = 2; used.contains(QFileInfo(path).absoluteFilePath()); ++n)
+            path = base + QStringLiteral(" %1.").arg(n) + extension;
+        used.insert(QFileInfo(path).absoluteFilePath());
+        QVariantMap each = options;
+        each.insert(QStringLiteral("format"), id);
+        each.remove(QStringLiteral("preset"));
+        // A GIF keeps its own size and rate (small, 15 fps) unless it was the one chosen.
+        if (format->codec == VideoCodec::Gif) {
+            each.remove(QStringLiteral("width"));
+            each.remove(QStringLiteral("height"));
+            each.remove(QStringLiteral("shortSide"));
+            each.remove(QStringLiteral("frameRate"));
+        }
+        if (exportVideo(QUrl::fromLocalFile(path), each))
+            ++count;
+    }
+    return count;
 }
 
 int ProjectController::exportMarkerRanges(const QUrl& folder, const QVariantMap& options)

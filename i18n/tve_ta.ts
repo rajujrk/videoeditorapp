@@ -1801,6 +1801,10 @@
         <translation>வடிவம்</translation>
     </message>
     <message>
+        <source>Also as</source>
+        <translation>இவற்றிலும்</translation>
+    </message>
+    <message>
         <source>Size</source>
         <translation>அளவு</translation>
     </message>
@@ -1823,6 +1827,18 @@
     <message>
         <source>Small</source>
         <translation>சிறிய</translation>
+    </message>
+    <message>
+        <source>File size</source>
+        <translation>கோப்பு அளவு</translation>
+    </message>
+    <message>
+        <source>The file stays under this many megabytes</source>
+        <translation>கோப்பு இத்தனை மெகாபைட்டுகளுக்குள் இருக்கும்</translation>
+    </message>
+    <message>
+        <source>MB</source>
+        <translation>MB</translation>
     </message>
     <message>
         <source>Colour</source>
@@ -1885,6 +1901,22 @@
         <translation>−23 LUFS (EBU R128)</translation>
     </message>
     <message>
+        <source>Key photo</source>
+        <translation>முதன்மைப் படம்</translation>
+    </message>
+    <message>
+        <source>At the playhead (%1), with the movie from %2 to %3</source>
+        <translation>இயக்கக்குறியில் (%1), %2 முதல் %3 வரையிலான வீடியோவுடன்</translation>
+    </message>
+    <message>
+        <source>Add to Photos</source>
+        <translation>Photos-இல் சேர்</translation>
+    </message>
+    <message>
+        <source>Saved as a .heic key photo and a .mov beside it, which Photos shows as one Live Photo.</source>
+        <translation>ஒரு .heic முதன்மைப் படமாகவும் அதனருகே ஒரு .mov ஆகவும் சேமிக்கப்படும்; Photos இவற்றை ஒரே Live Photo ஆகக் காட்டும்.</translation>
+    </message>
+    <message>
         <source>Range</source>
         <translation>வரம்பு</translation>
     </message>
@@ -1919,6 +1951,18 @@
     <message>
         <source>Paused · </source>
         <translation>இடைநிறுத்தப்பட்டது · </translation>
+    </message>
+    <message>
+        <source>Saved %1 and its key photo.</source>
+        <translation>%1-உம் அதன் முதன்மைப் படமும் சேமிக்கப்பட்டன.</translation>
+    </message>
+    <message>
+        <source>Saved %1. 1 more format is in the queue.</source>
+        <translation>%1 சேமிக்கப்பட்டது. மேலும் 1 வடிவம் வரிசையில் உள்ளது.</translation>
+    </message>
+    <message>
+        <source>Saved %1. %2 more formats are in the queue.</source>
+        <translation>%1 சேமிக்கப்பட்டது. மேலும் %2 வடிவங்கள் வரிசையில் உள்ளன.</translation>
     </message>
     <message>
         <source>Saved %1.</source>
@@ -5559,6 +5603,10 @@ Third, 4</source>
         <translation>MP3 · 320 kbit/s, ஒலி மட்டும்</translation>
     </message>
     <message>
+        <source>Live Photo · a key photo and 3 seconds around it</source>
+        <translation>Live Photo · ஒரு முதன்மைப் படமும் அதைச் சுற்றிய 3 வினாடிகளும்</translation>
+    </message>
+    <message>
         <source>Unknown export preset: %1</source>
         <translation>தெரியாத ஏற்றுமதி முன்னமைவு: %1</translation>
     </message>
@@ -5583,12 +5631,20 @@ Third, 4</source>
         <translation>அந்த வரம்பில் ஏற்றுமதி செய்ய எதுவும் இல்லை</translation>
     </message>
     <message>
+        <source>%1 MB is too small for %2 seconds of video: make it at least %3 MB</source>
+        <translation>%2 வினாடி வீடியோவுக்கு %1 MB மிகச் சிறியது: குறைந்தது %3 MB ஆக்கவும்</translation>
+    </message>
+    <message>
         <source>Choose where to save the video</source>
         <translation>வீடியோவை எங்கே சேமிப்பது எனத் தேர்ந்தெடுக்கவும்</translation>
     </message>
     <message>
         <source>That file is already being exported</source>
         <translation>அந்தக் கோப்பு ஏற்கெனவே ஏற்றுமதியாகிறது</translation>
+    </message>
+    <message>
+        <source>Live Photo</source>
+        <translation>Live Photo</translation>
     </message>
     <message>
         <source>Give markers a length (a range) to export them one by one</source>

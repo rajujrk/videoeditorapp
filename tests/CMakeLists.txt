@@ -52,6 +52,7 @@ add_executable(tve_engine_tests
     engine/test_ffmpeg_license.cpp
     engine/test_decoder.cpp
     engine/test_image_files.cpp
+    engine/test_live_photo.cpp
     engine/test_frame_queue.cpp
     engine/test_timeline_playback.cpp
     engine/test_audio.cpp

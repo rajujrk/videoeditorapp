@@ -2,15 +2,20 @@
 
 #include "Language.h"
 #include "FrameCompositor.h"
+#include "StillRenderer.h"
 
 #include "decode/AudioDecoder.h"
+#include "encode/LivePhoto.h"
 #include "gpu/ColourPass.h"
 #include "gpu/Compositor.h"
 #include "audio/dsp/Biquad.h"
 #include "playback/TimelineAudio.h"
 #include "playback/TimelinePlayback.h"
 
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QLocale>
 #include <rhi/qrhi.h>
 #include <rhi/qrhi_platform.h>
 
@@ -116,8 +121,91 @@ std::vector<std::uint8_t> packedRows(const QRhiReadbackResult& result, int width
 
 } // namespace
 
+QString Exporter::livePhotoStill(const QString& moviePath)
+{
+    const QFileInfo movie(moviePath);
+    return movie.dir().filePath(movie.completeBaseName() + QStringLiteral(".heic"));
+}
+
 Exporter::Result Exporter::run(std::shared_ptr<const tve::Project> project, const QString& path, const Options& options,
                                const std::function<bool(double)>& progress)
+{
+    if (!options.livePhotoKey && options.targetBytes > 0) {
+        Options attempt = options;
+        for (int pass = 0;; ++pass) {
+            Result result = render(project, path, attempt, progress);
+            if (!result.ok)
+                return result;
+            const qint64 size = QFileInfo(path).size();
+            if (size <= options.targetBytes)
+                return result;
+            if (pass == 2) {
+                QFile::remove(path);
+                return Result{false, QStringLiteral("Could not get it under %1 MB (it came out at %2 MB): the pictures "
+                                                    "need more than that. Choose a larger size or a smaller picture.")
+                                         .arg(QLocale().toString(double(options.targetBytes) / 1e6, 'f', 1))
+                                         .arg(QLocale().toString(double(size) / 1e6, 'f', 1))};
+            }
+            // Over by some share: the pictures get that much less (and a little more off).
+            const double scale = double(options.targetBytes) / double(size) * 0.97;
+            const auto bitrate = std::max<std::int64_t>(100'000, std::int64_t(double(attempt.settings.videoBitrate) * scale));
+            attempt.settings.videoBitrate = attempt.settings.maxVideoBitrate = bitrate;
+        }
+    }
+    if (!options.livePhotoKey)
+        return render(project, path, options, progress);
+
+    // A Live Photo: the movie rendered beside it first, then copied with the content
+    // identifier and the key photo's moment; the key photo rendered at that moment.
+    const QString part = path + QStringLiteral(".part.mov");
+    const QString still = livePhotoStill(path);
+    Result result = render(project, part, options, [&](double done) { return !progress || progress(done * 0.95); });
+    if (!result.ok) {
+        QFile::remove(part);
+        return result;
+    }
+    const auto fail = [&](const QString& message) {
+        QFile::remove(part);
+        QFile::remove(path);
+        QFile::remove(still);
+        return Result{false, message};
+    };
+    const std::string identifier = tve::livephoto::newIdentifier();
+    const tve::Ticks from = std::clamp<tve::Ticks>(options.from, 0, project->duration());
+    std::string error;
+    if (!tve::livephoto::writeMovie(part.toStdString(), path.toStdString(), identifier, *options.livePhotoKey - from, &error))
+        return fail(coreText(error));
+    QFile::remove(part);
+
+    StillRenderer renderer;
+    const QSize size(options.settings.width, options.settings.height);
+    QImage photo = renderer.isValid() ? renderer.render(project, *options.livePhotoKey, size) : QImage();
+    if (photo.isNull())
+        return fail(QStringLiteral("could not render the key photo"));
+    photo = photo.convertToFormat(QImage::Format_RGBA8888);
+    if (!tve::livephoto::writeStill(still.toStdString(), photo.constBits(), photo.width(), photo.height(),
+                                    std::size_t(photo.bytesPerLine()), identifier, &error))
+        return fail(coreText(error));
+
+    if (options.addToPhotos) {
+        // (Tests name a folder to stand in for the library.)
+        const QString library = qEnvironmentVariable("TVE_LIVE_PHOTO_LIBRARY");
+        if (!library.isEmpty()) {
+            QDir().mkpath(library);
+            QFile::copy(still, QDir(library).filePath(QFileInfo(still).fileName()));
+            QFile::copy(path, QDir(library).filePath(QFileInfo(path).fileName()));
+        } else if (!tve::livephoto::addToPhotos(still.toStdString(), path.toStdString(), &error)) {
+            // The files are made; only Photos said no.
+            return Result{false, QStringLiteral("Saved, but not added to Photos: %1").arg(coreText(error))};
+        }
+    }
+    if (progress)
+        progress(1.0);
+    return Result{true, {}};
+}
+
+Exporter::Result Exporter::render(std::shared_ptr<const tve::Project> project, const QString& path, const Options& options,
+                                  const std::function<bool(double)>& progress)
 {
     Result result;
     const tve::MediaSettings& settings = options.settings;

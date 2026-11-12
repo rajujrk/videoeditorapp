@@ -32,6 +32,9 @@ struct MediaSettings {
     // channel in the file).
     bool alpha = false;
     std::int64_t videoBitrate = 0; // bits per second (H.264, HEVC); 0 picks one from size and frame rate
+    // H.264, HEVC: no second of pictures over this many bits (0: no ceiling). With videoBitrate
+    // the same, the pictures cannot pass videoBitrate × length.
+    std::int64_t maxVideoBitrate = 0;
     std::int64_t audioBitrate = 192'000; // AAC and MP3
     bool audio = true; // false: no sound track (GIF never has one)
     AudioCodec audioCodec = AudioCodec::Aac;

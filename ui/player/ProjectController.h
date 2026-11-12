@@ -993,9 +993,17 @@ public:
     // project's), quality ("high", "standard", "small") or videoBitrate (bits/s), audio
     // (false: no sound track), normalizeLoudness and loudnessTarget (LUFS), and range: "all"
     // (default), "selection" (the selected clips' span), "marker" (markerId, a marker with a
-    // length) or "custom" (from, to in seconds). Returns false (with lastError) if it cannot:
+    // length) or "custom" (from, to in seconds); targetSize (megabytes: H.264 and HEVC aim
+    // under it, refused when too small for the range). Format "live-photo": a Live Photo,
+    // 3 seconds around keyTime (seconds; the playhead) with its key photo beside the movie,
+    // and addToPhotos to put it in the Photos library. Returns false (with lastError) if it cannot:
     // an empty range, a file already in the queue, or settings that do not go together.
     Q_INVOKABLE bool exportVideo(const QUrl& file, const QVariantMap& options = {});
+    // The same export in more formats at once (exportFormats ids; the one in `options` and a
+    // Live Photo are left out): one job each, beside `file` with its name and the format's
+    // extension, or "<name> - <format>" when that is taken. A GIF keeps its own size and rate.
+    // Returns how many were queued.
+    Q_INVOKABLE int exportAlso(const QUrl& file, const QVariantMap& options, const QStringList& formats);
     // Queues one export per marker with a length into `folder`, named by their notes; returns
     // how many.
     Q_INVOKABLE int exportMarkerRanges(const QUrl& folder, const QVariantMap& options = {});

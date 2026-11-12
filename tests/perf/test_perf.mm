@@ -425,7 +425,7 @@ TEST_CASE("start-up: the app launched to its Home screen drawn", "[perf]")
                              "TVE_GENERATED_DIR", "TVE_IMPORT_DIR", "TVE_PROCESSED_DIR", "TVE_ENHANCED_DIR",
                              "TVE_ANALYSIS_DIR", "TVE_COLOR_PRESET_DIR", "TVE_TITLE_PRESET_DIR", "TVE_OVERLAY_CACHE_DIR", "TVE_SOUND_CACHE_DIR",
                              "TVE_SOUND_PACK_DIR", "TVE_TEMPLATE_DIR", "TVE_TEMPLATE_CACHE_DIR", "TVE_PACKS_DIR",
-                             "TVE_CONSENT_DIR", "TVE_KEY_STORE", "TVE_RENDER_CACHE_DIR"}) {
+                             "TVE_CONSENT_DIR", "TVE_KEY_STORE", "TVE_RENDER_CACHE_DIR", "TVE_LIVE_PHOTO_LIBRARY"}) {
         const QString dir = root + QLatin1Char('/') + QString::fromLatin1(name);
         QDir().mkpath(dir);
         env.insert(QString::fromLatin1(name), dir);

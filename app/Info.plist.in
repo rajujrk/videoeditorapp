@@ -38,6 +38,9 @@
 	<!-- Asked the first time the Photos or Music library is opened for importing. -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>TechieVideoEditor imports the photos and videos you choose from your Photos library.</string>
+	<!-- Asked the first time a Live Photo is added to Photos (add-only). -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>TechieVideoEditor adds the Live Photos you export to your Photos library.</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>TechieVideoEditor lists the songs in your Music library so you can add them to a project.</string>
 </dict>
