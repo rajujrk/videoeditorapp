@@ -40,6 +40,15 @@ struct HslBand {
     friend bool operator==(const HslBand&, const HslBand&) = default;
 };
 inline constexpr int kHslBands = 8;
+
+// HDR wheels: six overlapping brightness zones (black, dark, shadow, light, highlight,
+// specular), each a wheel pushing its tones' colour and (master) brightness; the offset wheel
+// is the seventh, global one. Zone centres and half-widths are in gamma-encoded luma.
+inline constexpr int kToneZones = 6;
+inline constexpr std::array<float, kToneZones> kToneZoneCentres{0.02f, 0.15f, 0.32f, 0.55f, 0.78f, 0.97f};
+inline constexpr float kToneZoneWidth = 0.2f;
+// How much of zone `zone` a pixel of luma `luma` takes (0..1; the zones blend between centres).
+float toneZoneWeight(int zone, float luma);
 // Band centres, in degrees: red, orange, yellow, green, aqua, blue, purple, magenta.
 inline constexpr std::array<double, kHslBands> kHslBandHues{0, 30, 60, 120, 180, 240, 270, 300};
 
@@ -56,6 +65,7 @@ struct ColorGrade {
     ColorWheel gamma;         // midtones
     ColorWheel gain;          // highlights
     ColorWheel offset;        // everything
+    std::array<ColorWheel, kToneZones> zones{}; // HDR wheels, darkest first
     ColorCurve master;
     ColorCurve red;
     ColorCurve green;
@@ -99,6 +109,9 @@ struct GradeCoefficients {
     std::array<std::array<float, 3>, kHslBands> hsl{};
     bool hslActive = false;
     bool hueCurves = false;
+    // HDR wheels: each zone's RGB shift (gamma-encoded), and whether any applies.
+    std::array<std::array<float, 3>, kToneZones> zones{};
+    bool zonesActive = false;
 };
 GradeCoefficients gradeCoefficients(const ColorGrade& grade);
 

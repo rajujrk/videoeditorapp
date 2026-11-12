@@ -64,6 +64,9 @@ std::optional<std::string> validateGrade(const ColorGrade& g)
         if (auto error = validateWheel(*wheel, name))
             return error;
     }
+    for (const ColorWheel& zone : g.zones)
+        if (auto error = validateWheel(zone, "HDR"))
+            return error;
     for (const HslBand& band : g.hsl) {
         if (!inRange(band.hue, -1.0, 1.0) || !inRange(band.saturation, -1.0, 1.0) || !inRange(band.luminance, -1.0, 1.0))
             return "HSL adjustments must be between -100% and +100%";
@@ -87,6 +90,11 @@ ColorGrade scaledGrade(const ColorGrade& g, double amount)
         w->x *= amount;
         w->y *= amount;
         w->master *= amount;
+    }
+    for (ColorWheel& w : s.zones) {
+        w.x *= amount;
+        w.y *= amount;
+        w.master *= amount;
     }
     for (ColorCurve* curve : {&s.master, &s.red, &s.green, &s.blue}) {
         for (CurvePoint& p : *curve)
@@ -177,7 +185,19 @@ GradeCoefficients gradeCoefficients(const ColorGrade& g)
         c.hslActive = c.hslActive || band != HslBand{};
     }
     c.hueCurves = !g.hueVsSat.empty() || !g.hueVsHue.empty() || !g.lumaVsSat.empty();
+    for (int z = 0; z < kToneZones; ++z) {
+        const ColorWheel& wheel = g.zones[std::size_t(z)];
+        const auto shift = wheelShift(wheel);
+        for (int i = 0; i < 3; ++i)
+            c.zones[std::size_t(z)][std::size_t(i)] = 0.15f * shift[std::size_t(i)] + 0.25f * float(wheel.master);
+        c.zonesActive = c.zonesActive || wheel != ColorWheel{};
+    }
     return c;
+}
+
+float toneZoneWeight(int zone, float luma)
+{
+    return std::max(0.0f, 1.0f - std::abs(luma - kToneZoneCentres[std::size_t(zone)]) / kToneZoneWidth);
 }
 
 std::array<std::vector<float>, 3> bakeCurves(const ColorGrade& g, int size)
@@ -262,6 +282,15 @@ std::array<float, 3> applyGrade(const GradeCoefficients& c, const std::array<std
         v = c.gain[i] * (v + c.lift[i] * (1.0f - v));
         v = std::pow(std::max(v, 0.0f), c.gammaExponent[i]);
         rgb[i] = v + c.offset[i];
+    }
+    if (c.zonesActive) {
+        // HDR wheels: each zone's shift by how much of it this pixel's brightness is.
+        const float tone = std::clamp(0.2126f * rgb[0] + 0.7152f * rgb[1] + 0.0722f * rgb[2], 0.0f, 1.0f);
+        for (int z = 0; z < kToneZones; ++z) {
+            const float w = toneZoneWeight(z, tone);
+            for (int i = 0; i < 3; ++i)
+                rgb[std::size_t(i)] += w * c.zones[std::size_t(z)][std::size_t(i)];
+        }
     }
     const float luma = 0.2126f * rgb[0] + 0.7152f * rgb[1] + 0.0722f * rgb[2];
     for (int i = 0; i < 3; ++i)

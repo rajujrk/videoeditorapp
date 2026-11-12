@@ -1,7 +1,7 @@
 #version 440
 
 // A clip's colour grade (see ColorGrade.h and applyGrade(), which this mirrors): exposure
-// and white balance in linear light, contrast, lift/gain then gamma, offset, saturation,
+// and white balance in linear light, contrast, lift/gain then gamma, offset, HDR wheels, saturation,
 // HSL bands and hue curves, tone curves from a lookup texture, then a 3D LUT mixed in by
 // its intensity.
 
@@ -20,7 +20,8 @@ layout(std140, binding = 0) uniform EffectParams {
     vec4 lutMin;     // xyz: domain start; w: LUT size
     vec4 lutScale;   // xyz: 1 / domain size
     vec4 hslBands[8]; // per band: hue shift (turns), saturation factor, value factor, centre (degrees)
-    vec4 flags;       // x: HSL bands apply; y: hue curves apply
+    vec4 flags;       // x: HSL bands apply; y: hue curves apply; z: HDR wheels apply
+    vec4 zones[6];    // HDR wheels, darkest first: xyz the zone's shift, w its centre (luma)
 };
 
 layout(binding = 1) uniform sampler2D tve_source;
@@ -74,6 +75,15 @@ void main()
     c = gain.xyz * (c + lift.xyz * (1.0 - c));
     c = pow(max(c, 0.0), gammaExp.xyz);
     c += offset.xyz;
+    if (flags.z > 0.5) {
+        // HDR wheels: each zone's shift by how much of it this pixel's brightness is (tents
+        // 0.2 wide about the zone centres; see toneZoneWeight()).
+        float tone = clamp(dot(c, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
+        vec3 shift = vec3(0.0);
+        for (int z = 0; z < 6; ++z)
+            shift += max(0.0, 1.0 - abs(tone - zones[z].w) / 0.2) * zones[z].xyz;
+        c += shift;
+    }
     float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
     c = clamp(mix(vec3(luma), c, gammaExp.w), 0.0, 1.0);
     if (flags.x > 0.5 || flags.y > 0.5) {

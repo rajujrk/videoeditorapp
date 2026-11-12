@@ -72,6 +72,7 @@
 
 #include "StillRenderer.h"
 #include "model/ClipAnimation.h"
+#include "model/ColourMatch.h"
 
 #include <QCryptographicHash>
 #include <QLinearGradient>
@@ -825,6 +826,12 @@ QVariantMap gradeMap(const ColorGrade& g)
         {QStringLiteral("gamma"), wheelMap(g.gamma)},
         {QStringLiteral("gain"), wheelMap(g.gain)},
         {QStringLiteral("offset"), wheelMap(g.offset)},
+        {QStringLiteral("black"), wheelMap(g.zones[0])},
+        {QStringLiteral("dark"), wheelMap(g.zones[1])},
+        {QStringLiteral("shadow"), wheelMap(g.zones[2])},
+        {QStringLiteral("light"), wheelMap(g.zones[3])},
+        {QStringLiteral("highlight"), wheelMap(g.zones[4])},
+        {QStringLiteral("specular"), wheelMap(g.zones[5])},
         {QStringLiteral("master"), curveList(g.master)},
         {QStringLiteral("red"), curveList(g.red)},
         {QStringLiteral("green"), curveList(g.green)},
@@ -2628,6 +2635,13 @@ std::optional<ColorGrade> ProjectController::gradeWith(Id clipId, const QVariant
     wheel("gamma", g.gamma);
     wheel("gain", g.gain);
     wheel("offset", g.offset);
+    // HDR wheels, darkest first.
+    wheel("black", g.zones[0]);
+    wheel("dark", g.zones[1]);
+    wheel("shadow", g.zones[2]);
+    wheel("light", g.zones[3]);
+    wheel("highlight", g.zones[4]);
+    wheel("specular", g.zones[5]);
     curve("master", g.master);
     curve("red", g.red);
     curve("green", g.green);
@@ -10208,4 +10222,164 @@ bool ProjectController::setClipMotionBlur(double clipId, double shutter)
     Project after = m_project;
     after.locateClip(toId(clipId))->clip->motionBlur = value;
     return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Motion Blur")));
+}
+
+// --- Colour tools (25c) ---
+
+std::vector<std::array<float, 3>> ProjectController::pixelsForColour(const Clip& clip, Ticks at) const
+{
+    const MediaItem* media = m_project.findMedia(clip.mediaId);
+    if (!media || !media->hasVideo || clip.generated() || clip.compound())
+        return {};
+    QImage picture;
+    if (media->still) {
+        picture = still::read(QString::fromStdString(media->path), 360);
+    } else {
+        const Ticks inside = std::clamp(at, clip.start, clip.end() - 1);
+        if (auto frame = extractThumbnail(media->path, clampedSourceTime(m_project, clip, inside), 360))
+            picture = QImage(frame->pixels.data(), frame->width, frame->height, QImage::Format_RGBA8888).copy();
+    }
+    if (picture.isNull())
+        return {};
+    picture = picture.convertToFormat(QImage::Format_RGBA8888);
+    // Its look, then its grade without the curves the tools set (the master curve stays).
+    ColorGrade grade = clip.color;
+    grade.red.clear();
+    grade.green.clear();
+    grade.blue.clear();
+    const ColorGrade look = clip.look ? clip.look->effective() : ColorGrade{};
+    const auto stage = [](const ColorGrade& g) {
+        return std::tuple{gradeCoefficients(g), bakeCurves(g), bakeHueCurves(g), g.isNeutral()};
+    };
+    const auto steps = {stage(look), stage(grade)};
+    std::vector<std::array<float, 3>> pixels;
+    const int step = std::max(1, int(std::sqrt(double(picture.width()) * picture.height() / 40000.0)));
+    for (int y = 0; y < picture.height(); y += step) {
+        const uchar* row = picture.constScanLine(y);
+        for (int x = 0; x < picture.width(); x += step) {
+            if (row[x * 4 + 3] < 128)
+                continue; // (transparent parts are not the picture)
+            std::array<float, 3> rgb{row[x * 4] / 255.0f, row[x * 4 + 1] / 255.0f, row[x * 4 + 2] / 255.0f};
+            for (const auto& [c, curves, hue, neutral] : steps)
+                if (!neutral)
+                    rgb = applyGrade(c, curves, rgb, hue);
+            pixels.push_back(rgb);
+        }
+    }
+    return pixels;
+}
+
+bool ProjectController::autoColour(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    const auto pixels = clip ? pixelsForColour(*clip, ticks(m_playhead)) : std::vector<std::array<float, 3>>{};
+    if (pixels.empty()) {
+        reportError(tr("Select a video or picture clip to correct its colour"));
+        return false;
+    }
+    const ColourStats stats = colourStats(pixels);
+    const ColorGrade grade = withMatchingCurves(clip->color, stats, autoColourTarget(stats));
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{clip->id}, grade, TVE_TR("core", "Auto Colour")));
+}
+
+bool ProjectController::matchColour(double clipId, double referenceClipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    const Clip* reference = findClip(toId(referenceClipId));
+    if (!clip || !reference || clip->id == reference->id) {
+        reportError(tr("Choose another clip to match the colour to"));
+        return false;
+    }
+    // Each at the playhead if it is there, else halfway through.
+    const Ticks now = ticks(m_playhead);
+    const auto when = [&](const Clip& c) { return now >= c.start && now < c.end() ? now : c.start + c.duration / 2; };
+    const auto pixels = pixelsForColour(*clip, when(*clip));
+    auto target = pixelsForColour(*reference, when(*reference));
+    if (pixels.empty() || target.empty()) {
+        reportError(tr("Both clips need a picture to match colours"));
+        return false;
+    }
+    // The reference as it looks: its own red, green and blue curves too.
+    const ColorGrade own{.red = reference->color.red, .green = reference->color.green, .blue = reference->color.blue};
+    if (!own.isNeutral()) {
+        const auto c = gradeCoefficients(own);
+        const auto curves = bakeCurves(own);
+        for (auto& rgb : target)
+            rgb = applyGrade(c, curves, rgb);
+    }
+    const ColorGrade grade = withMatchingCurves(clip->color, colourStats(pixels), colourStats(target));
+    return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{clip->id}, grade, TVE_TR("core", "Match Colour")));
+}
+
+namespace {
+
+struct LensPreset {
+    const char* id;
+    const char* title;
+    double amount; // the lens distortion effect's: negative straightens a barrel
+    double zoom;
+};
+
+// Starting points for common wide lenses (an amount to fine-tune on the effect).
+const std::vector<LensPreset>& lensPresetList()
+{
+    static const std::vector<LensPreset> presets{
+        {"action-wide", QT_TRANSLATE_NOOP("ProjectController", "Action camera, wide"), -0.42, 1.0},
+        {"action-superwide", QT_TRANSLATE_NOOP("ProjectController", "Action camera, super wide"), -0.58, 1.0},
+        {"action-medium", QT_TRANSLATE_NOOP("ProjectController", "Action camera, medium"), -0.28, 1.0},
+        {"phone-ultrawide", QT_TRANSLATE_NOOP("ProjectController", "Phone ultra wide (0.5×)"), -0.18, 1.0},
+        {"drone-wide", QT_TRANSLATE_NOOP("ProjectController", "Drone, wide"), -0.24, 1.0},
+        {"fisheye", QT_TRANSLATE_NOOP("ProjectController", "Fisheye"), -0.85, 1.0},
+    };
+    return presets;
+}
+
+constexpr const char* kLensEffect = "tve.distort.lens";
+
+} // namespace
+
+QVariantList ProjectController::lensPresets() const
+{
+    QVariantList list;
+    for (const LensPreset& preset : lensPresetList())
+        list << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(preset.id)},
+                            {QStringLiteral("title"), tr(preset.title)},
+                            {QStringLiteral("amount"), preset.amount}};
+    return list;
+}
+
+bool ProjectController::correctLens(double clipId, const QString& presetId)
+{
+    const auto location = m_project.locateClip(toId(clipId));
+    if (!location || location->track->kind == TrackKind::Audio || location->clip->generated()) {
+        reportError(tr("Select a video or picture clip"));
+        return false;
+    }
+    std::vector<ClipEffect> effects = location->clip->effects;
+    const auto existing = std::ranges::find(effects, std::string(kLensEffect), &ClipEffect::effectId);
+    if (presetId == QLatin1String("none")) {
+        if (existing == effects.end())
+            return true;
+        effects.erase(existing);
+        return apply(std::make_unique<SetClipEffectsCommand>(location->clip->id, std::move(effects),
+                                                              TVE_TR("core", "Lens Correction")));
+    }
+    const auto& presets = lensPresetList();
+    const auto preset = std::ranges::find(presets, presetId.toStdString(), [](const LensPreset& p) { return std::string(p.id); });
+    if (preset == presets.end()) {
+        reportError(tr("There is no such lens"));
+        return false;
+    }
+    ClipEffect lens{.effectId = kLensEffect};
+    if (existing != effects.end())
+        lens = *existing;
+    lens.values["amount"] = {float(preset->amount)};
+    lens.values["zoom"] = {float(preset->zoom)};
+    lens.values["fringe"] = {0.0f};
+    lens.keyframes.erase("amount");
+    if (existing != effects.end())
+        *existing = lens;
+    else
+        effects.insert(effects.begin(), lens); // first: straightened before other effects
+    return apply(std::make_unique<SetClipEffectsCommand>(location->clip->id, std::move(effects), TVE_TR("core", "Lens Correction")));
 }
