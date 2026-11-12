@@ -127,7 +127,7 @@ std::optional<std::string> validateSettings(const MediaSettings& s)
         const AudioCodec a = s.audioCodec;
         const bool fits = s.container == Container::Mp4 || s.container == Container::M4a ? a == AudioCodec::Aac
                         : s.container == Container::Mov ? a != AudioCodec::Flac
-                        : s.container == Container::Wav ? a == AudioCodec::Pcm16 || a == AudioCodec::Pcm24
+                        : s.container == Container::Wav ? a == AudioCodec::Pcm16 || a == AudioCodec::Pcm24 || a == AudioCodec::Pcm32Float
                         : s.container == Container::Flac ? a == AudioCodec::Flac
                         : s.container == Container::Mp3 ? a == AudioCodec::Mp3
                                                          : true;
@@ -163,6 +163,7 @@ std::int64_t audioBitrate(const MediaSettings& settings)
     case AudioCodec::Mp3: return settings.audioBitrate;
     case AudioCodec::Pcm16: return std::int64_t(audio::kSampleRate) * audio::kChannels * 16;
     case AudioCodec::Pcm24: return std::int64_t(audio::kSampleRate) * audio::kChannels * 24;
+    case AudioCodec::Pcm32Float: return std::int64_t(audio::kSampleRate) * audio::kChannels * 32;
     case AudioCodec::Flac: return std::int64_t(audio::kSampleRate) * audio::kChannels * 16 * 6 / 10;
     }
     return 0;
@@ -247,6 +248,9 @@ struct MediaWriter::Impl {
             }
             break;
         }
+        case AV_SAMPLE_FMT_FLT: // as mixed: nothing clipped
+            std::copy_n(interleaved, count, reinterpret_cast<float*>(audioFrame->data[0]));
+            break;
         case AV_SAMPLE_FMT_S16: {
             auto* out = reinterpret_cast<std::int16_t*>(audioFrame->data[0]);
             for (int i = 0; i < count; ++i)
@@ -423,6 +427,7 @@ struct MediaWriter::Impl {
         case AudioCodec::Aac: break;
         case AudioCodec::Pcm16: id = AV_CODEC_ID_PCM_S16LE; sampleFormat = AV_SAMPLE_FMT_S16; break;
         case AudioCodec::Pcm24: id = AV_CODEC_ID_PCM_S24LE; sampleFormat = AV_SAMPLE_FMT_S32; break;
+        case AudioCodec::Pcm32Float: id = AV_CODEC_ID_PCM_F32LE; sampleFormat = AV_SAMPLE_FMT_FLT; break;
         case AudioCodec::Flac: id = AV_CODEC_ID_FLAC; sampleFormat = AV_SAMPLE_FMT_S32; break;
         case AudioCodec::Mp3: id = AV_CODEC_ID_MP3; break; // LAME (libmp3lame), planar float
         }
