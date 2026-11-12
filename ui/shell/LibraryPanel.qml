@@ -698,7 +698,7 @@ Rectangle {
                     readonly property bool reveal: !!modelData.reveal
                     readonly property bool animated: !!(modelData.style.animationIn || modelData.style.animationOut
                                                         || modelData.style.animationLoop || modelData.style.scroll
-                                                        || modelData.style.chart)
+                                                        || modelData.style.chart || modelData.style.visualiser)
                     width: titlesGrid.cellWidth
                     height: titlesGrid.cellHeight
 
@@ -793,6 +793,8 @@ Rectangle {
                             } else if (titleTile.reveal) {
                                 library.pendingReveal = titleTile.modelData.reveal
                                 logoDialog.open()
+                            } else if (titleTile.modelData.style.visualiser) {
+                                library.project.addVisualiser(titleTile.modelData.style) // over the music, as long as it
                             } else {
                                 library.project.addTitle(titleTile.modelData.style)
                             }
@@ -804,6 +806,7 @@ Rectangle {
                         visible: titleMouse.containsMouse && !titleMouse.drag.active
                         delay: 800
                         text: titleTile.reveal ? qsTr("Click to choose your logo; it is revealed at the playhead")
+                            : titleTile.modelData.style.visualiser ? qsTr("Click to add it over the music at the playhead, as long as the music")
                             : titleTile.modelData.preset ? qsTr("Click to add at the playhead, or drag onto a track. Right-click to delete.")
                             : qsTr("Click to add at the playhead, or drag onto a track")
                     }

@@ -418,3 +418,55 @@ TEST_CASE("logo reveals are built from the app's own animations", "[titles]")
     }
     CHECK(findLogoReveal("nope") == nullptr);
 }
+
+TEST_CASE("audio visualisers: levels between frames, checked, and saved compactly", "[titles]")
+{
+    ClipText text;
+    text.text = "On air";
+    TextVisualiser v;
+    v.style = VisualiserStyle::Ring;
+    v.size = 0.6;
+    CHECK_FALSE(validateText(ClipText{.visualiser = v}));
+    text.visualiser = v;
+    CHECK_FALSE(text.animated()); // not measured yet
+    // Every byte value, over a few frames.
+    constexpr auto bands = std::size_t(TextVisualiser::kBands);
+    for (std::size_t i = 0; i < bands * 9; ++i)
+        text.visualiser->frames.push_back(std::uint8_t((i * 7) % 256));
+    text.visualiser->frames[0] = 0;
+    text.visualiser->frames[bands] = 255; // band 0: 0 then full
+    CHECK(text.animated());
+    CHECK(text.visualiser->frameCount() == 9);
+    CHECK(text.visualiser->levelAt(0.0, 0) == 0.0);
+    CHECK(text.visualiser->levelAt(0.5 / TextVisualiser::kRate, 0) == Catch::Approx(0.5));
+    CHECK(text.visualiser->levelAt(1.0 / TextVisualiser::kRate, 0) == Catch::Approx(1.0));
+    CHECK(text.visualiser->levelAt(10.0, 0) == 0.0); // past the measurements
+    CHECK(text.visualiser->levelAt(0.0, TextVisualiser::kBands) == 0.0);
+    CHECK_FALSE(validateText(text));
+
+    Project project;
+    Clip clip{.id = 1, .duration = kTicksPerSecond};
+    clip.text = text;
+    project.tracks.push_back(Track{.id = 2, .kind = TrackKind::Title, .clips = {clip}});
+    project.setNextId(3);
+    nlohmann::json json = projectToJson(project);
+    const nlohmann::json& saved = json["tracks"][0]["clips"][0]["text"]["visualiser"];
+    CHECK(saved["frames"].is_string()); // base64, not an array of numbers
+    CHECK(saved["style"] == "ring");
+    CHECK(projectFromJson(json).tracks == project.tracks);
+    json["tracks"][0]["clips"][0]["text"].erase("visualiser");
+    CHECK_FALSE(projectFromJson(json).tracks.front().clips.front().text->visualiser);
+
+    ClipText bad = text;
+    bad.visualiser->size = 0.05;
+    CHECK(validateText(bad).value() == "a visualiser's size must be between 10% and 100%");
+    bad = text;
+    bad.visualiser->frames.pop_back();
+    CHECK(validateText(bad).value() == "a visualiser's levels are damaged");
+    bad = text;
+    bad.visualiser->peak.r = 2.0;
+    CHECK(validateText(bad).value() == "colours must be between 0 and 1");
+    bad = text;
+    bad.chart = TextChart{.points = {{"A", 1.0}}};
+    CHECK(validateText(bad).value() == "a title is a chart or a visualiser, not both");
+}

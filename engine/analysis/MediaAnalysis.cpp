@@ -509,6 +509,122 @@ Beats findBeats(const AudioFeatures& features)
     return beats;
 }
 
+std::optional<std::vector<std::uint8_t>> analyzeSpectrum(const std::string& path, Ticks start, std::size_t count,
+                                                         double rate, int bands, TimeRange within,
+                                                         const AnalysisProgress& progress, std::string* error)
+{
+    std::vector<std::uint8_t> out(count * std::size_t(std::max(bands, 0)), 0);
+    if (count == 0 || bands <= 0 || rate <= 0.0)
+        return out;
+    auto decoder = AudioDecoder::open(path, error);
+    if (!decoder)
+        return std::nullopt;
+    constexpr int kWindow = 2048; // 43 ms at 48 kHz
+    constexpr double kSampleRate = audio::kSampleRate;
+    const auto timeOf = [&](std::size_t k) { return start + fromSeconds(double(k) / rate); };
+    const auto inside = [&](Ticks t) { return t >= within.start && t < within.end && t >= 0; };
+    // The first frame inside: decoding starts half a window before it.
+    std::size_t first = 0;
+    while (first < count && !inside(timeOf(first)))
+        ++first;
+    if (first == count)
+        return out;
+    const Ticks readStart = std::max<Ticks>(0, timeOf(first) - fromSeconds(kWindow / 2 / kSampleRate));
+    if (!decoder->seek(readStart)) {
+        if (error)
+            *error = "cannot seek in the sound";
+        return std::nullopt;
+    }
+    // The band edges (FFT bins), and how much each band is lifted.
+    const double low = 40.0, high = 16000.0;
+    std::vector<std::pair<int, int>> edges(static_cast<std::size_t>(bands));
+    std::vector<double> tilt(static_cast<std::size_t>(bands));
+    const double binHz = kSampleRate / kWindow;
+    for (int b = 0; b < bands; ++b) {
+        const double f0 = low * std::pow(high / low, double(b) / bands);
+        const double f1 = low * std::pow(high / low, double(b + 1) / bands);
+        int a = int(std::ceil(f0 / binHz));
+        int z = int(std::floor(f1 / binHz));
+        if (z < a) // narrower than a bin: the nearest one
+            a = z = int(std::lround(std::sqrt(f0 * f1) / binHz));
+        edges[std::size_t(b)] = {std::clamp(a, 1, kWindow / 2 - 1), std::clamp(z, 1, kWindow / 2 - 1)};
+        tilt[std::size_t(b)] = 3.0 * std::log2(std::sqrt(f0 * f1) / low);
+    }
+    std::vector<float> window(kWindow);
+    for (int i = 0; i < kWindow; ++i)
+        window[std::size_t(i)] = 0.5f - 0.5f * std::cos(2.0f * std::numbers::pi_v<float> * float(i) / float(kWindow));
+
+    // Mono samples from readStart, kept from `dropped` on.
+    std::vector<float> mono;
+    std::int64_t dropped = 0;
+    bool ended = false;
+    std::vector<float> stereo(4096 * 2);
+    std::vector<std::complex<float>> spectrum(kWindow);
+    std::vector<float> raw(out.size(), -1000.0f);
+    double peak = -1000.0;
+    double reported = -1.0;
+    for (std::size_t k = first; k < count; ++k) {
+        const Ticks t = timeOf(k);
+        if (!inside(t))
+            continue;
+        if (progress && double(k - first) / double(count - first) - reported >= 0.01) {
+            reported = double(k - first) / double(count - first);
+            if (!progress(reported))
+                return std::nullopt;
+        }
+        const std::int64_t centre = std::llround(toSeconds(t - readStart) * kSampleRate);
+        const std::int64_t from = centre - kWindow / 2;
+        while (!ended && dropped + std::int64_t(mono.size()) < from + kWindow) {
+            const int got = decoder->read(stereo.data(), 4096);
+            for (int i = 0; i < got; ++i)
+                mono.push_back(0.5f * (stereo[std::size_t(i) * 2] + stereo[std::size_t(i) * 2 + 1]));
+            ended = got < 4096;
+        }
+        if (from - dropped > 1 << 18) { // forget what is behind
+            const std::int64_t forget = from - dropped;
+            mono.erase(mono.begin(), mono.begin() + forget);
+            dropped += forget;
+        }
+        for (int i = 0; i < kWindow; ++i) {
+            const std::int64_t at = from + i - dropped;
+            const float v = at >= 0 && at < std::int64_t(mono.size()) ? mono[std::size_t(at)] : 0.0f;
+            spectrum[std::size_t(i)] = {v * window[std::size_t(i)], 0.0f};
+        }
+        fft(spectrum);
+        for (int b = 0; b < bands; ++b) {
+            const auto [a, z] = edges[std::size_t(b)];
+            double power = 0.0;
+            for (int bin = a; bin <= z; ++bin)
+                power += std::norm(spectrum[std::size_t(bin)]);
+            power /= double(z - a + 1);
+            const double db = 10.0 * std::log10(power + 1e-12) + tilt[std::size_t(b)];
+            raw[k * std::size_t(bands) + std::size_t(b)] = float(db);
+            peak = std::max(peak, db);
+        }
+    }
+    // Levels under the span's loudest (never lifting silence: nothing under −60 dB, where a
+    // full-scale tone is about +54), each band falling back at most 0.06 a frame.
+    const double floor = std::max(peak - 48.0, -60.0);
+    const double range = std::max(peak - floor, 1.0);
+    std::vector<double> held(std::size_t(bands), 0.0);
+    for (std::size_t k = first; k < count; ++k) {
+        if (!inside(timeOf(k))) {
+            std::ranges::fill(held, 0.0);
+            continue;
+        }
+        for (int b = 0; b < bands; ++b) {
+            const std::size_t i = k * std::size_t(bands) + std::size_t(b);
+            const double level = std::clamp((double(raw[i]) - floor) / range, 0.0, 1.0);
+            double& h = held[std::size_t(b)];
+            h = std::max(level, h - 0.06);
+            out[i] = std::uint8_t(std::lround(h * 255.0));
+        }
+    }
+    if (progress)
+        progress(1.0);
+    return out;
+}
+
 std::vector<float> musicLevels(const AudioFeatures& features, Ticks start, std::size_t count, double rate,
                                TimeRange within)
 {

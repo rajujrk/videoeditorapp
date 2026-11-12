@@ -683,6 +683,14 @@ public:
     // A chart title's values from a text or CSV file (a label and a value on each line); a
     // title without a chart becomes a bar chart.
     Q_INVOKABLE bool loadChartData(double clipId, const QUrl& file);
+    // Audio visualisers. addVisualiser puts one over the music under the playhead (on an audio
+    // track first), as long as that music (at most 10 minutes), once its spectrum has been
+    // measured in the background (analysisFinished reports; one undo step). `style` is a
+    // title's text fields with visualiser {style ("bars", "mirror", "wave", "ring"), color, peak,
+    // size}. measureVisualiser measures the music under a visualiser title again (after the
+    // music or the title moved).
+    Q_INVOKABLE bool addVisualiser(const QVariantMap& style);
+    Q_INVOKABLE bool measureVisualiser(double clipId);
     // A logo reveal at the playhead: the picture `logo` (imported if new) on a free picture
     // track and `tagline` under it (none if empty), animated by preset `revealId`, grouped,
     // one undo step; the logo's clip is selected.
@@ -1282,6 +1290,10 @@ private:
     std::shared_ptr<tve::Project> soloProject(const tve::Clip& clip) const;
     // The clip with sound playing longest under a title (on an audio track first), or kNoId.
     tve::Id musicUnder(const tve::Clip& title) const;
+    // Measures the spectrum of `music` under [start, start + duration) of the timeline in the
+    // background, then hands the levels to `then` (not called if it fails or is cancelled).
+    bool measureSpectrum(tve::Id musicId, tve::Ticks start, tve::Ticks duration,
+                         std::function<void(std::vector<std::uint8_t>)> then);
     std::optional<tve::ColorGrade> m_copiedGrade;
     int m_activeMask = -1;
     bool m_pickingKeyColor = false;

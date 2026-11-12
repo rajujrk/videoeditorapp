@@ -10,7 +10,8 @@
 var categories = [
     { id: "", label: QT_TRANSLATE_NOOP("TitleTemplates", "All") }, { id: "titles", label: QT_TRANSLATE_NOOP("TitleTemplates", "Titles") }, { id: "lower", label: QT_TRANSLATE_NOOP("TitleTemplates", "Lower thirds") },
     { id: "callouts", label: QT_TRANSLATE_NOOP("TitleTemplates", "Callouts") }, { id: "credits", label: QT_TRANSLATE_NOOP("TitleTemplates", "Credits") }, { id: "animated", label: QT_TRANSLATE_NOOP("TitleTemplates", "Animated") },
-    { id: "music", label: QT_TRANSLATE_NOOP("TitleTemplates", "With the music") }, { id: "charts", label: QT_TRANSLATE_NOOP("TitleTemplates", "Charts") },
+    { id: "music", label: QT_TRANSLATE_NOOP("TitleTemplates", "With the music") }, { id: "visualisers", label: QT_TRANSLATE_NOOP("TitleTemplates", "Visualisers") },
+    { id: "charts", label: QT_TRANSLATE_NOOP("TitleTemplates", "Charts") },
     { id: "logos", label: QT_TRANSLATE_NOOP("TitleTemplates", "Logo reveals") }, { id: "mine", label: QT_TRANSLATE_NOOP("TitleTemplates", "My presets") }
 ]
 
@@ -159,6 +160,15 @@ var templates = [
                                                        highlightColor: [1, 0.3, 0.65, 1], react: { kind: "flash", amount: 0.9 } } },
     { name: QT_TRANSLATE_NOOP("TitleTemplates", "Bass Shake"), category: "music", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "LOUDER"), size: 0.14, bold: true, outlineWidth: 0.05,
                                                        outlineColor: [0.1, 0, 0.2, 1], react: { kind: "shake", amount: 0.6 } } },
+    // Visualisers (added over the music at the playhead, as long as it)
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Spectrum Bars"), category: "visualisers", style: { text: "", size: 0.06, bold: true,
+                                                          visualiser: { style: "bars", color: [0.3, 0.8, 1, 1], peak: [1, 0.35, 0.75, 1], size: 0.45 } } },
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Mirror Bars"), category: "visualisers", style: { text: "", size: 0.06, bold: true,
+                                                        visualiser: { style: "mirror", color: [0.3, 0.9, 0.55, 1], peak: [1, 0.9, 0.3, 1], size: 0.5 } } },
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Sound Wave"), category: "visualisers", style: { text: "", size: 0.06, bold: true,
+                                                       visualiser: { style: "wave", color: [0.55, 0.4, 1, 1], peak: [0.35, 0.95, 1, 1], size: 0.4 } } },
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Ring"), category: "visualisers", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "ON AIR"), size: 0.06, bold: true,
+                                                 letterSpacing: 0.15, visualiser: { style: "ring", color: [1, 0.55, 0.2, 1], peak: [1, 1, 1, 1], size: 0.6 } } },
     // Charts
     { name: QT_TRANSLATE_NOOP("TitleTemplates", "Bar Chart"), category: "charts", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "Views each quarter"), size: 0.06, bold: true, duration: 6,
                                                       chart: { kind: "bar", color: [0.32, 0.62, 1, 1], grow: 1.5, values: true,

@@ -295,6 +295,30 @@ struct TextChart {
     friend bool operator==(const TextChart&, const TextChart&) = default;
 };
 
+// An audio visualiser drawn by a title (its text, if any, as a heading above it, or inside a
+// ring): bars, bars mirrored about a middle line, a wave, or bars around a ring, moving with
+// the spectrum of the music under it — `frames` holds kBands levels (0..255, 40 Hz to 16 kHz)
+// kRate times a second from the clip's start (empty: not measured yet). Coloured from `color`
+// at rest to `peak` at the loudest, `size` the share of the canvas's height it takes.
+enum class VisualiserStyle { Bars, Mirror, Wave, Ring };
+struct TextVisualiser {
+    static constexpr int kBands = 32;
+    static constexpr double kRate = 30.0;
+    static constexpr double kMaxSeconds = 600.0;
+
+    VisualiserStyle style = VisualiserStyle::Bars;
+    ColorRgba color{0.3, 0.8, 1.0, 1.0};
+    ColorRgba peak{1.0, 0.35, 0.75, 1.0};
+    double size = 0.45;
+    std::vector<std::uint8_t> frames;
+
+    std::size_t frameCount() const { return frames.size() / std::size_t(kBands); }
+    // Band `band`'s level (0..1) `seconds` into the clip, between frames (0 outside them).
+    double levelAt(double seconds, int band) const;
+
+    friend bool operator==(const TextVisualiser&, const TextVisualiser&) = default;
+};
+
 // One spoken word of a caption: when it is said (from the caption clip's start) and how it
 // is written, for captions that follow the speech word by word.
 struct CaptionWord {
@@ -359,13 +383,14 @@ struct ClipText {
     // Moving with the music, and a chart under the text (absent: an ordinary title).
     TextReact react;
     std::optional<TextChart> chart;
+    std::optional<TextVisualiser> visualiser;
 
     // Whether it looks different from one moment to the next.
     bool animated() const
     {
         return animationIn.active() || animationOut.active() || animationLoop.active() || scroll != TextScroll::None
             || (captionMotion != CaptionMotion::None && !words.empty()) || react.active()
-            || (chart && chart->grow > 0.0);
+            || (chart && chart->grow > 0.0) || (visualiser && !visualiser->frames.empty());
     }
 
     friend bool operator==(const ClipText&, const ClipText&) = default;

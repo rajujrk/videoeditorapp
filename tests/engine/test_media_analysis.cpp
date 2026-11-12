@@ -196,6 +196,67 @@ TEST_CASE("music levels hit on the beat and fade between, only inside the clip")
     fs::remove(silent);
 }
 
+TEST_CASE("a visualiser's spectrum: a tone lights its own band, then falls back")
+{
+    // 440 Hz for the first second, 3 kHz for the next, then silence.
+    const std::string path = tempFile("spectrum.wav");
+    {
+        MediaSettings settings;
+        settings.container = Container::Wav;
+        settings.audioCodec = AudioCodec::Pcm16;
+        auto writer = MediaWriter::open(path, settings);
+        REQUIRE(writer);
+        const std::size_t total = std::size_t(3.0 * audio::kSampleRate);
+        std::vector<float> samples(total * 2);
+        for (std::size_t i = 0; i < total; ++i) {
+            const double t = double(i) / audio::kSampleRate;
+            const double f = t < 1.0 ? 440.0 : 3000.0;
+            const float v = t < 2.0 ? 0.5f * float(std::sin(2.0 * std::numbers::pi * f * t)) : 0.0f;
+            samples[i * 2] = samples[i * 2 + 1] = v;
+        }
+        REQUIRE(writer->writeAudio(samples.data(), int(total)));
+        REQUIRE(writer->finish());
+    }
+    constexpr int bands = 32;
+    constexpr double rate = 30.0;
+    // 90 frames from media time 0; the clip only plays the first 2.5 s.
+    const auto levels = analyzeSpectrum(path, 0, 90, rate, bands, {0, fromSeconds(2.5)});
+    REQUIRE(levels);
+    REQUIRE(levels->size() == std::size_t(90 * bands));
+    const auto at = [&](double seconds, int band) { return int((*levels)[std::size_t(std::lround(seconds * rate)) * bands + std::size_t(band)]); };
+    const auto loudest = [&](double seconds) {
+        int best = 0;
+        for (int b = 1; b < bands; ++b)
+            if (at(seconds, b) > at(seconds, best))
+                best = b;
+        return best;
+    };
+    // The band holding each tone (40 Hz × 400^(b/32)).
+    const auto bandOf = [](double f) { return int(std::floor(std::log(f / 40.0) / std::log(400.0) * bands)); };
+    CHECK(std::abs(loudest(0.5) - bandOf(440.0)) <= 1);
+    CHECK(std::abs(loudest(1.5) - bandOf(3000.0)) <= 1);
+    CHECK(at(0.5, bandOf(440.0)) > 200);
+    CHECK(at(0.5, 0) < 60);       // far below it: little
+    CHECK(at(0.5, bands - 1) < 60); // far above it too
+    // After the sound stops it falls back over a few frames, not at once.
+    CHECK(at(2.05, bandOf(3000.0)) > 0);
+    CHECK(at(2.05, bandOf(3000.0)) < at(1.9, bandOf(3000.0)));
+    CHECK(at(2.45, bandOf(3000.0)) < 64); // most of the way down in under half a second
+    // Past the clip: nothing.
+    for (int b = 0; b < bands; ++b)
+        CHECK(at(2.7, b) == 0);
+    // Silence is not lifted to look loud.
+    const auto quiet = analyzeSpectrum(path, fromSeconds(2.2), 15, rate, bands, {0, fromSeconds(3.0)});
+    REQUIRE(quiet);
+    CHECK(std::ranges::all_of(*quiet, [](std::uint8_t v) { return v == 0; }));
+    // Cancelling gives nothing; a missing file an error.
+    CHECK_FALSE(analyzeSpectrum(path, 0, 90, rate, bands, {0, fromSeconds(3.0)}, [](double) { return false; }));
+    std::string error;
+    CHECK_FALSE(analyzeSpectrum("/nonexistent.wav", 0, 10, rate, bands, {0, kTicksPerSecond}, {}, &error));
+    CHECK_FALSE(error.empty());
+    fs::remove(path);
+}
+
 TEST_CASE("scene cuts between shots, not within them")
 {
     // Three one-second shots at 30 fps, each with movement inside it: a red field with a
