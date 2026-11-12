@@ -435,6 +435,13 @@ light:
 ![Auto colour and match, dark](images/auto-colour-dark.png)
 ![Auto colour and match, light](images/auto-colour-light.png)
 
+Text styles: a title curved into an arch, filled with a gradient, extruded in a darker colour
+and tilted back; the Fill and 3D sections use the existing swatch rows and sliders, dark and
+light:
+
+![Text styles, dark](images/text-styles-dark.png)
+![Text styles, light](images/text-styles-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

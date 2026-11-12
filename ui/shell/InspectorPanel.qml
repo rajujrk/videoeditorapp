@@ -540,6 +540,131 @@ Rectangle {
                             checked: textSection.text.shadow === true
                             onToggled: textSection.change({ shadow: checked })
                         }
+                        ToggleSwitch {
+                            objectName: "titleUnderline"
+                            text: qsTr("Underline")
+                            enabled: textSection.text.vertical !== true
+                            checked: textSection.text.underline === true
+                            onToggled: textSection.change({ underline: checked })
+                        }
+                        ToggleSwitch {
+                            objectName: "titleVertical"
+                            text: qsTr("Vertical (each line a column)")
+                            checked: textSection.text.vertical === true
+                            onToggled: textSection.change({ vertical: checked })
+                        }
+                        AudioSlider {
+                            objectName: "titleCurve"
+                            label: qsTr("Curve")
+                            from: -1
+                            to: 1
+                            value: textSection.text.curve || 0
+                            format: (v) => Math.abs(v) < 0.005 ? qsTr("Straight") : (v > 0 ? qsTr("Arch %1%") : qsTr("Sag %1%")).arg(Math.round(Math.abs(v) * 100))
+                            onCommitted: (v) => textSection.change({ curve: Math.abs(v) < 0.02 ? 0 : v })
+                        }
+                    }
+
+                    // What fills the letters: their colour, a gradient, or a picture.
+                    Section {
+                        id: textFillSection
+                        objectName: "titleFillSection"
+                        visible: inspector.clipInfo.isTitle === true
+                        Layout.fillWidth: true
+                        title: qsTr("Fill")
+                        readonly property var fill: textSection.text.fill || ({ kind: "solid", to: [1, 0.55, 0.1, 1], angle: 0, imagePath: "" })
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: qsTr("Letters"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            ComboBox {
+                                objectName: "titleFillKind"
+                                readonly property var kinds: ["solid", "linear", "radial", "image"]
+                                model: [qsTr("Colour"), qsTr("Linear gradient"), qsTr("Radial gradient"), qsTr("Picture")]
+                                currentIndex: Math.max(0, kinds.indexOf(textFillSection.fill.kind))
+                                onActivated: (index) => {
+                                    if (kinds[index] === "image" && !textFillSection.fill.imagePath)
+                                        textFillPicture.open() // (a picture first)
+                                    else
+                                        textSection.change({ fill: { kind: kinds[index] } })
+                                }
+                            }
+                        }
+                        Text {
+                            visible: textFillSection.fill.kind === "linear" || textFillSection.fill.kind === "radial"
+                            text: qsTr("To (from the text colour)")
+                            font: Theme.type.label
+                            color: Theme.color.textSecondary
+                        }
+                        Swatches {
+                            objectName: "titleFillTo"
+                            visible: textFillSection.fill.kind === "linear" || textFillSection.fill.kind === "radial"
+                            current: textFillSection.fill.to
+                            onPicked: (c) => textSection.change({ fill: { to: c } })
+                        }
+                        AudioSlider {
+                            objectName: "titleFillAngle"
+                            visible: textFillSection.fill.kind === "linear"
+                            label: qsTr("Direction")
+                            from: 0
+                            to: 359
+                            value: textFillSection.fill.angle || 0
+                            format: (v) => Math.round(v) + "°"
+                            onCommitted: (v) => textSection.change({ fill: { angle: Math.round(v) } })
+                        }
+                        TextButton {
+                            objectName: "titleFillPicture"
+                            visible: textFillSection.fill.kind === "image"
+                            text: textFillSection.fill.imagePath ? qsTr("Another picture…") : qsTr("Choose a picture…")
+                            variant: "secondary"
+                            onClicked: textFillPicture.open()
+                        }
+                        FileDialog {
+                            id: textFillPicture
+                            title: qsTr("A picture to fill the letters with")
+                            fileMode: FileDialog.OpenFile
+                            nameFilters: [qsTr("Images (*.png *.jpg *.jpeg *.heic *.webp *.tif *.tiff *.bmp)")]
+                            onAccepted: textSection.change({ fill: { kind: "image", imagePath: selectedFile } })
+                        }
+                    }
+
+                    // 3D: the letters extruded, the title tilted in perspective.
+                    Section {
+                        objectName: "title3dSection"
+                        visible: inspector.clipInfo.isTitle === true
+                        Layout.fillWidth: true
+                        title: qsTr("3D")
+                        AudioSlider {
+                            objectName: "titleDepth"
+                            label: qsTr("Depth")
+                            from: 0
+                            to: 0.5
+                            value: textSection.text.depth || 0
+                            format: (v) => v <= 0 ? qsTr("Flat") : Math.round(v * 200) + "%"
+                            onCommitted: (v) => textSection.change({ depth: v })
+                        }
+                        Swatches {
+                            objectName: "titleDepthColor"
+                            visible: (textSection.text.depth || 0) > 0
+                            current: textSection.text.depthColor || [0.15, 0.15, 0.2, 1]
+                            onPicked: (c) => textSection.change({ depthColor: c })
+                        }
+                        AudioSlider {
+                            objectName: "titleTiltX"
+                            label: qsTr("Tilt back")
+                            from: -60
+                            to: 60
+                            value: textSection.text.tiltX || 0
+                            format: (v) => Math.round(v) + "°"
+                            onCommitted: (v) => textSection.change({ tiltX: Math.round(v) })
+                        }
+                        AudioSlider {
+                            objectName: "titleTiltY"
+                            label: qsTr("Turn")
+                            from: -60
+                            to: 60
+                            value: textSection.text.tiltY || 0
+                            format: (v) => Math.round(v) + "°"
+                            onCommitted: (v) => textSection.change({ tiltY: Math.round(v) })
+                        }
                     }
 
                     // A shape behind the text: boxes, a pill, bubbles, a banner and more.

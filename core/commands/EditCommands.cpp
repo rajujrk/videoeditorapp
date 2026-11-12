@@ -1470,7 +1470,15 @@ std::optional<std::string> validateText(const ClipText& text)
         if (auto error = validateTextAnimation(*animation, role))
             return error;
     }
-    for (const ColorRgba& c : {text.color, text.outlineColor, text.shape.color}) {
+    if (!(text.curve >= -1.0 && text.curve <= 1.0))
+        return TVE_TR("core", "the curve must be between -100% and +100%");
+    if (!(text.depth >= 0.0 && text.depth <= 0.5))
+        return TVE_TR("core", "the 3D depth is out of range");
+    if (!(std::abs(text.tiltX) <= 60.0 && std::abs(text.tiltY) <= 60.0))
+        return TVE_TR("core", "the tilt must be between -60° and 60°");
+    if (text.fill.kind == TextFillKind::Image && text.fill.imagePath.empty())
+        return TVE_TR("core", "choose a picture to fill the text with");
+    for (const ColorRgba& c : {text.color, text.outlineColor, text.shape.color, text.fill.to, text.depthColor}) {
         for (double v : {c.r, c.g, c.b, c.a}) {
             if (v < 0.0 || v > 1.0)
                 return "colours must be between 0 and 1";

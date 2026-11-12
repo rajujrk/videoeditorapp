@@ -3,6 +3,9 @@
 #include "model/Paths.h"
 
 #include <QFontDatabase>
+#include <QHash>
+#include <QLinearGradient>
+#include <QRadialGradient>
 #include <QJsonDocument>
 #include <QUrl>
 #include <QFontMetricsF>
@@ -91,11 +94,74 @@ void bendAlong(TitleLayout& layout, const tve::ClipText& text, QSize canvas, dou
     }
 }
 
+// The glyphs moved by (dx, dy), the word, line and overall boxes made again.
+void restack(TitleLayout& layout)
+{
+    layout.bounds = QRectF();
+    for (QRectF& word : layout.words)
+        word = QRectF();
+    for (QRectF& line : layout.lines)
+        line = QRectF();
+    for (const Glyph& glyph : layout.glyphs) {
+        layout.bounds = layout.bounds.united(glyph.box);
+        if (glyph.word >= 0 && std::size_t(glyph.word) < layout.words.size())
+            layout.words[std::size_t(glyph.word)] = layout.words[std::size_t(glyph.word)].united(glyph.box);
+        if (std::size_t(glyph.line) < layout.lines.size())
+            layout.lines[std::size_t(glyph.line)] = layout.lines[std::size_t(glyph.line)].united(glyph.box);
+    }
+}
+
+// Vertical text: each line a column (left to right), its characters stacked down it, the
+// columns placed by the alignment (top, middle or bottom).
+void stackVertically(TitleLayout& layout, const tve::ClipText& text, QSize canvas, const QFontMetricsF& metrics)
+{
+    if (layout.lines.empty())
+        return;
+    const double column = metrics.height() * text.lineSpacing;
+    const double step = metrics.height() * 0.92;
+    const double left = (canvas.width() - column * double(layout.lines.size())) / 2.0;
+    std::vector<int> count(layout.lines.size(), 0);
+    for (const Glyph& glyph : layout.glyphs)
+        ++count[std::size_t(glyph.line)];
+    std::vector<int> index(layout.lines.size(), 0);
+    for (Glyph& glyph : layout.glyphs) {
+        const std::size_t l = std::size_t(glyph.line);
+        const double height = step * count[l];
+        const double top = text.alignment == tve::TextAlignment::Left    ? canvas.height() * 0.05
+                         : text.alignment == tve::TextAlignment::Right ? canvas.height() * 0.95 - height
+                                                                       : (canvas.height() - height) / 2.0;
+        const QPointF centre(left + column * (double(l) + 0.5), top + step * (index[l]++ + 0.5));
+        const QPointF by = centre - glyph.box.center();
+        glyph.path.translate(by);
+        glyph.box = QRectF(centre.x() - glyph.box.width() / 2.0, centre.y() - step / 2.0, glyph.box.width(), step);
+    }
+    restack(layout);
+}
+
+// A curved title: the arc the text bends along (canvas fractions), as long as the text is
+// wide, its middle at the canvas's middle.
+std::vector<std::array<double, 2>> arcFor(double curve, double width, QSize canvas)
+{
+    const double theta = curve * std::numbers::pi * 1.5; // up to 270° of a circle
+    const double radius = width / std::max(std::abs(theta), 1e-3);
+    const double cx = canvas.width() / 2.0, cy = canvas.height() / 2.0;
+    std::vector<std::array<double, 2>> points;
+    constexpr int kSteps = 48;
+    for (int i = 0; i <= kSteps; ++i) {
+        const double phi = std::abs(theta) * (double(i) / kSteps - 0.5);
+        const double sag = radius * (1.0 - std::cos(phi)) * (curve > 0 ? 1.0 : -1.0);
+        points.push_back({(cx + radius * std::sin(phi)) / canvas.width(), (cy + sag) / canvas.height()});
+    }
+    return points;
+}
+
 TitleLayout layoutText(const tve::ClipText& text, const QFont& font, QSize canvas)
 {
-    // On a path: one line, unwrapped, bent along it afterwards.
-    const bool onPath = text.path.size() >= 2;
-    const bool wrap = text.scroll != tve::TextScroll::CrawlLeft && !onPath;
+    // On a path (or curved): one line, unwrapped, bent along it afterwards. Vertical: each
+    // line a column, unwrapped.
+    const bool curved = text.curve != 0.0 && text.path.size() < 2 && !text.vertical;
+    const bool onPath = (text.path.size() >= 2 && !text.vertical) || curved;
+    const bool wrap = text.scroll != tve::TextScroll::CrawlLeft && !onPath && !text.vertical;
     const double wrapWidth = wrap ? canvas.width() * 0.9 : 1e7;
     const double left = canvas.width() * 0.05;
     const QFontMetricsF metrics(font);
@@ -179,12 +245,36 @@ TitleLayout layoutText(const tve::ClipText& text, const QFont& font, QSize canva
             result.glyphs.push_back(std::move(glyph));
             i += length - 1;
         }
+        // An underline under the line: each character's piece reaching the next one (across
+        // the space between words), so it moves with its character.
+        if (text.underline && !text.vertical) {
+            const double y = baseline + std::max(metrics.underlinePos(), font.pixelSize() * 0.08);
+            const double thickness = std::max(metrics.lineWidth(), font.pixelSize() * 0.06);
+            for (std::size_t g = 0; g < result.glyphs.size(); ++g) {
+                Glyph& glyph = result.glyphs[g];
+                if (glyph.line != int(l))
+                    continue;
+                const bool last = g + 1 == result.glyphs.size() || result.glyphs[g + 1].line != int(l);
+                const double right = last ? glyph.box.right() : result.glyphs[g + 1].box.left();
+                glyph.path.addRect(QRectF(glyph.box.left(), y, right - glyph.box.left(), thickness));
+            }
+        }
         if (onPath) {
-            bendAlong(result, text, canvas, baseline);
+            if (curved) {
+                tve::ClipText bent = text;
+                const double width = result.glyphs.empty() ? 0.0 : result.glyphs.back().box.right() - result.glyphs.front().box.left();
+                bent.path = arcFor(text.curve, width, canvas);
+                bent.alignment = tve::TextAlignment::Center;
+                bendAlong(result, bent, canvas, baseline);
+            } else {
+                bendAlong(result, text, canvas, baseline);
+            }
             return result;
         }
         baseline += lineHeight;
     }
+    if (text.vertical)
+        stackVertically(result, text, canvas, metrics);
     return result;
 }
 
@@ -352,6 +442,61 @@ void drawPath(QPainter& painter, const Drawn& d, const std::function<void(QPaint
     painter.restore();
 }
 
+// A picture to fill text with (kept: titles are drawn every frame).
+QImage fillPicture(const std::string& path)
+{
+    static QHash<QString, QImage> cache;
+    const QString key = QString::fromStdString(path);
+    if (auto it = cache.constFind(key); it != cache.constEnd())
+        return *it;
+    QImage image(key);
+    if (cache.size() > 16)
+        cache.clear();
+    cache.insert(key, image);
+    return image;
+}
+
+// What fills the letters: their colour, a gradient across `bounds` (the text), or a picture
+// covering it.
+QBrush textBrush(const tve::ClipText& text, const QRectF& bounds)
+{
+    const tve::TextFill& fill = text.fill;
+    const QColor from = toColor(text.color), to = toColor(fill.to);
+    switch (fill.kind) {
+    case tve::TextFillKind::Linear: {
+        const double a = fill.angle * std::numbers::pi / 180.0;
+        const QPointF d(std::cos(a), std::sin(a));
+        const double half = (std::abs(d.x()) * bounds.width() + std::abs(d.y()) * bounds.height()) / 2.0;
+        QLinearGradient gradient(bounds.center() - d * half, bounds.center() + d * half);
+        gradient.setColorAt(0, from);
+        gradient.setColorAt(1, to);
+        return QBrush(gradient);
+    }
+    case tve::TextFillKind::Radial: {
+        QRadialGradient gradient(bounds.center(), std::max(bounds.width(), bounds.height()) / 2.0);
+        gradient.setColorAt(0, from);
+        gradient.setColorAt(1, to);
+        return QBrush(gradient);
+    }
+    case tve::TextFillKind::Image: {
+        const QImage picture = fillPicture(fill.imagePath);
+        if (picture.isNull() || bounds.isEmpty())
+            return QBrush(from);
+        // Covering the text, centred on it.
+        const double scale = std::max(bounds.width() / picture.width(), bounds.height() / picture.height());
+        QBrush brush(picture);
+        QTransform place;
+        place.translate(bounds.center().x() - picture.width() * scale / 2.0, bounds.center().y() - picture.height() * scale / 2.0);
+        place.scale(scale, scale);
+        brush.setTransform(place);
+        return brush;
+    }
+    case tve::TextFillKind::Solid:
+        break;
+    }
+    return QBrush(from);
+}
+
 } // namespace
 
 QString defaultTitleFamily()
@@ -426,7 +571,7 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
     }
     // A caption following its speech: the words said so far, and the one being said (the last
     // started, until the next starts). Layout words and caption words match one for one.
-    std::vector<QColor> fills(layout.glyphs.size(), toColor(text.color));
+    std::vector<QBrush> fills(layout.glyphs.size(), textBrush(text, layout.bounds));
     if (text.captionMotion != tve::CaptionMotion::None && !text.words.empty() && seconds >= 0.0) {
         const auto now = tve::Ticks(seconds * double(tve::kTicksPerSecond));
         int current = -1;
@@ -443,11 +588,11 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
             switch (text.captionMotion) {
             case tve::CaptionMotion::Highlight:
                 if (saying)
-                    fills[g] = highlight;
+                    fills[g] = QBrush(highlight);
                 break;
             case tve::CaptionMotion::Pop:
                 if (saying) {
-                    fills[g] = highlight;
+                    fills[g] = QBrush(highlight);
                     // Grows to 115 % over its first tenth of a second.
                     const double into = tve::toSeconds(now - text.words[std::size_t(word)].start);
                     tve::TextUnitState pop;
@@ -457,7 +602,7 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
                 break;
             case tve::CaptionMotion::Karaoke:
                 if (said)
-                    fills[g] = highlight;
+                    fills[g] = QBrush(highlight);
                 break;
             case tve::CaptionMotion::Reveal:
                 if (!said)
@@ -520,6 +665,25 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
 
     painter.begin(&image);
     painter.setRenderHint(QPainter::Antialiasing);
+    // 3D: each letter's sides first (copies stepping down and right, darkening further back),
+    // all of them under every letter's face.
+    if (text.depth > 0.0) {
+        const double length = text.depth * em;
+        const int steps = std::clamp(int(std::ceil(length / 1.5)), 1, 80);
+        const QColor side = toColor(text.depthColor);
+        for (int i = steps; i >= 1; --i) {
+            const double t = double(i) / steps;
+            const QColor shade = side.darker(100 + int(40 * t));
+            drawGlyphs(painter, [&](QPainter& p, const QPainterPath& path, std::size_t) {
+                p.save();
+                p.translate(length * t * 0.6, length * t * 0.8);
+                if (text.outlineWidth > 0)
+                    p.strokePath(path, QPen(shade, text.outlineWidth * em * 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+                p.fillPath(path, shade);
+                p.restore();
+            });
+        }
+    }
     drawGlyphs(painter, [&](QPainter& p, const QPainterPath& path, std::size_t g) {
         // The outline is stroked under the fill, so it grows outwards.
         if (text.outlineWidth > 0)
@@ -528,6 +692,23 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
         p.fillPath(path, fills[g]);
     });
     painter.end();
+    // Tilted: the whole title turned in perspective about the canvas's middle.
+    if (text.tiltX != 0.0 || text.tiltY != 0.0) {
+        QImage tilted(canvas, QImage::Format_ARGB32_Premultiplied);
+        tilted.fill(Qt::transparent);
+        QPainter p(&tilted);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+        const double distance = canvas.height() * 2.0;
+        QTransform turn;
+        turn.translate(canvas.width() / 2.0, canvas.height() / 2.0);
+        turn.rotate(text.tiltX, Qt::XAxis, distance);
+        turn.rotate(text.tiltY, Qt::YAxis, distance);
+        turn.translate(-canvas.width() / 2.0, -canvas.height() / 2.0);
+        p.setTransform(turn);
+        p.drawImage(0, 0, image);
+        p.end();
+        image = std::move(tilted);
+    }
     return image.convertToFormat(QImage::Format_RGBA8888);
 }
 
@@ -551,6 +732,7 @@ constexpr const char* kShapeKinds[] = {"none", "box", "rounded", "pill", "speech
                                        "banner", "underline", "circle", "arrow", "tag"};
 constexpr const char* kUnits[] = {"whole", "line", "word", "character"};
 constexpr const char* kScrolls[] = {"none", "rollUp", "crawlLeft"};
+constexpr const char* kFillKinds[] = {"solid", "linear", "radial", "image"};
 constexpr const char* kCaptionMotions[] = {"none", "highlight", "pop", "karaoke", "reveal"};
 
 template <std::size_t N>
@@ -626,6 +808,17 @@ QVariantMap textMap(const tve::ClipText& text)
         {QStringLiteral("captionMotion"), QString::fromLatin1(kCaptionMotions[int(text.captionMotion)])},
         {QStringLiteral("highlightColor"), colorList(text.highlightColor)},
         {QStringLiteral("wordCount"), int(text.words.size())},
+        {QStringLiteral("fill"), QVariantMap{{QStringLiteral("kind"), QString::fromLatin1(kFillKinds[int(text.fill.kind)])},
+                                             {QStringLiteral("to"), colorList(text.fill.to)},
+                                             {QStringLiteral("angle"), text.fill.angle},
+                                             {QStringLiteral("imagePath"), QString::fromStdString(text.fill.imagePath)}}},
+        {QStringLiteral("underline"), text.underline},
+        {QStringLiteral("vertical"), text.vertical},
+        {QStringLiteral("curve"), text.curve},
+        {QStringLiteral("depth"), text.depth},
+        {QStringLiteral("depthColor"), colorList(text.depthColor)},
+        {QStringLiteral("tiltX"), text.tiltX},
+        {QStringLiteral("tiltY"), text.tiltY},
         {QStringLiteral("path"), [&] {
              QVariantList points;
              for (const auto& [x, y] : text.path)
@@ -705,6 +898,34 @@ tve::ClipText textFrom(const QVariantMap& changes, tve::ClipText text)
     }
     if (has("pathPreset"))
         text.path = tve::presetPath(get("pathPreset").toString().toStdString());
+    if (has("fill")) {
+        const QVariantMap fill = get("fill").toMap();
+        if (fill.contains(QStringLiteral("kind")))
+            text.fill.kind = tve::TextFillKind(indexOf(kFillKinds, fill.value(QStringLiteral("kind")).toString(), int(text.fill.kind)));
+        if (fill.contains(QStringLiteral("to")))
+            text.fill.to = colorFrom(fill.value(QStringLiteral("to")), text.fill.to);
+        if (fill.contains(QStringLiteral("angle")))
+            text.fill.angle = std::fmod(fill.value(QStringLiteral("angle")).toDouble(), 360.0);
+        if (fill.contains(QStringLiteral("imagePath"))) {
+            const QVariant path = fill.value(QStringLiteral("imagePath"));
+            const QUrl url = path.toUrl();
+            text.fill.imagePath = (url.isLocalFile() ? url.toLocalFile() : path.toString()).toStdString();
+        }
+    }
+    if (has("underline"))
+        text.underline = get("underline").toBool();
+    if (has("vertical"))
+        text.vertical = get("vertical").toBool();
+    if (has("curve"))
+        text.curve = get("curve").toDouble();
+    if (has("depth"))
+        text.depth = get("depth").toDouble();
+    if (has("depthColor"))
+        text.depthColor = colorFrom(get("depthColor"), text.depthColor);
+    if (has("tiltX"))
+        text.tiltX = get("tiltX").toDouble();
+    if (has("tiltY"))
+        text.tiltY = get("tiltY").toDouble();
     return text;
 }
 

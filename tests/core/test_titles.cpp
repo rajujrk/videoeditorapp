@@ -279,3 +279,45 @@ TEST_CASE("title shapes, animations and scrolling are checked and saved", "[titl
     bad.animationLoop.preset = "pop";
     CHECK(validateText(bad).value() == "\"pop\" is not a loop");
 }
+
+TEST_CASE("title styles: fill, underline, vertical, curve and 3D are checked and saved", "[titles]")
+{
+    ClipText text;
+    text.fill = TextFill{TextFillKind::Linear, {0.0, 0.0, 1.0, 1.0}, 45.0, {}};
+    text.underline = true;
+    text.vertical = true;
+    text.curve = -0.4;
+    text.depth = 0.2;
+    text.depthColor = {0.5, 0.0, 0.0, 1.0};
+    text.tiltX = 20;
+    text.tiltY = -35;
+    CHECK_FALSE(validateText(text));
+    Project project;
+    Clip clip{.id = 1, .duration = kTicksPerSecond};
+    clip.text = text;
+    project.tracks.push_back(Track{.id = 2, .kind = TrackKind::Title, .clips = {clip}});
+    project.setNextId(3);
+    nlohmann::json json = projectToJson(project);
+    CHECK(projectFromJson(json).tracks == project.tracks);
+    // An older title (none of them) loads as before.
+    nlohmann::json& saved = json["tracks"][0]["clips"][0]["text"];
+    for (const char* key : {"fill", "underline", "vertical", "curve", "depth", "depthColor", "tiltX", "tiltY"})
+        saved.erase(key);
+    const ClipText loaded = *projectFromJson(json).tracks.front().clips.front().text;
+    CHECK(loaded.fill == TextFill{});
+    CHECK_FALSE(loaded.underline);
+    CHECK(loaded.depth == 0.0);
+
+    ClipText bad = text;
+    bad.curve = 1.5;
+    CHECK(validateText(bad));
+    bad = text;
+    bad.depth = 0.8;
+    CHECK(validateText(bad));
+    bad = text;
+    bad.tiltY = 70;
+    CHECK(validateText(bad));
+    bad = text;
+    bad.fill.kind = TextFillKind::Image;
+    CHECK(validateText(bad).value() == "choose a picture to fill the text with");
+}
