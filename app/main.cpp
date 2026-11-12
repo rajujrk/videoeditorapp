@@ -81,6 +81,12 @@ int main(int argc, char* argv[])
 {
     QElapsedTimer sinceStart; // for --startup-probe
     sinceStart.start();
+    // The JavaScript garbage collector runs to completion rather than in steps: Qt 6.12's
+    // incremental collection can drop the `var` properties of items created while a cycle is
+    // under way (a new editor's library lost its tabs), with no change signal. Set before the
+    // engine starts; an explicit QV4_GC_TIMELIMIT still wins.
+    if (!qEnvironmentVariableIsSet("QV4_GC_TIMELIMIT"))
+        qputenv("QV4_GC_TIMELIMIT", "0");
     QQuickWindow::setGraphicsApi(QSGRendererInterface::Metal);
     // Basic is the one Controls style that takes all its colors from the palette, which
     // Main.qml fills from the theme tokens.
