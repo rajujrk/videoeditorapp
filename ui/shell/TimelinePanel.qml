@@ -11,6 +11,7 @@ Rectangle {
     id: timeline
     required property var project
     signal teleprompterRequested() // from the voice-over and recording panels
+    signal drawingRequested(var area) // draw on the screen being recorded
 
     property real pixelsPerSecond: 60
     readonly property real snapPixels: 8
@@ -194,6 +195,7 @@ Rectangle {
                     objectName: "recordPanel"
                     project: timeline.project
                     onTeleprompterRequested: timeline.teleprompterRequested()
+                    onDrawingRequested: (area) => timeline.drawingRequested(area)
                     y: -height - Theme.space.s
                 }
             }

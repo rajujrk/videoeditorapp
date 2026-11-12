@@ -17,6 +17,11 @@ Popup {
     property bool systemSound: true
     property bool microphone: true
     signal teleprompterRequested() // open the teleprompter (its own window)
+    // Draw on the screen being recorded: asked for with the recording, or while it runs.
+    property bool drawOnScreen: false
+    signal drawingRequested(var area)
+    // The area being recorded (global points), for the drawing layer.
+    property var recordedArea: null
 
     width: 380
     padding: Theme.space.l
@@ -41,7 +46,12 @@ Popup {
             options.screen = screens[screenIndex]
         if (cameraIndex >= 0 && cameraIndex < cameras.length)
             options.camera = cameras[cameraIndex].id
-        project.startScreenRecording(options)
+        if (!project.startScreenRecording(options))
+            return
+        recordedArea = options.screen ? { x: options.screen.x || 0, y: options.screen.y || 0,
+                                          width: options.screen.width, height: options.screen.height } : null
+        if (drawOnScreen && recordedArea)
+            drawingRequested(recordedArea)
     }
 
     background: Rectangle {
@@ -92,6 +102,13 @@ Popup {
             onToggled: panel.systemSound = checked
         }
 
+        ToggleSwitch {
+            objectName: "drawOnScreen"
+            text: qsTr("Draw on the screen while recording")
+            enabled: panel.screenIndex >= 0 && !panel.project.screenRecording
+            checked: panel.drawOnScreen
+            onToggled: panel.drawOnScreen = checked
+        }
         Text { text: qsTr("Camera"); font: Theme.type.label; color: Theme.color.textSecondary }
         RowLayout {
             Layout.fillWidth: true
@@ -152,6 +169,14 @@ Popup {
                 variant: "primary"
                 enabled: panel.screenIndex >= 0 || panel.cameraIndex >= 0
                 onClicked: panel.record()
+            }
+            TextButton {
+                objectName: "drawDuringRecording"
+                visible: panel.project.screenRecording && panel.recordedArea !== null
+                text: qsTr("Draw")
+                iconName: "draw"
+                variant: "secondary"
+                onClicked: panel.drawingRequested(panel.recordedArea)
             }
             TextButton {
                 objectName: "stopScreenRecording"

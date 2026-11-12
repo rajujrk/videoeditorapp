@@ -4700,6 +4700,41 @@ Third, 4</source>
     </message>
 </context>
 <context>
+    <name>LiveDrawing</name>
+    <message>
+        <source>Drawing on the screen</source>
+        <translation>திரையில் வரைதல்</translation>
+    </message>
+    <message>
+        <source>Stop drawing: the pointer works the screen again (D or Esc)</source>
+        <translation>வரைவதை நிறுத்து: சுட்டி மீண்டும் திரையில் இயங்கும் (D அல்லது Esc)</translation>
+    </message>
+    <message>
+        <source>Draw on the screen (D)</source>
+        <translation>திரையில் வரை (D)</translation>
+    </message>
+    <message>
+        <source>Pen</source>
+        <translation>பேனா</translation>
+    </message>
+    <message>
+        <source>Highlighter</source>
+        <translation>சிறப்புக்குறி</translation>
+    </message>
+    <message>
+        <source>Arrow</source>
+        <translation>அம்பு</translation>
+    </message>
+    <message>
+        <source>Fade away</source>
+        <translation>மங்கி மறை</translation>
+    </message>
+    <message>
+        <source>Clear the drawing (C)</source>
+        <translation>வரைபடத்தை அழி (C)</translation>
+    </message>
+</context>
+<context>
     <name>Main</name>
     <message>
         <source>%1 (edited) — TechieVideoEditor</source>
@@ -6255,6 +6290,10 @@ Third, 4</source>
         <translation>கணினி ஒலி</translation>
     </message>
     <message>
+        <source>Draw on the screen while recording</source>
+        <translation>பதிவு செய்யும்போது திரையில் வரை</translation>
+    </message>
+    <message>
         <source>Camera</source>
         <translation>கேமரா</translation>
     </message>
@@ -6285,6 +6324,10 @@ Third, 4</source>
     <message>
         <source>Record</source>
         <translation>பதிவுசெய்</translation>
+    </message>
+    <message>
+        <source>Draw</source>
+        <translation>வரை</translation>
     </message>
     <message>
         <source>Stop</source>
