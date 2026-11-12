@@ -13,6 +13,7 @@ Popup {
     // "idle" → "countdown" → "recording" → "idle"
     readonly property string stage: project.recording ? "recording" : countdown.running ? "countdown" : "idle"
     property bool countIn: true
+    signal teleprompterRequested() // open the teleprompter (its own window)
     property int count: 0
 
     width: 340
@@ -153,6 +154,14 @@ Popup {
                 enabled: panel.stage === "idle"
                 checked: panel.countIn
                 onToggled: panel.countIn = checked
+            }
+            TextButton {
+                objectName: "openTeleprompter"
+                text: qsTr("Teleprompter…")
+                iconName: "transcript"
+                variant: "ghost"
+                tip: qsTr("Your script, scrolling while you record")
+                onClicked: panel.teleprompterRequested()
             }
         }
 

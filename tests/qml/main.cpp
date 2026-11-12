@@ -484,6 +484,7 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("voicesDir"), qEnvironmentVariable("TVE_VOICE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("consentDir"), qEnvironmentVariable("TVE_CONSENT_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("languageFile"), qEnvironmentVariable("TVE_LANGUAGE_FILE"));
+        engine->rootContext()->setContextProperty(QStringLiteral("teleprompterFile"), qEnvironmentVariable("TVE_TELEPROMPTER_FILE"));
         engine->rootContext()->setContextProperty(QStringLiteral("renderFilesDir"), qEnvironmentVariable("TVE_RENDER_CACHE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("keyStoreDir"), qEnvironmentVariable("TVE_KEY_STORE"));
         engine->rootContext()->setContextProperty(QStringLiteral("importFixturesDir"), qEnvironmentVariable("TVE_TEST_IMPORTS_DIR"));
@@ -598,6 +599,8 @@ int main(int argc, char** argv)
     qputenv("TVE_VOICE_DIR", QDir(voices.path()).canonicalPath().toLocal8Bit());
     // Voice cloning: consent records in a scratch folder; the code words fixed.
     // The language setting in a scratch file (the app's own isn't touched).
+    QTemporaryDir teleprompterSettings; // the teleprompter's script and settings
+    qputenv("TVE_TELEPROMPTER_FILE", (teleprompterSettings.path() + QStringLiteral("/teleprompter.json")).toLocal8Bit());
     QTemporaryDir languageSettings;
     qputenv("TVE_LANGUAGE_FILE", (languageSettings.path() + QStringLiteral("/language.json")).toLocal8Bit());
     {

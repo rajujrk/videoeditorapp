@@ -6,6 +6,7 @@
 #import <Foundation/Foundation.h>
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -129,8 +130,9 @@ SCShareableContent* shareableContent(std::string* error) // retained, or nil
 
 class ScreenSource final : public CaptureSource {
 public:
-    ScreenSource(ScreenTarget target, std::optional<std::array<double, 4>> region, bool sound, int rate)
-        : m_target(std::move(target)), m_region(region), m_sound(sound), m_rate(rate)
+    ScreenSource(ScreenTarget target, std::optional<std::array<double, 4>> region, bool sound, int rate,
+                 std::vector<std::uint32_t> excluded)
+        : m_target(std::move(target)), m_region(region), m_sound(sound), m_rate(rate), m_excluded(std::move(excluded))
     {
         const double w = m_region ? (*m_region)[2] : m_target.width;
         const double h = m_region ? (*m_region)[3] : m_target.height;
@@ -147,9 +149,13 @@ public:
             return false;
         SCContentFilter* filter = nil;
         if (m_target.kind == ScreenTarget::Kind::Display) {
+            NSMutableArray<SCWindow*>* leftOut = [NSMutableArray array];
+            for (SCWindow* w in content.windows)
+                if (std::ranges::find(m_excluded, std::uint32_t(w.windowID)) != m_excluded.end())
+                    [leftOut addObject:w];
             for (SCDisplay* d in content.displays)
                 if (d.displayID == m_target.id)
-                    filter = [[SCContentFilter alloc] initWithDisplay:d excludingWindows:@[]];
+                    filter = [[SCContentFilter alloc] initWithDisplay:d excludingWindows:leftOut];
         } else {
             for (SCWindow* w in content.windows)
                 if (w.windowID == m_target.id)
@@ -245,6 +251,7 @@ private:
     std::optional<std::array<double, 4>> m_region;
     bool m_sound;
     int m_rate;
+    std::vector<std::uint32_t> m_excluded;
     double m_scale = 2.0;
     int m_width = 0, m_height = 0;
     std::array<double, 4> m_area{};
@@ -442,9 +449,9 @@ std::vector<ScreenTarget> screenTargets(std::string* error)
 }
 
 std::unique_ptr<CaptureSource> makeScreenSource(const ScreenTarget& target, std::optional<std::array<double, 4>> region,
-                                                bool systemSound, int frameRate)
+                                                bool systemSound, int frameRate, std::vector<std::uint32_t> excludedWindows)
 {
-    return std::make_unique<ScreenSource>(target, region, systemSound, std::clamp(frameRate, 1, 60));
+    return std::make_unique<ScreenSource>(target, region, systemSound, std::clamp(frameRate, 1, 60), std::move(excludedWindows));
 }
 
 std::vector<CameraDevice> cameras()

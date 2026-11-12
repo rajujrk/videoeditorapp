@@ -464,6 +464,14 @@ Quiet and Loud swatch rows, Size, a caption saying how much music it follows, Li
 ![Audio visualiser, dark](images/visualiser-dark.png)
 ![Audio visualiser, light](images/visualiser-light.png)
 
+Teleprompter: a window of its own, near black whatever the theme so the words stand out, with
+the theme's `surface` bar along the top (play, back to the top, Speed and Size sliders, Mirror
+and With recording switches, Edit), the script in large off-white type and amber arrows marking
+the reading line, dark and light:
+
+![Teleprompter, dark](images/teleprompter-dark.png)
+![Teleprompter, light](images/teleprompter-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

@@ -73,6 +73,7 @@
 #include "StillRenderer.h"
 #include "model/ClipAnimation.h"
 #include "model/LogoReveal.h"
+#include "NativeWindow.h"
 #include "model/ColourMatch.h"
 
 #include <QCryptographicHash>
@@ -6323,6 +6324,34 @@ QVariantList ProjectController::listCameras()
     return list;
 }
 
+Teleprompter* ProjectController::teleprompter() const
+{
+    // One for the app: every editor (and the source monitor's controller) shares the script.
+    static QPointer<Teleprompter> shared;
+    if (!shared)
+        shared = new Teleprompter(qApp);
+    return shared;
+}
+
+void ProjectController::keepOutOfRecordings(QObject* object, bool keep)
+{
+    auto* window = qobject_cast<QWindow*>(object);
+    if (!window)
+        return;
+    std::erase_if(m_keptOut, [&](const QPointer<QWindow>& w) { return !w || w == window; });
+    if (keep)
+        m_keptOut.emplace_back(window);
+}
+
+QVariantList ProjectController::recordingExclusions() const
+{
+    QVariantList numbers;
+    for (const QPointer<QWindow>& window : m_keptOut)
+        if (window && window->isVisible())
+            numbers << double(nativeWindowNumber(window));
+    return numbers;
+}
+
 bool ProjectController::startScreenRecording(const QVariantMap& options)
 {
     if (screenRecording() || recording()) {
@@ -6362,7 +6391,12 @@ bool ProjectController::startScreenRecording(const QVariantMap& options)
                 region = std::array<double, 4>{r.value(QStringLiteral("x")).toDouble(), r.value(QStringLiteral("y")).toDouble(),
                                                r.value(QStringLiteral("width")).toDouble(), r.value(QStringLiteral("height")).toDouble()};
             }
-            source = tve::makeScreenSource(target, region, options.value(QStringLiteral("systemSound")).toBool(), rate);
+            std::vector<std::uint32_t> keptOut;
+            for (const QVariant& number : recordingExclusions())
+                if (number.toDouble() > 0)
+                    keptOut.push_back(std::uint32_t(number.toDouble()));
+            source = tve::makeScreenSource(target, region, options.value(QStringLiteral("systemSound")).toBool(), rate,
+                                           std::move(keptOut));
         }
         m_screenRecorder = std::make_unique<CaptureRecorder>(std::move(source), rate);
         if (!m_screenRecorder->start(folder.filePath(QStringLiteral("Screen %1.mov").arg(stamp)).toStdString(), &error)) {

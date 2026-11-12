@@ -13,6 +13,7 @@
 #include "Copilot.h"
 #include "VoiceCloning.h"
 #include "cloud/CloudServices.h"
+#include "Teleprompter.h"
 #include "SoundLibrary.h"
 #include "SpeechModels.h"
 #include "TrackListModel.h"
@@ -31,6 +32,7 @@
 
 #include <QObject>
 #include <QPointer>
+#include <QWindow>
 #include <QTimer>
 #include <QUrl>
 #include <QVariantList>
@@ -279,6 +281,8 @@ class ProjectController : public QObject {
     // AI: keys, models, the job running and what was used; the languages captions translate
     // into; where spoken voices are kept.
     Q_PROPERTY(CloudServices* cloud READ cloud CONSTANT)
+    // The teleprompter's script and settings (shared by the app's editors).
+    Q_PROPERTY(Teleprompter* teleprompter READ teleprompter CONSTANT)
     // The editing copilot (Claude with tools over the edit).
     Q_PROPERTY(Copilot* copilot READ copilot CONSTANT)
     // Copying a voice with the speaker's recorded consent.
@@ -428,6 +432,7 @@ public:
     MediaImports* imports() const { return m_imports; }
     QString importsDirectory() const;
     CloudServices* cloud() const { return m_cloud; }
+    Teleprompter* teleprompter() const;
     Copilot* copilot() const { return m_copilot; }
     VoiceCloning* voiceCloning() const { return m_voiceCloning; }
     QStringList translationLanguages() const;
@@ -760,6 +765,11 @@ public:
     // frameRate. Starts at the playhead; stopScreenRecording puts the screen, the camera
     // (small, over it) and the microphone on new tracks there, as one undo step.
     Q_INVOKABLE bool startScreenRecording(const QVariantMap& options);
+    // Windows of the app's own kept out of screen recordings while they are open (the
+    // teleprompter): a display recording leaves them out, as if they were not there.
+    // recordingExclusions lists their window numbers (0 for one not shown yet).
+    Q_INVOKABLE void keepOutOfRecordings(QObject* window, bool keep = true);
+    Q_INVOKABLE QVariantList recordingExclusions() const;
     Q_INVOKABLE bool stopScreenRecording();
     // A screen recording's cursor effects: rings, highlight, spotlight, size.
     Q_INVOKABLE bool setCursorEffects(double clipId, const QVariantMap& effects);
@@ -1321,6 +1331,7 @@ private:
     SoundLibrary* m_soundLibrary = nullptr;
     MediaImports* m_imports = nullptr;
     CloudServices* m_cloud = nullptr;
+    std::vector<QPointer<QWindow>> m_keptOut;
     Copilot* m_copilot = nullptr;
     VoiceCloning* m_voiceCloning = nullptr;
     friend class Copilot;

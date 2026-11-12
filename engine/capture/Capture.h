@@ -48,9 +48,12 @@ struct ScreenTarget {
 };
 std::vector<ScreenTarget> screenTargets(std::string* error = nullptr);
 
-// `region` (points, within a display's own area) records part of a display.
+// `region` (points, within a display's own area) records part of a display. Windows in
+// `excludedWindows` (window numbers: the app's teleprompter, its recording controls) are left
+// out of a display's recording, as if they were not there.
 std::unique_ptr<CaptureSource> makeScreenSource(const ScreenTarget& target, std::optional<std::array<double, 4>> region,
-                                                bool systemSound, int frameRate = 30);
+                                                bool systemSound, int frameRate = 30,
+                                                std::vector<std::uint32_t> excludedWindows = {});
 
 struct CameraDevice {
     std::string id;

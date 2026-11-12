@@ -84,6 +84,10 @@ qt_add_qml_module(tve_player
         StillImage.cpp
         LookLibrary.h
         LookLibrary.cpp
+        Teleprompter.h
+        Teleprompter.cpp
+        NativeWindow.h
+        NativeWindow.mm
         ScopeView.h
         ScopeView.cpp
         MicrophoneAccess.h

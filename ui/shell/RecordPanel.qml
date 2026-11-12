@@ -16,6 +16,7 @@ Popup {
     property int cameraIndex: -1  // -1: no camera
     property bool systemSound: true
     property bool microphone: true
+    signal teleprompterRequested() // open the teleprompter (its own window)
 
     width: 380
     padding: Theme.space.l
@@ -115,6 +116,14 @@ Popup {
             font: Theme.type.body
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
+        }
+        TextButton {
+            objectName: "openTeleprompter"
+            text: qsTr("Teleprompter…")
+            iconName: "transcript"
+            variant: "ghost"
+            tip: qsTr("Your script, scrolling while you record, in a window left out of the recording")
+            onClicked: panel.teleprompterRequested()
         }
         ToggleSwitch {
             objectName: "recordMicrophone"

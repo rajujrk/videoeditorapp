@@ -86,6 +86,7 @@ The following improvements were completed after Phase 5:
 - Slice 26b: Title presets of your own, titles that move with the music, animated bar and line charts from your data, and logo reveals.
 - Slice 27a: Batch gain (several clips turned up, set or normalized together) and 32-bit float WAV export.
 - Slice 27b: Audio visualisers — bars, mirrored bars, a wave or a ring moving with the spectrum of the music.
+- Slice 28a: A teleprompter that scrolls your script while you record, left out of screen recordings.
 
 All previously identified feature gaps have been closed.
 
@@ -162,6 +163,7 @@ All previously identified feature gaps have been closed.
 - Mute, hide and lock individual tracks.
 - Display audio level meters.
 - Record voice-overs directly from a microphone at the current playhead position.
+- Read your script from a teleprompter while recording.
 
 ### 2.9 Media Management and Preview
 
@@ -377,6 +379,14 @@ draws rings where it clicked, a highlight around it or a spotlight that dims the
 **Zoom on clicks** zooms in on each click as keyframes, and **Click sounds** adds a click at each one
 on a track of its own. `TVE_SCREEN_SOURCE=test` and `TVE_CAMERA_SOURCE=test` record from test
 sources instead (moving bars, a tone, a cursor circling and clicking every second).
+
+**Teleprompter.** **Teleprompter…** in the recorder or the voice-over panel opens your script in
+a window of its own that stays on top: large type scrolling up past a reading line marked by
+arrows. Set the speed and size, mirror it for a beam-splitter glass, and **Edit** to type or
+paste the script. With **With recording** on, it starts from the top when a recording starts and
+stops when it stops; Space plays or pauses, ↑ and ↓ change the speed, Home goes back to the top.
+The window is left out of screen recordings, so it can sit on the display being recorded. The
+script and settings are kept for next time (`TVE_TELEPROMPTER_FILE` moves them).
 
 **Music and sound effects.** The library's **Audio** tab has our own music — 12 pieces in six
 moods (calm, upbeat, cinematic, lo-fi, corporate, electronic) — and 15 sound effects (transitions,

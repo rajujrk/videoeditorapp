@@ -10,6 +10,7 @@ import TechieVideoEditor.Player
 Rectangle {
     id: timeline
     required property var project
+    signal teleprompterRequested() // from the voice-over and recording panels
 
     property real pixelsPerSecond: 60
     readonly property real snapPixels: 8
@@ -175,6 +176,7 @@ Rectangle {
                     id: voiceOver
                     objectName: "voiceOverPanel"
                     project: timeline.project
+                    onTeleprompterRequested: timeline.teleprompterRequested()
                     y: -height - Theme.space.s
                 }
             }
@@ -191,6 +193,7 @@ Rectangle {
                     id: recordPanel
                     objectName: "recordPanel"
                     project: timeline.project
+                    onTeleprompterRequested: timeline.teleprompterRequested()
                     y: -height - Theme.space.s
                 }
             }
