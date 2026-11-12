@@ -41,6 +41,13 @@ Rectangle {
         style: Object.assign({}, t.style, { text: qsTranslate("TitleTemplates", t.style.text) })
     }))
     property string titleCategory: ""
+    // The Titles tab's tiles: the user's own presets, the templates, then logo reveals (each
+    // asks for the logo picture).
+    readonly property var titleTiles: library.project.titlePresets.map((p) => ({ name: p.name, title: p.name, category: "mine", style: p.style, preset: true }))
+        .concat(library.titleStyles)
+        .concat(library.project.logoReveals.map((r) => ({ name: r.id, title: r.title, category: "logos", style: ({}), reveal: r.id })))
+    // The logo reveal waiting for its picture.
+    property string pendingReveal: ""
     // The Stickers tab's category ("" for all).
     property string stickerCategory: ""
     readonly property var stickerCategories: [
@@ -680,19 +687,22 @@ Rectangle {
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: library.titleStyles.filter((t) => (library.titleCategory === "" || t.category === library.titleCategory)
-                                                         && library.matchesSearch(t.name))
+                model: library.titleTiles.filter((t) => (library.titleCategory === "" || t.category === library.titleCategory)
+                                                        && (library.matchesSearch(t.name) || library.matchesSearch(t.title)))
 
                 delegate: Item {
                     id: titleTile
                     required property var modelData
-                    readonly property var titleStyle: modelData.style // read by the timeline's drop area
+                    // Read by the timeline's drop area (a logo reveal is not dropped: it asks for the logo).
+                    readonly property var titleStyle: modelData.reveal ? undefined : modelData.style
+                    readonly property bool reveal: !!modelData.reveal
                     readonly property bool animated: !!(modelData.style.animationIn || modelData.style.animationOut
-                                                        || modelData.style.animationLoop || modelData.style.scroll)
+                                                        || modelData.style.animationLoop || modelData.style.scroll
+                                                        || modelData.style.chart)
                     width: titlesGrid.cellWidth
                     height: titlesGrid.cellHeight
 
-                    Drag.active: titleMouse.drag.active
+                    Drag.active: titleMouse.drag.active && !reveal
                     Drag.dragType: Drag.Automatic
                     Drag.supportedActions: Qt.CopyAction
                     Drag.keys: ["application/x-tve-title"]
@@ -723,15 +733,24 @@ Rectangle {
                                     GradientStop { position: 1; color: "#B0675A" }
                                 }
                                 // Drawn by the app's text renderer; an animated one plays on hover.
+                                // A logo reveal: the reveal's mark over the sky.
+                                Icon {
+                                    visible: titleTile.reveal
+                                    anchors.centerIn: parent
+                                    name: "logo-reveal"
+                                    size: 36
+                                    color: "#FFFFFF"
+                                }
                                 Image {
                                     id: titlePreview
                                     objectName: "titlePreview:" + titleTile.modelData.name
+                                    visible: !titleTile.reveal
                                     anchors.fill: parent
                                     fillMode: Image.PreserveAspectCrop
                                     asynchronous: true
                                     readonly property real length: titleTile.modelData.style.duration || 5
                                     property real seconds: length / 2
-                                    source: "image://tvetitle/" + encodeURIComponent(JSON.stringify(
+                                    source: titleTile.reveal ? "" : "image://tvetitle/" + encodeURIComponent(JSON.stringify(
                                                 Object.assign({ t: Math.round(seconds * 10) / 10 }, titleTile.modelData.style)))
                                     Timer {
                                         running: titleMouse.containsMouse && titleTile.animated
@@ -757,20 +776,36 @@ Rectangle {
 
                     MouseArea {
                         id: titleMouse
-                        objectName: "libraryTitle:" + titleTile.modelData.name
+                        objectName: (titleTile.reveal ? "logoReveal:" : titleTile.modelData.preset ? "titlePreset:" : "libraryTitle:")
+                                    + titleTile.modelData.name
                         anchors.fill: parent
                         anchors.rightMargin: Theme.space.m
                         anchors.bottomMargin: Theme.space.m
                         hoverEnabled: true
-                        drag.target: titleDragProxy
-                        onClicked: library.project.addTitle(titleTile.modelData.style)
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        drag.target: titleTile.reveal ? null : titleDragProxy
+                        onClicked: (mouse) => {
+                            if (mouse.button === Qt.RightButton) {
+                                if (titleTile.modelData.preset) {
+                                    titlePresetMenu.preset = titleTile.modelData.name
+                                    titlePresetMenu.popup()
+                                }
+                            } else if (titleTile.reveal) {
+                                library.pendingReveal = titleTile.modelData.reveal
+                                logoDialog.open()
+                            } else {
+                                library.project.addTitle(titleTile.modelData.style)
+                            }
+                        }
                     }
                     Item { id: titleDragProxy }
 
                     ToolTip {
                         visible: titleMouse.containsMouse && !titleMouse.drag.active
                         delay: 800
-                        text: qsTr("Click to add at the playhead, or drag onto a track")
+                        text: titleTile.reveal ? qsTr("Click to choose your logo; it is revealed at the playhead")
+                            : titleTile.modelData.preset ? qsTr("Click to add at the playhead, or drag onto a track. Right-click to delete.")
+                            : qsTr("Click to add at the playhead, or drag onto a track")
                     }
                 }
             }
@@ -1266,6 +1301,25 @@ Rectangle {
         }
     }
     ConfirmDialog { id: mediaConfirm; objectName: "mediaConfirm" }
+    // A saved title preset's right-click menu.
+    AppMenu {
+        id: titlePresetMenu
+        objectName: "titlePresetMenu"
+        property string preset: ""
+        AppMenuItem {
+            objectName: "titlePresetMenu:delete"
+            text: qsTr("Delete this preset")
+            onTriggered: library.project.deleteTitlePreset(titlePresetMenu.preset)
+        }
+    }
+    // The logo for a logo reveal.
+    FileDialog {
+        id: logoDialog
+        title: qsTr("Choose your logo")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("Images (*.png *.jpg *.jpeg *.heic *.webp *.tif *.tiff *.bmp)")]
+        onAccepted: library.project.addLogoReveal(library.pendingReveal, selectedFile, qsTr("Your tagline"))
+    }
     // Another project's timeline, brought in as one compound clip at the playhead.
     FileDialog {
         id: projectDialog

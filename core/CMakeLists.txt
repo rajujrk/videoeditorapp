@@ -4,6 +4,7 @@ add_library(tve_core STATIC
     model/Keyframes.cpp
     model/ClipAnimation.h
     model/ClipAnimation.cpp
+    model/LogoReveal.cpp
     model/ColourMatch.h
     model/ColourMatch.cpp
     model/SpeedRamp.h

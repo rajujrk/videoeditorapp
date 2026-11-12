@@ -526,8 +526,179 @@ QStringList titleFontFamilies()
     return families;
 }
 
+namespace {
+
+double easeOut(double p)
+{
+    p = std::clamp(p, 0.0, 1.0);
+    return 1.0 - std::pow(1.0 - p, 3.0);
+}
+
+// A chart value as written on it: whole numbers as they are, others to the decimals the data
+// uses (at most two).
+QString chartNumber(double value, int decimals)
+{
+    return QString::number(value, 'f', decimals);
+}
+
+int chartDecimals(const std::vector<tve::ChartPoint>& points)
+{
+    int decimals = 0;
+    for (const tve::ChartPoint& p : points) {
+        for (int d = 0; d <= 2; ++d) {
+            const double scaled = p.value * std::pow(10.0, d);
+            if (std::abs(scaled - std::round(scaled)) < 1e-6) {
+                decimals = std::max(decimals, d);
+                break;
+            }
+            if (d == 2)
+                decimals = 2;
+        }
+    }
+    return decimals;
+}
+
+// A chart title: the heading (the text) above a box in the middle of the canvas holding the
+// bars or line, the labels under it. Bars grow one after another, a line draws left to right.
+QImage renderChart(const tve::ClipText& text, QSize canvas, double seconds, double duration)
+{
+    const tve::TextChart& chart = *text.chart;
+    QImage image(canvas, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    if (canvas.isEmpty() || chart.points.empty())
+        return image.convertToFormat(QImage::Format_RGBA8888);
+    const double em = text.size * canvas.height();
+    const QRectF box(canvas.width() * 0.15, canvas.height() * 0.3, canvas.width() * 0.7, canvas.height() * 0.52);
+    QPainter painter(&image);
+    painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
+
+    // The heading, its middle a little above the box.
+    tve::ClipText heading = text;
+    heading.chart.reset();
+    const QImage top = renderTitle(heading, canvas, seconds, duration);
+    painter.drawImage(QPointF(0.0, box.top() - em * 0.8 - canvas.height() / 2.0), top.convertToFormat(QImage::Format_ARGB32_Premultiplied));
+
+    const double labelPx = std::clamp(em * 0.4, canvas.height() * 0.022, canvas.height() * 0.05);
+    QFont font = titleFont(text, labelPx);
+    font.setLetterSpacing(QFont::AbsoluteSpacing, 0.0);
+    painter.setFont(font);
+    const QFontMetricsF metrics(font);
+    const QColor ink = toColor(text.color);
+    const QColor colour = toColor(chart.color);
+    const QRectF plot = box.adjusted(0.0, metrics.height() * 1.3, 0.0, -metrics.height() * 1.6);
+    const std::size_t n = chart.points.size();
+    double lo = 0.0, hi = 0.0;
+    for (const tve::ChartPoint& p : chart.points) {
+        lo = std::min(lo, p.value);
+        hi = std::max(hi, p.value);
+    }
+    if (hi - lo < 1e-12)
+        hi = lo + 1.0;
+    const auto yOf = [&](double v) { return plot.bottom() - (v - lo) / (hi - lo) * plot.height(); };
+    const double slot = plot.width() / double(n);
+    const auto xOf = [&](std::size_t i) { return plot.left() + slot * (double(i) + 0.5); };
+    const int decimals = chartDecimals(chart.points);
+    const bool growing = chart.grow > 0.0 && seconds >= 0.0;
+
+    // The axis at zero, and the labels under the box.
+    const double zero = yOf(0.0);
+    QColor axis = ink;
+    axis.setAlphaF(axis.alphaF() * 0.55f);
+    painter.setPen(QPen(axis, std::max(1.0, canvas.height() / 360.0)));
+    painter.drawLine(QPointF(plot.left(), zero), QPointF(plot.right(), zero));
+    painter.setPen(ink);
+    for (std::size_t i = 0; i < n; ++i) {
+        const QString label = metrics.elidedText(QString::fromStdString(chart.points[i].label), Qt::ElideRight, slot * 0.96);
+        painter.drawText(QRectF(xOf(i) - slot / 2.0, plot.bottom() + metrics.height() * 0.3, slot, metrics.height() * 1.2),
+                         Qt::AlignHCenter | Qt::AlignTop, label);
+    }
+
+    const auto valueAt = [&](std::size_t i, double v, double y) {
+        if (!chart.values)
+            return;
+        const bool below = v < 0.0;
+        const QRectF r(xOf(i) - slot / 2.0, below ? y + metrics.height() * 0.15 : y - metrics.height() * 1.2, slot,
+                       metrics.height());
+        painter.setPen(ink);
+        painter.drawText(r, Qt::AlignHCenter | Qt::AlignVCenter, chartNumber(v, decimals));
+    };
+
+    if (chart.kind == tve::ChartKind::Bar) {
+        // Each bar grows over 60 % of the time, the next starting a little later.
+        const double each = n > 1 ? chart.grow * 0.6 : chart.grow;
+        const double stagger = n > 1 ? chart.grow * 0.4 / double(n - 1) : 0.0;
+        const double width = slot * 0.62;
+        for (std::size_t i = 0; i < n; ++i) {
+            const double p = growing ? easeOut((seconds - double(i) * stagger) / std::max(each, 1e-6)) : 1.0;
+            const double v = chart.points[i].value * p;
+            const double y = yOf(v);
+            const QRectF bar(xOf(i) - width / 2.0, std::min(y, zero), width, std::abs(zero - y));
+            if (bar.height() > 0.5) {
+                QPainterPath path;
+                const double r = std::min(width * 0.12, bar.height() / 2.0);
+                path.addRoundedRect(bar, r, r);
+                painter.fillPath(path, colour);
+            }
+            if (p > 0.0)
+                valueAt(i, v, y);
+        }
+    } else {
+        // The line, as far along as it has drawn, over a faint fill down to zero.
+        const double u = growing ? easeOut(seconds / chart.grow) : 1.0;
+        const double reach = xOf(0) + (xOf(n - 1) - xOf(0)) * u;
+        QPolygonF line;
+        for (std::size_t i = 0; i < n; ++i) {
+            const QPointF point(xOf(i), yOf(chart.points[i].value));
+            if (point.x() <= reach + 1e-6) {
+                line << point;
+            } else {
+                const QPointF before = line.isEmpty() ? point : line.back();
+                const double t = (reach - before.x()) / std::max(point.x() - before.x(), 1e-6);
+                line << before + (point - before) * std::clamp(t, 0.0, 1.0);
+                break;
+            }
+        }
+        const double stroke = std::max(2.0, canvas.height() * 0.008);
+        if (line.size() >= 2) {
+            QPolygonF area = line;
+            area << QPointF(line.back().x(), zero) << QPointF(line.front().x(), zero);
+            QColor faint = colour;
+            faint.setAlphaF(faint.alphaF() * 0.2f);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(faint);
+            painter.drawPolygon(area);
+            painter.setBrush(Qt::NoBrush);
+            painter.setPen(QPen(colour, stroke, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+            painter.drawPolyline(line);
+        }
+        painter.setPen(Qt::NoPen);
+        for (std::size_t i = 0; i < n; ++i) {
+            if (xOf(i) > reach + 1e-6)
+                break;
+            const QPointF point(xOf(i), yOf(chart.points[i].value));
+            painter.setBrush(colour);
+            painter.drawEllipse(point, stroke * 1.5, stroke * 1.5);
+            valueAt(i, chart.points[i].value, point.y() - stroke);
+            painter.setPen(Qt::NoPen);
+        }
+    }
+    painter.end();
+    return image.convertToFormat(QImage::Format_RGBA8888);
+}
+
+// A repeatable random number in 0..1 for (a, b).
+double jitter(double a, double b)
+{
+    const double v = std::sin(a * 12.9898 + b * 78.233) * 43758.5453;
+    return v - std::floor(v);
+}
+
+} // namespace
+
 QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, double duration)
 {
+    if (text.chart)
+        return renderChart(text, canvas, seconds, duration);
     QImage image(canvas, QImage::Format_ARGB32_Premultiplied);
     image.fill(Qt::transparent);
     const bool hasText = QString::fromStdString(text.text).trimmed().size() > 0;
@@ -567,8 +738,43 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
                 apply(d, tve::animateTextUnit(*animation, role, unit.index, unit.count, seconds, clipSeconds), unit.rect, em);
             }
         }
-        d.transform = d.transform * scroll;
     }
+    // Moving with the music: grown as a whole, each character jumping a moment after the one
+    // before, or shaken (the colour's flash comes with the fills).
+    const double beat = moving && text.react.active() ? text.react.amount : 0.0;
+    tve::TextUnitState pulse;
+    if (beat > 0.0 && text.react.kind == tve::TextReactKind::Pulse)
+        pulse.scale = 1.0 + 0.45 * beat * text.react.levelAt(seconds);
+    for (std::size_t g = 0; g < layout.glyphs.size() && beat > 0.0; ++g) {
+        const Glyph& glyph = layout.glyphs[g];
+        tve::TextUnitState s;
+        switch (text.react.kind) {
+        case tve::TextReactKind::Pulse:
+            apply(drawn[g], pulse, layout.bounds, em);
+            break;
+        case tve::TextReactKind::Bounce: {
+            const double level = text.react.levelAt(seconds - 0.04 * glyph.character);
+            s.dy = -0.5 * beat * level;
+            s.scale = 1.0 + 0.12 * beat * level;
+            apply(drawn[g], s, glyph.box, em);
+            break;
+        }
+        case tve::TextReactKind::Shake: {
+            const double level = text.react.levelAt(seconds);
+            const double frame = std::floor(seconds * tve::TextReact::kRate);
+            s.dx = (jitter(glyph.character, frame) - 0.5) * 0.5 * beat * level;
+            s.dy = (jitter(glyph.character + 0.5, frame) - 0.5) * 0.5 * beat * level;
+            s.rotation = (jitter(glyph.character + 0.25, frame) - 0.5) * 24.0 * beat * level;
+            apply(drawn[g], s, glyph.box, em);
+            break;
+        }
+        case tve::TextReactKind::Flash:
+        case tve::TextReactKind::None:
+            break;
+        }
+    }
+    for (Drawn& d : drawn)
+        d.transform = d.transform * scroll;
     // A caption following its speech: the words said so far, and the one being said (the last
     // started, until the next starts). Layout words and caption words match one for one.
     std::vector<QBrush> fills(layout.glyphs.size(), textBrush(text, layout.bounds));
@@ -614,8 +820,22 @@ QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, doub
         }
     }
 
-    // The shape moves with the text as a whole (in and out, not the loop).
+    // A flash: the letters' colour towards the highlight colour as the music hits.
+    if (beat > 0.0 && text.react.kind == tve::TextReactKind::Flash) {
+        const double k = std::clamp(beat * text.react.levelAt(seconds), 0.0, 1.0);
+        if (k > 0.005) {
+            const auto mix = [k](double a, double b) { return float(a + (b - a) * k); };
+            const tve::ColorRgba& a = text.color;
+            const tve::ColorRgba& b = text.highlightColor;
+            const QColor flash = QColor::fromRgbF(mix(a.r, b.r), mix(a.g, b.g), mix(a.b, b.b), mix(a.a, b.a));
+            std::ranges::fill(fills, QBrush(flash));
+        }
+    }
+
+    // The shape moves with the text as a whole (in and out, not the loop), and its pulse.
     Drawn shapeDrawn;
+    if (!pulse.identity())
+        apply(shapeDrawn, pulse, layout.bounds, em);
     if (moving) {
         for (const auto& [animation, role] : {std::pair{&text.animationIn, tve::TextAnimationRole::In},
                                               std::pair{&text.animationOut, tve::TextAnimationRole::Out}}) {
@@ -734,6 +954,8 @@ constexpr const char* kUnits[] = {"whole", "line", "word", "character"};
 constexpr const char* kScrolls[] = {"none", "rollUp", "crawlLeft"};
 constexpr const char* kFillKinds[] = {"solid", "linear", "radial", "image"};
 constexpr const char* kCaptionMotions[] = {"none", "highlight", "pop", "karaoke", "reveal"};
+constexpr const char* kReactKinds[] = {"none", "pulse", "bounce", "flash", "shake"};
+constexpr const char* kChartKinds[] = {"bar", "line"};
 
 template <std::size_t N>
 int indexOf(const char* const (&names)[N], const QString& name, int fallback)
@@ -780,7 +1002,57 @@ const char* alignmentName(tve::TextAlignment alignment)
     return "center";
 }
 
+QVariantMap chartMap(const tve::TextChart& chart)
+{
+    QVariantList points;
+    for (const tve::ChartPoint& p : chart.points)
+        points << QVariantMap{{QStringLiteral("label"), QString::fromStdString(p.label)}, {QStringLiteral("value"), p.value}};
+    return {{QStringLiteral("kind"), QString::fromLatin1(kChartKinds[int(chart.kind)])},
+            {QStringLiteral("points"), points},
+            {QStringLiteral("data"), chartText(chart.points)},
+            {QStringLiteral("color"), colorList(chart.color)},
+            {QStringLiteral("grow"), chart.grow},
+            {QStringLiteral("values"), chart.values}};
+}
+
 } // namespace
+
+std::vector<tve::ChartPoint> parseChartData(const QString& data)
+{
+    std::vector<tve::ChartPoint> points;
+    for (QString line : data.split(QLatin1Char('\n'))) {
+        line = line.trimmed();
+        if (line.isEmpty())
+            continue;
+        // The value is the last field (after a tab, semicolon or comma); the label the rest.
+        qsizetype cut = -1;
+        for (QChar separator : {QLatin1Char('\t'), QLatin1Char(';'), QLatin1Char(',')}) {
+            cut = line.lastIndexOf(separator);
+            if (cut >= 0)
+                break;
+        }
+        const QString number = (cut >= 0 ? line.mid(cut + 1) : line).trimmed().remove(QLatin1Char('"'));
+        bool ok = false;
+        const double value = number.toDouble(&ok);
+        if (!ok || !std::isfinite(value))
+            continue; // a heading, or not a number
+        QString label = cut >= 0 ? line.left(cut).trimmed() : QString();
+        if (label.size() >= 2 && label.startsWith(QLatin1Char('"')) && label.endsWith(QLatin1Char('"')))
+            label = label.mid(1, label.size() - 2);
+        points.push_back({label.left(qsizetype(tve::TextChart::kMaxLabel)).toStdString(), value});
+        if (points.size() == tve::TextChart::kMaxPoints)
+            break;
+    }
+    return points;
+}
+
+QString chartText(const std::vector<tve::ChartPoint>& points)
+{
+    QStringList lines;
+    for (const tve::ChartPoint& p : points)
+        lines << QStringLiteral("%1, %2").arg(QString::fromStdString(p.label), QString::number(p.value, 'g', 12));
+    return lines.join(QLatin1Char('\n'));
+}
 
 QVariantMap textMap(const tve::ClipText& text)
 {
@@ -819,6 +1091,10 @@ QVariantMap textMap(const tve::ClipText& text)
         {QStringLiteral("depthColor"), colorList(text.depthColor)},
         {QStringLiteral("tiltX"), text.tiltX},
         {QStringLiteral("tiltY"), text.tiltY},
+        {QStringLiteral("react"), QVariantMap{{QStringLiteral("kind"), QString::fromLatin1(kReactKinds[int(text.react.kind)])},
+                                              {QStringLiteral("amount"), text.react.amount},
+                                              {QStringLiteral("measured"), !text.react.levels.empty()}}},
+        {QStringLiteral("chart"), text.chart ? QVariant(chartMap(*text.chart)) : QVariant()},
         {QStringLiteral("path"), [&] {
              QVariantList points;
              for (const auto& [x, y] : text.path)
@@ -926,6 +1202,49 @@ tve::ClipText textFrom(const QVariantMap& changes, tve::ClipText text)
         text.tiltX = get("tiltX").toDouble();
     if (has("tiltY"))
         text.tiltY = get("tiltY").toDouble();
+    // Moving with the music: kind and amount (the levels come from measuring the music).
+    if (has("react")) {
+        const QVariantMap react = get("react").toMap();
+        if (react.contains(QStringLiteral("kind")))
+            text.react.kind = tve::TextReactKind(indexOf(kReactKinds, react.value(QStringLiteral("kind")).toString(),
+                                                         int(text.react.kind)));
+        if (react.contains(QStringLiteral("amount")))
+            text.react.amount = react.value(QStringLiteral("amount")).toDouble();
+        if (react.contains(QStringLiteral("levels"))) {
+            text.react.levels.clear();
+            for (const QVariant& v : react.value(QStringLiteral("levels")).value<QVariantList>())
+                text.react.levels.push_back(float(v.toDouble()));
+        }
+    }
+    // A chart: null (or false) takes it off; else its fields, `data` being "label, value" lines.
+    if (has("chart")) {
+        const QVariant value = get("chart");
+        const QVariantMap m = value.toMap();
+        if (m.isEmpty() && !value.toBool()) {
+            text.chart.reset();
+        } else {
+            tve::TextChart chart = text.chart.value_or(tve::TextChart{});
+            if (m.contains(QStringLiteral("kind")))
+                chart.kind = tve::ChartKind(indexOf(kChartKinds, m.value(QStringLiteral("kind")).toString(), int(chart.kind)));
+            if (m.contains(QStringLiteral("points"))) {
+                chart.points.clear();
+                for (const QVariant& v : m.value(QStringLiteral("points")).value<QVariantList>()) {
+                    const QVariantMap point = v.toMap();
+                    chart.points.push_back({point.value(QStringLiteral("label")).toString().toStdString(),
+                                            point.value(QStringLiteral("value")).toDouble()});
+                }
+            }
+            if (m.contains(QStringLiteral("data")))
+                chart.points = parseChartData(m.value(QStringLiteral("data")).toString());
+            if (m.contains(QStringLiteral("color")))
+                chart.color = colorFrom(m.value(QStringLiteral("color")), chart.color);
+            if (m.contains(QStringLiteral("grow")))
+                chart.grow = m.value(QStringLiteral("grow")).toDouble();
+            if (m.contains(QStringLiteral("values")))
+                chart.values = m.value(QStringLiteral("values")).toBool();
+            text.chart = std::move(chart);
+        }
+    }
     return text;
 }
 

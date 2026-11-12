@@ -2,11 +2,16 @@
 
 // The Titles library: original title templates, each a title's text fields (see
 // ProjectController.addTitle) plus where it sits (x, y: fractions of the canvas from the
-// centre) and, for credits and tickers, how long it lasts.
+// centre) and, for credits and tickers, how long it lasts. Titles that move with the music
+// measure the music under them when added; charts draw their values (a chart's labels are
+// data, not translated). Logo reveals and the user's own presets come from the project
+// controller (logoReveals, titlePresets).
 
 var categories = [
     { id: "", label: QT_TRANSLATE_NOOP("TitleTemplates", "All") }, { id: "titles", label: QT_TRANSLATE_NOOP("TitleTemplates", "Titles") }, { id: "lower", label: QT_TRANSLATE_NOOP("TitleTemplates", "Lower thirds") },
-    { id: "callouts", label: QT_TRANSLATE_NOOP("TitleTemplates", "Callouts") }, { id: "credits", label: QT_TRANSLATE_NOOP("TitleTemplates", "Credits") }, { id: "animated", label: QT_TRANSLATE_NOOP("TitleTemplates", "Animated") }
+    { id: "callouts", label: QT_TRANSLATE_NOOP("TitleTemplates", "Callouts") }, { id: "credits", label: QT_TRANSLATE_NOOP("TitleTemplates", "Credits") }, { id: "animated", label: QT_TRANSLATE_NOOP("TitleTemplates", "Animated") },
+    { id: "music", label: QT_TRANSLATE_NOOP("TitleTemplates", "With the music") }, { id: "charts", label: QT_TRANSLATE_NOOP("TitleTemplates", "Charts") },
+    { id: "logos", label: QT_TRANSLATE_NOOP("TitleTemplates", "Logo reveals") }, { id: "mine", label: QT_TRANSLATE_NOOP("TitleTemplates", "My presets") }
 ]
 
 function anim(preset, unit, duration, stagger) {
@@ -144,5 +149,24 @@ var templates = [
                                                    animationOut: anim("zoom", "character", 0.6, 0.4) } },
     { name: QT_TRANSLATE_NOOP("TitleTemplates", "Slide Words"), category: "animated", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "One word at a time"), size: 0.08, bold: true, shadow: true,
                                                           animationIn: anim("slide_left", "word", 1.0, 0.7),
-                                                          animationOut: anim("slide_right", "word", 0.6, 0.5) } }
+                                                          animationOut: anim("slide_right", "word", 0.6, 0.5) } },
+    // With the music
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Beat Pulse"), category: "music", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "FEEL IT"), size: 0.14, bold: true, fontFamily: "Futura",
+                                                       color: [1, 0.85, 0.3, 1], shadow: true, react: { kind: "pulse", amount: 0.6 } } },
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Bouncing Letters"), category: "music", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "Dance with me"), size: 0.1, bold: true,
+                                                             color: [0.55, 0.95, 1, 1], shadow: true, react: { kind: "bounce", amount: 0.7 } } },
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Beat Flash"), category: "music", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "DROP"), size: 0.18, bold: true, fontFamily: "Impact",
+                                                       highlightColor: [1, 0.3, 0.65, 1], react: { kind: "flash", amount: 0.9 } } },
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Bass Shake"), category: "music", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "LOUDER"), size: 0.14, bold: true, outlineWidth: 0.05,
+                                                       outlineColor: [0.1, 0, 0.2, 1], react: { kind: "shake", amount: 0.6 } } },
+    // Charts
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Bar Chart"), category: "charts", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "Views each quarter"), size: 0.06, bold: true, duration: 6,
+                                                      chart: { kind: "bar", color: [0.32, 0.62, 1, 1], grow: 1.5, values: true,
+                                                               data: "Q1, 120\nQ2, 180\nQ3, 150\nQ4, 240" } } },
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Line Chart"), category: "charts", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "Growth"), size: 0.06, bold: true, duration: 6,
+                                                       chart: { kind: "line", color: [0.3, 0.85, 0.55, 1], grow: 2, values: true,
+                                                                data: "2021, 4\n2022, 9\n2023, 15\n2024, 22\n2025, 34" } } },
+    { name: QT_TRANSLATE_NOOP("TitleTemplates", "Results"), category: "charts", style: { text: QT_TRANSLATE_NOOP("TitleTemplates", "And the votes are in"), size: 0.06, bold: true, duration: 6,
+                                                    fontFamily: "Avenir Next", chart: { kind: "bar", color: [1, 0.76, 0.2, 1], grow: 2.5, values: true,
+                                                                                         data: "A, 42\nB, 27\nC, 31" } } }
 ]

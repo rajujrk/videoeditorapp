@@ -1,11 +1,15 @@
 #include "commands/CommandStack.h"
 #include "commands/EditCommands.h"
 #include "io/ProjectSerializer.h"
+#include "model/ClipAnimation.h"
+#include "model/LogoReveal.h"
 #include "model/TimelineQuery.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
+
+#include <limits>
 
 using namespace tve;
 
@@ -320,4 +324,97 @@ TEST_CASE("title styles: fill, underline, vertical, curve and 3D are checked and
     bad = text;
     bad.fill.kind = TextFillKind::Image;
     CHECK(validateText(bad).value() == "choose a picture to fill the text with");
+}
+
+TEST_CASE("titles that move with the music: levels between measurements, checked and saved", "[titles]")
+{
+    ClipText text;
+    CHECK_FALSE(text.animated());
+    text.react.kind = TextReactKind::Pulse;
+    CHECK_FALSE(text.react.active()); // not measured yet
+    text.react.levels = {0.0f, 1.0f, 0.5f};
+    CHECK(text.react.active());
+    CHECK(text.animated());
+    CHECK(text.react.levelAt(0.0) == Catch::Approx(0.0));
+    CHECK(text.react.levelAt(0.5 / TextReact::kRate) == Catch::Approx(0.5));
+    CHECK(text.react.levelAt(1.5 / TextReact::kRate) == Catch::Approx(0.75));
+    CHECK(text.react.levelAt(2.0 / TextReact::kRate) == Catch::Approx(0.5));
+    CHECK(text.react.levelAt(10.0) == 0.0); // after the measurements
+    CHECK(text.react.levelAt(-1.0) == 0.0);
+    CHECK_FALSE(validateText(text));
+
+    ClipText bad = text;
+    bad.react.amount = 1.5;
+    CHECK(validateText(bad).value() == "how much it moves with the music must be between 0% and 100%");
+    bad = text;
+    bad.react.levels = {2.0f};
+    CHECK(validateText(bad).value() == "music levels must be between 0 and 1");
+}
+
+TEST_CASE("chart titles: values checked, saved, and older titles have none", "[titles]")
+{
+    ClipText text;
+    text.text = "Sales";
+    text.chart = TextChart{.kind = ChartKind::Line, .points = {{"Jan", 3.0}, {"Feb", -1.5}, {"Mar", 7.0}},
+                           .color = {0.1, 0.8, 0.3, 1.0}, .grow = 2.0, .values = false};
+    CHECK(text.animated()); // it grows in
+    CHECK_FALSE(validateText(text));
+    Project project;
+    Clip clip{.id = 1, .duration = kTicksPerSecond};
+    clip.text = text;
+    project.tracks.push_back(Track{.id = 2, .kind = TrackKind::Title, .clips = {clip}});
+    project.setNextId(3);
+    nlohmann::json json = projectToJson(project);
+    CHECK(projectFromJson(json).tracks == project.tracks);
+    nlohmann::json& saved = json["tracks"][0]["clips"][0]["text"];
+    saved.erase("chart");
+    saved.erase("react");
+    const ClipText loaded = *projectFromJson(json).tracks.front().clips.front().text;
+    CHECK_FALSE(loaded.chart);
+    CHECK(loaded.react == TextReact{});
+
+    ClipText still = text;
+    still.chart->grow = 0.0;
+    CHECK_FALSE(still.animated());
+    ClipText bad = text;
+    bad.chart->points.clear();
+    CHECK(validateText(bad).value() == "a chart needs at least one value");
+    bad = text;
+    bad.chart->points.resize(TextChart::kMaxPoints + 1);
+    CHECK(validateText(bad).value() == "a chart can show at most 50 values");
+    bad = text;
+    bad.chart->points[0].value = std::numeric_limits<double>::infinity();
+    CHECK(validateText(bad).value() == "chart values must be numbers");
+    bad = text;
+    bad.chart->points[0].label = std::string(TextChart::kMaxLabel + 1, 'x');
+    CHECK(validateText(bad).value() == "a chart label is too long");
+    bad = text;
+    bad.chart->grow = 31.0;
+    CHECK(validateText(bad).value() == "a chart grows in over at most 30 seconds");
+    bad = text;
+    bad.chart->color.g = 1.2;
+    CHECK(validateText(bad).value() == "colours must be between 0 and 1");
+}
+
+TEST_CASE("logo reveals are built from the app's own animations", "[titles]")
+{
+    const auto& presets = logoRevealPresets();
+    REQUIRE(presets.size() >= 6);
+    for (const LogoRevealPreset& preset : presets) {
+        INFO(preset.id);
+        CHECK(findLogoReveal(preset.id) == &preset);
+        CHECK(std::ranges::count_if(presets, [&](const LogoRevealPreset& p) { return std::string_view(p.id) == preset.id; }) == 1);
+        // The logo's animations apply to a picture clip.
+        Clip logo{.id = 1, .mediaId = 2, .duration = fromSeconds(kLogoRevealLength)};
+        CHECK_FALSE(applyClipAnimation(logo, preset.logoIn, fromSeconds(preset.inSeconds)));
+        CHECK_FALSE(applyClipAnimation(logo, preset.logoOut, fromSeconds(preset.outSeconds)));
+        CHECK_FALSE(logo.keyframes.empty());
+        // The tagline's animation is a real one that arrives.
+        ClipText tagline;
+        tagline.animationIn = {.preset = preset.taglineIn, .duration = preset.taglineSeconds, .unit = preset.taglineUnit,
+                               .stagger = preset.taglineStagger};
+        CHECK_FALSE(validateText(tagline));
+        CHECK(preset.taglineDelay < kLogoRevealLength / 2);
+    }
+    CHECK(findLogoReveal("nope") == nullptr);
 }

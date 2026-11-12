@@ -252,6 +252,49 @@ struct TextFill {
     friend bool operator==(const TextFill&, const TextFill&) = default;
 };
 
+// Text that moves with the music: how the title reacts (the whole of it grows, its
+// characters jump one after another, its colour flashes towards the highlight colour, or it
+// shakes), how much (0..1), and how hard the music hits through the clip, measured from an
+// audio clip (`levels`: 0..1, kRate a second from the clip's start; empty: not measured).
+enum class TextReactKind { None, Pulse, Bounce, Flash, Shake };
+struct TextReact {
+    static constexpr double kRate = 30.0;
+    static constexpr std::size_t kMaxLevels = std::size_t(kRate * 3600);
+
+    TextReactKind kind = TextReactKind::None;
+    double amount = 0.5;
+    std::vector<float> levels;
+
+    bool active() const { return kind != TextReactKind::None && !levels.empty(); }
+    // The level `seconds` into the clip, between measurements (0 outside them).
+    double levelAt(double seconds) const;
+
+    friend bool operator==(const TextReact&, const TextReact&) = default;
+};
+
+// A chart drawn by a title (its text is the heading above it): bars or a line through the
+// values, labelled under it, growing in from the start of the clip over `grow` seconds
+// (0: there at once), with or without each value written on it.
+enum class ChartKind { Bar, Line };
+struct ChartPoint {
+    std::string label;
+    double value = 0.0;
+
+    friend bool operator==(const ChartPoint&, const ChartPoint&) = default;
+};
+struct TextChart {
+    static constexpr std::size_t kMaxPoints = 50;
+    static constexpr std::size_t kMaxLabel = 60;
+
+    ChartKind kind = ChartKind::Bar;
+    std::vector<ChartPoint> points;
+    ColorRgba color{0.32, 0.62, 1.0, 1.0}; // the bars or the line
+    double grow = 1.5;
+    bool values = true;
+
+    friend bool operator==(const TextChart&, const TextChart&) = default;
+};
+
 // One spoken word of a caption: when it is said (from the caption clip's start) and how it
 // is written, for captions that follow the speech word by word.
 struct CaptionWord {
@@ -313,12 +356,16 @@ struct ClipText {
     ColorRgba depthColor{0.15, 0.15, 0.2, 1.0};
     double tiltX = 0.0; // about the horizontal axis: top away (positive) or towards
     double tiltY = 0.0; // about the vertical axis: right side away (positive) or towards
+    // Moving with the music, and a chart under the text (absent: an ordinary title).
+    TextReact react;
+    std::optional<TextChart> chart;
 
     // Whether it looks different from one moment to the next.
     bool animated() const
     {
         return animationIn.active() || animationOut.active() || animationLoop.active() || scroll != TextScroll::None
-            || (captionMotion != CaptionMotion::None && !words.empty());
+            || (captionMotion != CaptionMotion::None && !words.empty()) || react.active()
+            || (chart && chart->grow > 0.0);
     }
 
     friend bool operator==(const ClipText&, const ClipText&) = default;

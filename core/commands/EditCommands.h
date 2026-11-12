@@ -791,15 +791,17 @@ private:
 // Replaces a title clip's text and style.
 class SetClipTextCommand final : public Command {
 public:
-    SetClipTextCommand(Id clipId, ClipText text) : m_clipId(clipId), m_text(std::move(text)) {}
+    SetClipTextCommand(Id clipId, ClipText text, std::string label = TVE_TR("core", "Edit Title"))
+        : m_clipId(clipId), m_text(std::move(text)), m_label(std::move(label)) {}
 
-    std::string label() const override { return TVE_TR("core", "Edit Title"); }
+    std::string label() const override { return m_label; }
     std::optional<std::string> redo(Project& project) override;
     void undo(Project& project) override;
 
 private:
     Id m_clipId;
     ClipText m_text;
+    std::string m_label;
     ClipText m_previous;
 };
 

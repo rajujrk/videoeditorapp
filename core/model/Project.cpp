@@ -5,6 +5,18 @@
 
 namespace tve {
 
+double TextReact::levelAt(double seconds) const
+{
+    if (levels.empty() || !(seconds >= 0.0))
+        return 0.0;
+    const double at = seconds * kRate;
+    const auto i = std::size_t(at);
+    if (i + 1 >= levels.size())
+        return i + 1 == levels.size() ? double(levels.back()) : 0.0;
+    const double t = at - double(i);
+    return double(levels[i]) * (1.0 - t) + double(levels[i + 1]) * t;
+}
+
 const Keyframes* Clip::keyframesOf(std::string_view propertyId) const
 {
     const auto it = keyframes.find(propertyId);

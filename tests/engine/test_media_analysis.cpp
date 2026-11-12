@@ -164,6 +164,38 @@ TEST_CASE("beats and tempo of click tracks")
     fs::remove(silent);
 }
 
+TEST_CASE("music levels hit on the beat and fade between, only inside the clip")
+{
+    const std::string path = writeClicks(120.0, 0.25, 8.0, "music-levels.wav");
+    const auto features = analyzeAudio(path);
+    REQUIRE(features);
+    const Beats beats = findBeats(*features);
+    REQUIRE(beats.times.size() > 8);
+    // 30 a second for 6 s from media time 1 s; the clip only covers 1..5 s of it.
+    constexpr double rate = 30.0;
+    const std::vector<float> levels = musicLevels(*features, fromSeconds(1.0), 180, rate, {fromSeconds(1.0), fromSeconds(5.0)});
+    REQUIRE(levels.size() == 180);
+    const auto at = [&](double media) { return levels[std::size_t(std::lround((media - 1.0) * rate))]; };
+    for (Ticks beat : beats.times) {
+        const double t = seconds(beat);
+        if (t < 1.2 || t > 4.6)
+            continue;
+        INFO("beat at " << t);
+        CHECK(std::max(at(t), at(t + 1.0 / rate)) > 0.6); // hits
+        CHECK(at(t + 0.4) < 0.25);                         // and fades before the next
+    }
+    for (double t = 5.0; t < 6.9; t += 0.1)
+        CHECK(at(t) == 0.0f); // past the clip
+    for (float v : levels)
+        CHECK((v >= 0.0f && v <= 1.0f));
+    // Silence never moves anything.
+    const std::string silent = writeSpeechLike({{3.0, false}}, "silent-levels.wav");
+    for (float v : musicLevels(*analyzeAudio(silent), 0, 60, rate, {0, fromSeconds(3.0)}))
+        CHECK(v == 0.0f);
+    fs::remove(path);
+    fs::remove(silent);
+}
+
 TEST_CASE("scene cuts between shots, not within them")
 {
     // Three one-second shots at 30 fps, each with movement inside it: a red field with a

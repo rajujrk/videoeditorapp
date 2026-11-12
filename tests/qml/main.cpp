@@ -109,6 +109,13 @@ public:
         if (name.startsWith(QLatin1String("TVE_")))
             qputenv(name.toLocal8Bit().constData(), value.toLocal8Bit());
     }
+    // Writes `text` to a file in the scratch folder.
+    Q_INVOKABLE bool write(const QString& path, const QString& text) const
+    {
+        QFile file(path);
+        return inside(path) && QDir().mkpath(QFileInfo(path).path()) && file.open(QIODevice::WriteOnly)
+            && file.write(text.toUtf8()) >= 0;
+    }
     Q_INVOKABLE QString read(const QString& path) const
     {
         QFile file(path);
@@ -554,6 +561,8 @@ int main(int argc, char** argv)
     qputenv("TVE_KEYMAP_FILE", (keymap.path() + QStringLiteral("/keymap.json")).toLocal8Bit());
     QTemporaryDir colorPresets; // colour presets saved by tests
     qputenv("TVE_COLOR_PRESET_DIR", colorPresets.path().toLocal8Bit());
+    QTemporaryDir titlePresets; // title presets saved by tests
+    qputenv("TVE_TITLE_PRESET_DIR", titlePresets.path().toLocal8Bit());
     // The sound library: its render cache, installed packs and chosen music folders.
     QTemporaryDir soundCache;
     qputenv("TVE_SOUND_CACHE_DIR", soundCache.path().toLocal8Bit());

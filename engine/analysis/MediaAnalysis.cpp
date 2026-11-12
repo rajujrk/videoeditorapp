@@ -509,6 +509,56 @@ Beats findBeats(const AudioFeatures& features)
     return beats;
 }
 
+std::vector<float> musicLevels(const AudioFeatures& features, Ticks start, std::size_t count, double rate,
+                               TimeRange within)
+{
+    std::vector<float> levels(count, 0.0f);
+    if (count == 0 || rate <= 0.0 || features.loudness.empty())
+        return levels;
+    const Beats beats = findBeats(features);
+    const auto timeOf = [&](std::size_t k) { return start + fromSeconds(double(k) / rate); };
+    // The loudness over each value's own slice (dBFS), inside `within`.
+    std::vector<double> loud(count, -120.0);
+    std::vector<double> inside;
+    for (std::size_t k = 0; k < count; ++k) {
+        const Ticks t = timeOf(k);
+        if (t < within.start || t >= within.end || t < 0)
+            continue;
+        const auto a = std::size_t(toSeconds(t) / AudioFeatures::kHop);
+        const auto b = std::max(a + 1, std::size_t((toSeconds(t) + 1.0 / rate) / AudioFeatures::kHop));
+        double sum = 0.0;
+        std::size_t n = 0;
+        for (std::size_t i = a; i < b && i < features.loudness.size(); ++i, ++n)
+            sum += features.loudness[i];
+        if (n == 0)
+            continue;
+        loud[k] = sum / double(n);
+        inside.push_back(loud[k]);
+    }
+    if (inside.empty())
+        return levels;
+    std::ranges::sort(inside);
+    const double quiet = std::max(-60.0, inside[inside.size() / 5]);
+    const double peak = inside.back();
+    const double range = peak - quiet;
+    std::size_t beat = 0;
+    for (std::size_t k = 0; k < count; ++k) {
+        const Ticks t = timeOf(k);
+        if (t < within.start || t >= within.end || t < 0)
+            continue;
+        const double loudness = range >= 3.0 ? std::clamp((loud[k] - quiet) / range, 0.0, 1.0) : 0.0;
+        // The last beat at or before t (they come in order).
+        while (beat + 1 < beats.times.size() && beats.times[beat + 1] <= t)
+            ++beat;
+        double pulse = 0.0;
+        if (!beats.times.empty() && beats.times[beat] <= t)
+            pulse = std::exp(-toSeconds(t - beats.times[beat]) / 0.12);
+        const double level = beats.times.empty() ? loudness : 0.3 * loudness + 0.7 * pulse;
+        levels[k] = float(std::clamp(level, 0.0, 1.0));
+    }
+    return levels;
+}
+
 std::vector<Ticks> findSceneCuts(const VideoFeatures& features, const SceneOptions& options)
 {
     std::vector<Ticks> cuts;

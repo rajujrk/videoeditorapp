@@ -72,6 +72,7 @@
 
 #include "StillRenderer.h"
 #include "model/ClipAnimation.h"
+#include "model/LogoReveal.h"
 #include "model/ColourMatch.h"
 
 #include <QCryptographicHash>
@@ -3622,7 +3623,12 @@ bool ProjectController::addTitle(const QVariantMap& style, double trackId, doubl
     auto* raw = command.get();
     if (!apply(std::move(command)))
         return false;
-    setSelectedClip(double(raw->clipId()));
+    const Id added = raw->clipId();
+    setSelectedClip(double(added));
+    // One that moves with the music listens to the music under it, if there is some.
+    if (const Clip* clip = findClip(added); clip && clip->text->react.kind != TextReactKind::None && !analyzing()
+                                            && musicUnder(*clip) != kNoId)
+        reactToMusic(double(added));
     return true;
 }
 
@@ -3635,6 +3641,341 @@ bool ProjectController::setClipText(double clipId, const QVariantMap& changes)
     if (text == *clip->text)
         return true;
     return apply(std::make_unique<SetClipTextCommand>(clip->id, std::move(text)));
+}
+
+// --- Title presets, music, charts and logo reveals ---
+
+QString ProjectController::titlePresetDirectory() const
+{
+    const QByteArray override = qgetenv("TVE_TITLE_PRESET_DIR");
+    return !override.isEmpty() ? QString::fromLocal8Bit(override)
+                               : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                                     + QStringLiteral("/Title Presets");
+}
+
+QString ProjectController::titlePresetPath(const QString& name) const
+{
+    QString safe = name.trimmed();
+    for (QChar& c : safe) {
+        if (QStringLiteral("/\\:*?\"<>|").contains(c))
+            c = QLatin1Char('-');
+    }
+    return QDir(titlePresetDirectory()).filePath(safe + QStringLiteral(".json"));
+}
+
+QVariantList ProjectController::titlePresets() const
+{
+    QVariantList list;
+    const QDir dir(titlePresetDirectory());
+    for (const QFileInfo& info : dir.entryInfoList({QStringLiteral("*.json")}, QDir::Files, QDir::Name | QDir::IgnoreCase)) {
+        QFile file(info.absoluteFilePath());
+        if (!file.open(QIODevice::ReadOnly))
+            continue;
+        const QJsonObject object = QJsonDocument::fromJson(file.readAll()).object();
+        const QString name = object.value(QStringLiteral("name")).toString();
+        const QJsonObject style = object.value(QStringLiteral("title")).toObject();
+        if (!name.isEmpty() && !style.isEmpty())
+            list << QVariantMap{{QStringLiteral("name"), name}, {QStringLiteral("style"), style.toVariantMap()}};
+    }
+    return list;
+}
+
+bool ProjectController::saveTitlePreset(double clipId, const QString& name)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->text) {
+        reportError(tr("Select a title to save as a preset"));
+        return false;
+    }
+    if (name.trimmed().isEmpty()) {
+        reportError(tr("Name the preset"));
+        return false;
+    }
+    if (!QDir().mkpath(titlePresetDirectory())) {
+        reportError(tr("Could not create %1").arg(titlePresetDirectory()));
+        return false;
+    }
+    // Its look and text (a caption's words and the measured music stay with the clip).
+    QVariantMap style = textMap(*clip->text);
+    style.remove(QStringLiteral("wordCount"));
+    QVariantMap react = style.value(QStringLiteral("react")).toMap();
+    react.remove(QStringLiteral("measured"));
+    style.insert(QStringLiteral("react"), react);
+    if (QVariantMap chart = style.value(QStringLiteral("chart")).toMap(); !chart.isEmpty()) {
+        chart.remove(QStringLiteral("data"));
+        style.insert(QStringLiteral("chart"), chart);
+    } else {
+        style.remove(QStringLiteral("chart"));
+    }
+    style.insert(QStringLiteral("x"), clip->visual.transform.x);
+    style.insert(QStringLiteral("y"), clip->visual.transform.y);
+    style.insert(QStringLiteral("duration"), toSeconds(clip->duration));
+    const QJsonObject object{{QStringLiteral("name"), name.trimmed()}, {QStringLiteral("title"), QJsonObject::fromVariantMap(style)}};
+    QSaveFile file(titlePresetPath(name));
+    if (!file.open(QIODevice::WriteOnly) || file.write(QJsonDocument(object).toJson()) < 0 || !file.commit()) {
+        reportError(tr("Could not save the preset %1").arg(name));
+        return false;
+    }
+    emit titlePresetsChanged();
+    return true;
+}
+
+bool ProjectController::applyTitlePreset(double clipId, const QString& name)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->text) {
+        reportError(tr("Select a title to restyle"));
+        return false;
+    }
+    QFile file(titlePresetPath(name));
+    if (!file.open(QIODevice::ReadOnly)) {
+        reportError(tr("No title preset named %1").arg(name));
+        return false;
+    }
+    QVariantMap style = QJsonDocument::fromJson(file.readAll()).object().value(QStringLiteral("title")).toObject().toVariantMap();
+    if (style.isEmpty()) {
+        reportError(tr("The preset %1 is damaged").arg(name));
+        return false;
+    }
+    // The clip keeps its own words, path and chart values.
+    for (const char* key : {"text", "path", "x", "y", "duration"})
+        style.remove(QLatin1String(key));
+    if (QVariantMap chart = style.value(QStringLiteral("chart")).toMap(); !chart.isEmpty() && clip->text->chart) {
+        chart.remove(QStringLiteral("points"));
+        style.insert(QStringLiteral("chart"), chart);
+    } else if (!chart.isEmpty()) {
+        style.remove(QStringLiteral("chart")); // not on a title without values
+    } else {
+        style.insert(QStringLiteral("chart"), QVariant());
+    }
+    ClipText text = textFrom(style, *clip->text);
+    if (text == *clip->text)
+        return true;
+    auto command = std::make_unique<SetClipTextCommand>(clip->id, std::move(text));
+    return apply(std::move(command));
+}
+
+bool ProjectController::deleteTitlePreset(const QString& name)
+{
+    if (!QFile::remove(titlePresetPath(name)))
+        return false;
+    emit titlePresetsChanged();
+    return true;
+}
+
+Id ProjectController::musicUnder(const Clip& title) const
+{
+    Id found = kNoId;
+    Ticks best = 0;
+    bool bestOnAudio = false;
+    for (const Track& track : m_project.tracks) {
+        if (track.muted)
+            continue;
+        for (const Clip& clip : track.clips) {
+            const MediaItem* media = m_project.findMedia(clip.mediaId);
+            if (!media || !media->hasAudio || !clip.audioEnabled || clip.id == title.id)
+                continue;
+            const Ticks overlap = std::min(clip.end(), title.end()) - std::max(clip.start, title.start);
+            const bool onAudio = track.kind == TrackKind::Audio;
+            if (overlap > 0 && (std::pair{onAudio, overlap} > std::pair{bestOnAudio, best})) {
+                best = overlap;
+                bestOnAudio = onAudio;
+                found = clip.id;
+            }
+        }
+    }
+    return found;
+}
+
+bool ProjectController::reactToMusic(double clipId, const QVariantMap& options)
+{
+    const Clip* title = findClip(toId(clipId));
+    if (!title || !title->text) {
+        reportError(tr("Select a title to move with the music"));
+        return false;
+    }
+    ClipText text = textFrom(QVariantMap{{QStringLiteral("react"), options}}, *title->text);
+    if (text.react.kind == TextReactKind::None) {
+        text.react.levels.clear();
+        if (text == *title->text)
+            return true;
+        return apply(std::make_unique<SetClipTextCommand>(title->id, std::move(text)));
+    }
+    if (analyzing()) {
+        reportError(tr("An analysis is already running"));
+        return false;
+    }
+    // The music: the clip asked for, or the one with sound under the title the longest (on an
+    // audio track before a video track's own sound).
+    Id musicId = toId(options.value(QStringLiteral("musicClipId"), -1).toDouble());
+    if (!options.contains(QStringLiteral("musicClipId"))) {
+        musicId = musicUnder(*title);
+        if (musicId == kNoId) {
+            reportError(tr("Put music under the title first"));
+            return false;
+        }
+    }
+    const Clip* music = analysableClip(musicId, true, false);
+    if (!music)
+        return false;
+    const Id titleId = title->id;
+    withFeatures({music->mediaId}, false, tr("Listening to the music"), [this, titleId, musicId, react = text.react] {
+        const Clip* title = findClip(titleId);
+        const Clip* music = findClip(musicId);
+        const MediaItem* media = music ? m_project.findMedia(music->mediaId) : nullptr;
+        if (!title || !title->text || !media) {
+            emit analysisFinished(false, {});
+            return;
+        }
+        // Each moment of the title, in the music's media time; silence outside the clip.
+        const auto count = std::size_t(std::ceil(toSeconds(title->duration) * TextReact::kRate));
+        ClipText text = *title->text;
+        text.react = react;
+        text.react.levels = tve::musicLevels(m_audioFeatures.at(fingerprintOf(*media)),
+                                             title->start - music->start + music->sourceIn,
+                                             std::min(count, TextReact::kMaxLevels), TextReact::kRate,
+                                             {music->sourceIn, music->sourceIn + music->duration});
+        const bool ok = apply(std::make_unique<SetClipTextCommand>(titleId, std::move(text), TVE_TR("core", "Move With the Music")));
+        emit analysisFinished(ok, {});
+    });
+    return true;
+}
+
+bool ProjectController::loadChartData(double clipId, const QUrl& file)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip || !clip->text) {
+        reportError(tr("Select a title to chart"));
+        return false;
+    }
+    QFile data(file.isLocalFile() ? file.toLocalFile() : file.toString());
+    if (data.size() > 1024 * 1024 || !data.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        reportError(tr("Could not read %1").arg(QFileInfo(data.fileName()).fileName()));
+        return false;
+    }
+    const std::vector<ChartPoint> points = parseChartData(QString::fromUtf8(data.readAll()));
+    if (points.empty()) {
+        reportError(tr("%1 has no values to chart: put a label and a number on each line")
+                        .arg(QFileInfo(data.fileName()).fileName()));
+        return false;
+    }
+    ClipText text = *clip->text;
+    TextChart chart = text.chart.value_or(TextChart{});
+    chart.points = points;
+    text.chart = std::move(chart);
+    return apply(std::make_unique<SetClipTextCommand>(clip->id, std::move(text)));
+}
+
+QVariantList ProjectController::logoReveals() const
+{
+    QVariantList list;
+    for (const LogoRevealPreset& preset : logoRevealPresets())
+        list << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(preset.id)}, {QStringLiteral("title"), coreText(preset.title)}};
+    return list;
+}
+
+bool ProjectController::addLogoReveal(const QString& revealId, const QUrl& logo, const QString& tagline)
+{
+    const LogoRevealPreset* preset = findLogoReveal(revealId.toStdString());
+    if (!preset) {
+        reportError(tr("Unknown logo reveal %1").arg(revealId));
+        return false;
+    }
+    const QString path = logo.isLocalFile() ? logo.toLocalFile() : logo.toString();
+    Project after = m_project;
+    // The picture, once.
+    Id mediaId = kNoId;
+    if (const auto same = std::ranges::find(after.media, path.toStdString(), &MediaItem::path); same != after.media.end()) {
+        mediaId = same->id;
+    } else {
+        QString error;
+        std::optional<MediaItem> item = describeMedia(path.toStdString(), &error);
+        if (!item) {
+            reportError(error.isEmpty() ? tr("Could not open %1").arg(QFileInfo(path).fileName()) : error);
+            return false;
+        }
+        ImportMediaCommand import(std::move(*item));
+        if (auto failed = import.redo(after)) {
+            reportError(coreText(*failed));
+            return false;
+        }
+        mediaId = import.mediaId();
+    }
+    const MediaItem* media = after.findMedia(mediaId);
+    if (!media->hasVideo) {
+        reportError(tr("Choose a picture of the logo"));
+        return false;
+    }
+    const Ticks at = ticks(m_playhead);
+    const Ticks length = ticks(kLogoRevealLength);
+    const Ticks delay = ticks(preset->taglineDelay);
+    // Two free picture tracks above the main one (new ones on top when there are none).
+    const bool hasTagline = !tagline.trimmed().isEmpty();
+    std::vector<Id> free;
+    const auto main = after.trackIndex(mainTrackId());
+    for (std::size_t i = main ? *main + 1 : 0; i < after.tracks.size(); ++i) {
+        const Track& t = after.tracks[i];
+        if (t.kind != TrackKind::Audio && !t.locked && !t.hidden && !t.overlaps(at, length))
+            free.push_back(t.id);
+    }
+    while (free.size() < (hasTagline ? 2u : 1u)) {
+        InsertTrackCommand track(TrackKind::Video,
+                                 "Video " + std::to_string(std::ranges::count(after.tracks, TrackKind::Video, &Track::kind) + 1),
+                                 after.tracks.size());
+        if (auto failed = track.redo(after)) {
+            reportError(coreText(*failed));
+            return false;
+        }
+        free.push_back(track.trackId());
+    }
+    ClipVisual visual;
+    // At most kLogoRevealScale of the canvas's height and kLogoRevealWidth of its width,
+    // whatever the picture's size.
+    const double fit = std::min(double(after.settings.width) / std::max(1, media->width),
+                                double(after.settings.height) / std::max(1, media->height));
+    const double shownHigh = double(media->height) * fit / double(std::max(1, after.settings.height));
+    const double shownWide = double(media->width) * fit / double(std::max(1, after.settings.width));
+    visual.transform.scale = std::clamp(std::min(kLogoRevealScale / std::max(shownHigh, 0.01),
+                                                 kLogoRevealWidth / std::max(shownWide, 0.01)), 0.05, 4.0);
+    visual.transform.y = hasTagline ? kLogoRevealY : 0.0;
+    AddClipCommand add(free[0], mediaId, at, length, 0, visual, TVE_TR("core", "Add Logo Reveal"));
+    if (auto failed = add.redo(after)) {
+        reportError(coreText(*failed));
+        return false;
+    }
+    Clip* logoClip = after.locateClip(add.clipId())->clip;
+    for (const auto& [id, seconds] : {std::pair{preset->logoIn, preset->inSeconds}, std::pair{preset->logoOut, preset->outSeconds}}) {
+        if (auto failed = applyClipAnimation(*logoClip, id, ticks(seconds))) {
+            reportError(coreText(*failed));
+            return false;
+        }
+    }
+    logoClip->motionBlur = preset->motionBlur;
+    if (hasTagline) {
+        ClipText text;
+        text.text = tagline.trimmed().toStdString();
+        text.size = kLogoTaglineSize;
+        text.letterSpacing = 0.12;
+        text.animationIn = {.preset = preset->taglineIn, .duration = preset->taglineSeconds, .unit = preset->taglineUnit,
+                            .stagger = preset->taglineStagger};
+        text.animationOut = {.preset = "fade", .duration = preset->outSeconds, .unit = TextUnit::Whole, .stagger = 0.0};
+        ClipVisual under;
+        under.transform.y = kLogoTaglineY;
+        AddTitleCommand title(free[1], at + delay, length - delay, std::move(text), under);
+        if (auto failed = title.redo(after)) {
+            reportError(coreText(*failed));
+            return false;
+        }
+        // Moved and deleted together.
+        const Id group = after.allocateId();
+        after.locateClip(add.clipId())->clip->groupId = group;
+        after.locateClip(title.clipId())->clip->groupId = group;
+    }
+    m_project.setNextId(after.nextId());
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Add Logo Reveal"))))
+        return false;
+    setSelectedClip(double(add.clipId()));
+    return true;
 }
 
 // --- Transitions ---

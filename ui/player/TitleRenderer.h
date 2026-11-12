@@ -28,8 +28,17 @@ QString defaultTitleFamily();
 // animationLoop {preset, duration, unit ("whole", "line", "word", "character"), stagger},
 // scroll ("none", "rollUp", "crawlLeft")}.
 QVariantMap textMap(const tve::ClipText& text);
+// react {kind ("none", "pulse", "bounce", "flash", "shake"), amount, measured}, and chart (absent
+// or {kind ("bar", "line"), points [{label, value}], data ("label, value" lines), color,
+// grow, values}).
 // `base` with the keys present in `changes` applied (unknown keys are ignored).
 tve::ClipText textFrom(const QVariantMap& changes, tve::ClipText base = {});
+
+// A chart's values from text: a line each, the value last (after a tab, semicolon or comma),
+// the label before it; lines without a number (a heading) are skipped. At most 50.
+std::vector<tve::ChartPoint> parseChartData(const QString& data);
+// The values as such text ("label, value" lines).
+QString chartText(const std::vector<tve::ChartPoint>& points);
 
 // Library previews: image://tvetitle/<url-encoded JSON {text fields…, y, duration, t}> is that
 // title on a small canvas, moved down by y (a fraction of the height, like the clip's
