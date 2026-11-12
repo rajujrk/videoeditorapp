@@ -6267,6 +6267,14 @@ Third, 4</source>
         <translation>கேமரா திரையின் மேல் மூலையில் சிறிதாகத் தோன்றும் (படத்துக்குள் படம்).</translation>
     </message>
     <message>
+        <source>Teleprompter…</source>
+        <translation>உரைத்திரை…</translation>
+    </message>
+    <message>
+        <source>Your script, scrolling while you record, in a window left out of the recording</source>
+        <translation>நீங்கள் பதிவு செய்யும்போது உருளும் உங்கள் உரை, பதிவில் சேராத ஒரு சாளரத்தில்</translation>
+    </message>
+    <message>
         <source>Microphone (%1)</source>
         <translation>மைக்ரோஃபோன் (%1)</translation>
     </message>
@@ -6801,6 +6809,68 @@ Third, 4</source>
     <message>
         <source>The voice made no sound.</source>
         <translation>குரல் எந்த ஒலியையும் எழுப்பவில்லை.</translation>
+    </message>
+</context>
+<context>
+    <name>Teleprompter</name>
+    <message>
+        <source>Type or paste your script here.
+
+It scrolls while you record, at the speed you set. Keep your eyes on the line by the arrows.</source>
+        <translation>உங்கள் உரையை இங்கே தட்டச்சு செய்யுங்கள் அல்லது ஒட்டுங்கள்.
+
+நீங்கள் பதிவு செய்யும்போது, நீங்கள் அமைத்த வேகத்தில் அது உருளும். அம்புகளுக்கு அருகிலுள்ள வரியில் கண் வையுங்கள்.</translation>
+    </message>
+</context>
+<context>
+    <name>TeleprompterWindow</name>
+    <message>
+        <source>Teleprompter</source>
+        <translation>உரைத்திரை</translation>
+    </message>
+    <message>
+        <source>Pause (Space)</source>
+        <translation>இடைநிறுத்து (Space)</translation>
+    </message>
+    <message>
+        <source>Scroll (Space)</source>
+        <translation>உருட்டு (Space)</translation>
+    </message>
+    <message>
+        <source>Back to the top (Home)</source>
+        <translation>மேலே திரும்பு (Home)</translation>
+    </message>
+    <message>
+        <source>Speed</source>
+        <translation>வேகம்</translation>
+    </message>
+    <message>
+        <source>Size</source>
+        <translation>அளவு</translation>
+    </message>
+    <message>
+        <source>Mirror</source>
+        <translation>கண்ணாடிப் பிம்பம்</translation>
+    </message>
+    <message>
+        <source>With recording</source>
+        <translation>பதிவுடன்</translation>
+    </message>
+    <message>
+        <source>Start from the top when a recording starts, and stop when it stops</source>
+        <translation>பதிவு தொடங்கும்போது மேலிருந்து தொடங்கி, அது நிற்கும்போது நில்</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>முடிந்தது</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>திருத்து</translation>
+    </message>
+    <message>
+        <source>Type or paste your script</source>
+        <translation>உங்கள் உரையைத் தட்டச்சு செய்யுங்கள் அல்லது ஒட்டுங்கள்</translation>
     </message>
 </context>
 <context>
@@ -8286,6 +8356,14 @@ The Journey</source>
     <message>
         <source>Count down 3 seconds first</source>
         <translation>முதலில் 3 வினாடிகள் எண்ணு</translation>
+    </message>
+    <message>
+        <source>Teleprompter…</source>
+        <translation>உரைத்திரை…</translation>
+    </message>
+    <message>
+        <source>Your script, scrolling while you record</source>
+        <translation>நீங்கள் பதிவு செய்யும்போது உருளும் உங்கள் உரை</translation>
     </message>
     <message>
         <source>Stop and add to the timeline (Space)</source>

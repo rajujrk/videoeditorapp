@@ -431,7 +431,7 @@ TEST_CASE("start-up: the app launched to its Home screen drawn", "[perf]")
         env.insert(QString::fromLatin1(name), dir);
     }
     for (const char* name : {"TVE_LANGUAGE_FILE", "TVE_KEYMAP_FILE", "TVE_CLOUD_SETTINGS_FILE", "TVE_STORE_SETTINGS_FILE",
-                             "TVE_MUSIC_FOLDERS_FILE", "TVE_TEMPLATE_FAVORITES_FILE", "TVE_PLUGIN_CACHE_FILE"})
+                             "TVE_MUSIC_FOLDERS_FILE", "TVE_TEMPLATE_FAVORITES_FILE", "TVE_PLUGIN_CACHE_FILE", "TVE_TELEPROMPTER_FILE"})
         env.insert(QString::fromLatin1(name), root + QLatin1Char('/') + QString::fromLatin1(name) + QStringLiteral(".json"));
     env.insert(QStringLiteral("TVE_AUDIO"), QStringLiteral("null"));
     env.insert(QStringLiteral("TVE_CLOUD_MOCK"), QStringLiteral("1"));

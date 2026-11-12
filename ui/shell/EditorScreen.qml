@@ -27,6 +27,24 @@ Rectangle {
     // From the home screen's quick actions.
     function openRecorder() { timelinePanel.openRecorder() }
     function openInstantMode() { libraryPanel.openInstantMode() }
+    // The teleprompter, in a window of its own (kept out of screen recordings); the open one
+    // comes to the front.
+    function openTeleprompter() {
+        teleprompterLoader.active = true
+        if (teleprompterLoader.item) {
+            teleprompterLoader.item.raise()
+            teleprompterLoader.item.requestActivate()
+        }
+    }
+    readonly property var teleprompter: teleprompterLoader.item
+    Loader {
+        id: teleprompterLoader
+        active: false
+        sourceComponent: TeleprompterWindow {
+            project: editor.project
+            onClosing: teleprompterLoader.active = false
+        }
+    }
     function saveProject() {
         if (project.filePath !== "")
             project.save("")
@@ -125,6 +143,7 @@ Rectangle {
                 SplitView.preferredHeight: Theme.size.timelineHeight
                 SplitView.minimumHeight: Theme.size.timelineMinHeight
                 project: editor.project
+                onTeleprompterRequested: editor.openTeleprompter()
             }
         }
     }
