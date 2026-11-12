@@ -395,6 +395,8 @@ namespace {
     QT_TRANSLATE_NOOP("catalogue", "M4A, 256 kbit/s: the mix only"),
     QT_TRANSLATE_NOOP("catalogue", "Sound: WAV"),
     QT_TRANSLATE_NOOP("catalogue", "24-bit PCM WAV: the mix, uncompressed"),
+    QT_TRANSLATE_NOOP("catalogue", "Sound: WAV 32-bit float"),
+    QT_TRANSLATE_NOOP("catalogue", "32-bit float WAV: the mix exactly as mixed, peaks over 0 dBFS kept for mastering"),
     QT_TRANSLATE_NOOP("catalogue", "Sound: FLAC"),
     QT_TRANSLATE_NOOP("catalogue", "24-bit FLAC: the mix, lossless and smaller"),
     QT_TRANSLATE_NOOP("catalogue", "Sound: MP3"),

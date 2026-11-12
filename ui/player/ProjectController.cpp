@@ -4235,6 +4235,7 @@ constexpr ExportFormat kExportFormats[] = {
     {"m4a", QT_TRANSLATE_NOOP("ProjectController", "M4A · AAC, sound only"), Container::M4a, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Aac},
     {"wav-16", QT_TRANSLATE_NOOP("ProjectController", "WAV · 16-bit, sound only"), Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm16},
     {"wav-24", QT_TRANSLATE_NOOP("ProjectController", "WAV · 24-bit, sound only"), Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm24},
+    {"wav-32f", QT_TRANSLATE_NOOP("ProjectController", "WAV · 32-bit float, sound only"), Container::Wav, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Pcm32Float},
     {"flac", QT_TRANSLATE_NOOP("ProjectController", "FLAC · lossless, sound only"), Container::Flac, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Flac},
     {"mp3", QT_TRANSLATE_NOOP("ProjectController", "MP3 · 320 kbit/s, sound only"), Container::Mp3, VideoCodec::H264, ProResProfile::Hq, AudioCodec::Mp3},
 };
@@ -7035,20 +7036,8 @@ bool ProjectController::normalizeLoudness(double clipId, double targetLufs)
     }
     if (m_measuringLoudness)
         return false;
-    // The clip alone at 0 dB, from the start of a project of its own: what its own volume
-    // then has to make up for.
-    auto alone = std::make_shared<Project>(m_project);
-    Clip copy = clip;
-    copy.start = 0;
-    copy.gainDb = 0.0f;
-    copy.fadeIn = copy.fadeOut = 0;
-    copy.transitionIn.reset();
-    copy.audioEnabled = true;
-    Track track;
-    track.id = alone->allocateId();
-    track.kind = TrackKind::Audio;
-    track.clips = {copy};
-    alone->tracks = {track};
+    // The clip alone at 0 dB: what its own volume then has to make up for.
+    auto alone = soloProject(clip);
     const Id id = clip.id;
     const Ticks length = clip.duration;
     m_measuringLoudness = true;
@@ -7076,6 +7065,139 @@ bool ProjectController::normalizeLoudness(double clipId, double targetLufs)
             self->m_loudness[id] = {measured, targetLufs};
             if (self->apply(std::make_unique<CompositeCommand>(std::move(steps), TVE_TR("core", "Normalize Loudness"))))
                 emit self->loudnessMeasured(double(id), measured);
+        }, Qt::QueuedConnection);
+    }).detach();
+    return true;
+}
+
+std::shared_ptr<Project> ProjectController::soloProject(const Clip& clip) const
+{
+    auto alone = std::make_shared<Project>(m_project);
+    Clip copy = clip;
+    copy.start = 0;
+    copy.gainDb = 0.0f;
+    copy.fadeIn = copy.fadeOut = 0;
+    copy.transitionIn.reset();
+    copy.audioEnabled = true;
+    Track track;
+    track.id = alone->allocateId();
+    track.kind = TrackKind::Audio;
+    track.clips = {copy};
+    alone->tracks = {track};
+    return alone;
+}
+
+bool ProjectController::hasOwnSound(const Clip& clip, TrackKind trackKind) const
+{
+    const MediaItem* media = m_project.findMedia(clip.mediaId);
+    return !clip.generated() && media && media->hasAudio && (trackKind == TrackKind::Audio || clip.audioEnabled);
+}
+
+int ProjectController::clipsWithSound(const QVariantList& clipIds) const
+{
+    int count = 0;
+    for (const QVariant& id : clipIds) {
+        const auto location = const_cast<Project&>(m_project).locateClip(toId(id.toDouble()));
+        if (location && hasOwnSound(*location->clip, location->track->kind))
+            ++count;
+    }
+    return count;
+}
+
+int ProjectController::changeClipsGain(const QVariantList& clipIds, double deltaDb, bool absolute)
+{
+    if (!std::isfinite(deltaDb))
+        return 0;
+    Project after = m_project;
+    int changed = 0;
+    int animated = 0;
+    for (const QVariant& value : clipIds) {
+        const auto location = after.locateClip(toId(value.toDouble()));
+        if (!location || !hasOwnSound(*location->clip, location->track->kind))
+            continue;
+        Clip& clip = *location->clip;
+        const auto clampGain = [](double db) { return std::clamp(db, double(kMinGainDb), double(kMaxGainDb)); };
+        if (auto keys = clip.keyframes.find(std::string(property::kVolume)); keys != clip.keyframes.end() && !keys->second.empty()) {
+            if (absolute) {
+                ++animated;
+                continue;
+            }
+            for (Keyframe& k : keys->second)
+                k.value = clampGain(k.value + deltaDb);
+        }
+        const float before = clip.gainDb;
+        clip.gainDb = float(clampGain(absolute ? deltaDb : before + deltaDb));
+        ++changed;
+    }
+    if (animated > 0)
+        reportError(animated == 1 ? tr("A clip with animated volume was left as it was")
+                                  : tr("%1 clips with animated volume were left as they were").arg(animated));
+    if (changed == 0 || after.tracks == m_project.tracks)
+        return 0;
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Change Volume"))))
+        return 0;
+    return changed;
+}
+
+bool ProjectController::normalizeClips(const QVariantList& clipIds, double targetLufs)
+{
+    if (m_measuringLoudness) {
+        reportError(tr("A clip's loudness is already being measured"));
+        return false;
+    }
+    struct Job {
+        Id id;
+        Ticks length;
+        std::shared_ptr<Project> alone;
+    };
+    std::vector<Job> jobs;
+    int left = 0;
+    for (const QVariant& value : clipIds) {
+        const auto location = m_project.locateClip(toId(value.toDouble()));
+        if (!location || !hasOwnSound(*location->clip, location->track->kind))
+            continue;
+        if (location->clip->keyframesOf(property::kVolume)) {
+            ++left;
+            continue;
+        }
+        jobs.push_back({location->clip->id, location->clip->duration, soloProject(*location->clip)});
+    }
+    if (jobs.empty()) {
+        reportError(tr("Select clips with sound to normalize"));
+        return false;
+    }
+    m_measuringLoudness = true;
+    emit measuringLoudnessChanged();
+    QPointer<ProjectController> self(this);
+    std::thread([self, jobs = std::move(jobs), targetLufs, left] {
+        std::vector<std::pair<Id, double>> measured;
+        for (const Job& job : jobs)
+            measured.emplace_back(job.id, measureLoudness(job.alone, 0, job.length));
+        QMetaObject::invokeMethod(qApp, [self, measured = std::move(measured), targetLufs, left]() mutable {
+            if (!self)
+                return;
+            self->m_measuringLoudness = false;
+            emit self->measuringLoudnessChanged();
+            Project after = self->m_project;
+            int changed = 0;
+            int silent = 0;
+            for (const auto& [id, lufs] : measured) {
+                const auto location = after.locateClip(id);
+                if (!location)
+                    continue;
+                if (!std::isfinite(lufs)) {
+                    ++silent;
+                    continue;
+                }
+                location->clip->gainDb = std::clamp(float(targetLufs - lufs), kMinGainDb, kMaxGainDb);
+                self->m_loudness[id] = {lufs, targetLufs};
+                ++changed;
+            }
+            if (changed > 0
+                && !self->apply(std::make_unique<ApplyEditsCommand>(self->m_project, std::move(after),
+                                                                    TVE_TR("core", "Normalize Loudness"))))
+                changed = 0;
+            emit self->clipsNormalized(changed, left + silent);
         }, Qt::QueuedConnection);
     }).detach();
     return true;

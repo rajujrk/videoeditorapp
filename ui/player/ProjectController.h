@@ -518,6 +518,16 @@ public:
     // then sets its volume so it plays at `targetLufs`: one "Normalize Loudness" step.
     // loudnessMeasured() reports the measurement (NaN when silent).
     Q_INVOKABLE bool normalizeLoudness(double clipId, double targetLufs);
+    // Batch gain, for several clips at once (those with sound of their own; one undo step).
+    // changeClipsGain: each clip's volume moved by deltaDb (animated volume: every keyframe),
+    // or with `absolute`, set to deltaDb (clips with animated volume are left as they are).
+    // Returns how many clips changed. normalizeClips measures each clip in the background,
+    // then sets each one's volume to reach targetLufs; clipsNormalized reports how many changed
+    // and how many were left (silent or animated).
+    Q_INVOKABLE int changeClipsGain(const QVariantList& clipIds, double deltaDb, bool absolute = false);
+    Q_INVOKABLE bool normalizeClips(const QVariantList& clipIds, double targetLufs);
+    // Of these clips, how many have sound of their own to adjust.
+    Q_INVOKABLE int clipsWithSound(const QVariantList& clipIds) const;
 
     // Picture. `visual` keys: x, y (canvas fractions), scale, rotation (degrees), cropLeft,
     // cropTop, cropRight, cropBottom (fractions), opacity (0..1), blend (name). Missing keys
@@ -1116,6 +1126,7 @@ signals:
     void mixLevelsChanged();
     void measuringLoudnessChanged();
     void loudnessMeasured(double clipId, double lufs);
+    void clipsNormalized(int changed, int left);
     void errorOccurred(const QString& message);
     void exportChanged();
     void recoveryChanged();
@@ -1265,6 +1276,10 @@ private:
     std::optional<tve::ColorGrade> gradeWith(tve::Id clipId, const QVariantMap& changes) const;
     QString colorPresetPath(const QString& name) const;
     QString titlePresetPath(const QString& name) const;
+    // Whether a clip plays sound of its own (not generated, its media has sound, not detached).
+    bool hasOwnSound(const tve::Clip& clip, tve::TrackKind trackKind) const;
+    // The clip alone at 0 dB from the start of a project of its own, to measure its loudness.
+    std::shared_ptr<tve::Project> soloProject(const tve::Clip& clip) const;
     // The clip with sound playing longest under a title (on an audio track first), or kNoId.
     tve::Id musicUnder(const tve::Clip& title) const;
     std::optional<tve::ColorGrade> m_copiedGrade;

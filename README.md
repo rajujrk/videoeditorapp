@@ -84,6 +84,7 @@ The following improvements were completed after Phase 5:
 - Slice 25c: One-click auto colour and colour match, HDR colour wheels, and lens-correction presets for wide cameras.
 - Slice 26a: Curved and vertical text, an underline style, gradient and picture fills, and 3D titles.
 - Slice 26b: Title presets of your own, titles that move with the music, animated bar and line charts from your data, and logo reveals.
+- Slice 27a: Batch gain (several clips turned up, set or normalized together) and 32-bit float WAV export.
 
 All previously identified feature gaps have been closed.
 
@@ -154,6 +155,7 @@ All previously identified feature gaps have been closed.
 
 - Display audio waveforms.
 - Adjust clip volume and audio fades.
+- Change, set or normalize the volume of many selected clips at once.
 - Detach audio from video clips.
 - Mute, hide and lock individual tracks.
 - Display audio level meters.
@@ -728,7 +730,10 @@ reduction. Played faster or
 slower, a clip now keeps its pitch (time-stretched; the Speed tab's **Keep pitch** switch
 turns it back into tape-style). **Normalize** in the Loudness section measures a clip
 (ITU-R BS.1770) and sets its volume to −14, −16 or −23 LUFS, and the export dialog can
-normalize the whole mix the same way, with a limiter at −1 dBFS. The timeline's **Mixer**
+normalize the whole mix the same way, with a limiter at −1 dBFS. With several clips
+selected, the Audio tab changes them together: turn them all up or down by the same amount
+(animated volume too), set them all to one volume, or **Normalize each** to a loudness so they
+sound as loud as each other, as one undo step. The timeline's **Mixer**
 button opens a strip per track — volume, balance, mute, solo and a peak/RMS meter — and the
 master with momentary, short-term and integrated loudness and its peak.
 
@@ -851,9 +856,9 @@ temporary file and renamed, so a crash mid-save never leaves a half-written proj
 
 **Export.** Click Export (⌘E). Pick a preset — 1080p or 4K for the web, a small file,
 vertical 9:16 or square 1:1 for social apps (filled and cropped), a ProRes 422 HQ master, a
-ProRes Proxy editing copy, an animated GIF, or the sound alone as AAC, WAV, FLAC or MP3 — or
+ProRes Proxy editing copy, an animated GIF, or the sound alone as AAC, WAV (24-bit or 32-bit float), FLAC or MP3 — or
 choose each setting: the format (MP4 with H.264 or HEVC; MOV with H.264 or ProRes Proxy,
-LT, 422, 422 HQ or 4444; GIF; M4A, 16- or 24-bit WAV, FLAC, or 320 kbit/s MP3), the size (the project's,
+LT, 422, 422 HQ or 4444; GIF; M4A, 16-bit, 24-bit or 32-bit float WAV — the mix exactly as mixed, peaks over full scale kept — FLAC, or 320 kbit/s MP3), the size (the project's,
 standard heights, vertical or square, or larger), the frame rate, the quality (H.264/HEVC),
 whether to include the sound, loudness normalization, and the range: the whole timeline, the
 selected clips, a marker's range, every marker range as a file of its own (named by the

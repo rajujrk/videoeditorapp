@@ -76,8 +76,8 @@ Item {
         function test_presets_and_formats() {
             const f = createEditor()
             const p = f.project
-            compare(p.exportFormats.length, 14)
-            compare(p.exportPresets.length, 12)
+            compare(p.exportFormats.length, 15)
+            compare(p.exportPresets.length, 13)
             for (const preset of p.exportPresets) {
                 verify(preset.title.length > 0, preset.id)
                 verify(p.exportFormats.some((fmt) => fmt.id === preset.format), preset.id + " names a known format")
@@ -89,6 +89,7 @@ Item {
             verify(p.exportBitrate({ preset: "master" }) > 100e6) // ProRes HQ at 1080p
             verify(p.exportBitrate({ preset: "small" }) < p.exportBitrate({ preset: "web-1080" }))
             fuzzyCompare(p.exportBitrate({ format: "wav-24" }), 2304000, 1)
+            fuzzyCompare(p.exportBitrate({ format: "wav-32f" }), 3072000, 1)
             verify(p.exportBitrate({ format: "mp4-h264", audio: false }) < p.exportBitrate({ format: "mp4-h264" }))
             verify(!p.exportVideo(out("bad.mp4"), { preset: "nope" }))
             verify(p.lastError.indexOf("preset") >= 0)
@@ -142,7 +143,7 @@ Item {
             const formats = [["mp4-hevc", "hevc.mp4", true, true], ["mov-h264", "h264.mov", true, true],
                              ["mov-prores-proxy", "proxy.mov", true, true], ["mov-prores-4444", "4444.mov", true, true],
                              ["gif", "anim.gif", true, false], ["m4a", "sound.m4a", false, true],
-                             ["wav-16", "sound16.wav", false, true], ["flac", "sound.flac", false, true],
+                             ["wav-16", "sound16.wav", false, true], ["wav-32f", "sound32f.wav", false, true], ["flac", "sound.flac", false, true],
                              ["mp3", "sound.mp3", false, true]]
             for (const [format, name] of formats)
                 verify(p.exportVideo(out(name), { format: format, width: 320, height: 180 }), format + ": " + p.lastError)

@@ -393,8 +393,54 @@ TEST_CASE("sound-only files read back: M4A, WAV, FLAC, MP3")
     soundRoundTrip(Container::M4a, AudioCodec::Aac, "tve_writer.m4a", "aac");
     soundRoundTrip(Container::Wav, AudioCodec::Pcm16, "tve_writer16.wav", "pcm_s16le");
     soundRoundTrip(Container::Wav, AudioCodec::Pcm24, "tve_writer24.wav", "pcm_s24le");
+    soundRoundTrip(Container::Wav, AudioCodec::Pcm32Float, "tve_writer32f.wav", "pcm_f32le");
     soundRoundTrip(Container::Flac, AudioCodec::Flac, "tve_writer.flac", "flac");
     soundRoundTrip(Container::Mp3, AudioCodec::Mp3, "tve_writer.mp3", "mp3");
+}
+
+TEST_CASE("32-bit float WAV keeps the mix exactly, peaks over full scale too")
+{
+    const std::string path = tempFile("tve_writer_float_overs.wav");
+    MediaSettings settings;
+    settings.container = Container::Wav;
+    settings.audioCodec = AudioCodec::Pcm32Float;
+    CHECK(audioBitrate(settings) == std::int64_t(audio::kSampleRate) * audio::kChannels * 32);
+    std::string error;
+    auto writer = MediaWriter::open(path, settings, &error);
+    INFO(error);
+    REQUIRE(writer);
+    // A tone peaking at 1.5 (+3.5 dBFS) and a value no integer format holds exactly.
+    std::vector<float> tone(std::size_t(audio::kSampleRate) * 2);
+    for (std::size_t i = 0; i < tone.size() / 2; ++i) {
+        const float v = 1.5f * float(std::sin(2.0 * std::numbers::pi * 100.0 * double(i) / audio::kSampleRate));
+        tone[i * 2] = v;
+        tone[i * 2 + 1] = -v;
+    }
+    tone[0] = 0.123456789f;
+    REQUIRE(writer->writeAudio(tone.data(), int(tone.size() / 2)));
+    REQUIRE(writer->finish());
+
+    auto sound = AudioDecoder::open(path, &error);
+    INFO(error);
+    REQUIRE(sound);
+    std::vector<float> read(tone.size());
+    REQUIRE(sound->read(read.data(), int(read.size() / 2)) == int(read.size() / 2));
+    float peak = 0.0f;
+    float worst = 0.0f;
+    for (std::size_t i = 0; i < read.size(); ++i) {
+        peak = std::max(peak, std::abs(read[i]));
+        worst = std::max(worst, std::abs(read[i] - tone[i]));
+    }
+    CHECK(peak == Catch::Approx(1.5f).margin(1e-3)); // not clipped at 1
+    CHECK(worst < 1e-6f);                           // bit for bit, as mixed
+    CHECK(read[0] == tone[0]);
+    // Float sound goes in WAV or MOV files only.
+    settings.container = Container::Flac;
+    CHECK(validateSettings(settings));
+    settings.container = Container::Mov;
+    settings.codec = VideoCodec::ProRes;
+    CHECK_FALSE(validateSettings(settings));
+    std::filesystem::remove(path);
 }
 
 TEST_CASE("an MP3 keeps its chapters (ID3) and its length (LAME's gapless header)")

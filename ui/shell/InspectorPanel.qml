@@ -1899,8 +1899,98 @@ Rectangle {
 
             // Audio: live for the selected clip
             InspectorPage {
+                // Batch gain: several clips selected, their volume changed, set or normalized together.
+                Section {
+                    id: batchGainSection
+                    objectName: "batchGainSection"
+                    readonly property var ids: inspector.project.selectedClips
+                    readonly property int withSound: ids.length > 1 ? inspector.project.clipsWithSound(ids) : 0
+                    visible: ids.length > 1
+                    Layout.fillWidth: true
+                    title: qsTr("%1 clips selected").arg(Fmt.num(ids.length))
+                    Text {
+                        Layout.fillWidth: true
+                        text: batchGainSection.withSound === batchGainSection.ids.length
+                              ? qsTr("Change the volume of all of them at once.")
+                              : batchGainSection.withSound === 1 ? qsTr("Only one of them has sound.")
+                              : qsTr("%1 of them have sound: those change together.").arg(Fmt.num(batchGainSection.withSound))
+                        font: Theme.type.caption
+                        color: Theme.color.textSecondary
+                        wrapMode: Text.WordWrap
+                    }
+                    AudioSlider {
+                        id: batchGainAmount
+                        objectName: "batchGainAmount"
+                        label: qsTr("Change by")
+                        from: -24
+                        to: 24
+                        value: 0
+                        format: (v) => (v > 0 ? "+" : "") + v.toFixed(1) + " dB"
+                        onCommitted: (v) => value = Math.round(v * 2) / 2
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xs
+                        TextButton {
+                            objectName: "batchGainChange"
+                            text: qsTr("Change")
+                            variant: "secondary"
+                            enabled: batchGainSection.withSound > 0 && batchGainAmount.value !== 0
+                            tip: qsTr("Turn each clip up or down by this much (animated volume too)")
+                            onClicked: if (inspector.project.changeClipsGain(batchGainSection.ids, batchGainAmount.value) > 0) batchGainAmount.value = 0
+                        }
+                        TextButton {
+                            objectName: "batchGainSet"
+                            text: qsTr("Set all to %1").arg((batchGainAmount.value < 0 ? "−" : batchGainAmount.value > 0 ? "+" : "")
+                                                            + Math.abs(batchGainAmount.value).toFixed(1) + " dB")
+                            variant: "secondary"
+                            enabled: batchGainSection.withSound > 0
+                            tip: qsTr("Give each clip this volume")
+                            onClicked: inspector.project.changeClipsGain(batchGainSection.ids, batchGainAmount.value, true)
+                        }
+                    }
+                    ComboBox {
+                        id: batchLoudnessTarget
+                        objectName: "batchLoudnessTarget"
+                        Layout.fillWidth: true
+                        textRole: "label"
+                        valueRole: "lufs"
+                        model: [{ label: qsTr("−14 LUFS · online"), lufs: -14 }, { label: qsTr("−16 LUFS · podcast"), lufs: -16 },
+                                { label: qsTr("−23 LUFS · broadcast"), lufs: -23 }]
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space.xs
+                        TextButton {
+                            objectName: "batchNormalize"
+                            text: inspector.project.measuringLoudness ? qsTr("Measuring…") : qsTr("Normalize each")
+                            enabled: batchGainSection.withSound > 0 && !inspector.project.measuringLoudness
+                            tip: qsTr("Measure each clip and set its volume to reach the target, so they all sound as loud")
+                            onClicked: inspector.project.normalizeClips(batchGainSection.ids, batchLoudnessTarget.currentValue)
+                        }
+                    }
+                    Text {
+                        id: batchResult
+                        objectName: "batchNormalizeResult"
+                        visible: text !== ""
+                        Layout.fillWidth: true
+                        font: Theme.type.caption
+                        color: Theme.color.textSecondary
+                        wrapMode: Text.WordWrap
+                        Connections {
+                            target: inspector.project
+                            function onClipsNormalized(changed, left) {
+                                const done = changed === 1 ? qsTr("1 clip normalized.") : qsTr("%1 clips normalized.").arg(Fmt.num(changed))
+                                batchResult.text = left === 0 ? done
+                                    : done + " " + (left === 1 ? qsTr("1 was left as it was (silent, or with animated volume).")
+                                                               : qsTr("%1 were left as they were (silent, or with animated volume).").arg(Fmt.num(left)))
+                            }
+                            function onSelectionChanged() { batchResult.text = "" }
+                        }
+                    }
+                }
                 Text {
-                    visible: inspector.clipInfo.id === undefined || !inspector.clipInfo.hasAudio
+                    visible: batchGainSection.ids.length <= 1 && (inspector.clipInfo.id === undefined || !inspector.clipInfo.hasAudio)
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.l
                     text: inspector.clipInfo.id === undefined ? qsTr("Select a clip to adjust its sound.")

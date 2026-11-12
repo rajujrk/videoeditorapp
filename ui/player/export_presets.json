@@ -11,6 +11,7 @@
         { "id": "gif", "title": "Animated GIF", "description": "360 high at 15 fps, looping, no sound", "format": "gif", "shortSide": 360, "frameRate": 15 },
         { "id": "audio-aac", "title": "Sound: AAC", "description": "M4A, 256 kbit/s: the mix only", "format": "m4a" },
         { "id": "audio-wav", "title": "Sound: WAV", "description": "24-bit PCM WAV: the mix, uncompressed", "format": "wav-24" },
+        { "id": "audio-wav-float", "title": "Sound: WAV 32-bit float", "description": "32-bit float WAV: the mix exactly as mixed, peaks over 0 dBFS kept for mastering", "format": "wav-32f" },
         { "id": "audio-flac", "title": "Sound: FLAC", "description": "24-bit FLAC: the mix, lossless and smaller", "format": "flac" },
         { "id": "audio-mp3", "title": "Sound: MP3", "description": "MP3, 320 kbit/s: the mix only, for any player", "format": "mp3" }
     ]

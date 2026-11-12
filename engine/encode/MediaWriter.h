@@ -15,7 +15,8 @@ namespace tve {
 enum class Container { Mp4, Mov, Gif, M4a, Wav, Flac, Mp3 };
 enum class VideoCodec { H264, Hevc, ProRes, Gif };
 enum class ProResProfile { Proxy, Lt, Standard, Hq, P4444 };
-enum class AudioCodec { Aac, Pcm16, Pcm24, Flac, Mp3 };
+// Pcm32Float: 32-bit floating-point PCM, the mix as it is (peaks over 0 dBFS kept, not clipped).
+enum class AudioCodec { Aac, Pcm16, Pcm24, Flac, Mp3, Pcm32Float };
 // How pictures go in: NV12 planes (H.264, HEVC), P010 planes (HDR HEVC) or 8-bit RGBA rows
 // (ProRes, GIF).
 enum class PictureInput { None, Nv12, P010, Rgba };

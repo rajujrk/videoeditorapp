@@ -3464,6 +3464,66 @@ Third, 4</source>
         <translation>கிளிப் முழுவதும் வேகத்தை மாற்ற ஒரு வளைவைத் தேர்ந்தெடுக்கவும். அது அதே காட்சிகளை இயக்கும், எனவே அதன் நீளம் அதைப் பின்பற்றும்.</translation>
     </message>
     <message>
+        <source>%1 clips selected</source>
+        <translation>%1 கிளிப்புகள் தேர்ந்தெடுக்கப்பட்டன</translation>
+    </message>
+    <message>
+        <source>Change the volume of all of them at once.</source>
+        <translation>அனைத்தின் ஒலியளவையும் ஒரே நேரத்தில் மாற்றுங்கள்.</translation>
+    </message>
+    <message>
+        <source>Only one of them has sound.</source>
+        <translation>அவற்றில் ஒன்றுக்கு மட்டுமே ஒலி உள்ளது.</translation>
+    </message>
+    <message>
+        <source>%1 of them have sound: those change together.</source>
+        <translation>அவற்றில் %1 க்கு ஒலி உள்ளது: அவை சேர்ந்து மாறும்.</translation>
+    </message>
+    <message>
+        <source>Change by</source>
+        <translation>மாற்ற வேண்டிய அளவு</translation>
+    </message>
+    <message>
+        <source>Change</source>
+        <translation>மாற்று</translation>
+    </message>
+    <message>
+        <source>Turn each clip up or down by this much (animated volume too)</source>
+        <translation>ஒவ்வொரு கிளிப்பையும் இவ்வளவு கூட்டு அல்லது குறை (அசையும் ஒலியளவும்)</translation>
+    </message>
+    <message>
+        <source>Set all to %1</source>
+        <translation>அனைத்தையும் %1 ஆக்கு</translation>
+    </message>
+    <message>
+        <source>Give each clip this volume</source>
+        <translation>ஒவ்வொரு கிளிப்புக்கும் இந்த ஒலியளவைக் கொடு</translation>
+    </message>
+    <message>
+        <source>Normalize each</source>
+        <translation>ஒவ்வொன்றையும் சமன்செய்</translation>
+    </message>
+    <message>
+        <source>Measure each clip and set its volume to reach the target, so they all sound as loud</source>
+        <translation>ஒவ்வொரு கிளிப்பையும் அளந்து இலக்கை அடையும்படி அதன் ஒலியளவை அமை, அனைத்தும் ஒரே உரப்பில் ஒலிக்க</translation>
+    </message>
+    <message>
+        <source>1 clip normalized.</source>
+        <translation>1 கிளிப் சமன்செய்யப்பட்டது.</translation>
+    </message>
+    <message>
+        <source>%1 clips normalized.</source>
+        <translation>%1 கிளிப்புகள் சமன்செய்யப்பட்டன.</translation>
+    </message>
+    <message>
+        <source>1 was left as it was (silent, or with animated volume).</source>
+        <translation>1 அப்படியே விடப்பட்டது (ஒலியின்றி, அல்லது அசையும் ஒலியளவுடன்).</translation>
+    </message>
+    <message>
+        <source>%1 were left as they were (silent, or with animated volume).</source>
+        <translation>%1 அப்படியே விடப்பட்டன (ஒலியின்றி, அல்லது அசையும் ஒலியளவுடன்).</translation>
+    </message>
+    <message>
         <source>Select a clip to adjust its sound.</source>
         <translation>ஒலியைச் சரிசெய்ய ஒரு கிளிப்பைத் தேர்ந்தெடுக்கவும்.</translation>
     </message>
@@ -5321,6 +5381,10 @@ Third, 4</source>
         <translation>WAV · 24-பிட், ஒலி மட்டும்</translation>
     </message>
     <message>
+        <source>WAV · 32-bit float, sound only</source>
+        <translation>WAV · 32-பிட் மிதவை, ஒலி மட்டும்</translation>
+    </message>
+    <message>
         <source>FLAC · lossless, sound only</source>
         <translation>FLAC · இழப்பற்றது, ஒலி மட்டும்</translation>
     </message>
@@ -5639,6 +5703,22 @@ Third, 4</source>
     <message>
         <source>This clip is silent</source>
         <translation>இந்தக் கிளிப் ஒலியற்றது</translation>
+    </message>
+    <message>
+        <source>A clip with animated volume was left as it was</source>
+        <translation>அசையும் ஒலியளவுள்ள ஒரு கிளிப் அப்படியே விடப்பட்டது</translation>
+    </message>
+    <message>
+        <source>%1 clips with animated volume were left as they were</source>
+        <translation>அசையும் ஒலியளவுள்ள %1 கிளிப்புகள் அப்படியே விடப்பட்டன</translation>
+    </message>
+    <message>
+        <source>A clip&apos;s loudness is already being measured</source>
+        <translation>ஒரு கிளிப்பின் உரப்பு ஏற்கனவே அளக்கப்படுகிறது</translation>
+    </message>
+    <message>
+        <source>Select clips with sound to normalize</source>
+        <translation>சமன்செய்ய ஒலியுள்ள கிளிப்புகளைத் தேர்ந்தெடுக்கவும்</translation>
     </message>
     <message>
         <source>There are no cuts between clips to put transitions on</source>
@@ -9909,6 +9989,14 @@ The Journey</source>
         <translation>24-பிட் PCM WAV: கலவை, சுருக்கப்படாதது</translation>
     </message>
     <message>
+        <source>Sound: WAV 32-bit float</source>
+        <translation>ஒலி: WAV 32-பிட் மிதவை</translation>
+    </message>
+    <message>
+        <source>32-bit float WAV: the mix exactly as mixed, peaks over 0 dBFS kept for mastering</source>
+        <translation>32-பிட் மிதவை WAV: கலந்தபடியே கலவை, 0 dBFS க்கு மேலான உச்சங்கள் மாஸ்டரிங்குக்காக காக்கப்படும்</translation>
+    </message>
+    <message>
         <source>Sound: FLAC</source>
         <translation>ஒலி: FLAC</translation>
     </message>
@@ -10630,6 +10718,10 @@ The Journey</source>
     <message>
         <source>Normalize Loudness</source>
         <translation>ஒலிப்பு அளவைச் சீராக்கு</translation>
+    </message>
+    <message>
+        <source>Change Volume</source>
+        <translation>ஒலியளவை மாற்று</translation>
     </message>
     <message>
         <source>Apply Transition to All</source>
