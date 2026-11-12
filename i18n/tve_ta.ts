@@ -3015,8 +3015,72 @@
         <translation>நேர்கோட்டுச் சாய்வு</translation>
     </message>
     <message>
+        <source>Vertical (each line a column)</source>
+        <translation>செங்குத்து (ஒவ்வொரு வரியும் ஒரு நெடுவரிசை)</translation>
+    </message>
+    <message>
+        <source>Curve</source>
+        <translation>வளைவு</translation>
+    </message>
+    <message>
+        <source>Straight</source>
+        <translation>நேராக</translation>
+    </message>
+    <message>
+        <source>Arch %1%</source>
+        <translation>மேல்வளைவு %1%</translation>
+    </message>
+    <message>
+        <source>Sag %1%</source>
+        <translation>கீழ்வளைவு %1%</translation>
+    </message>
+    <message>
         <source>Radial gradient</source>
         <translation>வட்டச் சாய்வு</translation>
+    </message>
+    <message>
+        <source>Picture</source>
+        <translation>படம்</translation>
+    </message>
+    <message>
+        <source>To (from the text colour)</source>
+        <translation>வரை (எழுத்து நிறத்திலிருந்து)</translation>
+    </message>
+    <message>
+        <source>Another picture…</source>
+        <translation>வேறொரு படம்…</translation>
+    </message>
+    <message>
+        <source>Choose a picture…</source>
+        <translation>ஒரு படத்தைத் தேர்ந்தெடு…</translation>
+    </message>
+    <message>
+        <source>A picture to fill the letters with</source>
+        <translation>எழுத்துகளை நிரப்ப ஒரு படம்</translation>
+    </message>
+    <message>
+        <source>Images (*.png *.jpg *.jpeg *.heic *.webp *.tif *.tiff *.bmp)</source>
+        <translation>படங்கள் (*.png *.jpg *.jpeg *.heic *.webp *.tif *.tiff *.bmp)</translation>
+    </message>
+    <message>
+        <source>3D</source>
+        <translation>3D</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>ஆழம்</translation>
+    </message>
+    <message>
+        <source>Flat</source>
+        <translation>தட்டை</translation>
+    </message>
+    <message>
+        <source>Tilt back</source>
+        <translation>பின்னோக்கிச் சாய்</translation>
+    </message>
+    <message>
+        <source>Turn</source>
+        <translation>திருப்பு</translation>
     </message>
     <message>
         <source>From</source>
@@ -11246,6 +11310,22 @@ The Journey</source>
     <message>
         <source>Add Transition</source>
         <translation>மாற்றத்தைச் சேர்</translation>
+    </message>
+    <message>
+        <source>the curve must be between -100% and +100%</source>
+        <translation>வளைவு -100% முதல் +100% வரை இருக்க வேண்டும்</translation>
+    </message>
+    <message>
+        <source>the 3D depth is out of range</source>
+        <translation>3D ஆழம் வரம்புக்கு வெளியே உள்ளது</translation>
+    </message>
+    <message>
+        <source>the tilt must be between -60° and 60°</source>
+        <translation>சாய்வு -60° முதல் 60° வரை இருக்க வேண்டும்</translation>
+    </message>
+    <message>
+        <source>choose a picture to fill the text with</source>
+        <translation>எழுத்துகளை நிரப்ப ஒரு படத்தைத் தேர்ந்தெடுக்கவும்</translation>
     </message>
     <message>
         <source>Add Marker</source>

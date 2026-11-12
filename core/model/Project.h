@@ -240,6 +240,18 @@ struct TitleShape {
     friend bool operator==(const TitleShape&, const TitleShape&) = default;
 };
 
+// What fills a title's letters: its colour (`color`), a gradient across the text (linear along
+// `angle` degrees, or radial from its middle), or a picture covering the text.
+enum class TextFillKind { Solid, Linear, Radial, Image };
+struct TextFill {
+    TextFillKind kind = TextFillKind::Solid;
+    ColorRgba to{1.0, 0.55, 0.1, 1.0}; // a gradient's second colour (`color` is the first)
+    double angle = 0.0;                // degrees: 0 left to right, 90 top to bottom
+    std::string imagePath;             // the picture (Image)
+
+    friend bool operator==(const TextFill&, const TextFill&) = default;
+};
+
 // One spoken word of a caption: when it is said (from the caption clip's start) and how it
 // is written, for captions that follow the speech word by word.
 struct CaptionWord {
@@ -289,6 +301,18 @@ struct ClipText {
     // Text on a path: the characters follow this line (canvas fractions, origin top left)
     // instead of being laid out in lines; empty for ordinary text.
     std::vector<std::array<double, 2>> path;
+    // Its letters' fill, an underline under each line, characters stacked in columns (each
+    // line a column, left to right), the text bent into an arc (-1..1: positive arches up,
+    // negative sags; ignored on a path), and 3D: letters extruded `depth` ems (0..0.5, in
+    // `depthColor`) and the whole title tilted (degrees, -60..60) in perspective.
+    TextFill fill;
+    bool underline = false;
+    bool vertical = false;
+    double curve = 0.0;
+    double depth = 0.0;
+    ColorRgba depthColor{0.15, 0.15, 0.2, 1.0};
+    double tiltX = 0.0; // about the horizontal axis: top away (positive) or towards
+    double tiltY = 0.0; // about the vertical axis: right side away (positive) or towards
 
     // Whether it looks different from one moment to the next.
     bool animated() const

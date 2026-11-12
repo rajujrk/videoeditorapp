@@ -114,10 +114,18 @@ NLOHMANN_JSON_SERIALIZE_ENUM(CaptionMotion, {
     {CaptionMotion::Reveal, "reveal"},
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CaptionWord, start, end, text)
+NLOHMANN_JSON_SERIALIZE_ENUM(TextFillKind, {
+    {TextFillKind::Solid, "solid"},
+    {TextFillKind::Linear, "linear"},
+    {TextFillKind::Radial, "radial"},
+    {TextFillKind::Image, "image"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TextFill, kind, to, angle, imagePath)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipText, text, fontFamily, size, bold, italic, color, alignment,
                                                 lineSpacing, letterSpacing, outlineColor, outlineWidth, shadow, shape,
                                                 animationIn, animationOut, animationLoop, scroll, words,
-                                                captionMotion, highlightColor, path)
+                                                captionMotion, highlightColor, path, fill, underline, vertical, curve,
+                                                depth, depthColor, tiltX, tiltY)
 NLOHMANN_JSON_SERIALIZE_ENUM(PathKind, {
     {PathKind::Brush, "brush"},
     {PathKind::Line, "line"},

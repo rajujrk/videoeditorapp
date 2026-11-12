@@ -82,6 +82,7 @@ The following improvements were completed after Phase 5:
 - Slice 25a: The anchor point, corner pin, clip animation presets, pan and zoom, colour clips, and snapshots of the player.
 - Slice 25b: Motion blur that follows keyframed movement, effect and colour masks, and player guides, safe areas, rulers and zoom.
 - Slice 25c: One-click auto colour and colour match, HDR colour wheels, and lens-correction presets for wide cameras.
+- Slice 26a: Curved and vertical text, an underline style, gradient and picture fills, and 3D titles.
 
 All previously identified feature gaps have been closed.
 
@@ -645,6 +646,11 @@ and Match makes its colours like another clip's (both set the red, green and blu
 they can be adjusted). The HDR wheels colour and brighten six ranges of tones separately, from
 the blacks to the specular highlights. Under Lens correction on the Video tab, pick an action
 camera, phone, drone or fisheye lens to straighten its curved lines.
+
+**Text styles.** A title can be underlined, set vertically (each line a column), or bent into
+an arch or a sag with the Curve slider. Under Fill its letters take a gradient or a picture
+instead of one colour, and under 3D they gain depth in a colour of their own and the whole
+title tilts back or turns in perspective.
 
 **Placing clips by hand.** Select a clip and its frame shows in the player: drag inside it to
 move it (it snaps to the centre lines), a corner to resize it, the round knob to turn it (⇧ in
