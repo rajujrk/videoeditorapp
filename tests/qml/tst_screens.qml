@@ -68,8 +68,19 @@ Item {
             const effectsTab = findChild(editor, "libraryTab:Effects")
             verify(effectsTab)
             verify(!effectsTab.checked)
+            // Clicked where it has come to rest: the split views lay the panels out after the
+            // first frame, and under load a click can land where the tab was a moment before.
+            let last = null
+            tryVerify(() => {
+                const p = effectsTab.mapToItem(root, 0, 0)
+                const stable = last !== null && p.x === last.x && p.y === last.y && effectsTab.width > 0
+                last = p
+                return stable
+            }, 3000, "the tab never came to rest")
+            for (let a = effectsTab; a && a !== root; a = a.parent)
+                waitForPolish(a, 1000)
             mouseClick(effectsTab)
-            verify(effectsTab.checked)
+            tryVerify(() => effectsTab.checked, 2000, "the click did not switch the tab")
         }
 
         function test_theme_switch_changes_tokens() {

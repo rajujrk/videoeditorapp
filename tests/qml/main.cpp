@@ -507,6 +507,9 @@ public slots:
 
 int main(int argc, char** argv)
 {
+    // As the app: whole garbage collections, not incremental ones (see app/main.cpp).
+    if (!qEnvironmentVariableIsSet("QV4_GC_TIMELIMIT"))
+        qputenv("QV4_GC_TIMELIMIT", "0");
     QQuickWindow::setGraphicsApi(QSGRendererInterface::Metal);
     QQuickStyle::setStyle(QStringLiteral("Basic"));
     // Real-time audio callbacks without a sound card: meters work, nothing is heard.
