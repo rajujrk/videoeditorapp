@@ -472,6 +472,14 @@ the reading line, dark and light:
 ![Teleprompter, dark](images/teleprompter-dark.png)
 ![Teleprompter, light](images/teleprompter-light.png)
 
+Drawing on the screen: a pen circle, a yellow arrow and a green highlighter stroke over the
+editor being recorded, and the controls — a `surfaceRaised` pill with a `borderStrong` edge: the
+draw toggle, Pen / Highlighter / Arrow (the chosen one `primary`), five ink dots (the chosen one
+ringed in `accent`), three widths, Fade away and the bin — dark and light:
+
+![Drawing on the screen, dark](images/live-drawing-dark.png)
+![Drawing on the screen, light](images/live-drawing-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

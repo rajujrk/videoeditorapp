@@ -37,6 +37,30 @@ Rectangle {
         }
     }
     readonly property var teleprompter: teleprompterLoader.item
+    // Drawing on the screen being recorded (area: global points), until the recording stops.
+    function openLiveDrawing(area) {
+        liveDrawingLoader.area = area
+        liveDrawingLoader.active = true
+        if (liveDrawingLoader.item)
+            liveDrawingLoader.item.drawing = true
+    }
+    readonly property var liveDrawing: liveDrawingLoader.item
+    Loader {
+        id: liveDrawingLoader
+        property var area: ({})
+        active: false
+        sourceComponent: LiveDrawing {
+            project: editor.project
+            area: liveDrawingLoader.area
+        }
+        Connections {
+            target: editor.project
+            function onScreenRecordingChanged() {
+                if (!editor.project.screenRecording)
+                    liveDrawingLoader.active = false
+            }
+        }
+    }
     Loader {
         id: teleprompterLoader
         active: false
@@ -144,6 +168,7 @@ Rectangle {
                 SplitView.minimumHeight: Theme.size.timelineMinHeight
                 project: editor.project
                 onTeleprompterRequested: editor.openTeleprompter()
+                onDrawingRequested: (area) => editor.openLiveDrawing(area)
             }
         }
     }

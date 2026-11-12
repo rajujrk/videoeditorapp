@@ -50,6 +50,7 @@ qt_add_qml_module(tve_shell
         MixerPanel.qml
         HdrViewer.qml
         TeleprompterWindow.qml
+        LiveDrawing.qml
         SphereOverlay.qml
         InterchangeDialog.qml
         CopilotPage.qml

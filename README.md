@@ -87,6 +87,7 @@ The following improvements were completed after Phase 5:
 - Slice 27a: Batch gain (several clips turned up, set or normalized together) and 32-bit float WAV export.
 - Slice 27b: Audio visualisers — bars, mirrored bars, a wave or a ring moving with the spectrum of the music.
 - Slice 28a: A teleprompter that scrolls your script while you record, left out of screen recordings.
+- Slice 28b: Drawing on the screen while recording it — pen, highlighter and arrow, fading away or kept.
 
 All previously identified feature gaps have been closed.
 
@@ -164,6 +165,7 @@ All previously identified feature gaps have been closed.
 - Display audio level meters.
 - Record voice-overs directly from a microphone at the current playhead position.
 - Read your script from a teleprompter while recording.
+- Draw on the screen while recording it.
 
 ### 2.9 Media Management and Preview
 
@@ -387,6 +389,14 @@ paste the script. With **With recording** on, it starts from the top when a reco
 stops when it stops; Space plays or pauses, ↑ and ↓ change the speed, Home goes back to the top.
 The window is left out of screen recordings, so it can sit on the display being recorded. The
 script and settings are kept for next time (`TVE_TELEPROMPTER_FILE` moves them).
+
+**Drawing on the screen.** Turn on **Draw on the screen while recording** in the recorder (or
+press **Draw** while a recording runs): a clear layer covers the display or window being recorded,
+and what you draw on it is recorded too. A small bar of controls — left out of the recording,
+dragged wherever it suits — picks the pen, a highlighter or an arrow, five inks and three widths;
+strokes fade away a few seconds after they are drawn unless **Fade away** is off, and the bin
+clears them. D turns drawing on and off (off, the pointer works the screen as usual), C clears and
+Esc stops drawing. Stopping the recording takes the layer away.
 
 **Music and sound effects.** The library's **Audio** tab has our own music — 12 pieces in six
 moods (calm, upbeat, cinematic, lo-fi, corporate, electronic) — and 15 sound effects (transitions,
