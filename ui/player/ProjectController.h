@@ -474,6 +474,13 @@ public:
     Q_INVOKABLE int relinkFromFolder(const QUrl& folder);
     // Imports one file and appends it to the main track.
     Q_INVOKABLE bool importAndAppend(const QUrl& file);
+    // Image sequences: the numbered pictures `frame` is one of (model/ImageSequence.h), as
+    // {found, name ("shot_####.png"), firstFile, lastFile, frames, missing (numbers with no
+    // file), width, height, alpha} or {found: false, error}.
+    Q_INVOKABLE QVariantMap findImageSequence(const QUrl& frame) const;
+    // Imports them as one video at `rateNum`/`rateDen` frames a second (gaps holding the
+    // frame before); the media's id, or -1.
+    Q_INVOKABLE double importImageSequence(const QUrl& frame, int rateNum, int rateDen);
 
     // Edits
     Q_INVOKABLE bool moveClip(double clipId, double trackId, double start);

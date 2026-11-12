@@ -7,8 +7,10 @@
 #include <optional>
 
 // Still images (photos, graphics) as media: PNG, JPEG, HEIC/HEIF, WebP, TIFF, BMP, a GIF of
-// one frame and whatever else Qt's image readers take. Animated GIFs are left to the video
-// decoder.
+// one frame and whatever else Qt's image readers take; SVG drawings, drawn as large as they
+// are read (not at their nominal size); and through ImageIO (decode/ImageFile.h) camera RAW
+// photos, OpenEXR and the other pictures macOS reads that Qt does not. Animated GIFs are
+// left to the video decoder.
 namespace still {
 
 // The longest side a still is read at for the picture (larger photos are scaled down).

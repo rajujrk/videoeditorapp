@@ -6,6 +6,8 @@ add_library(tve_engine STATIC
     decode/ColourTags.cpp
     decode/AudioDecoder.h
     decode/AudioDecoder.cpp
+    decode/ImageFile.h
+    decode/ImageFile.cpp
     decode/Thumbnail.h
     decode/Thumbnail.cpp
     decode/LottieAnimation.h

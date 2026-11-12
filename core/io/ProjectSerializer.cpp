@@ -48,10 +48,11 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ColourFillKind, {
     {ColourFillKind::Radial, "radial"},
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColourFill, kind, from, to, angle)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ImageSequence, pattern, first, last)
 // Fields added after schema 1 shipped default when absent, so older files still load.
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MediaItem, id, path, duration, hasVideo, hasAudio, width, height,
                                                 frameRate, audioSampleRate, audioChannels, still, alpha, lottie,
-                                                fingerprint, generated, placeholder, colour, spherical, colourFill)
+                                                fingerprint, generated, placeholder, colour, spherical, colourFill, sequence)
 NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
     {BlendMode::Normal, "normal"},
     {BlendMode::Multiply, "multiply"},

@@ -1,10 +1,13 @@
 #include "decode/VideoDecoder.h"
 
 #include "decode/ColourTags.h"
+#include "decode/ImageFile.h"
+#include "model/ImageSequence.h"
 
 #include <algorithm>
 #include <cstring>
 #include <deque>
+#include <vector>
 #include <mutex>
 
 extern "C" {
@@ -173,6 +176,15 @@ struct VideoDecoder::Impl {
     AVPacket* alphaPacket = nullptr;
     std::deque<AVFrame*> alphaFrames; // decoded, waiting for their picture (matched by pts)
 
+    // An image sequence (model/ImageSequence.h): a picture file a frame, read by ImageIO,
+    // with no FFmpeg context at all. Opaque pictures become NV12, like any video; ones with
+    // transparency BGRA.
+    std::vector<std::string> sequenceFiles;
+    std::size_t sequenceNext = 0;
+    std::vector<std::uint8_t> sequencePixels; // one picture as BGRA, before NV12
+    bool isSequence() const { return !sequenceFiles.empty(); }
+    std::optional<DecodedFrame> sequenceFrame();
+
     ~Impl()
     {
         clearAlpha();
@@ -193,6 +205,7 @@ struct VideoDecoder::Impl {
     CVPixelBufferRef convertToYuv();
     CVPixelBufferRef convertToBgra();
     bool ensurePool(int pixelFormat);
+    bool ensurePool(int pixelFormat, int width, int height);
     // The alpha stream: fed a packet's additional data, drained into alphaFrames.
     void sendAlpha(const AVPacket* source);
     void receiveAlpha();
@@ -317,15 +330,79 @@ std::optional<DecodedFrame> VideoDecoder::Impl::takeFrame(Ticks pts)
 
 bool VideoDecoder::Impl::ensurePool(int pixelFormat)
 {
-    if (!pool || poolWidth != frame->width || poolHeight != frame->height || poolFormat != pixelFormat) {
+    return ensurePool(pixelFormat, frame->width, frame->height);
+}
+
+bool VideoDecoder::Impl::ensurePool(int pixelFormat, int width, int height)
+{
+    if (!pool || poolWidth != width || poolHeight != height || poolFormat != pixelFormat) {
         if (pool)
             CVPixelBufferPoolRelease(pool);
-        pool = createPool(frame->width, frame->height, pixelFormat);
-        poolWidth = frame->width;
-        poolHeight = frame->height;
+        pool = createPool(width, height, pixelFormat);
+        poolWidth = width;
+        poolHeight = height;
         poolFormat = pixelFormat;
     }
     return pool != nullptr;
+}
+
+std::optional<DecodedFrame> VideoDecoder::Impl::sequenceFrame()
+{
+    if (sequenceNext >= sequenceFiles.size())
+        return std::nullopt;
+    const std::size_t index = sequenceNext++;
+    const Ticks pts = Ticks(index) * frameDuration(info.frameRate);
+    lastPts = pts;
+    const int width = info.width;
+    const int height = info.height;
+    CVPixelBufferRef buffer = nullptr;
+    if (info.hasAlpha) {
+        // Drawn straight into the frame.
+        if (!ensurePool(kCVPixelFormatType_32BGRA, width, height)
+            || CVPixelBufferPoolCreatePixelBuffer(nullptr, pool, &buffer) != kCVReturnSuccess)
+            return std::nullopt;
+        CVPixelBufferLockBaseAddress(buffer, 0);
+        const bool ok = imagefile::decodeInto(sequenceFiles[index], width, height, imagefile::Layout::Bgra,
+                                              static_cast<std::uint8_t*>(CVPixelBufferGetBaseAddress(buffer)),
+                                              CVPixelBufferGetBytesPerRow(buffer));
+        CVPixelBufferUnlockBaseAddress(buffer, 0);
+        if (!ok) { // an unreadable frame shows black and clear, not the end of the clip
+            CVPixelBufferLockBaseAddress(buffer, 0);
+            std::memset(CVPixelBufferGetBaseAddress(buffer), 0, CVPixelBufferGetBytesPerRow(buffer) * std::size_t(height));
+            CVPixelBufferUnlockBaseAddress(buffer, 0);
+        }
+    } else {
+        const std::size_t stride = std::size_t(width) * 4;
+        sequencePixels.resize(stride * std::size_t(height));
+        if (!imagefile::decodeInto(sequenceFiles[index], width, height, imagefile::Layout::Bgra, sequencePixels.data(),
+                                   stride))
+            std::fill(sequencePixels.begin(), sequencePixels.end(), std::uint8_t(0));
+        if (!ensurePool(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, width, height)
+            || CVPixelBufferPoolCreatePixelBuffer(nullptr, pool, &buffer) != kCVReturnSuccess)
+            return std::nullopt;
+        // sRGB pictures as BT.709 video range, as the compositor reads untagged NV12.
+        sws = sws_getCachedContext(sws, width, height, AV_PIX_FMT_BGRA, width, height, AV_PIX_FMT_NV12, SWS_BILINEAR,
+                                   nullptr, nullptr, nullptr);
+        if (!sws) {
+            CVPixelBufferRelease(buffer);
+            return std::nullopt;
+        }
+        const int* bt709 = sws_getCoefficients(SWS_CS_ITU709);
+        sws_setColorspaceDetails(sws, bt709, 1, bt709, 0, 0, 1 << 16, 1 << 16);
+        const std::uint8_t* source[] = {sequencePixels.data()};
+        const int sourceStrides[] = {int(stride)};
+        CVPixelBufferLockBaseAddress(buffer, 0);
+        std::uint8_t* planes[] = {static_cast<std::uint8_t*>(CVPixelBufferGetBaseAddressOfPlane(buffer, 0)),
+                                  static_cast<std::uint8_t*>(CVPixelBufferGetBaseAddressOfPlane(buffer, 1))};
+        const int strides[] = {static_cast<int>(CVPixelBufferGetBytesPerRowOfPlane(buffer, 0)),
+                               static_cast<int>(CVPixelBufferGetBytesPerRowOfPlane(buffer, 1))};
+        sws_scale(sws, source, sourceStrides, 0, height, planes, strides);
+        CVPixelBufferUnlockBaseAddress(buffer, 0);
+        CVBufferSetAttachment(buffer, kCVImageBufferYCbCrMatrixKey, kCVImageBufferYCbCrMatrix_ITU_R_709_2,
+                              kCVAttachmentMode_ShouldPropagate);
+    }
+    tagBuffer(buffer, info.colour);
+    return DecodedFrame(buffer, pts);
 }
 
 CVPixelBufferRef VideoDecoder::Impl::convertToBgra()
@@ -415,6 +492,25 @@ std::unique_ptr<VideoDecoder> VideoDecoder::open(const std::string& path, std::s
     std::call_once(quietLogs, [] { av_log_set_level(AV_LOG_ERROR); });
 
     auto d = std::make_unique<Impl>();
+
+    // The first frame of a registered image sequence plays the whole run.
+    if (const auto registered = registeredImageSequence(path)) {
+        d->sequenceFiles = sequenceFrameFiles(path, registered->sequence);
+        if (d->sequenceFiles.empty())
+            return fail("no frames of the image sequence " + path);
+        const auto first = imagefile::probe(d->sequenceFiles.front());
+        if (!first)
+            return fail("cannot read " + d->sequenceFiles.front());
+        // Even sizes: NV12 halves them for its colour plane.
+        d->info.width = first->alpha ? first->width : std::max(2, first->width & ~1);
+        d->info.height = first->alpha ? first->height : std::max(2, first->height & ~1);
+        d->info.frameRate = registered->rate.num > 0 && registered->rate.den > 0 ? registered->rate : FrameRate{30, 1};
+        d->info.duration = Ticks(d->sequenceFiles.size()) * frameDuration(d->info.frameRate);
+        d->info.codecName = "image sequence";
+        d->info.hasAlpha = first->alpha;
+        return std::unique_ptr<VideoDecoder>(new VideoDecoder(std::move(d)));
+    }
+
     if (int rc = avformat_open_input(&d->format, path.c_str(), nullptr, nullptr); rc < 0)
         return fail("cannot open " + path + ": " + avError(rc));
     if (int rc = avformat_find_stream_info(d->format, nullptr); rc < 0)
@@ -522,6 +618,8 @@ const VideoStreamInfo& VideoDecoder::info() const
 std::optional<DecodedFrame> VideoDecoder::nextFrame()
 {
     Impl& d = *m_impl;
+    if (d.isSequence())
+        return d.sequenceFrame();
     while (true) {
         const int rc = avcodec_receive_frame(d.codec, d.frame);
         if (rc == 0) {
@@ -569,6 +667,8 @@ bool VideoDecoder::seekToStart()
 
 bool VideoDecoder::seek(Ticks target)
 {
+    if (m_impl->isSequence())
+        return seekToKeyframe(target);
     // Land on the keyframe at or before the target, then decode forward to it.
     if (!seekToKeyframe(target))
         return false;
@@ -580,6 +680,11 @@ bool VideoDecoder::seekToKeyframe(Ticks target)
 {
     Impl& d = *m_impl;
     target = std::max<Ticks>(target, 0);
+    if (d.isSequence()) { // every frame a keyframe: the one on screen at the target
+        d.sequenceNext = std::min<std::size_t>(std::size_t(target / frameDuration(d.info.frameRate)), d.sequenceFiles.size());
+        d.lastPts = target;
+        return true;
+    }
     const std::int64_t timestamp = d.startTime + av_rescale_q(target, kTickTimeBase, d.timeBase);
     if (av_seek_frame(d.format, d.streamIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0)
         return false;
@@ -597,6 +702,10 @@ bool VideoDecoder::seekToKeyframe(Ticks target)
 std::optional<Ticks> VideoDecoder::keyframeBefore(Ticks target) const
 {
     const Impl& d = *m_impl;
+    if (d.isSequence()) {
+        const Ticks frame = frameDuration(d.info.frameRate);
+        return std::max<Ticks>(target, 0) / frame * frame;
+    }
     AVStream* stream = d.format->streams[d.streamIndex];
     const std::int64_t timestamp = d.startTime + av_rescale_q(std::max<Ticks>(target, 0), kTickTimeBase, d.timeBase);
     const AVIndexEntry* entry = avformat_index_get_entry_from_timestamp(stream, timestamp, AVSEEK_FLAG_BACKWARD);

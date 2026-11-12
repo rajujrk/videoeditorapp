@@ -183,6 +183,7 @@ Rectangle {
                         MenuItem { objectName: "importFrom:music"; text: qsTr("From Music…"); onTriggered: library.importFromRequested("music") }
                         MenuItem { objectName: "importFrom:devices"; text: qsTr("From an iPhone, camera or card…"); onTriggered: library.importFromRequested("devices") }
                         MenuItem { objectName: "importFrom:project"; text: qsTr("A project, as a compound clip…"); onTriggered: projectDialog.open() }
+                        MenuItem { objectName: "importFrom:sequence"; text: qsTr("An image sequence…"); onTriggered: sequenceFrameDialog.open() }
                     }
                 }
             }
@@ -1331,4 +1332,13 @@ Rectangle {
         nameFilters: [qsTr("TechieVideoEditor projects (*.tve)")]
         onAccepted: library.project.importProjectAsCompound(selectedFile)
     }
+    // Numbered pictures as one video: any one of them chosen, then the frame rate.
+    FileDialog {
+        id: sequenceFrameDialog
+        title: qsTr("Choose one picture of the sequence")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("Pictures (*.png *.jpg *.jpeg *.tif *.tiff *.exr *.bmp *.tga *.webp *.heic)"), qsTr("All files (*)")]
+        onAccepted: sequenceDialog.openFor(selectedFile)
+    }
+    ImageSequenceDialog { id: sequenceDialog; objectName: "imageSequenceDialog"; project: library.project }
 }

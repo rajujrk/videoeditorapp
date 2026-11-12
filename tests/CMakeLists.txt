@@ -34,6 +34,7 @@ add_executable(tve_core_tests
     core/test_sequence_edits.cpp
     core/test_clip_animation.cpp
     core/test_colour_match.cpp
+    core/test_image_sequence.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
@@ -50,6 +51,7 @@ endif()
 add_executable(tve_engine_tests
     engine/test_ffmpeg_license.cpp
     engine/test_decoder.cpp
+    engine/test_image_files.cpp
     engine/test_frame_queue.cpp
     engine/test_timeline_playback.cpp
     engine/test_audio.cpp
