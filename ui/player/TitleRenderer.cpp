@@ -15,6 +15,7 @@
 #include <QTextLayout>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <functional>
 #include <numbers>
@@ -686,6 +687,122 @@ QImage renderChart(const tve::ClipText& text, QSize canvas, double seconds, doub
     return image.convertToFormat(QImage::Format_RGBA8888);
 }
 
+// An audio visualiser title: the bars, mirrored bars, wave or ring in the middle of the canvas
+// (size × its height tall), each band coloured from `color` towards `peak` as it rises; the
+// text as a heading above it, or inside the ring.
+QImage renderVisualiser(const tve::ClipText& text, QSize canvas, double seconds, double duration)
+{
+    const tve::TextVisualiser& v = *text.visualiser;
+    QImage image(canvas, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    if (canvas.isEmpty())
+        return image.convertToFormat(QImage::Format_RGBA8888);
+    constexpr int n = tve::TextVisualiser::kBands;
+    // Unmeasured: a low line, so it can be seen and placed.
+    std::array<double, n> level{};
+    for (int b = 0; b < n; ++b)
+        level[std::size_t(b)] = v.frames.empty() ? 0.04 : std::max(0.02, v.levelAt(std::max(seconds, 0.0), b));
+    const auto shade = [&](double l) {
+        const auto mix = [l](double a, double b) { return float(a + (b - a) * std::clamp(l, 0.0, 1.0)); };
+        return QColor::fromRgbF(mix(v.color.r, v.peak.r), mix(v.color.g, v.peak.g), mix(v.color.b, v.peak.b),
+                                mix(v.color.a, v.peak.a));
+    };
+    const double h = v.size * canvas.height();
+    const double w = canvas.width() * 0.8;
+    const QPointF centre(canvas.width() / 2.0, canvas.height() / 2.0);
+    const QRectF area(centre.x() - w / 2.0, centre.y() - h / 2.0, w, h);
+    QPainter painter(&image);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    const double slot = w / n;
+
+    switch (v.style) {
+    case tve::VisualiserStyle::Bars:
+    case tve::VisualiserStyle::Mirror: {
+        const bool mirror = v.style == tve::VisualiserStyle::Mirror;
+        const double width = slot * 0.7;
+        for (int b = 0; b < n; ++b) {
+            const double l = level[std::size_t(b)];
+            const double tall = std::max(l * h, width * 0.5);
+            const double x = area.left() + slot * (b + 0.5) - width / 2.0;
+            const QRectF bar = mirror ? QRectF(x, centre.y() - tall / 2.0, width, tall) : QRectF(x, area.bottom() - tall, width, tall);
+            QPainterPath path;
+            path.addRoundedRect(bar, width * 0.3, width * 0.3);
+            painter.fillPath(path, shade(l));
+        }
+        break;
+    }
+    case tve::VisualiserStyle::Wave: {
+        // A smooth band through the levels, as thick as they are loud, about the middle.
+        QPolygonF top, bottom;
+        for (int b = 0; b < n; ++b) {
+            const double x = area.left() + slot * (b + 0.5);
+            const double half = std::max(level[std::size_t(b)] * h / 2.0, canvas.height() * 0.004);
+            top << QPointF(x, centre.y() - half);
+            bottom << QPointF(x, centre.y() + half);
+        }
+        const auto smooth = [](QPainterPath& path, const QPolygonF& points) {
+            for (int i = 1; i < points.size(); ++i) {
+                const QPointF mid = (points[i - 1] + points[i]) / 2.0;
+                path.quadTo(points[i - 1], mid);
+            }
+            path.lineTo(points.back());
+        };
+        QPainterPath path(top.front());
+        smooth(path, top);
+        std::reverse(bottom.begin(), bottom.end());
+        path.lineTo(bottom.front());
+        smooth(path, bottom);
+        path.closeSubpath();
+        double loudest = 0.0;
+        for (double l : level)
+            loudest = std::max(loudest, l);
+        QLinearGradient across(area.topLeft(), area.topRight());
+        across.setColorAt(0.0, shade(level[0]));
+        across.setColorAt(0.5, shade(loudest));
+        across.setColorAt(1.0, shade(level[n - 1]));
+        painter.fillPath(path, across);
+        break;
+    }
+    case tve::VisualiserStyle::Ring: {
+        // 64 spokes round a circle, the bands going round one side and back the other; the
+        // circle wide enough for the text inside it.
+        double inside = 0.0;
+        if (!QString::fromStdString(text.text).trimmed().isEmpty()) {
+            const QFontMetricsF metrics(titleFont(text, text.size * canvas.height()));
+            for (const QString& line : QString::fromStdString(text.text).split(QLatin1Char('\n')))
+                inside = std::max(inside, metrics.horizontalAdvance(line) / 2.0 + text.size * canvas.height() * 0.5);
+        }
+        const double radius = std::max(h * 0.28, inside);
+        const double longest = h * 0.22;
+        const double width = 2.0 * std::numbers::pi * radius / 64.0 * 0.55;
+        QColor rim = shade(0.0);
+        rim.setAlphaF(rim.alphaF() * 0.5f);
+        painter.setPen(QPen(rim, std::max(1.0, width * 0.4)));
+        painter.drawEllipse(centre, radius - width, radius - width);
+        for (int i = 0; i < 64; ++i) {
+            const int band = i < n ? i : 2 * n - 1 - i;
+            const double l = level[std::size_t(band)];
+            const double angle = -std::numbers::pi / 2.0 + 2.0 * std::numbers::pi * i / 64.0;
+            const QPointF dir(std::cos(angle), std::sin(angle));
+            painter.setPen(QPen(shade(l), width, Qt::SolidLine, Qt::RoundCap));
+            painter.drawLine(centre + dir * radius, centre + dir * (radius + std::max(l * longest, width * 0.2)));
+        }
+        break;
+    }
+    }
+
+    // The text: inside the ring, else a heading above.
+    tve::ClipText heading = text;
+    heading.visualiser.reset();
+    const QImage words = renderTitle(heading, canvas, seconds, duration).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    const double em = text.size * canvas.height();
+    const double dy = v.style == tve::VisualiserStyle::Ring ? 0.0 : area.top() - em * 0.8 - canvas.height() / 2.0;
+    painter.drawImage(QPointF(0.0, dy), words);
+    painter.end();
+    return image.convertToFormat(QImage::Format_RGBA8888);
+}
+
 // A repeatable random number in 0..1 for (a, b).
 double jitter(double a, double b)
 {
@@ -697,6 +814,8 @@ double jitter(double a, double b)
 
 QImage renderTitle(const tve::ClipText& text, QSize canvas, double seconds, double duration)
 {
+    if (text.visualiser)
+        return renderVisualiser(text, canvas, seconds, duration);
     if (text.chart)
         return renderChart(text, canvas, seconds, duration);
     QImage image(canvas, QImage::Format_ARGB32_Premultiplied);
@@ -956,6 +1075,7 @@ constexpr const char* kFillKinds[] = {"solid", "linear", "radial", "image"};
 constexpr const char* kCaptionMotions[] = {"none", "highlight", "pop", "karaoke", "reveal"};
 constexpr const char* kReactKinds[] = {"none", "pulse", "bounce", "flash", "shake"};
 constexpr const char* kChartKinds[] = {"bar", "line"};
+constexpr const char* kVisualiserStyles[] = {"bars", "mirror", "wave", "ring"};
 
 template <std::size_t N>
 int indexOf(const char* const (&names)[N], const QString& name, int fallback)
@@ -1095,6 +1215,14 @@ QVariantMap textMap(const tve::ClipText& text)
                                               {QStringLiteral("amount"), text.react.amount},
                                               {QStringLiteral("measured"), !text.react.levels.empty()}}},
         {QStringLiteral("chart"), text.chart ? QVariant(chartMap(*text.chart)) : QVariant()},
+        {QStringLiteral("visualiser"),
+         text.visualiser ? QVariant(QVariantMap{{QStringLiteral("style"), QString::fromLatin1(kVisualiserStyles[int(text.visualiser->style)])},
+                                                {QStringLiteral("color"), colorList(text.visualiser->color)},
+                                                {QStringLiteral("peak"), colorList(text.visualiser->peak)},
+                                                {QStringLiteral("size"), text.visualiser->size},
+                                                {QStringLiteral("seconds"), double(text.visualiser->frameCount()) / tve::TextVisualiser::kRate},
+                                                {QStringLiteral("measured"), !text.visualiser->frames.empty()}})
+                         : QVariant()},
         {QStringLiteral("path"), [&] {
              QVariantList points;
              for (const auto& [x, y] : text.path)
@@ -1216,6 +1344,26 @@ tve::ClipText textFrom(const QVariantMap& changes, tve::ClipText text)
                 text.react.levels.push_back(float(v.toDouble()));
         }
     }
+    // A visualiser: null (or false) takes it off; else its look (the levels come from
+    // measuring the music).
+    if (has("visualiser")) {
+        const QVariant value = get("visualiser");
+        const QVariantMap m = value.toMap();
+        if (m.isEmpty() && !value.toBool()) {
+            text.visualiser.reset();
+        } else {
+            tve::TextVisualiser v = text.visualiser.value_or(tve::TextVisualiser{});
+            if (m.contains(QStringLiteral("style")))
+                v.style = tve::VisualiserStyle(indexOf(kVisualiserStyles, m.value(QStringLiteral("style")).toString(), int(v.style)));
+            if (m.contains(QStringLiteral("color")))
+                v.color = colorFrom(m.value(QStringLiteral("color")), v.color);
+            if (m.contains(QStringLiteral("peak")))
+                v.peak = colorFrom(m.value(QStringLiteral("peak")), v.peak);
+            if (m.contains(QStringLiteral("size")))
+                v.size = m.value(QStringLiteral("size")).toDouble();
+            text.visualiser = std::move(v);
+        }
+    }
     // A chart: null (or false) takes it off; else its fields, `data` being "label, value" lines.
     if (has("chart")) {
         const QVariant value = get("chart");
@@ -1259,7 +1407,21 @@ QImage TitlePreviewProvider::requestImage(const QString& id, QSize* size, const 
     // way), or the moment `t` asks for.
     const double duration = style.value(QStringLiteral("duration"), 5.0).toDouble();
     const double seconds = style.value(QStringLiteral("t"), duration / 2.0).toDouble();
-    QImage title = renderTitle(textFrom(style), canvas, seconds, duration);
+    tve::ClipText text = textFrom(style);
+    // A visualiser not measured yet moves to a made-up tune, to show what it looks like.
+    if (text.visualiser && text.visualiser->frames.empty()) {
+        constexpr int n = tve::TextVisualiser::kBands;
+        const int frames = int(std::ceil(duration * tve::TextVisualiser::kRate)) + 1;
+        text.visualiser->frames.resize(std::size_t(frames) * n);
+        for (int k = 0; k < frames; ++k) {
+            const double beat = std::exp(-std::fmod(k / tve::TextVisualiser::kRate, 0.5) / 0.15);
+            for (int b = 0; b < n; ++b) {
+                const double l = 0.55 * std::exp(-b / 16.0) + 0.25 * (0.5 + 0.5 * std::sin(b * 0.9 + k * 0.35)) + 0.2 * beat;
+                text.visualiser->frames[std::size_t(k) * n + std::size_t(b)] = std::uint8_t(std::lround(std::clamp(l, 0.0, 1.0) * 255));
+            }
+        }
+    }
+    QImage title = renderTitle(text, canvas, seconds, duration);
     QImage image(canvas, QImage::Format_RGBA8888);
     image.fill(Qt::transparent);
     QPainter painter(&image);

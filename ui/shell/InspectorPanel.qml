@@ -777,6 +777,79 @@ Rectangle {
                         }
                     }
 
+                    // An audio visualiser: its style, colours and size, and the music measured again.
+                    Section {
+                        id: visualiserSection
+                        objectName: "titleVisualiserSection"
+                        visible: inspector.clipInfo.isTitle === true && !!textSection.text.visualiser
+                        Layout.fillWidth: true
+                        title: qsTr("Visualiser")
+                        readonly property var vis: textSection.text.visualiser || ({ style: "bars", color: [1, 1, 1, 1], peak: [1, 1, 1, 1], size: 0.45, measured: false, seconds: 0 })
+                        function change(fields) { textSection.change({ visualiser: fields }) }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            Repeater {
+                                model: [{ key: "bars", label: qsTr("Bars") }, { key: "mirror", label: qsTr("Mirrored") },
+                                        { key: "wave", label: qsTr("Wave") }, { key: "ring", label: qsTr("Ring") }]
+                                delegate: TextButton {
+                                    required property var modelData
+                                    objectName: "titleVisualiserStyle:" + modelData.key
+                                    text: modelData.label
+                                    variant: visualiserSection.vis.style === modelData.key ? "primary" : "secondary"
+                                    onClicked: visualiserSection.change({ style: modelData.key })
+                                }
+                            }
+                        }
+                        Text { text: qsTr("Quiet"); font: Theme.type.label; color: Theme.color.textSecondary }
+                        Swatches {
+                            objectName: "titleVisualiserColor"
+                            current: visualiserSection.vis.color
+                            onPicked: (c) => visualiserSection.change({ color: c })
+                        }
+                        Text { text: qsTr("Loud"); font: Theme.type.label; color: Theme.color.textSecondary }
+                        Swatches {
+                            objectName: "titleVisualiserPeak"
+                            current: visualiserSection.vis.peak
+                            onPicked: (c) => visualiserSection.change({ peak: c })
+                        }
+                        AudioSlider {
+                            objectName: "titleVisualiserSize"
+                            label: qsTr("Size")
+                            from: 0.1
+                            to: 1
+                            value: visualiserSection.vis.size
+                            format: (v) => Math.round(v * 100) + "%"
+                            onCommitted: (v) => visualiserSection.change({ size: v })
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: inspector.project.analyzing ? qsTr("Listening to the music…")
+                                : visualiserSection.vis.measured ? qsTr("Moving with %1 s of the music under it. Moved or trimmed it? Listen again.").arg(Fmt.num(visualiserSection.vis.seconds, 1))
+                                : qsTr("Put music under it, then listen to it.")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            TextButton {
+                                objectName: "titleVisualiserListen"
+                                enabled: !inspector.project.analyzing
+                                text: qsTr("Listen again")
+                                variant: "secondary"
+                                onClicked: inspector.project.measureVisualiser(inspector.clipInfo.id)
+                            }
+                            Item { Layout.fillWidth: true }
+                            IconButton {
+                                objectName: "titleRemoveVisualiser"
+                                iconName: "delete"
+                                tip: qsTr("Back to plain text")
+                                onClicked: textSection.change({ visualiser: null })
+                            }
+                        }
+                    }
+
                     // Moving with the music: the title reacting to the sound under it.
                     Section {
                         id: musicSection

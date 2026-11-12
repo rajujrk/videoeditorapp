@@ -135,11 +135,73 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ChartKind, {
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChartPoint, label, value)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TextChart, kind, points, color, grow, values)
+NLOHMANN_JSON_SERIALIZE_ENUM(VisualiserStyle, {
+    {VisualiserStyle::Bars, "bars"},
+    {VisualiserStyle::Mirror, "mirror"},
+    {VisualiserStyle::Wave, "wave"},
+    {VisualiserStyle::Ring, "ring"},
+})
+// A visualiser's frames as base64 (a byte a level), not a long array of numbers.
+static std::string toBase64(const std::vector<std::uint8_t>& bytes)
+{
+    static constexpr char kDigits[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string text;
+    text.reserve((bytes.size() + 2) / 3 * 4);
+    for (std::size_t i = 0; i < bytes.size(); i += 3) {
+        const std::uint32_t n = (std::uint32_t(bytes[i]) << 16) | (i + 1 < bytes.size() ? std::uint32_t(bytes[i + 1]) << 8 : 0)
+                              | (i + 2 < bytes.size() ? std::uint32_t(bytes[i + 2]) : 0);
+        text += kDigits[(n >> 18) & 63];
+        text += kDigits[(n >> 12) & 63];
+        text += i + 1 < bytes.size() ? kDigits[(n >> 6) & 63] : '=';
+        text += i + 2 < bytes.size() ? kDigits[n & 63] : '=';
+    }
+    return text;
+}
+static std::vector<std::uint8_t> fromBase64(const std::string& text)
+{
+    const auto value = [](char c) -> int {
+        if (c >= 'A' && c <= 'Z') return c - 'A';
+        if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+        if (c >= '0' && c <= '9') return c - '0' + 52;
+        if (c == '+') return 62;
+        if (c == '/') return 63;
+        return -1;
+    };
+    std::vector<std::uint8_t> bytes;
+    bytes.reserve(text.size() / 4 * 3);
+    std::uint32_t n = 0;
+    int bits = 0;
+    for (char c : text) {
+        const int v = value(c);
+        if (v < 0)
+            continue; // padding (or anything else)
+        n = (n << 6) | std::uint32_t(v);
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            bytes.push_back(std::uint8_t((n >> bits) & 0xFF));
+        }
+    }
+    return bytes;
+}
+void to_json(nlohmann::json& j, const TextVisualiser& v)
+{
+    j = {{"style", v.style}, {"color", v.color}, {"peak", v.peak}, {"size", v.size}, {"frames", toBase64(v.frames)}};
+}
+void from_json(const nlohmann::json& j, TextVisualiser& v)
+{
+    const TextVisualiser defaults;
+    v.style = j.value("style", defaults.style);
+    v.color = j.value("color", defaults.color);
+    v.peak = j.value("peak", defaults.peak);
+    v.size = j.value("size", defaults.size);
+    v.frames = fromBase64(j.value("frames", std::string()));
+}
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipText, text, fontFamily, size, bold, italic, color, alignment,
                                                 lineSpacing, letterSpacing, outlineColor, outlineWidth, shadow, shape,
                                                 animationIn, animationOut, animationLoop, scroll, words,
                                                 captionMotion, highlightColor, path, fill, underline, vertical, curve,
-                                                depth, depthColor, tiltX, tiltY, react, chart)
+                                                depth, depthColor, tiltX, tiltY, react, chart, visualiser)
 NLOHMANN_JSON_SERIALIZE_ENUM(PathKind, {
     {PathKind::Brush, "brush"},
     {PathKind::Line, "line"},

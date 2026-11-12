@@ -2,6 +2,7 @@
 
 #include "model/Time.h"
 
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
@@ -81,6 +82,16 @@ Beats findBeats(const AudioFeatures& features);
 // the loudness alone. Values outside `within` (media time) are 0.
 std::vector<float> musicLevels(const AudioFeatures& features, Ticks start, std::size_t count, double rate,
                                TimeRange within);
+
+// A music visualiser's spectrum: `count` frames at `rate` a second from media time `start`,
+// each `bands` values (0..255) for log-spaced bands from 40 Hz to 16 kHz (tilted 3 dB an octave
+// so music reads level), the loudest band of the span 255 and 48 dB under it 0, each band
+// falling back gently between hits. Frames outside `within` (media time) are 0. Decodes the
+// span of the file (slow); nullopt if it cannot be read or `progress` cancels.
+std::optional<std::vector<std::uint8_t>> analyzeSpectrum(const std::string& path, Ticks start, std::size_t count,
+                                                         double rate, int bands, TimeRange within,
+                                                         const AnalysisProgress& progress = {},
+                                                         std::string* error = nullptr);
 
 // How two recordings of the same sound line up: `other`'s media time t shows the same sound
 // as `reference`'s at t + offset. From their onset strength (what starts when), correlated

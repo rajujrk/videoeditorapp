@@ -85,6 +85,7 @@ The following improvements were completed after Phase 5:
 - Slice 26a: Curved and vertical text, an underline style, gradient and picture fills, and 3D titles.
 - Slice 26b: Title presets of your own, titles that move with the music, animated bar and line charts from your data, and logo reveals.
 - Slice 27a: Batch gain (several clips turned up, set or normalized together) and 32-bit float WAV export.
+- Slice 27b: Audio visualisers — bars, mirrored bars, a wave or a ring moving with the spectrum of the music.
 
 All previously identified feature gaps have been closed.
 
@@ -140,9 +141,10 @@ All previously identified feature gaps have been closed.
 - Apply entrance, exit and looping text animations.
 - Animate text by individual letters, words or lines.
 - Create rolling credits and tickers.
-- Choose from 47 built-in title templates, six logo reveals and presets saved from your own titles.
+- Choose from 51 built-in title templates, six logo reveals and presets saved from your own titles.
 - Make titles pulse, bounce, flash or shake with the music under them.
 - Draw animated bar and line charts from typed values or a CSV file.
+- Add audio visualisers that move with the spectrum of the music.
 
 ### 2.7 Speed and Playback Controls
 
@@ -665,6 +667,13 @@ letter by letter, flashes to its highlight colour or shakes on the beat of the m
 into a heading over bars or a line that grow in: type a label and a value on each line, or
 load them from a CSV or text file. The Logo reveals in the Titles library ask for your logo and
 animate it in with a tagline under it, grouped so they move together.
+
+**Audio visualisers.** Under Visualisers in the Titles library, click Spectrum Bars, Mirror
+Bars, Sound Wave or Ring with the playhead on music: the music's spectrum is measured (32 bands
+from 40 Hz to 16 kHz, thirty times a second) and the visualiser is added over it, as long as the
+music. Each band rises from its quiet colour towards its loud one; any text is a heading above,
+or sits inside the ring. The Visualiser section on the Video tab changes the style, colours and
+size, and Listen again measures the music again after it moves.
 
 **Placing clips by hand.** Select a clip and its frame shows in the player: drag inside it to
 move it (it snaps to the centre lines), a corner to resize it, the round knob to turn it (⇧ in

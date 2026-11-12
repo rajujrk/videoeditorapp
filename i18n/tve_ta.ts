@@ -3220,6 +3220,34 @@ Third, 4</source>
         <translation>மீண்டும் கேள்</translation>
     </message>
     <message>
+        <source>Visualiser</source>
+        <translation>ஒலிக் காட்சி</translation>
+    </message>
+    <message>
+        <source>Mirrored</source>
+        <translation>பிரதிபலிப்பு</translation>
+    </message>
+    <message>
+        <source>Ring</source>
+        <translation>வளையம்</translation>
+    </message>
+    <message>
+        <source>Quiet</source>
+        <translation>அமைதி</translation>
+    </message>
+    <message>
+        <source>Loud</source>
+        <translation>உரப்பு</translation>
+    </message>
+    <message>
+        <source>Moving with %1 s of the music under it. Moved or trimmed it? Listen again.</source>
+        <translation>அதன் கீழுள்ள இசையின் %1 வி உடன் அசைகிறது. அதை நகர்த்தினீர்களா அல்லது வெட்டினீர்களா? மீண்டும் கேளுங்கள்.</translation>
+    </message>
+    <message>
+        <source>Put music under it, then listen to it.</source>
+        <translation>அதன் கீழ் இசையை வைத்து, பின் அதைக் கேளுங்கள்.</translation>
+    </message>
+    <message>
         <source>Title presets</source>
         <translation>தலைப்பு முன்னமைவுகள்</translation>
     </message>
@@ -4479,6 +4507,10 @@ Third, 4</source>
         <translation>உங்கள் சின்னத்தைத் தேர்ந்தெடுக்கச் சொடுக்கவும்; அது இயக்கக் குறியில் வெளிப்படும்</translation>
     </message>
     <message>
+        <source>Click to add it over the music at the playhead, as long as the music</source>
+        <translation>இயக்கக் குறியிலுள்ள இசையின் மேல், அந்த இசையின் நீளத்துக்குச் சேர்க்கச் சொடுக்கவும்</translation>
+    </message>
+    <message>
         <source>Click to add at the playhead, or drag onto a track. Right-click to delete.</source>
         <translation>இயக்கக் குறியில் சேர்க்கச் சொடுக்கவும், அல்லது ஒரு தடத்தின் மீது இழுக்கவும். நீக்க வலது சொடுக்கு.</translation>
     </message>
@@ -5295,6 +5327,14 @@ Third, 4</source>
     <message>
         <source>%1 has no values to chart: put a label and a number on each line</source>
         <translation>%1 இல் விளக்கப்படத்துக்கு மதிப்புகள் இல்லை: ஒவ்வொரு வரியிலும் ஒரு பெயரும் ஒரு எண்ணும் வையுங்கள்</translation>
+    </message>
+    <message>
+        <source>Put the playhead on music first</source>
+        <translation>முதலில் இயக்கக் குறியை இசையின் மேல் வையுங்கள்</translation>
+    </message>
+    <message>
+        <source>Select an audio visualiser</source>
+        <translation>ஒரு ஒலிக் காட்சியைத் தேர்ந்தெடுக்கவும்</translation>
     </message>
     <message>
         <source>Unknown logo reveal %1</source>
@@ -7458,6 +7498,10 @@ Third, 4</source>
         <translation>இசையோடு</translation>
     </message>
     <message>
+        <source>Visualisers</source>
+        <translation>ஒலிக் காட்சிகள்</translation>
+    </message>
+    <message>
         <source>Charts</source>
         <translation>விளக்கப்படங்கள்</translation>
     </message>
@@ -7852,6 +7896,26 @@ The Journey</source>
     <message>
         <source>LOUDER</source>
         <translation>இன்னும் சத்தமாக</translation>
+    </message>
+    <message>
+        <source>Spectrum Bars</source>
+        <translation>அலைமாலைப் பட்டைகள்</translation>
+    </message>
+    <message>
+        <source>Mirror Bars</source>
+        <translation>பிரதிபலிக்கும் பட்டைகள்</translation>
+    </message>
+    <message>
+        <source>Sound Wave</source>
+        <translation>ஒலி அலை</translation>
+    </message>
+    <message>
+        <source>Ring</source>
+        <translation>வளையம்</translation>
+    </message>
+    <message>
+        <source>ON AIR</source>
+        <translation>ஒலிபரப்பில்</translation>
     </message>
     <message>
         <source>Bar Chart</source>
@@ -10564,6 +10628,10 @@ The Journey</source>
         <translation>இசையோடு அசை</translation>
     </message>
     <message>
+        <source>Measure the Music</source>
+        <translation>இசையை அள</translation>
+    </message>
+    <message>
         <source>Add Logo Reveal</source>
         <translation>சின்ன வெளிப்பாட்டைச் சேர்</translation>
     </message>
@@ -11722,6 +11790,14 @@ The Journey</source>
     <message>
         <source>a chart grows in over at most 30 seconds</source>
         <translation>ஒரு விளக்கப்படம் அதிகபட்சம் 30 வினாடிகளில் வளர்ந்து வரும்</translation>
+    </message>
+    <message>
+        <source>a title is a chart or a visualiser, not both</source>
+        <translation>ஒரு தலைப்பு விளக்கப்படமோ ஒலிக் காட்சியோ, இரண்டும் அல்ல</translation>
+    </message>
+    <message>
+        <source>a visualiser&apos;s size must be between 10% and 100%</source>
+        <translation>ஒலிக் காட்சியின் அளவு 10% முதல் 100% வரை இருக்க வேண்டும்</translation>
     </message>
     <message>
         <source>Add Marker</source>

@@ -3625,10 +3625,14 @@ bool ProjectController::addTitle(const QVariantMap& style, double trackId, doubl
         return false;
     const Id added = raw->clipId();
     setSelectedClip(double(added));
-    // One that moves with the music listens to the music under it, if there is some.
-    if (const Clip* clip = findClip(added); clip && clip->text->react.kind != TextReactKind::None && !analyzing()
-                                            && musicUnder(*clip) != kNoId)
-        reactToMusic(double(added));
+    // One that moves with the music, or a visualiser, listens to the music under it, if there
+    // is some.
+    if (const Clip* clip = findClip(added); clip && !analyzing() && musicUnder(*clip) != kNoId) {
+        if (clip->text->visualiser && clip->text->visualiser->frames.empty())
+            measureVisualiser(double(added));
+        else if (clip->text->react.kind != TextReactKind::None)
+            reactToMusic(double(added));
+    }
     return true;
 }
 
@@ -3864,6 +3868,132 @@ bool ProjectController::loadChartData(double clipId, const QUrl& file)
     chart.points = points;
     text.chart = std::move(chart);
     return apply(std::make_unique<SetClipTextCommand>(clip->id, std::move(text)));
+}
+
+bool ProjectController::measureSpectrum(Id musicId, Ticks start, Ticks duration,
+                                        std::function<void(std::vector<std::uint8_t>)> then)
+{
+    if (analyzing()) {
+        reportError(tr("An analysis is already running"));
+        return false;
+    }
+    const Clip* music = analysableClip(musicId, true, false);
+    if (!music)
+        return false;
+    const MediaItem* media = m_project.findMedia(music->mediaId);
+    const auto count = std::size_t(std::ceil(toSeconds(duration) * TextVisualiser::kRate));
+    const Ticks mediaStart = start - music->start + music->sourceIn;
+    const tve::TimeRange within{music->sourceIn, music->sourceIn + music->duration};
+    m_cancelAnalysis = false;
+    m_analysisProgress = 0;
+    m_analysisTask = tr("Listening to the music");
+    m_analysisThread = std::thread([this, path = media->path, mediaStart, count, within, then = std::move(then)]() mutable {
+        double reported = -1.0;
+        std::string error;
+        auto levels = tve::analyzeSpectrum(path, mediaStart, count, TextVisualiser::kRate, TextVisualiser::kBands, within,
+                                           [&](double done) {
+                                               if (done - reported >= 0.01) {
+                                                   reported = done;
+                                                   QMetaObject::invokeMethod(this, [this, done] {
+                                                       m_analysisProgress = done;
+                                                       emit analysisChanged();
+                                                   }, Qt::QueuedConnection);
+                                               }
+                                               return !m_cancelAnalysis.load();
+                                           },
+                                           &error);
+        QMetaObject::invokeMethod(this, [this, levels = std::move(levels), error, then = std::move(then)]() mutable {
+            if (m_analysisThread.joinable())
+                m_analysisThread.join();
+            m_analysisProgress = 0;
+            m_analysisTask.clear();
+            emit analysisChanged();
+            if (levels) {
+                then(std::move(*levels));
+                return;
+            }
+            const QString message = error.empty() ? QString() : coreText(error);
+            if (!message.isEmpty())
+                reportError(tr("Analysis failed: %1").arg(message));
+            emit analysisFinished(false, message);
+        }, Qt::QueuedConnection);
+    });
+    emit analysisChanged();
+    return true;
+}
+
+bool ProjectController::addVisualiser(const QVariantMap& style)
+{
+    // The music at the playhead: on an audio track first, else a video clip's own sound.
+    const Ticks at = ticks(m_playhead);
+    const Clip* music = nullptr;
+    bool onAudio = false;
+    for (const Track& track : m_project.tracks) {
+        if (track.muted)
+            continue;
+        for (const Clip& clip : track.clips) {
+            const bool audioTrack = track.kind == TrackKind::Audio;
+            if (clip.start <= at && at < clip.end() && hasOwnSound(clip, track.kind) && (!music || (audioTrack && !onAudio))) {
+                music = &clip;
+                onAudio = audioTrack;
+            }
+        }
+    }
+    if (!music) {
+        reportError(tr("Put the playhead on music first"));
+        return false;
+    }
+    const Id musicId = music->id;
+    const Ticks start = music->start;
+    const Ticks duration = std::min(music->duration, ticks(TextVisualiser::kMaxSeconds));
+    ClipText text = textFrom(style);
+    if (!text.visualiser)
+        text.visualiser = TextVisualiser{};
+    return measureSpectrum(musicId, start, duration, [this, text, start, duration](std::vector<std::uint8_t> levels) mutable {
+        text.visualiser->frames = std::move(levels);
+        // The lowest free picture track above the main one (a new one on top if none is).
+        Id track = kNoId;
+        const auto main = m_project.trackIndex(mainTrackId());
+        for (std::size_t i = main ? *main + 1 : 0; i < m_project.tracks.size() && track == kNoId; ++i) {
+            const Track& candidate = m_project.tracks[i];
+            if (candidate.kind != TrackKind::Audio && !candidate.locked && !candidate.hidden && !candidate.overlaps(start, duration))
+                track = candidate.id;
+        }
+        auto command = std::make_unique<AddTitleCommand>(track, start, duration, std::move(text));
+        auto* raw = command.get();
+        const bool ok = apply(std::move(command));
+        if (ok)
+            setSelectedClip(double(raw->clipId()));
+        emit analysisFinished(ok, {});
+    });
+}
+
+bool ProjectController::measureVisualiser(double clipId)
+{
+    const Clip* title = findClip(toId(clipId));
+    if (!title || !title->text || !title->text->visualiser) {
+        reportError(tr("Select an audio visualiser"));
+        return false;
+    }
+    const Id musicId = musicUnder(*title);
+    if (musicId == kNoId) {
+        reportError(tr("Put music under the title first"));
+        return false;
+    }
+    const Id id = title->id;
+    return measureSpectrum(musicId, title->start, std::min(title->duration, ticks(TextVisualiser::kMaxSeconds)),
+                           [this, id](std::vector<std::uint8_t> levels) {
+                               const Clip* title = findClip(id);
+                               if (!title || !title->text || !title->text->visualiser) {
+                                   emit analysisFinished(false, {});
+                                   return;
+                               }
+                               ClipText text = *title->text;
+                               text.visualiser->frames = std::move(levels);
+                               const bool ok = apply(std::make_unique<SetClipTextCommand>(id, std::move(text),
+                                                                                          TVE_TR("core", "Measure the Music")));
+                               emit analysisFinished(ok, {});
+                           });
 }
 
 QVariantList ProjectController::logoReveals() const

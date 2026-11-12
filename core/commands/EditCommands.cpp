@@ -1500,7 +1500,21 @@ std::optional<std::string> validateText(const ClipText& text)
             return TVE_TR("core", "a chart grows in over at most 30 seconds");
         chartColor = chart.color;
     }
-    for (const ColorRgba& c : {text.color, text.outlineColor, text.shape.color, text.fill.to, text.depthColor, chartColor}) {
+    ColorRgba visualColor = text.color, visualPeak = text.color;
+    if (text.visualiser && text.chart)
+        return TVE_TR("core", "a title is a chart or a visualiser, not both");
+    if (text.visualiser) {
+        const TextVisualiser& v = *text.visualiser;
+        if (!(v.size >= 0.1 && v.size <= 1.0))
+            return TVE_TR("core", "a visualiser's size must be between 10% and 100%");
+        if (v.frames.size() % std::size_t(TextVisualiser::kBands) != 0
+            || double(v.frameCount()) > TextVisualiser::kMaxSeconds * TextVisualiser::kRate + 1.0)
+            return "a visualiser's levels are damaged";
+        visualColor = v.color;
+        visualPeak = v.peak;
+    }
+    for (const ColorRgba& c : {text.color, text.outlineColor, text.shape.color, text.fill.to, text.depthColor, chartColor,
+                               visualColor, visualPeak}) {
         for (double v : {c.r, c.g, c.b, c.a}) {
             if (v < 0.0 || v > 1.0)
                 return "colours must be between 0 and 1";

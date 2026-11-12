@@ -164,20 +164,20 @@ Item {
             const p = f.project
             click(f.editor, "libraryTab:Titles")
             const grid = settled(f.editor, "titlesGrid")
-            compare(grid.count, 53) // 47 templates and 6 logo reveals (no presets of the person's own)
-            const counts = { titles: 11, lower: 8, callouts: 8, credits: 5, animated: 8, music: 4, charts: 3, logos: 6, mine: 0 }
+            compare(grid.count, 57) // 51 templates and 6 logo reveals (no presets of the person's own)
+            const counts = { titles: 11, lower: 8, callouts: 8, credits: 5, animated: 8, music: 4, visualisers: 4, charts: 3, logos: 6, mine: 0 }
             for (const category in counts) {
                 click(f.editor, "titleCategory:" + category)
                 tryCompare(grid, "count", counts[category])
             }
             click(f.editor, "titleCategory:all")
-            tryCompare(grid, "count", 53)
+            tryCompare(grid, "count", 57)
             settled(f.editor, "librarySearch").text = "bubble"
             tryCompare(grid, "count", 3) // Speech, Reply and Thought Bubble
             settled(f.editor, "librarySearch").text = ""
             // Every template makes a valid title (presets, shapes and all).
             const templates = grid.model.filter((t) => !t.reveal) // (a logo reveal asks for the logo)
-            compare(templates.length, 47)
+            compare(templates.length, 51)
             for (let i = 0; i < templates.length; ++i)
                 verify(p.addTitle(templates[i].style, -1, i * 13), templates[i].name + ": " + p.lastError)
             // Credits last longer.

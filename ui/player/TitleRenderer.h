@@ -30,7 +30,8 @@ QString defaultTitleFamily();
 QVariantMap textMap(const tve::ClipText& text);
 // react {kind ("none", "pulse", "bounce", "flash", "shake"), amount, measured}, and chart (absent
 // or {kind ("bar", "line"), points [{label, value}], data ("label, value" lines), color,
-// grow, values}).
+// grow, values}), and visualiser (absent or {style ("bars", "mirror", "wave", "ring"), color, peak,
+// size, seconds measured, measured}).
 // `base` with the keys present in `changes` applied (unknown keys are ignored).
 tve::ClipText textFrom(const QVariantMap& changes, tve::ClipText base = {});
 

@@ -5,6 +5,21 @@
 
 namespace tve {
 
+double TextVisualiser::levelAt(double seconds, int band) const
+{
+    const std::size_t count = frameCount();
+    if (count == 0 || band < 0 || band >= kBands || !(seconds >= 0.0))
+        return 0.0;
+    const double at = seconds * kRate;
+    const auto i = std::size_t(at);
+    if (i >= count)
+        return 0.0;
+    const double a = frames[i * kBands + std::size_t(band)] / 255.0;
+    const double b = i + 1 < count ? frames[(i + 1) * kBands + std::size_t(band)] / 255.0 : a;
+    const double t = at - double(i);
+    return a * (1.0 - t) + b * t;
+}
+
 double TextReact::levelAt(double seconds) const
 {
     if (levels.empty() || !(seconds >= 0.0))
