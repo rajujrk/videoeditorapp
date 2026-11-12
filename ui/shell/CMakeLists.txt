@@ -52,6 +52,9 @@ qt_add_qml_module(tve_shell
         TeleprompterWindow.qml
         LiveDrawing.qml
         ImageSequenceDialog.qml
+        KeyboardMap.qml
+        FavouriteBadge.qml
+        PreviewWindow.qml
         SphereOverlay.qml
         InterchangeDialog.qml
         CopilotPage.qml

@@ -17,6 +17,7 @@ Rectangle {
     required property var project // ProjectController
     property alias player: playerPanel.player
     readonly property var hdrViewer: playerPanel.hdrViewer // the HDR viewer window, while open
+    readonly property var secondDisplayPreview: playerPanel.preview // the full-screen preview, while open
     // What the transport keys play: the timeline, or the source monitor while it is shown.
     readonly property var transport: playerPanel.transport
     signal homeRequested()
@@ -24,6 +25,33 @@ Rectangle {
     color: Theme.color.canvas
 
     function importMedia() { importDialog.open() }
+    // A workspace (Workspaces): the library's and inspector's widths (0 hides one) and the
+    // timeline's share of the height.
+    readonly property var libraryView: libraryPanel
+    readonly property var inspectorView: inspectorPanel
+    readonly property var timelineView: timelinePanel
+    function applyWorkspace(id) {
+        const layout = Workspaces.layout(id)
+        if (!layout.id)
+            return false
+        libraryPanel.visible = layout.library > 0
+        if (layout.library > 0)
+            libraryPanel.SplitView.preferredWidth = Math.max(Theme.size.libraryMinWidth, layout.library)
+        inspectorPanel.visible = layout.inspector > 0
+        if (layout.inspector > 0)
+            inspectorPanel.SplitView.preferredWidth = Math.max(Theme.size.inspectorMinWidth, layout.inspector)
+        timelinePanel.SplitView.preferredHeight = mainSplit.height > 0
+            ? Math.max(Theme.size.timelineMinHeight, Math.round(mainSplit.height * layout.timeline)) : Theme.size.timelineHeight
+        Workspaces.setCurrent(id)
+        return true
+    }
+    function saveWorkspace(name) {
+        return Workspaces.save(name, libraryPanel.visible ? Math.round(libraryPanel.width) : 0,
+                               inspectorPanel.visible ? Math.round(inspectorPanel.width) : 0,
+                               mainSplit.height > 0 ? timelinePanel.height / mainSplit.height : 0.36)
+    }
+    // The workspace last used comes back (Editing is how the editor opens anyway).
+    Component.onCompleted: if (Workspaces.current !== "editing") Qt.callLater(() => editor.applyWorkspace(Workspaces.current))
     // From the home screen's quick actions.
     function openRecorder() { timelinePanel.openRecorder() }
     function openInstantMode() { libraryPanel.openInstantMode() }
@@ -92,6 +120,8 @@ Rectangle {
             }
             onShortcutsRequested: shortcutsDialog.open()
             onCloudSettingsRequested: cloudSettings.open()
+            onWorkspaceChosen: (id) => editor.applyWorkspace(id)
+            onSaveWorkspaceRequested: workspaceNameDialog.open()
         }
 
         // Media files that moved: say so until they are found.
@@ -127,6 +157,7 @@ Rectangle {
         }
 
         SplitView {
+            id: mainSplit
             Layout.fillWidth: true
             Layout.fillHeight: true
             orientation: Qt.Vertical
@@ -155,6 +186,7 @@ Rectangle {
                     project: editor.project
                 }
                 InspectorPanel {
+                    id: inspectorPanel
                     SplitView.preferredWidth: Theme.size.inspectorWidth
                     SplitView.minimumWidth: Theme.size.inspectorMinWidth
                     player: playerPanel.player
@@ -365,6 +397,67 @@ Rectangle {
             y: grip.vertical ? 0 : -3
             width: grip.vertical ? 7 : grip.width
             height: grip.vertical ? grip.height : 7
+        }
+    }
+
+    // Saving the panels as they are, under a name.
+    Popup {
+        id: workspaceNameDialog
+        objectName: "workspaceNameDialog"
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        width: 340
+        padding: Theme.space.l
+        onAboutToShow: workspaceName.text = ""
+        onOpened: workspaceName.forceActiveFocus()
+        function saveIt() {
+            if (editor.saveWorkspace(workspaceName.text) !== "")
+                close()
+        }
+        background: Rectangle {
+            radius: Theme.radius.l
+            color: Theme.color.surfaceRaised
+            border.color: Theme.color.borderStrong
+        }
+        contentItem: ColumnLayout {
+            spacing: Theme.space.s
+            Text { text: qsTr("Save this layout"); font: Theme.type.title; color: Theme.color.textPrimary }
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("The panels as they are now, in the Workspace menu. The same name replaces it.")
+                font: Theme.type.body
+                color: Theme.color.textSecondary
+                wrapMode: Text.WordWrap
+            }
+            TextField {
+                id: workspaceName
+                objectName: "workspaceName"
+                Layout.fillWidth: true
+                placeholderText: qsTr("Name")
+                color: Theme.color.textPrimary
+                placeholderTextColor: Theme.color.textDisabled
+                selectByMouse: true
+                background: Rectangle {
+                    implicitHeight: 32
+                    radius: Theme.radius.s
+                    color: Theme.color.surfaceSunken
+                    border.color: workspaceName.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
+                }
+                onAccepted: workspaceNameDialog.saveIt()
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                TextButton { text: qsTr("Cancel"); variant: "ghost"; onClicked: workspaceNameDialog.close() }
+                TextButton {
+                    objectName: "workspaceSaveButton"
+                    text: qsTr("Save")
+                    variant: "primary"
+                    enabled: workspaceName.text.trim() !== ""
+                    onClicked: workspaceNameDialog.saveIt()
+                }
+            }
         }
     }
 }

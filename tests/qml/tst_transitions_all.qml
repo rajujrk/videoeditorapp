@@ -161,8 +161,8 @@ Item {
             compare(cuts.length, 4)
             for (const clip of cuts)
                 verify(ids.indexOf(clip.transition.transitionId) >= 0)
-            // Neighbouring cuts differ.
-            for (let i = 1; i < 3; ++i)
+            // Neighbouring cuts on a track differ (cuts[0] is on the track above, cuts[1..3] on the main one).
+            for (let i = 2; i < 4; ++i)
                 verify(cuts[i].transition.transitionId !== cuts[i - 1].transition.transitionId)
             // Locked tracks are left alone.
             p.undo()

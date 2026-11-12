@@ -90,6 +90,7 @@ The following improvements were completed after Phase 5:
 - Slice 28b: Drawing on the screen while recording it — pen, highlighter and arrow, fading away or kept.
 - Slice 29a: Importing image sequences, SVG drawings, camera RAW photos and OpenEXR pictures.
 - Slice 29b: Exporting to a file size, in several formats at once, and as a Live Photo.
+- Slice 29c: Shortcut presets and a keyboard map, favourites with tags, workspaces, and a full-screen preview on a second display.
 
 All previously identified feature gaps have been closed.
 
@@ -174,6 +175,10 @@ All previously identified feature gaps have been closed.
 
 - Display thumbnails in the media bin and timeline.
 - Play and scrub through video content.
+- Watch a full-screen preview on a second display.
+- Keep favourite effects, transitions, titles, stickers and looks, with tags.
+- Switch workspaces (panel layouts) and save your own.
+- Use shortcut presets like Premiere Pro's or Final Cut Pro's, see them on a keyboard map, and carry them in a file.
 - Edit heavy 4K media smoothly using proxy files.
 - Save and reopen `.tve` project files.
 - Automatically save unsaved work.
@@ -934,6 +939,25 @@ it (MOV · H.264, at most 1080 on its short side, kept inside the timeline at it
 a content identifier the way Photos pairs an iPhone's, so Photos — on the Mac, or an iPhone it
 syncs with — shows them as one Live Photo; **Add to Photos** puts it in your library (asking for
 add-only access the first time; `TVE_LIVE_PHOTO_LIBRARY` names a folder to copy into instead).
+
+**Your setup.** The keyboard button (⌘/) lists every shortcut; **Keys** picks a whole set — this
+app's own, **Like Premiere Pro** (⌘K splits, C is the blade, Return renders, ⌥⌫ ripple deletes,
+⇧M and ⇧⌘M between markers) or **Like Final Cut Pro** (⌘B splits, A selects, ⌫ ripple deletes and
+⇧⌫ leaves a gap, ⌥G makes a compound clip, ⌃R renders) — with keys the system keeps left as they
+were (Premiere's ⌘M is the Mac's Minimize, so export stays ⌘E); change any key and it reads
+Custom. **Keyboard** draws the keyboard: choose ⌘, ⇧, ⌥ or ⌃ and the keys used with them are filled
+and named; click one to give its action another key. **Export…** saves every key to a file and
+**Import…** reads one back (keys the system keeps, unknown actions and a key named twice are left
+out). In the library's Effects, Transitions, Titles, Stickers and Filters tabs, ☆ on a tile keeps it
+as a favourite and **#** gives it tags (typed with commas, or picked from your others); the **★**
+chip (**★ Favourites** in Filters) shows them, a tag chip narrows them, and the search finds tags too
+(`TVE_FAVOURITES_FILE` moves the file). The workspace button in the top bar lays the panels out
+for the work — **Editing**, **Organising** (a wide media library), **Colour** (a wide inspector),
+**Audio** (a tall timeline), **Big preview** — or as you saved them (**Save this layout…**; the
+same name replaces it; `TVE_WORKSPACES_FILE`); the one in use comes back next time. The player's
+second-display button shows the picture alone, full screen on your other display (or this one when
+there is no other): it follows the player as it plays, scrubs and is edited, Space plays, ←/→ step,
+Esc closes it.
 
 ```bash
 build/macos-release/app/TechieVideoEditor.app/Contents/MacOS/TechieVideoEditor project.tve --export out.mp4 --export-size 1920x1080 --export-codec h264
