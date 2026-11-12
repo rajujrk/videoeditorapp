@@ -1006,6 +1006,17 @@ public:
     // 0.5: 180°, 1: 360°). One undo step.
     Q_INVOKABLE bool setClipMotionBlur(double clipId, double shutter);
 
+    // --- Colour tools (25c) ---
+    // Auto colour: the frame at the playhead measured, and red, green and blue curves set that
+    // take its colour cast off and stretch its levels. Colour match: curves that make the
+    // clip's colours like `referenceClipId`'s (as graded). One undo step each.
+    Q_INVOKABLE bool autoColour(double clipId);
+    Q_INVOKABLE bool matchColour(double clipId, double referenceClipId);
+    // Lens correction for action and wide cameras: [{id, title}] (the lens distortion effect,
+    // straightening the barrel); "none" takes it off.
+    Q_INVOKABLE QVariantList lensPresets() const;
+    Q_INVOKABLE bool correctLens(double clipId, const QString& preset);
+
     // --- Source monitor, compound clips, multicam (24d) ---
     // A part of a media item (from–to seconds; to <= 0: to its end) put on the main track (a
     // sound-only file on the first audio track) at the playhead: mode "insert" (later clips
@@ -1163,6 +1174,9 @@ private:
         bool savedInside = false; // saved while it was open (the file has the edits made inside)
     };
     std::vector<OpenLevel> m_openLevels;
+    // A clip's picture at a timeline time (a small copy, as decoded), with its look and its
+    // grade but for the red, green and blue curves: what the colour tools measure.
+    std::vector<std::array<float, 3>> pixelsForColour(const tve::Clip& clip, tve::Ticks at) const;
     // The project with every open compound clip closed: what is saved, autosaved, exported.
     tve::Project rootProject() const;
     void closeLevel();

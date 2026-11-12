@@ -426,6 +426,15 @@ light:
 ![Motion blur, dark](images/motion-blur-dark.png)
 ![Motion blur, light](images/motion-blur-light.png)
 
+HDR wheels: six wheels two across, as the other wheels, under a line saying what they do;
+auto colour (primary) and match (secondary, with the clip to match chosen beside it), dark and
+light:
+
+![HDR wheels, dark](images/hdr-wheels-dark.png)
+![HDR wheels, light](images/hdr-wheels-light.png)
+![Auto colour and match, dark](images/auto-colour-dark.png)
+![Auto colour and match, light](images/auto-colour-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

@@ -29,8 +29,9 @@ struct Uniforms {
     float lutScale[4];
     float hslBands[8][4];
     float flags[4];
+    float zones[6][4];
 };
-static_assert(sizeof(Uniforms) == 272);
+static_assert(sizeof(Uniforms) == 368);
 
 QShader readShader(const QString& path)
 {
@@ -243,6 +244,12 @@ QRhiTexture* ColorGrader::apply(QRhiCommandBuffer* cb, QRhiTexture* source, cons
     }
     u.flags[0] = c.hslActive ? 1.0f : 0.0f;
     u.flags[1] = c.hueCurves ? 1.0f : 0.0f;
+    u.flags[2] = c.zonesActive ? 1.0f : 0.0f;
+    for (int z = 0; z < tve::kToneZones; ++z) {
+        for (int i = 0; i < 3; ++i)
+            u.zones[z][i] = c.zones[std::size_t(z)][std::size_t(i)];
+        u.zones[z][3] = tve::kToneZoneCentres[std::size_t(z)];
+    }
     if (table) {
         for (int i = 0; i < 3; ++i) {
             u.lutMin[i] = table->domainMin[i];

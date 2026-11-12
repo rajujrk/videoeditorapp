@@ -81,6 +81,7 @@ The following improvements were completed after Phase 5:
 - Slice 24d: A source monitor (In and Out, insert, overwrite, append), compound clips opened in timeline tabs, projects imported as compound clips, and multicam clips with angle switching.
 - Slice 25a: The anchor point, corner pin, clip animation presets, pan and zoom, colour clips, and snapshots of the player.
 - Slice 25b: Motion blur that follows keyframed movement, effect and colour masks, and player guides, safe areas, rulers and zoom.
+- Slice 25c: One-click auto colour and colour match, HDR colour wheels, and lens-correction presets for wide cameras.
 
 All previously identified feature gaps have been closed.
 
@@ -638,6 +639,12 @@ the clip's effects only, or to its colour only: black and white everywhere but a
 a grade on the sky alone. Motion blur (under Animation) smears a clip where its keyframes move
 it, like a real camera's shutter. The grid button under the player shows thirds, centre lines,
 safe areas and rulers, and the zoom menu beside it takes the player from Fit to 400 %.
+
+**Colour tools.** On the Color tab, Auto colour takes a cast off the clip and fills its levels,
+and Match makes its colours like another clip's (both set the red, green and blue curves, so
+they can be adjusted). The HDR wheels colour and brighten six ranges of tones separately, from
+the blacks to the specular highlights. Under Lens correction on the Video tab, pick an action
+camera, phone, drone or fisheye lens to straighten its curved lines.
 
 **Placing clips by hand.** Select a clip and its frame shows in the player: drag inside it to
 move it (it snaps to the centre lines), a corner to resize it, the round knob to turn it (⇧ in

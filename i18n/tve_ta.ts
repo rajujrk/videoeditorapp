@@ -2943,6 +2943,22 @@
         <translation>மூலைகளை முன்பிருந்தபடி வை</translation>
     </message>
     <message>
+        <source>Lens correction</source>
+        <translation>லென்ஸ் திருத்தம்</translation>
+    </message>
+    <message>
+        <source>Camera</source>
+        <translation>கேமரா</translation>
+    </message>
+    <message>
+        <source>A starting point: fine-tune Lens Distortion&apos;s amount under Effects until straight lines are straight.</source>
+        <translation>ஒரு தொடக்கம்: நேர்கோடுகள் நேராகும் வரை விளைவுகளில் லென்ஸ் சிதைவின் அளவைச் சரிசெய்யவும்.</translation>
+    </message>
+    <message>
+        <source>Remove the correction</source>
+        <translation>திருத்தத்தை அகற்று</translation>
+    </message>
+    <message>
         <source>Choose how the clip arrives, leaves or moves; it is written as keyframes you can change.</source>
         <translation>கிளிப் எப்படி வருகிறது, விலகுகிறது அல்லது நகர்கிறது என்பதைத் தேர்ந்தெடுக்கவும்; அது நீங்கள் மாற்றக்கூடிய கீஃப்ரேம்களாக எழுதப்படும்.</translation>
     </message>
@@ -3500,6 +3516,26 @@
         <translation>தோற்றத்தை அகற்று</translation>
     </message>
     <message>
+        <source>Auto colour and match</source>
+        <translation>தானியங்கி நிறமும் பொருத்தமும்</translation>
+    </message>
+    <message>
+        <source>Measures the frame at the playhead and sets the red, green and blue curves: a colour cast taken off and the levels filled, or the colours of another clip.</source>
+        <translation>இயக்கக்குறியில் உள்ள ஃப்ரேமை அளந்து சிவப்பு, பச்சை, நீல வளைவுகளை அமைக்கும்: நிறச் சாயல் நீக்கப்பட்டு நிலைகள் நிரப்பப்படும், அல்லது வேறொரு கிளிப்பின் நிறங்கள்.</translation>
+    </message>
+    <message>
+        <source>Auto colour</source>
+        <translation>தானியங்கி நிறம்</translation>
+    </message>
+    <message>
+        <source>Match</source>
+        <translation>பொருத்து</translation>
+    </message>
+    <message>
+        <source>Make this clip&apos;s colours like the chosen clip&apos;s (as graded)</source>
+        <translation>இந்தக் கிளிப்பின் நிறங்களைத் தேர்ந்தெடுத்த கிளிப்பின் நிறங்கள் போல் ஆக்கு (திருத்தியபடி)</translation>
+    </message>
+    <message>
         <source>Basic</source>
         <translation>அடிப்படை</translation>
     </message>
@@ -3542,6 +3578,34 @@
     <message>
         <source>Offset</source>
         <translation>இடப்பெயர்ச்சி</translation>
+    </message>
+    <message>
+        <source>HDR wheels</source>
+        <translation>HDR சக்கரங்கள்</translation>
+    </message>
+    <message>
+        <source>Each wheel colours and brightens only its range of tones, blending into the next; Offset above is the global one.</source>
+        <translation>ஒவ்வொரு சக்கரமும் தன் தொனி வரம்பை மட்டும் நிறமூட்டி ஒளிரச் செய்யும், அடுத்ததுடன் கலந்து; மேலே உள்ள ஆஃப்செட் முழுமைக்குமானது.</translation>
+    </message>
+    <message>
+        <source>Black</source>
+        <translation>கருப்பு</translation>
+    </message>
+    <message>
+        <source>Dark</source>
+        <translation>இருள்</translation>
+    </message>
+    <message>
+        <source>Light</source>
+        <translation>ஒளி</translation>
+    </message>
+    <message>
+        <source>Highlight</source>
+        <translation>மிகை ஒளி</translation>
+    </message>
+    <message>
+        <source>Specular</source>
+        <translation>பளபளப்பு</translation>
     </message>
     <message>
         <source>Curves</source>
@@ -5743,6 +5807,46 @@
     <message>
         <source>Select a video or picture clip</source>
         <translation>ஒரு வீடியோ அல்லது படக் கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Select a video or picture clip to correct its colour</source>
+        <translation>நிறத்தைத் திருத்த ஒரு வீடியோ அல்லது படக் கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Choose another clip to match the colour to</source>
+        <translation>நிறத்தைப் பொருத்த வேறொரு கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Both clips need a picture to match colours</source>
+        <translation>நிறங்களைப் பொருத்த இரு கிளிப்புகளுக்கும் படம் தேவை</translation>
+    </message>
+    <message>
+        <source>Action camera, wide</source>
+        <translation>ஆக்‌ஷன் கேமரா, அகலம்</translation>
+    </message>
+    <message>
+        <source>Action camera, super wide</source>
+        <translation>ஆக்‌ஷன் கேமரா, மிக அகலம்</translation>
+    </message>
+    <message>
+        <source>Action camera, medium</source>
+        <translation>ஆக்‌ஷன் கேமரா, நடுத்தரம்</translation>
+    </message>
+    <message>
+        <source>Phone ultra wide (0.5×)</source>
+        <translation>ஃபோன் அல்ட்ரா வைடு (0.5×)</translation>
+    </message>
+    <message>
+        <source>Drone, wide</source>
+        <translation>ட்ரோன், அகலம்</translation>
+    </message>
+    <message>
+        <source>Fisheye</source>
+        <translation>மீன்கண்</translation>
+    </message>
+    <message>
+        <source>There is no such lens</source>
+        <translation>அப்படி ஒரு லென்ஸ் இல்லை</translation>
     </message>
 </context>
 <context>
@@ -10506,6 +10610,18 @@ The Journey</source>
     <message>
         <source>Motion Blur</source>
         <translation>இயக்க மங்கல்</translation>
+    </message>
+    <message>
+        <source>Auto Colour</source>
+        <translation>தானியங்கி நிறம்</translation>
+    </message>
+    <message>
+        <source>Match Colour</source>
+        <translation>நிறத்தைப் பொருத்து</translation>
+    </message>
+    <message>
+        <source>Lens Correction</source>
+        <translation>லென்ஸ் திருத்தம்</translation>
     </message>
     <message>
         <source>Ramp up</source>

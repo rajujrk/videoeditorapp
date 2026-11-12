@@ -889,6 +889,45 @@ Rectangle {
                                 pinBottomRightX: 0, pinBottomRightY: 0, pinBottomLeftX: 0, pinBottomLeftY: 0 })
                         }
                     }
+                    // Lens correction: a wide camera's barrel straightened (the lens distortion effect).
+                    Section {
+                        id: lensSection
+                        objectName: "lensSection"
+                        visible: inspector.clipInfo.isTitle !== true && inspector.clipInfo.isAdjustment !== true
+                                 && inspector.clipInfo.isDrawing !== true && inspector.clipInfo.colourFill == null
+                        title: qsTr("Lens correction")
+                        readonly property var presets: inspector.project.lensPresets()
+                        readonly property bool corrected: (inspector.clipInfo.effects || []).some((e) => e.effectId === "tve.distort.lens")
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: qsTr("Camera"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
+                            ComboBox {
+                                objectName: "lensPreset"
+                                Layout.preferredWidth: 220
+                                model: [qsTr("Choose…")].concat(lensSection.presets.map((p) => p.title))
+                                currentIndex: 0
+                                onActivated: (index) => {
+                                    if (index > 0)
+                                        inspector.project.correctLens(inspector.clipInfo.id, lensSection.presets[index - 1].id)
+                                    currentIndex = 0
+                                }
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: qsTr("A starting point: fine-tune Lens Distortion's amount under Effects until straight lines are straight.")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                        TextButton {
+                            objectName: "removeLensCorrection"
+                            visible: lensSection.corrected
+                            text: qsTr("Remove the correction")
+                            variant: "ghost"
+                            onClicked: inspector.project.correctLens(inspector.clipInfo.id, "none")
+                        }
+                    }
                     // Animation presets: keyframes written for how the clip arrives, leaves or moves.
                     Section {
                         id: clipAnimation
@@ -1856,6 +1895,58 @@ Rectangle {
                     }
                 }
 
+                // One click: the cast taken off and the levels set, or the colours made like
+                // another clip's.
+                Section {
+                    id: autoColourSection
+                    objectName: "autoColourSection"
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    title: qsTr("Auto colour and match")
+                    // The other picture clips on the timeline, to match to.
+                    readonly property var others: {
+                        const list = []
+                        for (const track of inspector.project.tracks)
+                            if (track.kind === "video")
+                                for (const clip of track.clips)
+                                    if (clip.id !== inspector.clipInfo.id && !clip.isTitle && !clip.isAdjustment
+                                            && !clip.isDrawing && !clip.isCompound)
+                                        list.push({ id: clip.id, label: clip.label + " · " + inspector.project.timecode(clip.start) })
+                        return list
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: qsTr("Measures the frame at the playhead and sets the red, green and blue curves: a colour cast taken off and the levels filled, or the colours of another clip.")
+                        font: Theme.type.caption
+                        color: Theme.color.textSecondary
+                    }
+                    TextButton {
+                        objectName: "autoColourButton"
+                        text: qsTr("Auto colour")
+                        variant: "primary"
+                        onClicked: inspector.project.autoColour(inspector.clipInfo.id)
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: autoColourSection.others.length > 0
+                        ComboBox {
+                            id: matchReference
+                            objectName: "matchReference"
+                            Layout.fillWidth: true
+                            model: autoColourSection.others.map((c) => c.label)
+                        }
+                        TextButton {
+                            objectName: "matchColourButton"
+                            text: qsTr("Match")
+                            variant: "secondary"
+                            tip: qsTr("Make this clip's colours like the chosen clip's (as graded)")
+                            onClicked: inspector.project.matchColour(inspector.clipInfo.id,
+                                                                     autoColourSection.others[matchReference.currentIndex].id)
+                        }
+                    }
+                }
+
                 Section {
                     visible: colorPage.gradable
                     Layout.fillWidth: true
@@ -1880,6 +1971,42 @@ Rectangle {
                         Repeater {
                             model: [{ key: "lift", title: qsTr("Lift (shadows)") }, { key: "gamma", title: qsTr("Gamma (midtones)") },
                                     { key: "gain", title: qsTr("Gain (highlights)") }, { key: "offset", title: qsTr("Offset") }]
+                            delegate: ColorWheelControl {
+                                required property var modelData
+                                objectName: "wheel:" + modelData.key
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                                title: modelData.title
+                                wheel: colorPage.grade[modelData.key] || ({ x: 0, y: 0, master: 0 })
+                                onMoved: (w) => { const m = {}; m[modelData.key] = w; colorPage.preview(m) }
+                                onCommitted: (w) => { const m = {}; m[modelData.key] = w; colorPage.commit(m) }
+                            }
+                        }
+                    }
+                }
+
+                // HDR wheels: six overlapping brightness zones (the offset wheel is the global one).
+                Section {
+                    objectName: "hdrWheelsSection"
+                    visible: colorPage.gradable
+                    Layout.fillWidth: true
+                    title: qsTr("HDR wheels")
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: qsTr("Each wheel colours and brightens only its range of tones, blending into the next; Offset above is the global one.")
+                        font: Theme.type.caption
+                        color: Theme.color.textSecondary
+                    }
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        columnSpacing: Theme.space.m
+                        rowSpacing: Theme.space.s
+                        Repeater {
+                            model: [{ key: "black", title: qsTr("Black") }, { key: "dark", title: qsTr("Dark") },
+                                    { key: "shadow", title: qsTr("Shadow") }, { key: "light", title: qsTr("Light") },
+                                    { key: "highlight", title: qsTr("Highlight") }, { key: "specular", title: qsTr("Specular") }]
                             delegate: ColorWheelControl {
                                 required property var modelData
                                 objectName: "wheel:" + modelData.key

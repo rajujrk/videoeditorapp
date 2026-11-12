@@ -131,6 +131,14 @@ TEST_CASE("the GPU grade matches the reference", "[color]")
         g.offset = {0.3, 0.3, -0.1};
         matchesReference(g);
     }
+    SECTION("HDR wheels")
+    {
+        g.zones[0] = {0.4, -0.2, 0.1};  // black
+        g.zones[2] = {-0.3, 0.5, -0.2}; // shadow
+        g.zones[3] = {0.0, 0.0, 0.3};   // light
+        g.zones[5] = {0.6, 0.2, -0.4};  // specular
+        matchesReference(g);
+    }
     SECTION("HSL bands")
     {
         g.hsl[0] = {0.5, 0.4, -0.3};  // reds
