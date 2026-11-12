@@ -11,6 +11,7 @@
 #include <QKeySequence>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QUrl>
 
 #include <algorithm>
 
@@ -28,6 +29,45 @@ const QStringList& reservedKeys()
     static const QStringList keys{QStringLiteral("Ctrl+Q"), QStringLiteral("Ctrl+W"), QStringLiteral("Ctrl+H"),
                                   QStringLiteral("Ctrl+M"), QStringLiteral("Esc"), QStringLiteral("Tab")};
     return keys;
+}
+
+// Ready-made keys: what each changes from this app's own (an empty list: no key). The
+// keys those editors use for the same actions on a Mac, where the system lets them be had
+// (Premiere's ⌘M for export is the system's Minimize, so export keeps ⌘E).
+struct Preset {
+    const char* id;
+    const char* title;
+    const char* description;
+    std::vector<std::pair<const char*, QStringList>> keys;
+};
+
+const std::vector<Preset>& presetTable()
+{
+    static const std::vector<Preset> presets{
+        {"techie", QT_TRANSLATE_NOOP("KeyMap", "TechieVideoEditor"), QT_TRANSLATE_NOOP("KeyMap", "This app's own keys"), {}},
+        {"premiere", QT_TRANSLATE_NOOP("KeyMap", "Like Premiere Pro"),
+         QT_TRANSLATE_NOOP("KeyMap", "⌘K splits, C is the blade, Return renders, ⌥⌫ ripple deletes, ⇧M and ⇧⌘M go between markers"),
+         {{"split", {QStringLiteral("Ctrl+K")}},
+          {"blade", {QStringLiteral("C")}},
+          {"render", {QStringLiteral("Return")}},
+          {"rippleDelete", {QStringLiteral("Alt+Backspace"), QStringLiteral("Alt+Del")}},
+          {"pasteAttributes", {QStringLiteral("Ctrl+Alt+V")}},
+          {"nextMarker", {QStringLiteral("Shift+M")}},
+          {"previousMarker", {QStringLiteral("Ctrl+Shift+M")}},
+          {"shortcuts", {QStringLiteral("Ctrl+Alt+K")}}}},
+        {"finalcut", QT_TRANSLATE_NOOP("KeyMap", "Like Final Cut Pro"),
+         QT_TRANSLATE_NOOP("KeyMap", "⌘B splits, A selects, ⌫ ripple deletes and ⇧⌫ leaves a gap, ⌥G makes a compound clip, ⌃R renders"),
+         {{"split", {QStringLiteral("Ctrl+B")}},
+          {"selectTool", {QStringLiteral("A")}},
+          {"delete", {QStringLiteral("Shift+Backspace"), QStringLiteral("Shift+Del")}},
+          {"rippleDelete", {QStringLiteral("Backspace"), QStringLiteral("Del")}},
+          {"compound", {QStringLiteral("Alt+G")}},
+          {"render", {QStringLiteral("Meta+R")}},
+          {"previousMarker", {QStringLiteral("Meta+;")}},
+          {"nextMarker", {QStringLiteral("Meta+'")}},
+          {"shortcuts", {QStringLiteral("Ctrl+Alt+K")}}}},
+    };
+    return presets;
 }
 
 } // namespace
@@ -251,7 +291,14 @@ void KeyMap::load()
     QFile file(m_file);
     if (!file.open(QIODevice::ReadOnly))
         return; // nothing changed yet
-    const QJsonObject bindings = QJsonDocument::fromJson(file.readAll()).object().value(QStringLiteral("bindings")).toObject();
+    applyBindings(QJsonDocument::fromJson(file.readAll()).object().value(QStringLiteral("bindings")).toObject());
+}
+
+int KeyMap::applyBindings(const QJsonObject& bindings)
+{
+    int named = 0;
+    for (Action& action : m_actions)
+        action.keys = action.defaults;
     for (auto it = bindings.begin(); it != bindings.end(); ++it) {
         Action* action = find(it.key());
         if (!action)
@@ -259,17 +306,131 @@ void KeyMap::load()
         QStringList keys;
         for (const QJsonValue& value : it.value().toArray()) {
             const QString key = normalized(value.toString());
-            if (!key.isEmpty() && !reservedKeys().contains(key))
+            if (!key.isEmpty() && !reservedKeys().contains(key) && !keys.contains(key))
                 keys << key;
         }
         action->keys = keys;
+        ++named;
     }
-    // A key two actions claim stays with the first.
+    // A key two actions claim stays with the one named (else the first).
     QStringList taken;
+    for (Action& action : m_actions)
+        if (bindings.contains(action.id))
+            taken << action.keys;
     for (Action& action : m_actions) {
+        if (bindings.contains(action.id))
+            continue;
         action.keys.removeIf([&](const QString& key) { return taken.contains(key); });
         taken << action.keys;
     }
+    QStringList seen;
+    for (Action& action : m_actions) {
+        action.keys.removeIf([&](const QString& key) { return seen.contains(key); });
+        seen << action.keys;
+    }
+    return named;
+}
+
+std::vector<QStringList> KeyMap::presetKeys(const QString& id) const
+{
+    std::vector<QStringList> keys;
+    const auto preset = std::ranges::find_if(presetTable(), [&](const Preset& p) { return id == QLatin1String(p.id); });
+    if (preset == presetTable().end())
+        return keys;
+    for (const Action& action : m_actions) {
+        QStringList chosen = action.defaults;
+        for (const auto& [actionId, presetKeys] : preset->keys)
+            if (action.id == QLatin1String(actionId)) {
+                chosen.clear();
+                for (const QString& key : presetKeys)
+                    chosen << normalized(key);
+            }
+        keys.push_back(chosen);
+    }
+    return keys;
+}
+
+QVariantList KeyMap::presets() const
+{
+    QVariantList list;
+    for (const Preset& preset : presetTable())
+        list << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(preset.id)},
+                            {QStringLiteral("title"), QCoreApplication::translate("KeyMap", preset.title)},
+                            {QStringLiteral("description"), QCoreApplication::translate("KeyMap", preset.description)}};
+    return list;
+}
+
+QString KeyMap::preset() const
+{
+    for (const Preset& preset : presetTable()) {
+        const auto keys = presetKeys(QString::fromLatin1(preset.id));
+        bool same = keys.size() == m_actions.size();
+        for (std::size_t i = 0; same && i < keys.size(); ++i)
+            same = keys[i] == m_actions[i].keys;
+        if (same)
+            return QString::fromLatin1(preset.id);
+    }
+    return {};
+}
+
+bool KeyMap::applyPreset(const QString& id)
+{
+    const auto keys = presetKeys(id);
+    if (keys.empty()) {
+        fail(tr("Unknown set of shortcuts: %1").arg(id));
+        return false;
+    }
+    for (std::size_t i = 0; i < m_actions.size(); ++i)
+        m_actions[i].keys = keys[i];
+    m_lastError.clear();
+    save();
+    emit changed();
+    return true;
+}
+
+bool KeyMap::exportTo(const QUrl& file)
+{
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    QJsonObject bindings;
+    for (const Action& action : m_actions)
+        bindings.insert(action.id, QJsonArray::fromStringList(action.keys));
+    QSaveFile out(path);
+    if (path.isEmpty() || !out.open(QIODevice::WriteOnly)) {
+        fail(tr("Cannot write %1").arg(QFileInfo(path).fileName()));
+        return false;
+    }
+    out.write(QJsonDocument(QJsonObject{{QStringLiteral("version"), 1},
+                                        {QStringLiteral("app"), QStringLiteral("TechieVideoEditor")},
+                                        {QStringLiteral("bindings"), bindings}})
+                  .toJson());
+    if (!out.commit()) {
+        fail(tr("Cannot write %1").arg(QFileInfo(path).fileName()));
+        return false;
+    }
+    m_lastError.clear();
+    emit changed();
+    return true;
+}
+
+int KeyMap::importFrom(const QUrl& file)
+{
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    QFile in(path);
+    if (!in.open(QIODevice::ReadOnly)) {
+        fail(tr("Cannot read %1").arg(QFileInfo(path).fileName()));
+        return -1;
+    }
+    const QJsonObject root = QJsonDocument::fromJson(in.readAll()).object();
+    const QJsonValue bindings = root.value(QStringLiteral("bindings"));
+    if (!bindings.isObject() || root.value(QStringLiteral("version")).toInt(1) > 1) {
+        fail(tr("%1 is not a TechieVideoEditor shortcuts file").arg(QFileInfo(path).fileName()));
+        return -1;
+    }
+    const int named = applyBindings(bindings.toObject());
+    m_lastError.clear();
+    save();
+    emit changed();
+    return named;
 }
 
 void KeyMap::save()

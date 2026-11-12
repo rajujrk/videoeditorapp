@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
+import TechieVideoEditor.Player
 import "TitleTemplates.js" as TitleTemplates
 
 // Left panel: a vertical tab rail of content types and the selected type's browser.
@@ -19,10 +20,48 @@ Rectangle {
     signal importFromRequested(string source)
     signal sourceRequested(var media) // open it in the player's source monitor
     signal cloudSettingsRequested()
-    onCurrentTabChanged: searchField.text = ""
+    onCurrentTabChanged: {
+        searchField.text = ""
+        favouriteTag = ""
+    }
+    // Favourites (Favourites.qml's store): the tag chosen among a tab's favourites ("" for all),
+    // the Filters tab's choice ("" or "favourites"), and the tile whose tags are being edited.
+    property string favouriteTag: ""
+    property string lookCategory: ""
+    // Whether a tile shows: among the favourites (with the tag) when "favourites" is chosen,
+    // else in its category; and found by the search in its title or its tags.
+    function shows(kind, id, chosen, inCategory, title) {
+        const items = Favourites.items // (read here, so the grids follow changes)
+        const key = kind + ":" + id
+        if (chosen === "favourites") {
+            if (items[key] === undefined || (favouriteTag !== "" && items[key].indexOf(favouriteTag) < 0))
+                return false
+        } else if (!inCategory) {
+            return false
+        }
+        const text = searchField.text.trim().toLowerCase()
+        return text === "" || title.toLowerCase().indexOf(text) >= 0
+               || (items[key] || []).some((tag) => tag.indexOf(text) >= 0)
+    }
+    // Every tag on the favourites of a kind, sorted (from Favourites.items, so bindings follow it).
+    function tagsIn(items, kind) {
+        const tags = []
+        for (const key in items)
+            if (key.startsWith(kind + ":"))
+                for (const tag of items[key])
+                    if (tags.indexOf(tag) < 0)
+                        tags.push(tag)
+        return tags.sort()
+    }
+    function editTags(kind, id, title) {
+        tagEditor.kind = kind
+        tagEditor.itemId = id
+        tagEditor.itemTitle = title
+        tagEditor.open()
+    }
 
     readonly property var effectCategories: [
-        { id: "", label: qsTr("All") }, { id: "blur", label: qsTr("Blur") }, { id: "color", label: qsTr("Colour") },
+        { id: "", label: qsTr("All") }, { id: "favourites", label: "★" }, { id: "blur", label: qsTr("Blur") }, { id: "color", label: qsTr("Colour") },
         { id: "stylize", label: qsTr("Stylize") }, { id: "distort", label: qsTr("Distort") }, { id: "glitch", label: qsTr("Glitch") },
         { id: "light", label: qsTr("Light") }, { id: "frame", label: qsTr("Frame") }, { id: "overlay", label: qsTr("Overlay") }
     ]
@@ -32,6 +71,47 @@ Rectangle {
     }
 
     color: Theme.color.surface
+
+    // A tab's favourites, by tag: shown when its ★ Favourites chip is chosen.
+    component TagChips: Flow {
+        id: tagChips
+        required property string kind
+        required property var panel // the library
+        property bool shown: false
+        readonly property var tags: tagChips.panel.tagsIn(Favourites.items, kind)
+        visible: shown && tags.length > 0
+        Layout.fillWidth: true
+        Layout.leftMargin: Theme.space.m
+        Layout.rightMargin: Theme.space.m
+        Layout.bottomMargin: Theme.space.s
+        spacing: Theme.space.xs
+        Repeater {
+            model: [""].concat(tagChips.tags)
+            delegate: AbstractButton {
+                id: tagChip
+                required property string modelData
+                objectName: "favouriteTag:" + tagChips.kind + ":" + (modelData || "all")
+                checked: tagChips.panel.favouriteTag === modelData
+                hoverEnabled: true
+                implicitWidth: tagChipLabel.implicitWidth + Theme.space.m * 2
+                implicitHeight: 22
+                onClicked: tagChips.panel.favouriteTag = modelData
+                background: Rectangle {
+                    radius: height / 2
+                    color: tagChip.checked ? Theme.color.accentSubtle : tagChip.hovered ? Theme.color.surfaceHover : "transparent"
+                    border.color: tagChip.checked ? Theme.color.accent : Theme.color.borderSubtle
+                }
+                contentItem: Text {
+                    id: tagChipLabel
+                    text: tagChip.modelData === "" ? qsTr("Every tag") : "#" + tagChip.modelData
+                    font: Theme.type.caption
+                    color: tagChip.checked ? Theme.color.accentText : Theme.color.textSecondary
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+        }
+    }
 
     // Title templates (original designs, TitleTemplates.js): {name, category, style}; the
     // Titles tab's category ("" for all).
@@ -51,13 +131,13 @@ Rectangle {
     // The Stickers tab's category ("" for all).
     property string stickerCategory: ""
     readonly property var stickerCategories: [
-        { id: "", label: qsTr("All") }, { id: "shapes", label: qsTr("Shapes") }, { id: "marks", label: qsTr("Arrows & marks") },
+        { id: "", label: qsTr("All") }, { id: "favourites", label: "★" }, { id: "shapes", label: qsTr("Shapes") }, { id: "marks", label: qsTr("Arrows & marks") },
         { id: "nature", label: qsTr("Nature") }, { id: "emoji", label: qsTr("Emoji") }, { id: "party", label: qsTr("Party") }
     ]
     // The Transitions tab's category ("" for all).
     property string transitionCategory: ""
     readonly property var transitionCategories: [
-        { id: "", label: qsTr("All") }, { id: "basic", label: qsTr("Basic") }, { id: "slide", label: qsTr("Slide") },
+        { id: "", label: qsTr("All") }, { id: "favourites", label: "★" }, { id: "basic", label: qsTr("Basic") }, { id: "slide", label: qsTr("Slide") },
         { id: "wipe", label: qsTr("Wipe") }, { id: "shape", label: qsTr("Shape") }, { id: "zoom", label: qsTr("Zoom") },
         { id: "3d", label: qsTr("3D") }, { id: "distort", label: qsTr("Distort") }, { id: "luma", label: qsTr("Luma") },
         { id: "stylize", label: qsTr("Stylize") }, { id: "blur", label: qsTr("Blur") }, { id: "light", label: qsTr("Light") },
@@ -219,6 +299,10 @@ Rectangle {
                         implicitWidth: transitionChipLabel.implicitWidth + Theme.space.m * 2
                         implicitHeight: 24
                         onClicked: library.transitionCategory = modelData.id
+                        // (★: the favourites, named in its tooltip to keep the chips short)
+                        ToolTip.visible: hovered && modelData.id === "favourites"
+                        ToolTip.delay: 400
+                        ToolTip.text: qsTr("Favourites")
                         background: Rectangle {
                             radius: height / 2
                             color: transitionChip.checked ? Theme.color.accentSubtle
@@ -263,6 +347,10 @@ Rectangle {
                         implicitWidth: stickerChipLabel.implicitWidth + Theme.space.m * 2
                         implicitHeight: 24
                         onClicked: library.stickerCategory = modelData.id
+                        // (★: the favourites, named in its tooltip to keep the chips short)
+                        ToolTip.visible: hovered && modelData.id === "favourites"
+                        ToolTip.delay: 400
+                        ToolTip.text: qsTr("Favourites")
                         background: Rectangle {
                             radius: height / 2
                             color: stickerChip.checked ? Theme.color.accentSubtle
@@ -360,6 +448,12 @@ Rectangle {
 
             // Stickers tab: animated stickers (Lottie), playing on hover; click to add one at the
             // playhead.
+            TagChips {
+                panel: library
+                objectName: "stickerTags"
+                kind: "sticker"
+                shown: stickersGrid.visible && library.stickerCategory === "favourites"
+            }
             GridView {
                 id: stickersGrid
                 objectName: "stickersGrid"
@@ -371,14 +465,26 @@ Rectangle {
                 cellWidth: Math.floor(width / 3)
                 cellHeight: cellWidth
                 model: library.project.stickers.filter(
-                           (s) => (library.stickerCategory === "" || s.category === library.stickerCategory)
-                                  && library.matchesSearch(s.title))
+                           (s) => library.shows("sticker", s.id, library.stickerCategory,
+                                                library.stickerCategory === "" || s.category === library.stickerCategory, s.title))
 
                 delegate: Item {
                     id: stickerTile
                     required property var modelData
                     width: stickersGrid.cellWidth
                     height: stickersGrid.cellHeight
+
+                    FavouriteBadge {
+                        z: 10
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.topMargin: Theme.space.xs
+                        anchors.rightMargin: Theme.space.s + Theme.space.xs
+                        kind: "sticker"
+                        itemId: stickerTile.modelData.id
+                        hovered: stickerButton.hovered
+                        onTagsRequested: library.editTags("sticker", stickerTile.modelData.id, stickerTile.modelData.title)
+                    }
 
                     AbstractButton {
                         id: stickerButton
@@ -425,7 +531,8 @@ Rectangle {
                 Layout.bottomMargin: Theme.space.s
                 spacing: Theme.space.xs
                 Repeater {
-                    model: TitleTemplates.categories
+                    model: [TitleTemplates.categories[0], { id: "favourites", label: "★", own: true }]
+                           .concat(TitleTemplates.categories.slice(1))
                     delegate: AbstractButton {
                         id: titleChip
                         required property var modelData
@@ -435,6 +542,10 @@ Rectangle {
                         implicitWidth: titleChipLabel.implicitWidth + Theme.space.m * 2
                         implicitHeight: 24
                         onClicked: library.titleCategory = modelData.id
+                        // (★: the favourites, named in its tooltip to keep the chips short)
+                        ToolTip.visible: hovered && modelData.id === "favourites"
+                        ToolTip.delay: 400
+                        ToolTip.text: qsTr("Favourites")
                         background: Rectangle {
                             radius: height / 2
                             color: titleChip.checked ? Theme.color.accentSubtle : titleChip.hovered ? Theme.color.surfaceHover : "transparent"
@@ -442,7 +553,7 @@ Rectangle {
                         }
                         contentItem: Text {
                             id: titleChipLabel
-                            text: qsTranslate("TitleTemplates", titleChip.modelData.label)
+                            text: titleChip.modelData.own ? titleChip.modelData.label : qsTranslate("TitleTemplates", titleChip.modelData.label)
                             font: Theme.type.caption
                             color: titleChip.checked ? Theme.color.accentText : Theme.color.textSecondary
                             horizontalAlignment: Text.AlignHCenter
@@ -471,6 +582,10 @@ Rectangle {
                         implicitWidth: chipLabel.implicitWidth + Theme.space.m * 2
                         implicitHeight: 24
                         onClicked: library.effectCategory = modelData.id
+                        // (★: the favourites, named in its tooltip to keep the chips short)
+                        ToolTip.visible: hovered && modelData.id === "favourites"
+                        ToolTip.delay: 400
+                        ToolTip.text: qsTr("Favourites")
                         background: Rectangle {
                             radius: height / 2
                             color: chip.checked ? Theme.color.accentSubtle : chip.hovered ? Theme.color.surfaceHover : "transparent"
@@ -490,6 +605,12 @@ Rectangle {
 
             // Effects tab: the built-in effects with previews, by category, filtered by the
             // chips and the search.
+            TagChips {
+                panel: library
+                objectName: "effectTags"
+                kind: "effect"
+                shown: effectsGrid.visible && library.effectCategory === "favourites"
+            }
             GridView {
                 id: effectsGrid
                 objectName: "effectsGrid"
@@ -501,8 +622,8 @@ Rectangle {
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
                 model: (library.player ? library.player.availableEffects : []).filter(
-                           (e) => (library.effectCategory === "" || e.categories.indexOf(library.effectCategory) >= 0)
-                                  && library.matchesSearch(e.title))
+                           (e) => library.shows("effect", e.id, library.effectCategory,
+                                                library.effectCategory === "" || e.categories.indexOf(library.effectCategory) >= 0, e.title))
 
                 delegate: Item {
                     id: tile
@@ -513,6 +634,18 @@ Rectangle {
                     readonly property bool active: (library.project.selectedClipInfo.effects || [])
                                                    .some((e) => e.effectId === modelData.id)
                     readonly property bool hovered: tileButton.hovered
+
+                    FavouriteBadge {
+                        z: 10
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.topMargin: Theme.space.xs
+                        anchors.rightMargin: Theme.space.m + Theme.space.xs
+                        kind: "effect"
+                        itemId: tile.modelData.id
+                        hovered: tileButton.hovered
+                        onTagsRequested: library.editTags("effect", tile.modelData.id, tile.modelData.title)
+                    }
 
                     AbstractButton {
                         id: tileButton
@@ -595,6 +728,47 @@ Rectangle {
 
             // Filters tab: an adjustment layer, then the looks (click to put one on the selected
             // clip). Previews are a sample scene graded on the CPU with the same maths.
+            // Filters tab: all the looks, or the favourites.
+            Flow {
+                visible: looksGrid.visible
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.space.m
+                Layout.rightMargin: Theme.space.m
+                Layout.bottomMargin: Theme.space.s
+                spacing: Theme.space.xs
+                Repeater {
+                    model: [{ id: "", label: qsTr("All") }, { id: "favourites", label: qsTr("★ Favourites") }]
+                    delegate: AbstractButton {
+                        id: lookChip
+                        required property var modelData
+                        objectName: "lookCategory:" + (modelData.id || "all")
+                        checked: library.lookCategory === modelData.id
+                        hoverEnabled: true
+                        implicitWidth: lookChipLabel.implicitWidth + Theme.space.m * 2
+                        implicitHeight: 24
+                        onClicked: library.lookCategory = modelData.id
+                        background: Rectangle {
+                            radius: height / 2
+                            color: lookChip.checked ? Theme.color.accentSubtle : lookChip.hovered ? Theme.color.surfaceHover : "transparent"
+                            border.color: lookChip.checked ? Theme.color.accent : Theme.color.borderSubtle
+                        }
+                        contentItem: Text {
+                            id: lookChipLabel
+                            text: lookChip.modelData.label
+                            font: Theme.type.caption
+                            color: lookChip.checked ? Theme.color.accentText : Theme.color.textSecondary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
+            }
+            TagChips {
+                panel: library
+                objectName: "lookTags"
+                kind: "look"
+                shown: looksGrid.visible && library.lookCategory === "favourites"
+            }
             GridView {
                 id: looksGrid
                 objectName: "looksGrid"
@@ -605,7 +779,8 @@ Rectangle {
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: [{ id: "", title: qsTr("Adjustment layer"), category: "Layer" }].concat(library.project.looks)
+                model: (library.lookCategory === "favourites" ? [] : [{ id: "", title: qsTr("Adjustment layer"), category: "Layer" }])
+                       .concat(library.project.looks.filter((l) => library.shows("look", l.id, library.lookCategory, true, l.title)))
 
                 delegate: Item {
                     id: lookTile
@@ -616,7 +791,21 @@ Rectangle {
                     width: looksGrid.cellWidth
                     height: looksGrid.cellHeight
 
+                    FavouriteBadge {
+                        z: 10
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.topMargin: Theme.space.xs
+                        anchors.rightMargin: Theme.space.m + Theme.space.xs
+                        kind: "look"
+                        itemId: lookTile.modelData.id
+                        hovered: lookButton.hovered
+                        visible: !lookTile.adjustment && (hovered || favourite)
+                        onTagsRequested: library.editTags("look", lookTile.modelData.id, lookTile.modelData.title)
+                    }
+
                     AbstractButton {
+                        id: lookButton
                         anchors.fill: parent
                         anchors.rightMargin: Theme.space.m
                         anchors.bottomMargin: Theme.space.m
@@ -678,6 +867,12 @@ Rectangle {
             }
 
             // Titles tab: click to add one at the playhead, or drag it onto a track.
+            TagChips {
+                panel: library
+                objectName: "titleTags"
+                kind: "title"
+                shown: titlesGrid.visible && library.titleCategory === "favourites"
+            }
             GridView {
                 id: titlesGrid
                 objectName: "titlesGrid"
@@ -688,8 +883,9 @@ Rectangle {
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: library.titleTiles.filter((t) => (library.titleCategory === "" || t.category === library.titleCategory)
-                                                        && (library.matchesSearch(t.name) || library.matchesSearch(t.title)))
+                model: library.titleTiles.filter((t) => library.shows("title", t.name, library.titleCategory,
+                                                                      library.titleCategory === "" || t.category === library.titleCategory,
+                                                                      t.title + " " + t.name))
 
                 delegate: Item {
                     id: titleTile
@@ -702,6 +898,18 @@ Rectangle {
                                                         || modelData.style.chart || modelData.style.visualiser)
                     width: titlesGrid.cellWidth
                     height: titlesGrid.cellHeight
+
+                    FavouriteBadge {
+                        z: 10
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.topMargin: Theme.space.xs
+                        anchors.rightMargin: Theme.space.m + Theme.space.xs
+                        kind: "title"
+                        itemId: titleTile.modelData.name
+                        hovered: titleMouse.containsMouse
+                        onTagsRequested: library.editTags("title", titleTile.modelData.name, titleTile.modelData.title)
+                    }
 
                     Drag.active: titleMouse.drag.active && !reveal
                     Drag.dragType: Drag.Automatic
@@ -816,6 +1024,12 @@ Rectangle {
 
             // Transitions tab: click to put one on the cut nearest the playhead, or drag it
             // onto a cut.
+            TagChips {
+                panel: library
+                objectName: "transitionTags"
+                kind: "transition"
+                shown: transitionsGrid.visible && library.transitionCategory === "favourites"
+            }
             GridView {
                 id: transitionsGrid
                 objectName: "transitionsGrid"
@@ -827,12 +1041,16 @@ Rectangle {
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
                 // Overlay transitions (laid over a cut on a track above) have a category of their own.
-                model: library.transitionCategory === "overlays"
-                       ? library.project.overlayTransitions.filter((t) => library.matchesSearch(t.title))
+                model: library.transitionCategory === "favourites"
+                       ? library.project.availableTransitions.filter((t) => library.shows("transition", t.id, "favourites", true, t.title))
+                             .concat(library.project.overlayTransitions.filter((t) => library.shows("transition", t.id, "favourites", true, t.title))
+                                         .map((t) => Object.assign({ overlay: true }, t)))
+                       : library.transitionCategory === "overlays"
+                       ? library.project.overlayTransitions.filter((t) => library.shows("transition", t.id, "", true, t.title))
                                  .map((t) => Object.assign({ overlay: true }, t))
                        : library.project.availableTransitions.filter(
-                           (t) => (library.transitionCategory === "" || t.categories.indexOf(library.transitionCategory) >= 0)
-                                  && library.matchesSearch(t.title))
+                           (t) => library.shows("transition", t.id, library.transitionCategory,
+                                                library.transitionCategory === "" || t.categories.indexOf(library.transitionCategory) >= 0, t.title))
 
                 delegate: Item {
                     id: transitionTile
@@ -842,6 +1060,18 @@ Rectangle {
                     height: transitionsGrid.cellHeight
                     readonly property bool overlay: modelData.overlay === true
                     readonly property bool active: !overlay && library.project.selectedTransitionInfo.transitionId === modelData.id
+
+                    FavouriteBadge {
+                        z: 10
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.topMargin: Theme.space.xs
+                        anchors.rightMargin: Theme.space.m + Theme.space.xs
+                        kind: "transition"
+                        itemId: transitionTile.modelData.id
+                        hovered: transitionMouse.containsMouse
+                        onTagsRequested: library.editTags("transition", transitionTile.modelData.id, transitionTile.modelData.title)
+                    }
 
                     Drag.active: !overlay && transitionMouse.drag.active
                     Drag.dragType: Drag.Automatic
@@ -1341,4 +1571,108 @@ Rectangle {
         onAccepted: sequenceDialog.openFor(selectedFile)
     }
     ImageSequenceDialog { id: sequenceDialog; objectName: "imageSequenceDialog"; project: library.project }
+
+    // A favourite's tags: those it has (× takes one off), new ones typed (commas between),
+    // and the kind's other tags to add with a click.
+    Popup {
+        id: tagEditor
+        objectName: "favouriteTagEditor"
+        property string kind
+        property string itemId
+        property string itemTitle
+        readonly property var tags: Favourites.items[kind + ":" + itemId] || []
+        readonly property var others: library.tagsIn(Favourites.items, kind).filter((t) => tags.indexOf(t) < 0)
+        function add(text) {
+            Favourites.setTags(kind, itemId, tags.concat(text.split(",")))
+            tagField.text = ""
+        }
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        width: 360
+        padding: Theme.space.l
+        onAboutToShow: tagField.text = ""
+        onOpened: tagField.forceActiveFocus()
+        background: Rectangle {
+            radius: Theme.radius.l
+            color: Theme.color.surfaceRaised
+            border.color: Theme.color.borderStrong
+        }
+        contentItem: ColumnLayout {
+            spacing: Theme.space.s
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Tags for %1").arg(tagEditor.itemTitle)
+                font: Theme.type.title
+                color: Theme.color.textPrimary
+                elide: Text.ElideRight
+            }
+            Flow {
+                Layout.fillWidth: true
+                spacing: Theme.space.xs
+                Repeater {
+                    model: tagEditor.tags
+                    delegate: TextButton {
+                        required property string modelData
+                        objectName: "favouriteTagRemove:" + modelData
+                        text: "#" + modelData + "  ×"
+                        variant: "secondary"
+                        tip: qsTr("Take this tag off")
+                        onClicked: Favourites.setTags(tagEditor.kind, tagEditor.itemId, tagEditor.tags.filter((t) => t !== modelData))
+                    }
+                }
+            }
+            TextField {
+                id: tagField
+                objectName: "favouriteTagField"
+                Layout.fillWidth: true
+                placeholderText: qsTr("Add tags, with commas between")
+                color: Theme.color.textPrimary
+                placeholderTextColor: Theme.color.textDisabled
+                selectByMouse: true
+                background: Rectangle {
+                    implicitHeight: 32
+                    radius: Theme.radius.s
+                    color: Theme.color.surfaceSunken
+                    border.color: tagField.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
+                }
+                onAccepted: tagEditor.add(text)
+            }
+            Text {
+                visible: tagEditor.others.length > 0
+                text: qsTr("Your other tags")
+                font: Theme.type.label
+                color: Theme.color.textSecondary
+            }
+            Flow {
+                visible: tagEditor.others.length > 0
+                Layout.fillWidth: true
+                spacing: Theme.space.xs
+                Repeater {
+                    model: tagEditor.others
+                    delegate: TextButton {
+                        required property string modelData
+                        objectName: "favouriteTagAdd:" + modelData
+                        text: "#" + modelData
+                        variant: "ghost"
+                        onClicked: tagEditor.add(modelData)
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                TextButton {
+                    objectName: "favouriteTagsDone"
+                    text: qsTr("Done")
+                    variant: "primary"
+                    onClicked: {
+                        if (tagField.text.trim() !== "")
+                            tagEditor.add(tagField.text)
+                        tagEditor.close()
+                    }
+                }
+            }
+        }
+    }
 }

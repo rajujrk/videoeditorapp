@@ -1,7 +1,9 @@
 #pragma once
 
 #include <QObject>
+#include <QJsonObject>
 #include <QStringList>
+#include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
@@ -24,6 +26,12 @@ class KeyMap : public QObject {
     // {id, title, group, sequences, defaults, custom, text} in registry order.
     Q_PROPERTY(QVariantList actions READ actions NOTIFY changed)
     Q_PROPERTY(QString filePath READ filePath CONSTANT)
+    // Ready-made sets of keys: {id, title, description}: "techie" (this app's own),
+    // "premiere" and "finalcut" (the keys those editors use for the same actions, where the
+    // system lets them be had).
+    Q_PROPERTY(QVariantList presets READ presets NOTIFY changed)
+    // The preset the keys are now, exactly; empty when they have been changed from it.
+    Q_PROPERTY(QString preset READ preset NOTIFY changed)
     Q_PROPERTY(QString lastError READ lastError NOTIFY changed)
 
 public:
@@ -34,6 +42,8 @@ public:
     QVariantList actions() const;
     QString filePath() const { return m_file; }
     QString lastError() const { return m_lastError; }
+    QVariantList presets() const;
+    QString preset() const;
 
     // How a key press reads as a shortcut ("Ctrl+Shift+G"); empty for a modifier alone.
     Q_INVOKABLE QString sequenceFor(int key, int modifiers) const;
@@ -53,6 +63,15 @@ public:
     Q_INVOKABLE bool clear(const QString& id);
     Q_INVOKABLE void reset(const QString& id);
     Q_INVOKABLE void resetAll();
+    // Every action given the preset's keys (its own where the preset has none).
+    Q_INVOKABLE bool applyPreset(const QString& id);
+    // The whole key map — every action's keys — to a file to keep or take to another Mac
+    // ({"version": 1, "app": "TechieVideoEditor", "bindings": {id: [keys]}}).
+    Q_INVOKABLE bool exportTo(const QUrl& file);
+    // A key map file (or a keymap.json) in: its actions take its keys, the rest their
+    // defaults; keys the system keeps, unknown actions and doubled keys are left out.
+    // Returns how many actions it named, or -1 (with lastError) when it is not one.
+    Q_INVOKABLE int importFrom(const QUrl& file);
 
 signals:
     void changed();
@@ -69,6 +88,11 @@ private:
     const Action* find(const QString& id) const;
     void load();
     void save();
+    // Sets every action from bindings (id → keys; missing: defaults); keys already taken
+    // stay with the first action. Returns how many were named.
+    int applyBindings(const QJsonObject& bindings);
+    // A preset's keys for every action (its own where the preset has none).
+    std::vector<QStringList> presetKeys(const QString& id) const;
     void fail(const QString& message);
 
     std::vector<Action> m_actions;

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 import TechieVideoEditor.Player
@@ -13,6 +14,8 @@ Rectangle {
     signal interchangeRequested()
     signal shortcutsRequested()
     signal cloudSettingsRequested()
+    signal workspaceChosen(string id)
+    signal saveWorkspaceRequested()
 
     implicitHeight: Theme.size.topBar
     color: Theme.color.surface
@@ -83,6 +86,42 @@ Rectangle {
             iconName: "assistant"
             tip: qsTr("AI settings: keys, models and use")
             onClicked: bar.cloudSettingsRequested()
+        }
+        // Workspaces: the panels laid out for a kind of work, and the person's own.
+        IconButton {
+            id: workspaceButton
+            objectName: "workspaceButton"
+            iconName: "workspace"
+            tip: qsTr("Workspace: %1").arg(Workspaces.layout(Workspaces.current).name || "")
+            onClicked: workspaceMenu.popup(workspaceButton, 0, workspaceButton.height)
+            Menu {
+                id: workspaceMenu
+                objectName: "workspaceMenu"
+                Repeater {
+                    model: Workspaces.layouts
+                    delegate: MenuItem {
+                        required property var modelData
+                        objectName: "workspace:" + modelData.id
+                        text: modelData.name
+                        checkable: true
+                        checked: Workspaces.current === modelData.id
+                        onTriggered: bar.workspaceChosen(modelData.id)
+                    }
+                }
+                MenuSeparator {}
+                MenuItem {
+                    objectName: "workspaceSave"
+                    text: qsTr("Save this layout…")
+                    onTriggered: bar.saveWorkspaceRequested()
+                }
+                MenuItem {
+                    objectName: "workspaceDelete"
+                    readonly property var chosen: Workspaces.layout(Workspaces.current)
+                    enabled: chosen.builtIn === false
+                    text: chosen.builtIn === false ? qsTr("Delete “%1”").arg(chosen.name) : qsTr("Delete this layout")
+                    onTriggered: Workspaces.remove(Workspaces.current)
+                }
+            }
         }
         IconButton {
             objectName: "shortcutsButton"

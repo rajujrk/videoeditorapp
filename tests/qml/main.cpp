@@ -573,6 +573,8 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("consentDir"), qEnvironmentVariable("TVE_CONSENT_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("languageFile"), qEnvironmentVariable("TVE_LANGUAGE_FILE"));
         engine->rootContext()->setContextProperty(QStringLiteral("teleprompterFile"), qEnvironmentVariable("TVE_TELEPROMPTER_FILE"));
+        engine->rootContext()->setContextProperty(QStringLiteral("favouritesFile"), qEnvironmentVariable("TVE_FAVOURITES_FILE"));
+        engine->rootContext()->setContextProperty(QStringLiteral("workspacesFile"), qEnvironmentVariable("TVE_WORKSPACES_FILE"));
         engine->rootContext()->setContextProperty(QStringLiteral("livePhotoLibrary"), qEnvironmentVariable("TVE_LIVE_PHOTO_LIBRARY"));
         engine->rootContext()->setContextProperty(QStringLiteral("renderFilesDir"), qEnvironmentVariable("TVE_RENDER_CACHE_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("keyStoreDir"), qEnvironmentVariable("TVE_KEY_STORE"));
@@ -690,6 +692,10 @@ int main(int argc, char** argv)
     // The language setting in a scratch file (the app's own isn't touched).
     QTemporaryDir teleprompterSettings; // the teleprompter's script and settings
     qputenv("TVE_TELEPROMPTER_FILE", (teleprompterSettings.path() + QStringLiteral("/teleprompter.json")).toLocal8Bit());
+    QTemporaryDir appSettings; // favourites and workspaces in scratch files (the app's own aren't touched)
+    qputenv("TVE_FAVOURITES_FILE", (appSettings.path() + QStringLiteral("/favourites.json")).toLocal8Bit());
+    qputenv("TVE_WORKSPACES_FILE", (appSettings.path() + QStringLiteral("/workspaces.json")).toLocal8Bit());
+    qputenv("TVE_PREVIEW_WINDOWED", "1"); // the full-screen preview as a plain window
     QTemporaryDir livePhotoLibrary; // Live Photos "added to Photos" land here, not in the library
     qputenv("TVE_LIVE_PHOTO_LIBRARY", QDir(livePhotoLibrary.path()).canonicalPath().toLocal8Bit());
     QTemporaryDir languageSettings;

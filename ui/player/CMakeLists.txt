@@ -28,6 +28,10 @@ qt_add_qml_module(tve_player
         VoiceCloning.cpp
         KeyMap.h
         KeyMap.cpp
+        Favourites.h
+        Favourites.cpp
+        Workspaces.h
+        Workspaces.cpp
         SpeechModels.h
         SpeechModels.cpp
         SoundLibrary.h

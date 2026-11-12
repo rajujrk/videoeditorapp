@@ -1,12 +1,14 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 import TechieVideoEditor.Player
 
-// Keyboard shortcuts: every editor action with its key, by group. Click a key, then press
-// the new one (Esc cancels); a key another action has asks before it moves. Changes save
-// at once (KeyMap's keymap file).
+// Keyboard shortcuts: every editor action with its key, by group, or drawn on a keyboard.
+// Click a key, then press the new one (Esc cancels); a key another action has asks before it
+// moves. A preset (this app's keys, Premiere Pro's or Final Cut Pro's) sets them all; a file
+// takes them to another Mac and back. Changes save at once (KeyMap's keymap file).
 Popup {
     id: dialog
 
@@ -14,11 +16,13 @@ Popup {
     property string pendingKey      // a key in use elsewhere, waiting for Replace
     property string pendingOwner
     property string filter
+    property string view: "list" // or "keyboard"
+    property string notice // what an import or export did
 
     modal: true
     focus: true
     anchors.centerIn: Overlay.overlay
-    width: 560
+    width: view === "keyboard" ? 900 : 560
     padding: Theme.space.l
     closePolicy: recording !== "" ? Popup.NoAutoClose : Popup.CloseOnEscape | Popup.CloseOnPressOutside
     onAboutToShow: {
@@ -26,6 +30,8 @@ Popup {
         pendingKey = ""
         filter = ""
         search.text = ""
+        notice = ""
+        view = "list"
     }
 
     readonly property var groups: [QT_TR_NOOP("Playback"), QT_TR_NOOP("Editing"), QT_TR_NOOP("Structure"), QT_TR_NOOP("File")]
@@ -81,6 +87,29 @@ Popup {
         }
     }
 
+    FileDialog {
+        id: exportDialog
+        title: qsTr("Export the shortcuts")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "json"
+        nameFilters: [qsTr("Shortcuts (*.json)")]
+        currentFile: "file:///" + qsTr("TechieVideoEditor shortcuts") + ".json"
+        onAccepted: if (KeyMap.exportTo(selectedFile)) dialog.notice = qsTr("Saved the shortcuts.")
+    }
+    FileDialog {
+        id: importDialog
+        title: qsTr("Import shortcuts")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("Shortcuts (*.json)")]
+        onAccepted: dialog.importFile(selectedFile)
+    }
+    function importFile(url) {
+        const named = KeyMap.importFrom(url)
+        notice = named < 0 ? "" : named === 1 ? qsTr("Imported the keys of 1 action.")
+                                              : qsTr("Imported the keys of %1 actions.").arg(named)
+        return named
+    }
+
     contentItem: ColumnLayout {
         spacing: Theme.space.m
 
@@ -96,12 +125,85 @@ Popup {
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
         }
-        SearchField {
-            id: search
-            objectName: "shortcutSearch"
+        // A ready-made set, and files to carry them.
+        RowLayout {
             Layout.fillWidth: true
-            placeholderText: qsTr("Search actions")
-            onTextChanged: dialog.filter = text.toLowerCase()
+            spacing: Theme.space.s
+            Text { text: qsTr("Keys"); font: Theme.type.label; color: Theme.color.textSecondary }
+            ComboBox {
+                id: presetPicker
+                objectName: "shortcutPreset"
+                Layout.fillWidth: true
+                model: KeyMap.presets
+                textRole: "title"
+                // Changed from every preset: "Custom".
+                currentIndex: KeyMap.presets.findIndex((p) => p.id === KeyMap.preset)
+                displayText: currentIndex >= 0 ? currentText : qsTr("Custom")
+                onActivated: (index) => {
+                    KeyMap.applyPreset(KeyMap.presets[index].id)
+                    dialog.notice = ""
+                }
+                ToolTip.visible: hovered && currentIndex >= 0
+                ToolTip.delay: 600
+                ToolTip.text: currentIndex >= 0 ? KeyMap.presets[currentIndex].description : ""
+            }
+            TextButton {
+                objectName: "shortcutsImport"
+                text: qsTr("Import…")
+                variant: "secondary"
+                onClicked: importDialog.open()
+            }
+            TextButton {
+                objectName: "shortcutsExport"
+                text: qsTr("Export…")
+                variant: "secondary"
+                onClicked: exportDialog.open()
+            }
+        }
+        Text {
+            objectName: "shortcutPresetDescription"
+            visible: presetPicker.currentIndex >= 0
+            Layout.fillWidth: true
+            text: presetPicker.currentIndex >= 0 ? KeyMap.presets[presetPicker.currentIndex].description : ""
+            font: Theme.type.caption
+            color: Theme.color.textSecondary
+            wrapMode: Text.WordWrap
+        }
+        Text {
+            objectName: "shortcutsNotice"
+            visible: dialog.notice !== ""
+            Layout.fillWidth: true
+            text: dialog.notice
+            font: Theme.type.caption
+            color: Theme.color.success
+            wrapMode: Text.WordWrap
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.space.s
+            SearchField {
+                id: search
+                objectName: "shortcutSearch"
+                visible: dialog.view === "list"
+                Layout.fillWidth: true
+                placeholderText: qsTr("Search actions")
+                onTextChanged: dialog.filter = text.toLowerCase()
+            }
+            Item { visible: dialog.view !== "list"; Layout.fillWidth: true }
+            TextButton {
+                objectName: "shortcutsList"
+                text: qsTr("List")
+                variant: dialog.view === "list" ? "primary" : "secondary"
+                onClicked: dialog.view = "list"
+            }
+            TextButton {
+                objectName: "shortcutsKeyboard"
+                text: qsTr("Keyboard")
+                iconName: "keyboard"
+                variant: dialog.view === "keyboard" ? "primary" : "secondary"
+                onClicked: dialog.view = "keyboard"
+            }
         }
 
         // A key in use by another action: move it here, or not.
@@ -150,7 +252,23 @@ Popup {
             wrapMode: Text.WordWrap
         }
 
+        KeyboardMap {
+            id: keyboard
+            objectName: "keyboardMap"
+            visible: dialog.view === "keyboard"
+            Layout.fillWidth: true
+            onKeyClicked: (id) => dialog.startRecording(id)
+        }
+        Text {
+            visible: dialog.view === "keyboard" && dialog.recording !== ""
+            Layout.fillWidth: true
+            text: qsTr("Press the new keys for “%1” (Esc cancels)").arg(dialog.titleOf(dialog.recording))
+            font: Theme.type.body
+            color: Theme.color.accentText
+        }
+
         Flickable {
+            visible: dialog.view === "list"
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(contentHeight, 420)
             contentHeight: groupsColumn.implicitHeight

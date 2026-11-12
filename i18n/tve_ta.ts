@@ -1619,6 +1619,26 @@
         <translation>கேமரா RAW புகைப்படங்கள் (*.dng *.cr2 *.cr3 *.crw *.nef *.nrw *.arw *.srf *.sr2 *.raf *.orf *.rw2 *.rwl *.pef *.srw *.3fr *.fff *.iiq *.erf *.mos)</translation>
     </message>
     <message>
+        <source>Save this layout</source>
+        <translation>இந்த அமைப்பைச் சேமி</translation>
+    </message>
+    <message>
+        <source>The panels as they are now, in the Workspace menu. The same name replaces it.</source>
+        <translation>பலகங்கள் இப்போது உள்ளபடி, பணியிடப் பட்டியலில். அதே பெயர் அதை மாற்றிவிடும்.</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>பெயர்</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>ரத்துசெய்</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>சேமி</translation>
+    </message>
+    <message>
         <source>Videos (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif)</source>
         <translation>வீடியோக்கள் (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.mxf *.mts *.m2ts *.gif)</translation>
     </message>
@@ -2003,6 +2023,25 @@
     <message>
         <source>Export after the exports already queued, while you keep editing</source>
         <translation>ஏற்கெனவே வரிசையில் உள்ள ஏற்றுமதிகளுக்குப் பிறகு ஏற்றுமதி செய், நீங்கள் தொடர்ந்து திருத்தும்போதே</translation>
+    </message>
+</context>
+<context>
+    <name>FavouriteBadge</name>
+    <message>
+        <source>Tags: %1</source>
+        <translation>குறிச்சொற்கள்: %1</translation>
+    </message>
+    <message>
+        <source>Add tags</source>
+        <translation>குறிச்சொற்களைச் சேர்</translation>
+    </message>
+    <message>
+        <source>Remove from favourites</source>
+        <translation>பிடித்தவையிலிருந்து நீக்கு</translation>
+    </message>
+    <message>
+        <source>Add to favourites</source>
+        <translation>பிடித்தவையில் சேர்</translation>
     </message>
 </context>
 <context>
@@ -4197,6 +4236,30 @@ Third, 4</source>
 <context>
     <name>KeyMap</name>
     <message>
+        <source>TechieVideoEditor</source>
+        <translation>TechieVideoEditor</translation>
+    </message>
+    <message>
+        <source>This app&apos;s own keys</source>
+        <translation>இந்தச் செயலியின் சொந்த விசைகள்</translation>
+    </message>
+    <message>
+        <source>Like Premiere Pro</source>
+        <translation>Premiere Pro போல</translation>
+    </message>
+    <message>
+        <source>⌘K splits, C is the blade, Return renders, ⌥⌫ ripple deletes, ⇧M and ⇧⌘M go between markers</source>
+        <translation>⌘K பிரிக்கும், C வெட்டுக் கருவி, Return ரெண்டர் செய்யும், ⌥⌫ இடைவெளியின்றி நீக்கும், ⇧M, ⇧⌘M குறிகளுக்கிடையே செல்லும்</translation>
+    </message>
+    <message>
+        <source>Like Final Cut Pro</source>
+        <translation>Final Cut Pro போல</translation>
+    </message>
+    <message>
+        <source>⌘B splits, A selects, ⌫ ripple deletes and ⇧⌫ leaves a gap, ⌥G makes a compound clip, ⌃R renders</source>
+        <translation>⌘B பிரிக்கும், A தேர்ந்தெடுக்கும், ⌫ இடைவெளியின்றி நீக்கும், ⇧⌫ இடைவெளி விடும், ⌥G கூட்டுக் கிளிப் ஆக்கும், ⌃R ரெண்டர் செய்யும்</translation>
+    </message>
+    <message>
         <source>Play / pause</source>
         <translation>இயக்கு / இடைநிறுத்து</translation>
     </message>
@@ -4385,8 +4448,43 @@ Third, 4</source>
         <translation>%1 கணினிக்குச் சொந்தமானது</translation>
     </message>
     <message>
+        <source>Unknown set of shortcuts: %1</source>
+        <translation>தெரியாத குறுக்குவழித் தொகுப்பு: %1</translation>
+    </message>
+    <message>
+        <source>Cannot write %1</source>
+        <translation>%1-ஐ எழுத முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Cannot read %1</source>
+        <translation>%1-ஐப் படிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>%1 is not a TechieVideoEditor shortcuts file</source>
+        <translation>%1 ஒரு TechieVideoEditor குறுக்குவழிக் கோப்பு அல்ல</translation>
+    </message>
+    <message>
         <source>Cannot save the shortcuts to %1</source>
         <translation>குறுக்குவழிகளை %1-இல் சேமிக்க முடியவில்லை</translation>
+    </message>
+</context>
+<context>
+    <name>KeyboardMap</name>
+    <message>
+        <source>space</source>
+        <translation>இடைவெளி</translation>
+    </message>
+    <message>
+        <source>With</source>
+        <translation>உடன்</translation>
+    </message>
+    <message>
+        <source>1 shortcut on these keys</source>
+        <translation>இந்த விசைகளில் 1 குறுக்குவழி</translation>
+    </message>
+    <message>
+        <source>%1 shortcuts on these keys</source>
+        <translation>இந்த விசைகளில் %1 குறுக்குவழிகள்</translation>
     </message>
 </context>
 <context>
@@ -4422,6 +4520,10 @@ Third, 4</source>
         <translation>நிறம்</translation>
     </message>
     <message>
+        <source>★ Favourites</source>
+        <translation>★ பிடித்தவை</translation>
+    </message>
+    <message>
         <source>Stylize</source>
         <translation>கலைநயம்</translation>
     </message>
@@ -4444,6 +4546,10 @@ Third, 4</source>
     <message>
         <source>Overlay</source>
         <translation>மேலடுக்கு</translation>
+    </message>
+    <message>
+        <source>Every tag</source>
+        <translation>எல்லாக் குறிச்சொற்களும்</translation>
     </message>
     <message>
         <source>Shapes</source>
@@ -4586,6 +4692,10 @@ Third, 4</source>
         <translation>%1 தேடு</translation>
     </message>
     <message>
+        <source>Favourites</source>
+        <translation>பிடித்தவை</translation>
+    </message>
+    <message>
         <source>Random on every cut</source>
         <translation>ஒவ்வொரு வெட்டிலும் சீரற்றது</translation>
     </message>
@@ -4712,6 +4822,26 @@ Third, 4</source>
     <message>
         <source>All files (*)</source>
         <translation>அனைத்துக் கோப்புகளும் (*)</translation>
+    </message>
+    <message>
+        <source>Tags for %1</source>
+        <translation>%1-க்கான குறிச்சொற்கள்</translation>
+    </message>
+    <message>
+        <source>Take this tag off</source>
+        <translation>இந்தக் குறிச்சொல்லை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Add tags, with commas between</source>
+        <translation>குறிச்சொற்களைச் சேர், இடையே காற்புள்ளிகளுடன்</translation>
+    </message>
+    <message>
+        <source>Your other tags</source>
+        <translation>உங்கள் மற்ற குறிச்சொற்கள்</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>முடிந்தது</translation>
     </message>
     <message>
         <source>Add at the playhead</source>
@@ -5196,6 +5326,14 @@ Third, 4</source>
         <translation>பிளேயரில் 360° படத்தைச் சுற்றிப் பார் (ஏற்றுமதி மாறாது)</translation>
     </message>
     <message>
+        <source>Full-screen preview on the other display (Esc closes it)</source>
+        <translation>மற்ற திரையில் முழுத்திரை முன்னோட்டம் (Esc மூடும்)</translation>
+    </message>
+    <message>
+        <source>Full-screen preview (Esc closes it); with a second display, it goes there</source>
+        <translation>முழுத்திரை முன்னோட்டம் (Esc மூடும்); இரண்டாவது திரை இருந்தால், அங்கே செல்லும்</translation>
+    </message>
+    <message>
         <source>HDR viewer: the picture in a window of its own, HDR on an HDR display (this project is SDR)</source>
         <translation>HDR பார்வையாளர்: தனிச் சாளரத்தில் படம், HDR திரையில் HDR ஆக (இந்தத் திட்டம் SDR)</translation>
     </message>
@@ -5234,6 +5372,17 @@ Third, 4</source>
     <message>
         <source>Zoom the player (100 %: a pixel of the picture to a pixel of the screen); scroll to look around</source>
         <translation>பிளேயரைப் பெரிதாக்கு (100 %: படத்தின் ஒரு பிக்சல் திரையின் ஒரு பிக்சலுக்கு); சுற்றிப் பார்க்க உருட்டவும்</translation>
+    </message>
+</context>
+<context>
+    <name>PreviewWindow</name>
+    <message>
+        <source>Preview — %1</source>
+        <translation>முன்னோட்டம் — %1</translation>
+    </message>
+    <message>
+        <source>Esc to close</source>
+        <translation>மூட Esc</translation>
     </message>
 </context>
 <context>
@@ -6684,6 +6833,34 @@ Third, 4</source>
         <translation>கோப்பு</translation>
     </message>
     <message>
+        <source>Export the shortcuts</source>
+        <translation>குறுக்குவழிகளை ஏற்றுமதி செய்</translation>
+    </message>
+    <message>
+        <source>Shortcuts (*.json)</source>
+        <translation>குறுக்குவழிகள் (*.json)</translation>
+    </message>
+    <message>
+        <source>TechieVideoEditor shortcuts</source>
+        <translation>TechieVideoEditor குறுக்குவழிகள்</translation>
+    </message>
+    <message>
+        <source>Saved the shortcuts.</source>
+        <translation>குறுக்குவழிகள் சேமிக்கப்பட்டன.</translation>
+    </message>
+    <message>
+        <source>Import shortcuts</source>
+        <translation>குறுக்குவழிகளை இறக்குமதி செய்</translation>
+    </message>
+    <message>
+        <source>Imported the keys of 1 action.</source>
+        <translation>1 செயலின் விசைகள் இறக்குமதி செய்யப்பட்டன.</translation>
+    </message>
+    <message>
+        <source>Imported the keys of %1 actions.</source>
+        <translation>%1 செயல்களின் விசைகள் இறக்குமதி செய்யப்பட்டன.</translation>
+    </message>
+    <message>
         <source>Keyboard shortcuts</source>
         <translation>விசைப்பலகைக் குறுக்குவழிகள்</translation>
     </message>
@@ -6692,8 +6869,32 @@ Third, 4</source>
         <translation>ஒரு குறுக்குவழியைக் கிளிக் செய்து, புதிய விசைகளை அழுத்தவும் (Esc ரத்துசெய்யும்). மாற்றங்கள் ஒவ்வொரு திட்டத்துக்கும் வைக்கப்படும்.</translation>
     </message>
     <message>
+        <source>Keys</source>
+        <translation>விசைகள்</translation>
+    </message>
+    <message>
+        <source>Custom</source>
+        <translation>தனிப்பயன்</translation>
+    </message>
+    <message>
+        <source>Import…</source>
+        <translation>இறக்குமதி…</translation>
+    </message>
+    <message>
+        <source>Export…</source>
+        <translation>ஏற்றுமதி…</translation>
+    </message>
+    <message>
         <source>Search actions</source>
         <translation>செயல்களைத் தேடு</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>பட்டியல்</translation>
+    </message>
+    <message>
+        <source>Keyboard</source>
+        <translation>விசைப்பலகை</translation>
     </message>
     <message>
         <source>%1 is used by “%2”. Move it to “%3”?</source>
@@ -6706,6 +6907,10 @@ Third, 4</source>
     <message>
         <source>Cancel</source>
         <translation>ரத்துசெய்</translation>
+    </message>
+    <message>
+        <source>Press the new keys for “%1” (Esc cancels)</source>
+        <translation>“%1”-க்கான புதிய விசைகளை அழுத்தவும் (Esc ரத்துசெய்யும்)</translation>
     </message>
     <message>
         <source>Back to %1</source>
@@ -8245,6 +8450,22 @@ The Journey</source>
         <translation>AI அமைப்புகள்: சாவிகள், மாதிரிகள், பயன்பாடு</translation>
     </message>
     <message>
+        <source>Workspace: %1</source>
+        <translation>பணியிடம்: %1</translation>
+    </message>
+    <message>
+        <source>Save this layout…</source>
+        <translation>இந்த அமைப்பைச் சேமி…</translation>
+    </message>
+    <message>
+        <source>Delete “%1”</source>
+        <translation>“%1”-ஐ நீக்கு</translation>
+    </message>
+    <message>
+        <source>Delete this layout</source>
+        <translation>இந்த அமைப்பை நீக்கு</translation>
+    </message>
+    <message>
         <source>Keyboard shortcuts</source>
         <translation>விசைப்பலகைக் குறுக்குவழிகள்</translation>
     </message>
@@ -8665,6 +8886,29 @@ The Journey</source>
     <message>
         <source>Delete</source>
         <translation>நீக்கு</translation>
+    </message>
+</context>
+<context>
+    <name>Workspaces</name>
+    <message>
+        <source>Editing</source>
+        <translation>திருத்தம்</translation>
+    </message>
+    <message>
+        <source>Organising</source>
+        <translation>ஒழுங்கமைத்தல்</translation>
+    </message>
+    <message>
+        <source>Colour</source>
+        <translation>நிறம்</translation>
+    </message>
+    <message>
+        <source>Audio</source>
+        <translation>ஒலி</translation>
+    </message>
+    <message>
+        <source>Big preview</source>
+        <translation>பெரிய முன்னோட்டம்</translation>
     </message>
 </context>
 <context>

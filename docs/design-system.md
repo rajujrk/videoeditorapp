@@ -505,6 +505,21 @@ the files are — and the estimate for 3 seconds, dark and light:
 ![Export a Live Photo, dark](images/export-live-photo-dark.png)
 ![Export a Live Photo, light](images/export-live-photo-light.png)
 
+Favourites with tags: the ★ chip chosen (its name in a tooltip), tag chips under the categories (`#tag`, the
+chosen one `accentSubtle`), a round # and ★ (`warning`) in each favourite tile's corner, and the
+tag editor — its tags as `secondary` buttons with ×, a sunken field, the kind's other tags as
+`ghost` buttons — dark and light:
+
+![Favourites with tags, dark](images/favourites-dark.png)
+![Favourites with tags, light](images/favourites-light.png)
+
+The keyboard drawn in the shortcuts dialog, with the Like Premiere Pro keys and ⌘ chosen: keys
+in `surface` with a `borderSubtle` edge, those in use filled `accentSubtle` with an `accentText`
+edge and the action's name in small type under the key — dark and light:
+
+![The keyboard, dark](images/keyboard-dark.png)
+![The keyboard, light](images/keyboard-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

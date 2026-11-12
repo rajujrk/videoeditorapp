@@ -13,6 +13,9 @@ Rectangle {
     property bool showStats: false
     property bool hdrViewerOpen: false
     readonly property var hdrViewer: hdrViewerLoader.item
+    // The full-screen preview on another display, while open.
+    property bool previewOpen: false
+    readonly property var preview: previewLoader.item
     // The source monitor (24d): a media item on its own, shown instead of the timeline while
     // its tab is chosen; the transport (and its keys) then play it.
     property bool showingSource: false
@@ -41,6 +44,17 @@ Rectangle {
             leader: video
             project: panel.project
             onClosing: panel.hdrViewerOpen = false
+        }
+    }
+
+    Loader {
+        id: previewLoader
+        active: panel.previewOpen
+        sourceComponent: PreviewWindow {
+            leader: video
+            project: panel.project
+            editorScreen: panel.Window.window ? panel.Window.window.screen : null
+            onClosing: panel.previewOpen = false
         }
     }
 
@@ -415,6 +429,16 @@ Rectangle {
                     checkable: true
                     checked: video.lookAround
                     onToggled: video.lookAround = checked
+                }
+                IconButton {
+                    objectName: "secondDisplayButton"
+                    iconName: "second-display"
+                    tip: Qt.application.screens.length > 1
+                         ? qsTr("Full-screen preview on the other display (Esc closes it)")
+                         : qsTr("Full-screen preview (Esc closes it); with a second display, it goes there")
+                    checkable: true
+                    checked: panel.previewOpen
+                    onToggled: panel.previewOpen = checked
                 }
                 IconButton {
                     objectName: "hdrViewerButton"
