@@ -4,7 +4,10 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <filesystem>
+#include <numbers>
 
 #include <unistd.h>
 
@@ -140,4 +143,59 @@ TEST_CASE("the subject is followed into a portrait frame", "[apple]")
     REQUIRE(path916.positions.size() >= 2);
     CHECK(path916.positions.front().second[0] > 0.3);
     CHECK(path916.positions.back().second[0] < -0.3);
+}
+
+TEST_CASE("a face's landmarks become a beauty mask: skin with the features cut out, and the teeth", "[apple]")
+{
+    // Drawn: a face whose jaw runs round the bottom of a box, an "eye", and a mouth.
+    FaceParts face;
+    face.box = {0.5, 0.5, 0.4, 0.5};
+    for (int i = 0; i <= 12; ++i) {
+        const double a = std::numbers::pi * double(i) / 12.0; // ear to ear, round the chin
+        face.contour.push_back({float(0.5 - 0.2 * std::cos(a)), float(0.5 + 0.25 * std::sin(a))});
+    }
+    face.features.push_back({{0.38f, 0.40f}, {0.46f, 0.40f}, {0.46f, 0.44f}, {0.38f, 0.44f}});
+    face.innerLips = {{0.45f, 0.62f}, {0.55f, 0.62f}, {0.55f, 0.66f}, {0.45f, 0.66f}};
+    const BeautyMask mask = beautyMask({face}, 200, 200);
+    REQUIRE(mask);
+    REQUIRE(mask.pixels.size() == 200u * 200u * 2u);
+    const auto skin = [&](double u, double v) { return mask.skinAt(int(u * 199), int(v * 199)); };
+    const auto teeth = [&](double u, double v) { return mask.teethAt(int(u * 199), int(v * 199)); };
+    CHECK(skin(0.6, 0.55) > 200);  // a cheek
+    CHECK(skin(0.5, 0.33) > 200);  // the forehead, above the jaw line
+    CHECK(skin(0.42, 0.42) < 60);  // the eye
+    CHECK(skin(0.05, 0.5) == 0);   // beside the face
+    CHECK(skin(0.5, 0.95) == 0);   // below the chin
+    CHECK(teeth(0.5, 0.64) > 150); // the mouth
+    CHECK(teeth(0.6, 0.55) == 0);
+    CHECK_FALSE(beautyMask({}, 0, 10));
+    const BeautyMask none = beautyMask({}, 32, 18);
+    CHECK(std::ranges::all_of(none.pixels, [](std::uint8_t b) { return b == 0; }));
+}
+
+TEST_CASE("Vision finds a face's landmarks for the beauty filter", "[apple]")
+{
+    const DecodedFrame frame = frameAt(people(), kTicksPerSecond * 3 / 2);
+    const auto faces = detectFaceParts(frame.pixelBuffer());
+    REQUIRE(faces.size() == 1);
+    const FaceParts& face = faces[0];
+    CHECK(face.box.x == Approx(faceXAt(1.5)).margin(0.04));
+    CHECK(face.contour.size() >= 5);
+    CHECK(face.features.size() == 5); // two eyes, two brows, the lips
+    CHECK(face.innerLips.size() >= 4);
+    for (const FacePoint& p : face.contour) { // the jaw is round the face, below the eyes
+        CHECK(std::abs(p.x - face.box.x) < face.box.width);
+        CHECK(p.y > face.box.y - face.box.height * 0.3);
+    }
+    // The mask's skin covers a cheek, not the eyes.
+    const BeautyMask mask = beautyMask(faces, 480, 270);
+    const auto& eye = face.features[0];
+    double ex = 0, ey = 0;
+    for (const FacePoint& p : eye)
+        ex += p.x, ey += p.y;
+    ex /= double(eye.size());
+    ey /= double(eye.size());
+    CHECK(mask.skinAt(int(ex * 479), int(ey * 269)) < 80);
+    CHECK(mask.skinAt(int((face.box.x + face.box.width * 0.22) * 479), int((face.box.y + face.box.height * 0.12) * 269)) > 120);
+    CHECK(detectFaceParts(nullptr).empty());
 }

@@ -520,6 +520,16 @@ edge and the action's name in small type under the key — dark and light:
 ![The keyboard, dark](images/keyboard-dark.png)
 ![The keyboard, light](images/keyboard-light.png)
 
+The Analyze tab's Beauty section on the sample portrait (a switch and three percentage
+sliders, its explanation in `textSecondary`, as the other people sections), and the Color tab's
+Protect skin tones slider under Basic with a cold, grey grade that the face is kept out of —
+dark and light:
+
+![Beauty, dark](images/beauty-dark.png)
+![Beauty, light](images/beauty-light.png)
+![Protect skin tones, dark](images/skin-protect-dark.png)
+![Protect skin tones, light](images/skin-protect-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

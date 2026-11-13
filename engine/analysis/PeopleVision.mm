@@ -5,6 +5,7 @@
 
 #import <Foundation/Foundation.h>
 #import <Vision/Vision.h>
+#include <CoreGraphics/CoreGraphics.h>
 #include <VideoToolbox/VideoToolbox.h>
 
 #include <nlohmann/json.hpp>
@@ -282,6 +283,156 @@ std::vector<FaceBox> detectFaces(CVPixelBufferRef frame)
         [request release];
     }
     return faces;
+}
+
+namespace {
+
+// A landmark region's points in picture fractions, origin top left.
+FaceOutline outlineOf(VNFaceLandmarkRegion2D* region)
+{
+    FaceOutline outline;
+    if (!region || region.pointCount == 0)
+        return outline;
+    const CGPoint* points = [region pointsInImageOfSize:CGSizeMake(1.0, 1.0)];
+    for (NSUInteger i = 0; i < region.pointCount; ++i)
+        outline.push_back({float(points[i].x), float(1.0 - points[i].y)});
+    return outline;
+}
+
+void addPath(CGContextRef context, const FaceOutline& outline, int width, int height, bool close)
+{
+    if (outline.size() < 2)
+        return;
+    CGContextMoveToPoint(context, outline[0].x * width, (1.0f - outline[0].y) * height);
+    for (std::size_t i = 1; i < outline.size(); ++i)
+        CGContextAddLineToPoint(context, outline[i].x * width, (1.0f - outline[i].y) * height);
+    if (close)
+        CGContextClosePath(context);
+}
+
+// A separable box blur, `passes` times (close to a Gaussian), of a one-byte image.
+void soften(std::vector<std::uint8_t>& image, int width, int height, int radius, int passes)
+{
+    if (radius < 1)
+        return;
+    std::vector<std::uint8_t> line;
+    for (int pass = 0; pass < passes; ++pass) {
+        for (int y = 0; y < height; ++y) { // rows
+            std::uint8_t* row = image.data() + std::size_t(y) * std::size_t(width);
+            line.assign(row, row + width);
+            int sum = 0;
+            for (int x = -radius; x <= radius; ++x)
+                sum += line[std::size_t(std::clamp(x, 0, width - 1))];
+            for (int x = 0; x < width; ++x) {
+                row[x] = std::uint8_t(sum / (2 * radius + 1));
+                sum += line[std::size_t(std::min(x + radius + 1, width - 1))] - line[std::size_t(std::max(x - radius, 0))];
+            }
+        }
+        line.resize(std::size_t(height));
+        for (int x = 0; x < width; ++x) { // columns
+            for (int y = 0; y < height; ++y)
+                line[std::size_t(y)] = image[std::size_t(y) * std::size_t(width) + std::size_t(x)];
+            int sum = 0;
+            for (int y = -radius; y <= radius; ++y)
+                sum += line[std::size_t(std::clamp(y, 0, height - 1))];
+            for (int y = 0; y < height; ++y) {
+                image[std::size_t(y) * std::size_t(width) + std::size_t(x)] = std::uint8_t(sum / (2 * radius + 1));
+                sum += line[std::size_t(std::min(y + radius + 1, height - 1))] - line[std::size_t(std::max(y - radius, 0))];
+            }
+        }
+    }
+}
+
+} // namespace
+
+std::vector<FaceParts> detectFaceParts(CVPixelBufferRef frame)
+{
+    std::vector<FaceParts> faces;
+    if (!frame)
+        return faces;
+    @autoreleasepool {
+        VNDetectFaceLandmarksRequest* request = [[VNDetectFaceLandmarksRequest alloc] init];
+        if (perform(frame, @[request])) {
+            for (VNFaceObservation* face in request.results) {
+                FaceParts parts;
+                parts.box = boxOf(face.boundingBox);
+                VNFaceLandmarks2D* marks = face.landmarks;
+                parts.contour = outlineOf(marks.faceContour);
+                for (VNFaceLandmarkRegion2D* region :
+                     {marks.leftEye, marks.rightEye, marks.leftEyebrow, marks.rightEyebrow, marks.outerLips}) {
+                    FaceOutline outline = outlineOf(region);
+                    if (!outline.empty())
+                        parts.features.push_back(std::move(outline));
+                }
+                parts.innerLips = outlineOf(marks.innerLips);
+                faces.push_back(std::move(parts));
+            }
+        }
+        [request release];
+    }
+    return faces;
+}
+
+BeautyMask beautyMask(const std::vector<FaceParts>& faces, int width, int height)
+{
+    BeautyMask mask;
+    if (width <= 0 || height <= 0)
+        return mask;
+    std::vector<std::uint8_t> skin(std::size_t(width) * std::size_t(height), 0);
+    std::vector<std::uint8_t> teeth(skin.size(), 0);
+    CGColorSpaceRef grey = CGColorSpaceCreateDeviceGray();
+    const auto draw = [&](std::vector<std::uint8_t>& target, const auto& paint) {
+        CGContextRef context = CGBitmapContextCreate(target.data(), std::size_t(width), std::size_t(height), 8,
+                                                     std::size_t(width), grey, kCGImageAlphaNone);
+        if (!context)
+            return;
+        CGContextSetShouldAntialias(context, true);
+        paint(context);
+        CGContextRelease(context);
+    };
+    int longest = 0;
+    draw(skin, [&](CGContextRef context) {
+        for (const FaceParts& face : faces) {
+            const double w = face.box.width * width;
+            const double h = face.box.height * height;
+            longest = std::max(longest, int(std::max(w, h)));
+            // The jaw line closed across, and the forehead above it as an ellipse.
+            CGContextSetGrayFillColor(context, 1.0, 1.0);
+            addPath(context, face.contour, width, height, true);
+            CGContextFillPath(context);
+            const double cx = face.box.x * width;
+            const double cy = (1.0 - (face.box.y - face.box.height * 0.12)) * height;
+            CGContextFillEllipseInRect(context, CGRectMake(cx - w * 0.47, cy - h * 0.55, w * 0.94, h * 1.1));
+            // Eyes, brows and lips kept as they are, with a little room around them.
+            CGContextSetGrayFillColor(context, 0.0, 1.0);
+            CGContextSetGrayStrokeColor(context, 0.0, 1.0);
+            CGContextSetLineWidth(context, std::max(1.0, w * 0.035));
+            CGContextSetLineJoin(context, kCGLineJoinRound);
+            for (const FaceOutline& feature : face.features) {
+                addPath(context, feature, width, height, true);
+                CGContextDrawPath(context, kCGPathFillStroke);
+            }
+        }
+    });
+    draw(teeth, [&](CGContextRef context) {
+        CGContextSetGrayFillColor(context, 1.0, 1.0);
+        for (const FaceParts& face : faces) {
+            addPath(context, face.innerLips, width, height, true);
+            CGContextFillPath(context);
+        }
+    });
+    CGColorSpaceRelease(grey);
+    // Soft edges, in proportion to the faces.
+    soften(skin, width, height, std::max(1, longest / 40), 2);
+    soften(teeth, width, height, std::max(1, longest / 120), 1);
+    mask.width = width;
+    mask.height = height;
+    mask.pixels.resize(skin.size() * 2);
+    for (std::size_t i = 0; i < skin.size(); ++i) {
+        mask.pixels[i * 2] = skin[i];
+        mask.pixels[i * 2 + 1] = teeth[i];
+    }
+    return mask;
 }
 
 std::optional<FaceBox> findSubjectIn(CVPixelBufferRef frame)

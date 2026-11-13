@@ -373,3 +373,41 @@ TEST_CASE("LUT files load by extension", "[color][lut]")
     CHECK_THROWS_WITH(loadLut(other), Catch::Matchers::Equals("unsupported LUT format .png (use .cube or .3dl)"));
     std::filesystem::remove(other);
 }
+
+TEST_CASE("protecting skin tones: a protection, not a change; checked and saved", "[color]")
+{
+    ColorGrade g;
+    g.protectSkin = 0.8;
+    CHECK(g.isNeutral()); // on its own it changes nothing
+    CHECK_FALSE(validateGrade(g));
+    g.saturation = -1.0;
+    CHECK_FALSE(g.isNeutral());
+    CHECK(scaledGrade(g, 0.5).protectSkin == Approx(0.8)); // a look's strength leaves it
+    ColorGrade bad;
+    bad.protectSkin = 1.2;
+    CHECK(validateGrade(bad).value() == "skin tone protection must be between 0 and 100%");
+    bad.protectSkin = -0.1;
+    CHECK(validateGrade(bad));
+    const nlohmann::json j = gradeToJson(g);
+    CHECK(j.at("protectSkin").get<double>() == Approx(0.8));
+    CHECK(gradeFromJson(j) == g);
+    nlohmann::json older = j;
+    older.erase("protectSkin");
+    CHECK(gradeFromJson(older).protectSkin == 0.0);
+}
+
+TEST_CASE("skin tones: light to deep skin counts, other colours do not", "[color]")
+{
+    const auto tone = [](int r, int g, int b) { return skinTone({r / 255.0f, g / 255.0f, b / 255.0f}); };
+    CHECK(tone(241, 194, 170) > 0.8f); // light
+    CHECK(tone(224, 172, 140) > 0.8f);
+    CHECK(tone(198, 134, 66) > 0.8f);  // medium
+    CHECK(tone(141, 85, 36) > 0.8f);   // deep
+    CHECK(tone(92, 56, 40) > 0.5f);    // very deep
+    CHECK(tone(90, 140, 220) < 0.01f); // sky
+    CHECK(tone(80, 160, 70) < 0.01f);  // grass
+    CHECK(tone(128, 128, 128) < 0.01f); // grey
+    CHECK(tone(250, 250, 245) < 0.05f); // white
+    CHECK(tone(20, 12, 10) < 0.05f);    // nearly black
+    CHECK(tone(230, 30, 40) < 0.2f);    // a saturated red
+}

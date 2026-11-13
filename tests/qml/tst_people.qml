@@ -127,6 +127,88 @@ Item {
             tryVerify(() => Math.abs(red(f, 0.03, 0.5) - 128) < 20, 5000)
         }
 
+        // Over a patch of the player (canvas fractions, centre and size): the mean brightness,
+        // the mean colourfulness (red minus blue) and the fine texture (mean second difference
+        // across and down), from one grab.
+        function patch(f, u, v, w, h) {
+            const overlay = findChild(f.editor, "maskOverlay")
+            const r = overlay.canvasRect
+            const image = grabImage(root)
+            const scale = image.width / root.width
+            const a = overlay.mapToItem(root, r.x + (u - w / 2) * r.width, r.y + (v - h / 2) * r.height)
+            const b = overlay.mapToItem(root, r.x + (u + w / 2) * r.width, r.y + (v + h / 2) * r.height)
+            const x0 = Math.round(a.x * scale), y0 = Math.round(a.y * scale)
+            const x1 = Math.round(b.x * scale), y1 = Math.round(b.y * scale)
+            let light = 0, colour = 0, texture = 0, n = 0
+            for (let y = y0; y < y1; ++y)
+                for (let x = x0; x < x1; ++x) {
+                    const c = image.pixel(x, y)
+                    light += (c.r + c.g + c.b) / 3
+                    colour += c.r - c.b
+                    // Second differences: fine texture, not the face's gentle shading.
+                    texture += Math.abs(2 * c.g - image.pixel(x - 1, y).g - image.pixel(x + 1, y).g)
+                             + Math.abs(2 * c.g - image.pixel(x, y - 1).g - image.pixel(x, y + 1).g)
+                    ++n
+                }
+            return { light: light / n * 255, colour: colour / n * 255, texture: texture / n * 255 }
+        }
+
+        function test_beauty_smooths_and_brightens_the_face() {
+            const f = createEditor()
+            const p = f.project
+            const id = withPeople(f)
+            // The forehead: skin with fine lines, above the eyes (which stay sharp).
+            const face = () => patch(f, faceX(1.5), 0.185, 0.03, 0.022)
+            tryVerify(() => Math.abs(red(f, 0.03, 0.5) - 128) < 20, 5000, "the grey background")
+            const before = face()
+            verify(before.texture > 2, "the face has texture to smooth: " + before.texture)
+
+            click(f.editor, "beautySwitch")
+            compare(p.undoText, "Beauty")
+            compare(p.selectedClipInfo.beauty.enabled, true)
+            verify(settled(f.editor, "beautySmooth").visible)
+            verify(p.setFaceBeauty(id, { smooth: 1, brighten: 0 }))
+            compare(p.undoText, "Change Beauty")
+            tryVerify(() => face().texture < before.texture * 0.8, 5000,
+                      "the skin was not smoothed: " + face().texture + " from " + before.texture)
+            const smoothed = face()
+            verify(Math.abs(smoothed.light - before.light) < 6, "smoothing alone keeps the brightness")
+            verify(Math.abs(red(f, 0.03, 0.5) - 128) < 20, "the background is left alone")
+
+            verify(p.setFaceBeauty(id, { brighten: 1 }))
+            tryVerify(() => face().light > smoothed.light + 4, 5000, "the skin was not brightened")
+            // Out of range is refused; off, the face is as it was.
+            verify(!p.setFaceBeauty(id, { smooth: 2 }))
+            click(f.editor, "beautySwitch")
+            compare(p.undoText, "Remove Beauty")
+            tryVerify(() => Math.abs(face().texture - before.texture) < before.texture * 0.15, 5000)
+            p.undo()
+            compare(p.selectedClipInfo.beauty.enabled, true)
+            compare(p.selectedClipInfo.beauty.brighten, 1)
+        }
+
+        function test_skin_tones_are_protected_from_a_grade() {
+            const f = createEditor()
+            const p = f.project
+            const id = withPeople(f)
+            const face = () => patch(f, faceX(1.5), 0.27, 0.03, 0.05)
+            tryVerify(() => face().colour > 15, 5000, "the face is warm to begin with")
+            const before = face().colour
+            // Grey everything: the face loses its colour…
+            verify(p.setClipColor(id, { saturation: -1 }))
+            tryVerify(() => face().colour < before * 0.3, 5000, "the grade did not take the colour")
+            // …until skin tones are protected from the Color tab: back to (most of) its colour.
+            click(f.editor, "inspectorTab:Color")
+            verify(settled(f.editor, "grade:protectSkin").visible)
+            verify(p.setClipColor(id, { protectSkin: 1 }))
+            compare(p.selectedClipInfo.color.protectSkin, 1)
+            tryVerify(() => face().colour > before * 0.6, 5000, "skin was not protected: " + face().colour)
+            // Protection alone is no grade at all.
+            verify(p.setClipColor(id, { saturation: 0 }))
+            compare(p.selectedClipInfo.color.neutral, true)
+            verify(!p.setClipColor(id, { protectSkin: 1.5 }))
+        }
+
         function test_faces_are_found_chosen_and_covered() {
             const f = createEditor()
             const p = f.project

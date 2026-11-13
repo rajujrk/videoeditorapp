@@ -229,6 +229,13 @@ window.TVE = {
       steps: ["Click the first tile in the Filters tab to add one at the playhead.", "Give it a look, a grade or effects.", "Keyframe its opacity to fade it in or out."]
     },
     {
+      id: "protect-skin", title: "Protect skin tones", chapter: "colour", area: "inspector",
+      where: ["Inspector", "Color", "Basic", "Protect skin tones"], image: "skin-protect",
+      summary: "Keep faces natural under a strong look or grade: skin keeps the colour it had before them, by the amount you choose.",
+      steps: ["Grade the clip, or give it a look.", "Open the Color tab and find Protect skin tones under Basic.", "Drag it up until faces look right; other colours keep the grade."],
+      note: "On its own it changes nothing: it only holds skin back from the look and grade."
+    },
+    {
       id: "hdr", title: "HDR projects and the HDR viewer", chapter: "colour", area: "inspector",
       where: ["Inspector", "Color", "Project colour"], image: "colour-hdr",
       summary: "Work in SDR Rec.709, HDR PQ or HDR HLG; iPhone HLG and camera PQ footage is converted to match, and HEVC exports keep HDR.",
@@ -444,6 +451,11 @@ window.TVE = {
       id: "people", title: "Portrait cutout, faces and auto reframe", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "People"], image: "people", privacy: "mac",
       summary: "Cut a person out of the background, cover faces that follow them, and turn landscape into 9:16, 1:1 or 4:5 keeping the subject in view.",
       steps: ["Use Portrait cutout to make the background transparent.", "Click Find faces, choose the ones to hide, and Cover faces with Mosaic, Blur or Fill.", "Under Auto reframe, pick 9:16, 1:1 or 4:5."]
+    },
+    {
+      id: "beauty", title: "Beauty filter", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Beauty"], image: "beauty", privacy: "mac",
+      summary: "Smooth and brighten the skin on every face, and whiten teeth, found afresh in each frame. Eyes, brows and lips stay sharp.",
+      steps: ["Select a video clip and open the Analyze tab.", "Turn on Beauty.", "Set Smooth skin, Brighten skin and Whiten teeth."]
     },
     {
       id: "motion-analysis", title: "Stabilize, flicker, denoise and tracking", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Steady and clean"], image: "motion", privacy: "mac",

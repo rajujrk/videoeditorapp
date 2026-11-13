@@ -855,6 +855,7 @@ QVariantMap gradeMap(const ColorGrade& g)
         {QStringLiteral("lutName"), lutName(g.lutPath)},
         {QStringLiteral("lutMissing"), !g.lutPath.empty() && !QFile::exists(QString::fromStdString(g.lutPath))},
         {QStringLiteral("lutIntensity"), g.lutIntensity},
+        {QStringLiteral("protectSkin"), g.protectSkin},
         {QStringLiteral("neutral"), g.isNeutral()},
     };
 }
@@ -2532,6 +2533,10 @@ QVariantMap ProjectController::selectedClipInfo() const
                                              && (track.kind == TrackKind::Audio || clip->audioEnabled)},
             {QStringLiteral("audioEffects"), effectsList(clip->audioEffects)},
             {QStringLiteral("cutout"), cutoutMap(clip->cutout)},
+            {QStringLiteral("beauty"), QVariantMap{{QStringLiteral("enabled"), clip->beauty.enabled},
+                                                   {QStringLiteral("smooth"), clip->beauty.smooth},
+                                                   {QStringLiteral("brighten"), clip->beauty.brighten},
+                                                   {QStringLiteral("teeth"), clip->beauty.teeth}}},
             {QStringLiteral("stabilization"), QVariantMap{{QStringLiteral("enabled"), clip->stabilization.enabled},
                                                           {QStringLiteral("smoothness"), clip->stabilization.smoothness},
                                                           {QStringLiteral("lock"), clip->stabilization.lock},
@@ -2743,6 +2748,7 @@ std::optional<ColorGrade> ProjectController::gradeWith(Id clipId, const QVariant
     number("temperature", g.temperature);
     number("tint", g.tint);
     number("lutIntensity", g.lutIntensity);
+    number("protectSkin", g.protectSkin);
     wheel("lift", g.lift);
     wheel("gamma", g.gamma);
     wheel("gain", g.gain);
@@ -8315,6 +8321,24 @@ bool ProjectController::setPortraitCutout(double clipId, const QVariantMap& sett
                       : cutout.enabled                          ? TVE_TR("core", "Portrait Cutout")
                                                                  : TVE_TR("core", "Remove Cutout");
     return apply(std::make_unique<SetClipPeopleCommand>(clip->id, cutout, std::nullopt, label));
+}
+
+bool ProjectController::setFaceBeauty(double clipId, const QVariantMap& settings)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    FaceBeauty beauty = clip->beauty;
+    beauty.enabled = settings.value(QStringLiteral("enabled"), beauty.enabled).toBool();
+    beauty.smooth = settings.value(QStringLiteral("smooth"), beauty.smooth).toDouble();
+    beauty.brighten = settings.value(QStringLiteral("brighten"), beauty.brighten).toDouble();
+    beauty.teeth = settings.value(QStringLiteral("teeth"), beauty.teeth).toDouble();
+    if (beauty == clip->beauty)
+        return true;
+    const char* label = beauty.enabled == clip->beauty.enabled ? TVE_TR("core", "Change Beauty")
+                      : beauty.enabled                          ? TVE_TR("core", "Beauty")
+                                                                 : TVE_TR("core", "Remove Beauty");
+    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, beauty, label));
 }
 
 bool ProjectController::findFaces(double clipId)

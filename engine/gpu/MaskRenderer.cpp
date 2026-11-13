@@ -86,6 +86,8 @@ MaskRenderer::MaskRenderer(QRhi* rhi) : m_rhi(rhi)
     m_facesFragment = readShader(QStringLiteral(":/gpu/shaders/faces.frag.qsb"));
     m_steadyFragment = readShader(QStringLiteral(":/gpu/shaders/steady.frag.qsb"));
     m_denoiseFragment = readShader(QStringLiteral(":/gpu/shaders/denoise.frag.qsb"));
+    m_beautyFragment = readShader(QStringLiteral(":/gpu/shaders/beauty.frag.qsb"));
+    m_protectFragment = readShader(QStringLiteral(":/gpu/shaders/protect.frag.qsb"));
     m_cursorFragment = readShader(QStringLiteral(":/gpu/shaders/cursor.frag.qsb"));
     m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
                                       QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
@@ -348,6 +350,56 @@ QRhiTexture* MaskRenderer::denoise(QRhiCommandBuffer* cb, QRhiTexture* picture, 
     u.params[0] = std::clamp(strength, 0.0f, 1.0f);
     return draw(cb, *slot, m_denoisePipeline, m_denoiseFragment, &u, int(sizeof(DenoiseUniforms))) ? slot->output.get()
                                                                                                 : picture;
+}
+
+QRhiTexture* MaskRenderer::beauty(QRhiCommandBuffer* cb, QRhiTexture* picture, QRhiTexture* mask,
+                                  const FaceBeauty& beauty)
+{
+    if (!picture || !mask || !beauty.active() || !m_vertex.isValid() || !m_beautyFragment.isValid())
+        return picture;
+    const QSize size = picture->pixelSize();
+    Slot* slot = nextSlot(size, int(sizeof(CutoutUniforms)));
+    if (!slot)
+        return picture;
+    slot->bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(
+            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, slot->uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, picture, m_sampler.get()),
+        QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, mask, m_sampler.get()),
+    });
+    CutoutUniforms u{}; // (the same layout)
+    u.texelSize[0] = 1.0f / float(size.width());
+    u.texelSize[1] = 1.0f / float(size.height());
+    u.flipY = m_rhi->isYUpInNDC() ? 1.0f : 0.0f;
+    u.params[0] = float(std::clamp(beauty.smooth, 0.0, 1.0));
+    u.params[1] = float(std::clamp(beauty.brighten, 0.0, 1.0));
+    u.params[2] = float(std::clamp(beauty.teeth, 0.0, 1.0));
+    return draw(cb, *slot, m_beautyPipeline, m_beautyFragment, &u, int(sizeof(CutoutUniforms))) ? slot->output.get()
+                                                                                              : picture;
+}
+
+QRhiTexture* MaskRenderer::protectSkin(QRhiCommandBuffer* cb, QRhiTexture* graded, QRhiTexture* original, float amount)
+{
+    if (!graded || !original || graded == original || amount <= 0.0f || original->pixelSize() != graded->pixelSize()
+        || !m_vertex.isValid() || !m_protectFragment.isValid())
+        return graded;
+    const QSize size = graded->pixelSize();
+    Slot* slot = nextSlot(size, int(sizeof(CutoutUniforms)));
+    if (!slot)
+        return graded;
+    slot->bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(
+            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, slot->uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, graded, m_sampler.get()),
+        QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, original, m_sampler.get()),
+    });
+    CutoutUniforms u{};
+    u.texelSize[0] = 1.0f / float(size.width());
+    u.texelSize[1] = 1.0f / float(size.height());
+    u.flipY = m_rhi->isYUpInNDC() ? 1.0f : 0.0f;
+    u.params[0] = std::clamp(amount, 0.0f, 1.0f);
+    return draw(cb, *slot, m_protectPipeline, m_protectFragment, &u, int(sizeof(CutoutUniforms))) ? slot->output.get()
+                                                                                                : graded;
 }
 
 QRhiTexture* MaskRenderer::drawCursor(QRhiCommandBuffer* cb, QRhiTexture* picture, float x, float y, float size, float ring,

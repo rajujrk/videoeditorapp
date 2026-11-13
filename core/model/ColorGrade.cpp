@@ -77,6 +77,8 @@ std::optional<std::string> validateGrade(const ColorGrade& g)
     }
     if (!inRange(g.lutIntensity, 0.0, 1.0))
         return "LUT intensity must be between 0 and 100%";
+    if (!inRange(g.protectSkin, 0.0, 1.0))
+        return "skin tone protection must be between 0 and 100%";
     return std::nullopt;
 }
 
@@ -334,6 +336,22 @@ std::array<float, 3> applyGrade(const GradeCoefficients& c, const std::array<std
             rgb[i] = lookup(curves[std::size_t(i)], rgb[i]);
     }
     return rgb;
+}
+
+float skinTone(std::array<float, 3> rgb)
+{
+    // Kept in step with skinTone() in protect.frag and beauty.frag.
+    const std::array<float, 3> hsv = rgbToHsv(rgb);
+    const float hue = hsv[0] > 0.5f ? hsv[0] - 1.0f : hsv[0]; // -0.5..0.5 turns, red at 0
+    const auto step = [](float edge0, float edge1, float x) {
+        const float t = std::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+        return t * t * (3.0f - 2.0f * t);
+    };
+    // Skin hues sit from about -10° to 50° (red to yellow-orange); soft edges either side.
+    const float hueWeight = step(-0.06f, -0.01f, hue) * (1.0f - step(0.12f, 0.17f, hue));
+    const float satWeight = step(0.08f, 0.16f, hsv[1]) * (1.0f - step(0.72f, 0.92f, hsv[1]));
+    const float valueWeight = step(0.12f, 0.22f, hsv[2]) * (1.0f - step(0.97f, 1.0f, hsv[2]));
+    return hueWeight * satWeight * valueWeight;
 }
 
 } // namespace tve

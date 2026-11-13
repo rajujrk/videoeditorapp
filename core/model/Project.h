@@ -501,6 +501,7 @@ struct Clip {
     // the decoded picture, where Vision saw them.
     PortraitCutout cutout;
     FaceMosaic faceMosaic;
+    FaceBeauty beauty; // after the cutout and covers
     // Motion (core/model/Motion.h), after the people, before colour, masks and effects:
     // steadied and its flicker evened out, then denoised over time (strength 0..1, 0: off).
     Stabilization stabilization;

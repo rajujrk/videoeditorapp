@@ -78,9 +78,17 @@ struct ColorGrade {
     ColorCurve lumaVsSat;
     std::string lutPath;      // .cube or .3dl; empty: none
     double lutIntensity = 1.0;
+    // How much skin tones keep the colour they had before the grade (and the look): 0..1.
+    // A protection, not a change: a grade with nothing else is still neutral.
+    double protectSkin = 0.0;
 
     // True when it leaves every colour as it is.
-    bool isNeutral() const { return *this == ColorGrade{}; }
+    bool isNeutral() const
+    {
+        ColorGrade changes = *this;
+        changes.protectSkin = 0.0;
+        return changes == ColorGrade{};
+    }
 
     friend bool operator==(const ColorGrade&, const ColorGrade&) = default;
 };
@@ -121,6 +129,11 @@ std::array<std::vector<float>, 3> bakeCurves(const ColorGrade& grade, int size =
 // The hue curves the same way: hue vs saturation, hue vs hue, luma vs saturation (0.5 where
 // a curve is empty).
 std::array<std::vector<float>, 3> bakeHueCurves(const ColorGrade& grade, int size = 256);
+
+// How much a gamma-encoded RGB colour is a skin tone (0..1): hues from red to yellow-orange at
+// a moderate saturation, neither very dark nor blown out, whatever the skin's depth. What
+// protecting skin tones (protect.frag) and the beauty filter (beauty.frag) both use.
+float skinTone(std::array<float, 3> rgb);
 
 // Hue (0..1 turns), saturation and value of an RGB colour, and back.
 std::array<float, 3> rgbToHsv(std::array<float, 3> rgb);

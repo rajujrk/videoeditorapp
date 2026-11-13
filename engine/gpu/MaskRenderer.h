@@ -55,6 +55,13 @@ public:
     QRhiTexture* coverFaces(QRhiCommandBuffer* cb, QRhiTexture* picture, const std::vector<FaceBox>& faces,
                             FaceCover cover, float amount);
 
+    // The beauty filter (beauty.frag) where `mask` (two channels of any size: skin, teeth;
+    // see tve::beautyMask) says; `picture` itself when it is off or there is no mask.
+    QRhiTexture* beauty(QRhiCommandBuffer* cb, QRhiTexture* picture, QRhiTexture* mask, const FaceBeauty& beauty);
+    // Skin tones in `graded` mixed back towards `original` (the picture before its look and
+    // grade, the same size) by `amount` (protect.frag); `graded` itself when 0.
+    QRhiTexture* protectSkin(QRhiCommandBuffer* cb, QRhiTexture* graded, QRhiTexture* original, float amount);
+
     // Stabilized and/or evened out (steady.frag): zoomed by `zoom`, the correction (a
     // SteadySample's dx, dy, angle, scale) applied, colour times `gain`.
     QRhiTexture* steady(QRhiCommandBuffer* cb, QRhiTexture* picture, float zoom, const std::array<float, 4>& correction,
@@ -88,6 +95,8 @@ private:
     QShader m_steadyFragment;
     QShader m_denoiseFragment;
     QShader m_cursorFragment;
+    QShader m_beautyFragment;
+    QShader m_protectFragment;
     std::unique_ptr<QRhiSampler> m_sampler;
     std::unique_ptr<QRhiRenderPassDescriptor> m_renderPass;
     std::unique_ptr<QRhiGraphicsPipeline> m_maskPipeline;
@@ -97,6 +106,8 @@ private:
     std::unique_ptr<QRhiGraphicsPipeline> m_steadyPipeline;
     std::unique_ptr<QRhiGraphicsPipeline> m_denoisePipeline;
     std::unique_ptr<QRhiGraphicsPipeline> m_cursorPipeline;
+    std::unique_ptr<QRhiGraphicsPipeline> m_beautyPipeline;
+    std::unique_ptr<QRhiGraphicsPipeline> m_protectPipeline;
     std::vector<Slot> m_slots;
     std::size_t m_used = 0;
 };

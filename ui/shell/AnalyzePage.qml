@@ -274,6 +274,57 @@ ScrollView {
             }
         }
 
+        // Beauty: the faces in each frame (Vision's landmarks), their skin smoothed and lifted,
+        // their teeth whitened.
+        Section {
+            id: beauty
+            objectName: "beautySection"
+            visible: page.canFindPeople
+            Layout.fillWidth: true
+            title: qsTr("Beauty")
+            readonly property var current: page.clipInfo.beauty || ({})
+            readonly property bool on: current.enabled === true
+            function change(values) { page.project.setFaceBeauty(page.clipInfo.id, values) }
+
+            Finding {
+                text: qsTr("Smooths and brightens the skin of every face it finds in each frame, and can whiten teeth. Eyes, brows and lips stay sharp (Vision, on this Mac).")
+                color: Theme.color.textSecondary
+            }
+            ToggleSwitch {
+                objectName: "beautySwitch"
+                text: qsTr("Beauty")
+                checked: beauty.on
+                onToggled: beauty.change({ enabled: checked })
+            }
+            Setting {
+                objectName: "beautySmooth"
+                visible: beauty.on
+                label: qsTr("Smooth skin")
+                from: 0; to: 1; stepSize: 0.05
+                value: beauty.current.smooth !== undefined ? beauty.current.smooth : 0.5
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: beauty.change({ smooth: value })
+            }
+            Setting {
+                objectName: "beautyBrighten"
+                visible: beauty.on
+                label: qsTr("Brighten skin")
+                from: 0; to: 1; stepSize: 0.05
+                value: beauty.current.brighten !== undefined ? beauty.current.brighten : 0.2
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: beauty.change({ brighten: value })
+            }
+            Setting {
+                objectName: "beautyTeeth"
+                visible: beauty.on
+                label: qsTr("Whiten teeth")
+                from: 0; to: 1; stepSize: 0.05
+                value: beauty.current.teeth || 0
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: beauty.change({ teeth: value })
+            }
+        }
+
         // Faces
         Section {
             id: faces

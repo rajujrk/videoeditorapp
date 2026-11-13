@@ -124,6 +124,26 @@
         <translation>விளிம்பு (சுருக்கு … விரி)</translation>
     </message>
     <message>
+        <source>Beauty</source>
+        <translation>அழகூட்டல்</translation>
+    </message>
+    <message>
+        <source>Smooths and brightens the skin of every face it finds in each frame, and can whiten teeth. Eyes, brows and lips stay sharp (Vision, on this Mac).</source>
+        <translation>ஒவ்வொரு ஃப்ரேமிலும் கண்டறியும் ஒவ்வொரு முகத்தின் தோலையும் மென்மையாக்கி ஒளிரச் செய்யும், பற்களை வெண்மையாக்கவும் முடியும். கண்கள், புருவங்கள், உதடுகள் கூர்மையாகவே இருக்கும் (Vision, இந்த Mac-இல்).</translation>
+    </message>
+    <message>
+        <source>Smooth skin</source>
+        <translation>தோலை மென்மையாக்கு</translation>
+    </message>
+    <message>
+        <source>Brighten skin</source>
+        <translation>தோலை ஒளிரச் செய்</translation>
+    </message>
+    <message>
+        <source>Whiten teeth</source>
+        <translation>பற்களை வெண்மையாக்கு</translation>
+    </message>
+    <message>
         <source>Faces</source>
         <translation>முகங்கள்</translation>
     </message>
@@ -3968,6 +3988,10 @@ Third, 4</source>
     <message>
         <source>Tint</source>
         <translation>சாயல்</translation>
+    </message>
+    <message>
+        <source>Protect skin tones</source>
+        <translation>தோல் நிறங்களைக் காத்திடு</translation>
     </message>
     <message>
         <source>Wheels</source>
@@ -11344,6 +11368,18 @@ The Journey</source>
         <translation>வெட்டியெடுப்பை அகற்று</translation>
     </message>
     <message>
+        <source>Change Beauty</source>
+        <translation>அழகூட்டலை மாற்று</translation>
+    </message>
+    <message>
+        <source>Beauty</source>
+        <translation>அழகூட்டல்</translation>
+    </message>
+    <message>
+        <source>Remove Beauty</source>
+        <translation>அழகூட்டலை அகற்று</translation>
+    </message>
+    <message>
         <source>Cover Faces</source>
         <translation>முகங்களை மறை</translation>
     </message>
@@ -11684,8 +11720,8 @@ The Journey</source>
         <translation>கீக்கள், மாஸ்க்குகள், மேட்டுகள்</translation>
     </message>
     <message>
-        <source>Cutouts, covered faces, stabilization, denoise and cursor effects</source>
-        <translation>வெட்டியெடுப்புகள், மறைத்த முகங்கள், நிலைப்படுத்தல், இரைச்சல் நீக்கம், கர்சர் விளைவுகள்</translation>
+        <source>Cutouts, covered faces, beauty, stabilization, denoise and cursor effects</source>
+        <translation>வெட்டியெடுப்புகள், மறைத்த முகங்கள், அழகூட்டல், நிலைப்படுத்தல், இரைச்சல் நீக்கம், கர்சர் விளைவுகள்</translation>
     </message>
     <message>
         <source>Clip volume and fades</source>

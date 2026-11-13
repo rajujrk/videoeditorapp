@@ -252,7 +252,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorWheel, x, y, master)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(HslBand, hue, saturation, luminance)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColorGrade, exposure, contrast, saturation, temperature, tint, lift,
                                                 gamma, gain, offset, master, red, green, blue, hsl, hueVsSat, hueVsHue,
-                                                lumaVsSat, lutPath, lutIntensity, zones)
+                                                lumaVsSat, lutPath, lutIntensity, zones, protectSkin)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipLook, id, title, intensity, grade)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EnhancedAudio, path, limitDb)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ProcessedVideo, path, from, to, steps)
@@ -275,6 +275,7 @@ void from_json(const nlohmann::json& j, TrackSample& s)
          j.at(4).get<double>(), j.at(5).get<double>()};
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PortraitCutout, enabled, invert, softness, shift, subject)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceBeauty, enabled, smooth, brighten, teeth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceBox, x, y, width, height)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceSample, time, box)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceTrack, id, samples)
@@ -308,7 +309,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Deflicker, enabled, strength, sa
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
-                                                chromaKey, masks, matte, cutout, faceMosaic, stabilization, deflicker,
+                                                chromaKey, masks, matte, cutout, faceMosaic, beauty, stabilization, deflicker,
                                                 denoise, motionTracks, processedVideo, cursor, audioEffects,
                                                 enhancedAudio, keepPitch, sequenceId, groupId, drawing, angles, motionBlur)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,

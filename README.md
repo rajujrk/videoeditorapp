@@ -91,6 +91,7 @@ The following improvements were completed after Phase 5:
 - Slice 29a: Importing image sequences, SVG drawings, camera RAW photos and OpenEXR pictures.
 - Slice 29b: Exporting to a file size, in several formats at once, and as a Live Photo.
 - Slice 29c: Shortcut presets and a keyboard map, favourites with tags, workspaces, and a full-screen preview on a second display.
+- Slice 30a: A beauty filter for faces (smoothing and brightening skin, whitening teeth) and protecting skin tones from a grade, on the Mac.
 
 All previously identified feature gaps have been closed.
 
@@ -116,6 +117,8 @@ All previously identified feature gaps have been closed.
 - Apply LUTs (Look-Up Tables).
 - Display colour scopes for accurate grading.
 - Apply looks (filters) and overlays to individual clips.
+- Protect skin tones from a grade or look, so faces keep their colour.
+- Smooth and brighten the skin on every face and whiten teeth, found frame by frame on the Mac.
 - Add adjustment layers above clips to apply effects across multiple clips.
 
 ### 2.3 Masks, Keying and Compositing
@@ -381,6 +384,15 @@ step. **Auto reframe** turns a landscape shot into **9:16**, **1:1**, **4:5** (o
 **16:9**): the canvas takes that shape and the clip is scaled to fill it with position
 keyframes that keep the subject — the faces, or what draws the eye when there are none — in
 view, smoothed by **Smoothness**; canvas and clip are one undo step.
+
+**Beauty and skin tones.** The Analyze tab's **Beauty** finds every face in each frame as it is
+drawn (Vision's face landmarks, on this Mac) and works on its skin only — the face's outline and
+forehead, where the colour is a skin tone, with the eyes, brows and lips cut out so they stay
+sharp: **Smooth skin** takes away fine texture with an edge-keeping blur, **Brighten skin** lifts it,
+and **Whiten teeth** turns the bright parts of the open mouth towards white. Each is one undo step.
+On the Color tab, **Protect skin tones** (under Basic) keeps skin at the colour it had before the
+look and grade, by that much, so a cold or desaturated grade leaves faces natural; on its own it
+changes nothing.
 
 **Motion.** The Analyze tab's **Steady and clean** section measures a clip's camera motion and
 brightness once (in the background; kept per file) with block matching of our own.

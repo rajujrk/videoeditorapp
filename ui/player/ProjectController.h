@@ -581,7 +581,8 @@ public:
     // tint (numbers); lift, gamma, gain, offset ({x, y, master}); master, red, green, blue
     // (curves: [{x, y}], empty for none); hueVsSat, hueVsHue, lumaVsSat (curves where y 0.5
     // changes nothing); hsl ([{band 0–7, hue, saturation, luminance}], the bands to change:
-    // red, orange, yellow, green, aqua, blue, purple, magenta); lutIntensity.
+    // red, orange, yellow, green, aqua, blue, purple, magenta); lutIntensity; protectSkin
+    // (0..1: how much skin tones keep their colour from before the look and grade).
     // selectedClipInfo.color has them all (hsl as eight {hue, saturation, luminance}),
     // plus lutPath, lutName, lutMissing and neutral.
     Q_INVOKABLE bool setClipColor(double clipId, const QVariantMap& changes);
@@ -888,6 +889,9 @@ public:
     // The portrait cutout: settings enabled, invert, softness (0..1), shift (-1..1), and
     // subject: false to go back from a smart cutout to people.
     Q_INVOKABLE bool setPortraitCutout(double clipId, const QVariantMap& settings);
+    // The beauty filter on the faces found in each frame: settings enabled, smooth, brighten
+    // and teeth (each 0..1). One undo step.
+    Q_INVOKABLE bool setFaceBeauty(double clipId, const QVariantMap& settings);
     // Finds the faces through the clip's file in the background (kept per file) → `faces`.
     Q_INVOKABLE bool findFaces(double clipId);
     // Smart cutout: whatever stands out in the box drawn on the player (trackArea), followed

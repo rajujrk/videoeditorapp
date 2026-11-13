@@ -280,6 +280,7 @@ void TimelinePlayback::buildLayersOf(const Project& project, const std::vector<T
         LayerPeople people{clip.cutout, std::nullopt, clip.faceMosaic.boxesAt(sourceTime), clip.faceMosaic.style,
                            float(clip.faceMosaic.amount)};
         people.cutout.subject.clear(); // (the box at this frame is enough)
+        people.beauty = clip.beauty;
         if (clip.cutout.enabled)
             people.subject = clip.cutout.subjectAt(sourceTime);
         return people;

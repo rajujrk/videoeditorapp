@@ -246,3 +246,39 @@ TEST_CASE("a processed copy and a smart cutout's subject are commands, kept by s
     p.push<SetClipProcessedVideoCommand>(clip, std::nullopt, "Original Picture");
     CHECK_FALSE(p.clip(clip).processedVideo);
 }
+
+TEST_CASE("the beauty filter is a people setting: checked, undone, kept by splits and saved")
+{
+    PeopleProject p;
+    const Id clip = p.push<AddClipCommand>(p.track, p.video, 0, 10 * kSec, 0).clipId();
+    CHECK_FALSE(p.clip(clip).beauty.active()); // off by default
+    FaceBeauty beauty{true, 0.7, 0.3, 0.4};
+    CHECK(beauty.active());
+    p.push<SetClipPeopleCommand>(clip, beauty, "Beauty");
+    CHECK(p.clip(clip).beauty == beauty);
+    CHECK(p.stack.undoLabel() == "Beauty");
+    p.stack.undo();
+    CHECK(p.clip(clip).beauty == FaceBeauty{});
+    p.stack.redo();
+    // The cutout and covers are left as they are, and they leave it.
+    p.push<SetClipPeopleCommand>(clip, PortraitCutout{true, false, 0.3, 0.0}, std::nullopt, "Portrait Cutout");
+    CHECK(p.clip(clip).beauty == beauty);
+
+    auto& split = p.push<SplitClipCommand>(clip, 4 * kSec);
+    CHECK(p.clip(split.rightClipId()).beauty == beauty);
+    nlohmann::json json = projectToJson(p.project);
+    const Project loaded = projectFromJson(json);
+    CHECK(const_cast<Project&>(loaded).locateClip(clip)->clip->beauty == beauty);
+    for (auto& t : json["tracks"])
+        for (auto& c : t["clips"])
+            c.erase("beauty");
+    CHECK(projectFromJson(json).locateClip(clip)->clip->beauty == FaceBeauty{}); // older projects
+
+    // Enabled with nothing to do is not active; out of range is refused; only video files.
+    CHECK_FALSE((FaceBeauty{true, 0.0, 0.0, 0.0}).active());
+    CHECK_FALSE((FaceBeauty{false, 1.0, 1.0, 1.0}).active());
+    CHECK(p.tryPush<SetClipPeopleCommand>(clip, FaceBeauty{true, 1.5, 0.0, 0.0}, "x").value() == "beauty setting out of range");
+    CHECK(p.tryPush<SetClipPeopleCommand>(clip, FaceBeauty{true, 0.5, -0.1, 0.0}, "x").value() == "beauty setting out of range");
+    const Id photo = p.push<AddClipCommand>(p.track, p.still, 20 * kSec, 2 * kSec, 0).clipId();
+    CHECK(p.tryPush<SetClipPeopleCommand>(photo, beauty, "Beauty").value() == "only clips of video files can find people");
+}
