@@ -492,6 +492,7 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.matte = clip.matte;
     right.cutout = clip.cutout;
     right.faceMosaic = clip.faceMosaic; // face tracks are in media time: the same for both halves
+    right.beauty = clip.beauty;
     right.stabilization = clip.stabilization; // likewise motion
     right.deflicker = clip.deflicker;
     right.denoise = clip.denoise;
@@ -1140,8 +1141,13 @@ std::optional<std::string> SetClipPeopleCommand::redo(Project& project)
     if (m_faces && (!std::isfinite(m_faces->amount) || m_faces->amount < 0.0 || m_faces->amount > 1.0
                     || !std::isfinite(m_faces->expand) || m_faces->expand < 0.0 || m_faces->expand > 2.0))
         return "face cover setting out of range";
+    if (m_beauty && !m_beauty->valid())
+        return "beauty setting out of range";
     m_previousCutout = clip.cutout;
     m_previousFaces = clip.faceMosaic;
+    m_previousBeauty = clip.beauty;
+    if (m_beauty)
+        location->clip->beauty = *m_beauty;
     if (m_cutout)
         location->clip->cutout = *m_cutout;
     if (m_faces)
@@ -1154,6 +1160,7 @@ void SetClipPeopleCommand::undo(Project& project)
     Clip& clip = *project.locateClip(m_clipId)->clip;
     clip.cutout = m_previousCutout;
     clip.faceMosaic = m_previousFaces;
+    clip.beauty = m_previousBeauty;
 }
 
 // --- SetClipEnhancedAudioCommand ---

@@ -1,5 +1,6 @@
 // Chroma key, masks and track mattes on the real GPU (Metal, offscreen).
 #include "gpu/MaskRenderer.h"
+#include "model/ColorGrade.h"
 
 #include <QImage>
 #include <rhi/qrhi.h>
@@ -432,6 +433,92 @@ TEST_CASE("cursor effects ring, highlight and spotlight around the cursor")
     // Nothing on: the picture itself.
     run({picture}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
         CHECK(m.drawCursor(cb, t[0], 0.5f, 0.5f, 0.2f, -1.0f, false, false) == t[0]);
+        return t[0];
+    });
+}
+
+TEST_CASE("protecting skin tones keeps skin as it was and lets other colours take the grade")
+{
+    // Before the grade: skin on the left, sky on the right. After it: everything turned green.
+    const QColor skin(224, 172, 140), sky(90, 140, 220);
+    REQUIRE(skinTone({224 / 255.0f, 172 / 255.0f, 140 / 255.0f}) > 0.9f);
+    REQUIRE(skinTone({90 / 255.0f, 140 / 255.0f, 220 / 255.0f}) < 0.01f);
+    const QImage original = filled([&](int x, int) { return x < kW / 2 ? skin : sky; });
+    const QImage graded = filled([](int, int) { return QColor(120, 200, 110); });
+    const auto protect = [&](float amount) {
+        return run({graded, original}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+            return m.protectSkin(cb, t[0], t[1], amount);
+        });
+    };
+    const Pixels full = protect(1.0f);
+    CHECK(full.at(0.2, 0.5)[0] == Approx(224 / 255.0f).margin(0.02)); // skin: as before the grade
+    CHECK(full.at(0.2, 0.5)[2] == Approx(140 / 255.0f).margin(0.02));
+    CHECK(full.at(0.8, 0.5)[1] == Approx(200 / 255.0f).margin(0.02)); // sky: graded
+    const Pixels half = protect(0.5f);
+    CHECK(half.at(0.2, 0.5)[0] == Approx((224 + 120) / 2 / 255.0f).margin(0.03));
+    run({graded, original}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        CHECK(m.protectSkin(cb, t[0], t[1], 0.0f) == t[0]); // nothing to protect
+        CHECK(m.protectSkin(cb, t[0], t[0], 1.0f) == t[0]); // nothing graded
+        return t[0];
+    });
+}
+
+TEST_CASE("the beauty filter smooths and lifts skin, and whitens teeth, only where the mask says")
+{
+    // Grainy skin everywhere, with a yellowish tooth-coloured block in the middle.
+    const QImage picture = filled([](int x, int y) {
+        if (x >= 28 && x < 36 && y >= 14 && y < 22)
+            return QColor(230, 205, 150);
+        const int g = ((x * 7 + y * 13) % 3 - 1) * 12;
+        return QColor(205 + g, 150 + g, 120 + g);
+    });
+    // The mask: skin on the left half (not where an "eye" is), teeth over the block.
+    const QImage mask = filled([](int x, int y) {
+        const bool eye = x >= 8 && x < 16 && y >= 6 && y < 12;
+        const bool skin = x < kW / 2 && !eye && !(x >= 26 && y >= 12 && y < 24);
+        const bool teeth = x >= 28 && x < 36 && y >= 14 && y < 22;
+        return QColor(skin ? 255 : 0, teeth ? 255 : 0, 0);
+    });
+    FaceBeauty beauty;
+    beauty.enabled = true;
+    beauty.smooth = 1.0;
+    beauty.brighten = 0.0;
+    beauty.teeth = 1.0;
+    const auto apply = [&](const FaceBeauty& b) {
+        return run({picture, mask}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+            return m.beauty(cb, t[0], t[1], b);
+        });
+    };
+    const Pixels out = apply(beauty);
+    const auto grain = [&](const Pixels* p, int x0, int x1, int y0, int y1) {
+        double sum = 0.0;
+        for (int y = y0; y < y1; ++y)
+            for (int x = x0; x < x1; ++x) {
+                const float v = p ? p->at((x + 0.5) / kW, (y + 0.5) / kH)[1] : float(picture.pixelColor(x, y).greenF());
+                sum += std::abs(v - 150.0f / 255.0f);
+            }
+        return sum;
+    };
+    CHECK(grain(&out, 2, 24, 16, 34) < grain(nullptr, 2, 24, 16, 34) * 0.6); // skin: smoothed
+    CHECK(grain(&out, 42, 62, 2, 34) == Approx(grain(nullptr, 42, 62, 2, 34)).epsilon(0.05)); // outside: as it was
+    const auto at = [&](const Pixels& p, int x, int y) { return p.at((x + 0.5) / kW, (y + 0.5) / kH); };
+    CHECK(at(out, 11, 8)[1] == Approx(picture.pixelColor(11, 8).greenF()).margin(0.01)); // the eye: untouched
+    // The tooth: whiter (red and blue closer together), not darker.
+    const float* tooth = at(out, 31, 17);
+    CHECK(tooth[0] - tooth[2] < (230 - 150) / 255.0f * 0.5f);
+    CHECK(tooth[1] >= 205 / 255.0f - 0.01f);
+    // Brightening lifts the skin and nothing else.
+    beauty.smooth = 0.0;
+    beauty.teeth = 0.0;
+    beauty.brighten = 1.0;
+    const Pixels lifted = apply(beauty);
+    CHECK(at(lifted, 4, 30)[1] > at(out, 4, 30)[1] + 0.02f);
+    CHECK(at(lifted, 50, 30)[1] == Approx(picture.pixelColor(50, 30).greenF()).margin(0.01));
+    // Off: the picture itself.
+    beauty.enabled = false;
+    run({picture, mask}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        CHECK(m.beauty(cb, t[0], t[1], beauty) == t[0]);
+        CHECK(m.beauty(cb, t[0], nullptr, FaceBeauty{true, 1.0, 1.0, 1.0}) == t[0]);
         return t[0];
     });
 }

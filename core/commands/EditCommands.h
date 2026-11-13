@@ -374,6 +374,11 @@ public:
         : m_clipId(clipId), m_cutout(std::move(cutout)), m_faces(std::move(faces)), m_label(std::move(label))
     {
     }
+    // The beauty filter ("Beauty", "Change Beauty"…).
+    SetClipPeopleCommand(Id clipId, FaceBeauty beauty, std::string label)
+        : m_clipId(clipId), m_beauty(beauty), m_label(std::move(label))
+    {
+    }
 
     std::string label() const override { return m_label; }
     std::optional<std::string> redo(Project& project) override;
@@ -383,9 +388,11 @@ private:
     Id m_clipId;
     std::optional<PortraitCutout> m_cutout;
     std::optional<FaceMosaic> m_faces;
+    std::optional<FaceBeauty> m_beauty;
     std::string m_label;
     PortraitCutout m_previousCutout;
     FaceMosaic m_previousFaces;
+    FaceBeauty m_previousBeauty;
 };
 
 // Plays a clip's sound from a cleaned copy (speech enhancement), or (nullopt) its own again.

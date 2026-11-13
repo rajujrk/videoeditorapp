@@ -40,6 +40,20 @@ struct PortraitCutout {
     friend bool operator==(const PortraitCutout&, const PortraitCutout&) = default;
 };
 
+// The beauty filter: the faces Vision finds in each frame, as it is drawn — their skin smoothed
+// and brightened, their teeth whitened. Eyes, brows and lips stay as they are.
+struct FaceBeauty {
+    bool enabled = false;
+    double smooth = 0.5;   // 0..1: how much fine texture on the skin is smoothed away
+    double brighten = 0.2; // 0..1: how much the skin is lifted
+    double teeth = 0.0;    // 0..1: how much the teeth are whitened
+
+    bool active() const { return enabled && (smooth > 0.0 || brighten > 0.0 || teeth > 0.0); }
+    bool valid() const;
+
+    friend bool operator==(const FaceBeauty&, const FaceBeauty&) = default;
+};
+
 // One face where it was seen, at a media time.
 struct FaceSample {
     Ticks time = 0;

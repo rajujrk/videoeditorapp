@@ -171,6 +171,7 @@ void FrameCompositor::reset()
     m_stickers.clear();
     m_stills.clear();
     m_personMattes.clear();
+    m_beautyMasks.clear();
     m_denoise.clear();
 }
 
@@ -418,6 +419,39 @@ QRhiTexture* FrameCompositor::personMatte(QRhiCommandBuffer* cb, tve::Id clipId,
     return matte.texture.get();
 }
 
+QRhiTexture* FrameCompositor::beautyMask(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame)
+{
+    BeautyMaskTexture& mask = m_beautyMasks[clipId];
+    if (mask.frame == frame.pixelBuffer() && mask.pts == frame.pts())
+        return mask.faces ? mask.texture.get() : nullptr;
+    mask.frame = frame.pixelBuffer();
+    mask.pts = frame.pts();
+    const std::vector<tve::FaceParts> faces = tve::detectFaceParts(frame.pixelBuffer());
+    mask.faces = !faces.empty();
+    if (!mask.faces)
+        return nullptr;
+    // A quarter of the picture's width at most (the edges are soft anyway), 640 at most.
+    const int width = int(std::clamp<std::size_t>(CVPixelBufferGetWidth(frame.pixelBuffer()) / 4, 64, 640));
+    const int height = std::max(1, int(std::lround(double(width) * double(CVPixelBufferGetHeight(frame.pixelBuffer()))
+                                                   / double(std::max<std::size_t>(1, CVPixelBufferGetWidth(frame.pixelBuffer()))))));
+    const tve::BeautyMask drawn = tve::beautyMask(faces, width, height);
+    const QSize size(drawn.width, drawn.height);
+    if (!mask.texture || mask.texture->pixelSize() != size) {
+        mask.texture.reset(m_rhi->newTexture(QRhiTexture::RG8, size));
+        if (!mask.texture->create()) {
+            mask.texture.reset();
+            mask.faces = false;
+            return nullptr;
+        }
+    }
+    QRhiTextureSubresourceUploadDescription data(drawn.pixels.data(), quint32(drawn.pixels.size()));
+    data.setDataStride(quint32(drawn.width * 2));
+    QRhiResourceUpdateBatch* upload = m_rhi->nextResourceUpdateBatch();
+    upload->uploadTexture(mask.texture.get(), QRhiTextureUploadDescription({0, 0, data}));
+    cb->resourceUpdate(upload);
+    return mask.texture.get();
+}
+
 QRhiTexture* FrameCompositor::denoised(QRhiCommandBuffer* cb, tve::Id clipId, QRhiTexture* picture, tve::Ticks frame,
                                        float strength)
 {
@@ -470,6 +504,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::set<tve::Id> liveDrawings;
     std::set<tve::Id> liveStickers;
     std::set<tve::Id> liveMattes;
+    std::set<tve::Id> liveBeauty;
     std::set<tve::Id> liveDenoise;
     std::set<tve::Id> liveCanvasClips;
     std::size_t effectCanvasIndex = 0;
@@ -553,6 +588,10 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                 picture = m_masks->cutout(cb, picture, personMatte(cb, clipId, decoded, people->subject), people->cutout);
             }
             picture = m_masks->coverFaces(cb, picture, people->faces, people->cover, people->amount);
+            if (people->beauty.active()) {
+                liveBeauty.insert(clipId);
+                picture = m_masks->beauty(cb, picture, beautyMask(cb, clipId, decoded), people->beauty);
+            }
         }
         // Motion: steadied and evened out, then denoised over time (steady frames denoise best).
         if (motion && decoded.pixelBuffer()) {
@@ -591,6 +630,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
             QRhiTexture* uncoloured = picture;
             picture = m_grader->apply(cb, picture, look);
             picture = m_grader->apply(cb, picture, grade);
+            picture = m_masks->protectSkin(cb, picture, uncoloured, float(grade.protectSkin));
             if (!colourMasks.empty() && picture != uncoloured)
                 picture = keepInside(cb, picture, uncoloured, colourMasks);
         }
@@ -782,6 +822,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::erase_if(m_drawings, [&](const auto& entry) { return !liveDrawings.contains(entry.first); });
     std::erase_if(m_stickers, [&](const auto& entry) { return !liveStickers.contains(entry.first); });
     std::erase_if(m_personMattes, [&](const auto& entry) { return !liveMattes.contains(entry.first); });
+    std::erase_if(m_beautyMasks, [&](const auto& entry) { return !liveBeauty.contains(entry.first); });
     std::erase_if(m_denoise, [&](const auto& entry) { return !liveDenoise.contains(entry.first); });
     // Stills stay a while after they leave the screen (scrubbing back and forth), then go.
     std::erase_if(m_stills, [&](const auto& entry) { return m_renders - entry.second.lastUsed > 120; });

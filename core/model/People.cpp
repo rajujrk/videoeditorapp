@@ -265,4 +265,10 @@ ReframePath reframe(const std::vector<SubjectSample>& subject, double pictureWid
     return path;
 }
 
+bool FaceBeauty::valid() const
+{
+    const auto unit = [](double v) { return std::isfinite(v) && v >= 0.0 && v <= 1.0; };
+    return unit(smooth) && unit(brighten) && unit(teeth);
+}
+
 } // namespace tve

@@ -2470,6 +2470,9 @@ Rectangle {
                     GradeSlider { key: "saturation"; label: qsTr("Saturation") }
                     GradeSlider { key: "temperature"; label: qsTr("Temperature") }
                     GradeSlider { key: "tint"; label: qsTr("Tint") }
+                    // Skin keeps its colour from before the look and grade, by this much.
+                    GradeSlider { key: "protectSkin"; label: qsTr("Protect skin tones"); from: 0; to: 1
+                                  format: (v) => Math.round(v * 100) + "%" }
                 }
 
                 Section {

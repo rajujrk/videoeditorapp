@@ -42,6 +42,8 @@ double extraLoad(const Clip& clip, double pixels, const EffectWeight& weight)
         load += 0.2; // a person matte found per frame
     if (clip.faceMosaic.active())
         load += 0.04;
+    if (clip.beauty.active())
+        load += 0.12 * std::max(1.0, size); // face landmarks per frame, and an edge-keeping blur
     if (clip.denoise > 0.0)
         load += 0.08 * size;
     if (clip.stabilization.enabled)

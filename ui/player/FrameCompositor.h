@@ -116,6 +116,9 @@ private:
     // With a subject (smart cutout): what stands out under its box instead of people.
     QRhiTexture* personMatte(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame,
                              const std::optional<tve::FaceBox>& subject);
+    // Where the beauty filter works in a clip's decoded frame: the faces' skin and teeth from
+    // Vision's landmarks (tve::beautyMask), found once per frame; null when there are no faces.
+    QRhiTexture* beautyMask(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame);
 
     QRhi* m_rhi;
     CVMetalTextureCacheRef m_textureCache = nullptr;
@@ -160,6 +163,13 @@ private:
         std::unique_ptr<QRhiTexture> texture;
     };
     std::map<tve::Id, PersonMatteTexture> m_personMattes;
+    struct BeautyMaskTexture {
+        const void* frame = nullptr;
+        tve::Ticks pts = -1;
+        bool faces = false;
+        std::unique_ptr<QRhiTexture> texture;
+    };
+    std::map<tve::Id, BeautyMaskTexture> m_beautyMasks;
     struct DenoiseHistory {
         std::unique_ptr<QRhiTexture> texture; // the last frame drawn, denoised
         tve::Ticks frame = -1;

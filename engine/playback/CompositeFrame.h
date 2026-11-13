@@ -23,8 +23,9 @@ struct LayerPeople {
     std::vector<FaceBox> faces;
     FaceCover cover = FaceCover::Mosaic;
     float amount = 0.5f;
+    FaceBeauty beauty; // faces found in this very frame
 
-    bool any() const { return cutout.enabled || !faces.empty(); }
+    bool any() const { return cutout.enabled || !faces.empty() || beauty.active(); }
 };
 
 // How a clip's picture is steadied at one frame: the stabilization's correction and zoom,
