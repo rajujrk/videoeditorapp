@@ -530,6 +530,18 @@ dark and light:
 ![Protect skin tones, dark](images/skin-protect-dark.png)
 ![Protect skin tones, light](images/skin-protect-light.png)
 
+The Cutout section with the background blurred (Transparent / Blurred as a pair of buttons, the
+chosen one `primary`, and a Blur slider), the Faces section with stickers that follow the faces (a
+sticker picker, Head / Eyes / Face / Beside in a wrapping row, Stick it on and Make them tracks) and a
+crown on the astronaut's head, and the recorder's Background choice for the camera — dark and light:
+
+![Background blur, dark](images/background-blur-dark.png)
+![Background blur, light](images/background-blur-light.png)
+![Stickers on faces, dark](images/face-stickers-dark.png)
+![Stickers on faces, light](images/face-stickers-light.png)
+![The recorder's camera background, dark](images/recorder-background-dark.png)
+![The recorder's camera background, light](images/recorder-background-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

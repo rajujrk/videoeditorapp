@@ -282,3 +282,60 @@ TEST_CASE("the beauty filter is a people setting: checked, undone, kept by split
     const Id photo = p.push<AddClipCommand>(p.track, p.still, 20 * kSec, 2 * kSec, 0).clipId();
     CHECK(p.tryPush<SetClipPeopleCommand>(photo, beauty, "Beauty").value() == "only clips of video files can find people");
 }
+
+TEST_CASE("a cutout can blur what it cuts away; checked and saved")
+{
+    PeopleProject p;
+    const Id clip = p.push<AddClipCommand>(p.track, p.video, 0, 10 * kSec, 0).clipId();
+    PortraitCutout blurred{.enabled = true, .softness = 0.3, .blur = 0.6};
+    p.push<SetClipPeopleCommand>(clip, blurred, std::nullopt, "Portrait Cutout");
+    CHECK(p.clip(clip).cutout.blur == Approx(0.6));
+    const nlohmann::json json = projectToJson(p.project);
+    Project loaded = projectFromJson(json);
+    CHECK(loaded.locateClip(clip)->clip->cutout == blurred);
+    CHECK(p.tryPush<SetClipPeopleCommand>(clip, PortraitCutout{.enabled = true, .blur = 1.2}, std::nullopt, "x").value()
+          == "cutout setting out of range");
+    CHECK(PortraitCutout{}.blur == 0.0); // transparent, as before
+}
+
+TEST_CASE("clips laid above a track go on the lowest free tracks, new ones when busy, as one step")
+{
+    PeopleProject p;
+    const Id under = p.push<AddClipCommand>(p.track, p.video, 0, 10 * kSec, 0).clipId();
+    (void)under;
+    const std::size_t tracksBefore = p.project.tracks.size();
+    // Two clips at the same time: the first takes a new track above, the second another.
+    std::vector<Clip> clips;
+    for (int i = 0; i < 2; ++i) {
+        Clip c{.mediaId = p.still, .start = kSec, .duration = 2 * kSec};
+        c.visual.transform.scale = 0.2;
+        c.keyframes["x"] = {{0, -0.1}, {2 * kSec, 0.1}};
+        clips.push_back(c);
+    }
+    auto& added = p.push<AddClipsAboveCommand>(p.track, clips, "Stickers", "Stickers on Faces");
+    CHECK(p.stack.undoLabel() == "Stickers on Faces");
+    REQUIRE(added.clipIds().size() == 2);
+    CHECK(p.project.tracks.size() == tracksBefore + 2);
+    const auto first = p.project.locateClip(added.clipIds()[0]);
+    const auto second = p.project.locateClip(added.clipIds()[1]);
+    REQUIRE(first);
+    REQUIRE(second);
+    CHECK(first->track != second->track);
+    CHECK(first->track->name == "Stickers");
+    CHECK(first->clip->keyframes.at("x").size() == 2);
+    CHECK(first->clip->visual.transform.scale == Approx(0.2));
+    const std::vector<Id> ids = added.clipIds();
+    p.stack.undo();
+    CHECK(p.project.tracks.size() == tracksBefore);
+    CHECK_FALSE(p.project.locateClip(ids[0]));
+    p.stack.redo(); // the same ids back
+    CHECK(p.project.locateClip(ids[0]));
+    CHECK(p.project.locateClip(ids[1]));
+    CHECK(p.project.tracks.size() == tracksBefore + 2);
+    // Later, a free track above is used before adding one.
+    std::vector<Clip> later{Clip{.mediaId = p.still, .start = 5 * kSec, .duration = kSec}};
+    p.push<AddClipsAboveCommand>(p.track, later, "Stickers", "Stickers on Faces");
+    CHECK(p.project.tracks.size() == tracksBefore + 2);
+    CHECK(p.tryPush<AddClipsAboveCommand>(p.track, std::vector<Clip>{}, "Stickers", "x").value() == "nothing to add");
+    CHECK(p.tryPush<AddClipsAboveCommand>(Id(9999), later, "Stickers", "x").value() == "track not found");
+}

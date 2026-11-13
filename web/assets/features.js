@@ -410,7 +410,7 @@ window.TVE = {
       id: "recording", title: "Record the screen and camera", chapter: "record", area: "timeline",
       where: ["Timeline", "Toolbar", "Screen"], image: "recording",
       summary: "Record a display or a window with its sound, your camera and your microphone, straight onto new tracks.",
-      steps: ["Click the screen button in the timeline toolbar.", "Choose a display or window, a camera, and the microphone.", "Click Record, then Stop; screen, camera (picture in picture) and microphone land on new tracks."],
+      steps: ["Click the screen button in the timeline toolbar.", "Choose a display or window, a camera, and the microphone; for the camera, its Background: as it is, blurred or removed.", "Click Record, then Stop; screen, camera (picture in picture) and microphone land on new tracks."],
       note: "The Analyze tab's Cursor section can add click rings, a spotlight, zoom on clicks and click sounds afterwards."
     },
     {
@@ -456,6 +456,16 @@ window.TVE = {
       id: "beauty", title: "Beauty filter", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Beauty"], image: "beauty", privacy: "mac",
       summary: "Smooth and brighten the skin on every face, and whiten teeth, found afresh in each frame. Eyes, brows and lips stay sharp.",
       steps: ["Select a video clip and open the Analyze tab.", "Turn on Beauty.", "Set Smooth skin, Brighten skin and Whiten teeth."]
+    },
+    {
+      id: "background-blur", title: "Background blur", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Cutout", "Blurred"], image: "background-blur", privacy: "mac",
+      summary: "Keep the person sharp and blur everything behind them, found afresh in every frame.",
+      steps: ["Select a video clip and open the Analyze tab.", "Turn on Cut out the person.", "Under What is cut away, choose Blurred and set the Blur amount."]
+    },
+    {
+      id: "face-stickers", title: "Stickers that follow faces", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Faces", "Stick it on"], image: "face-stickers", privacy: "mac",
+      summary: "Put a sticker on each face (on the head, over the eyes or the face, or beside it) that moves and grows with the face.",
+      steps: ["Select a video clip and click Find faces in the Analyze tab.", "Choose the faces, a sticker and where it goes: Head, Eyes, Face or Beside.", "Click Stick it on. Make them tracks lets titles follow the faces too."]
     },
     {
       id: "motion-analysis", title: "Stabilize, flicker, denoise and tracking", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Steady and clean"], image: "motion", privacy: "mac",

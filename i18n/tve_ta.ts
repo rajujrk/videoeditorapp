@@ -76,10 +76,6 @@
         <translation>வெட்டியெடு</translation>
     </message>
     <message>
-        <source>Keeps the person — or any subject you draw a box around — and makes the background transparent (Vision, on this Mac), so the tracks below show through.</source>
-        <translation>நபரை — அல்லது நீங்கள் பெட்டி வரையும் எந்தப் பொருளையும் — வைத்துக்கொண்டு பின்னணியை ஒளிபுகும்படி ஆக்குகிறது (Vision, இந்த Mac-இல்), அதனால் கீழே உள்ள டிராக்குகள் தெரியும்.</translation>
-    </message>
-    <message>
         <source>Cut out the subject</source>
         <translation>பொருளை வெட்டியெடு</translation>
     </message>
@@ -184,6 +180,22 @@
         <translation>மங்கல்</translation>
     </message>
     <message>
+        <source>Keeps the person — or any subject you draw a box around — and makes the background transparent, so the tracks below show through, or blurs it (Vision, on this Mac).</source>
+        <translation>நபரை — அல்லது நீங்கள் பெட்டி வரையும் எந்தப் பொருளையும் — வைத்துக்கொண்டு பின்னணியை ஒளிபுகச் செய்யும், அதனால் கீழுள்ள தடங்கள் தெரியும்; அல்லது அதை மங்கலாக்கும் (Vision, இந்த Mac-இல்).</translation>
+    </message>
+    <message>
+        <source>What is cut away</source>
+        <translation>வெட்டி நீக்கப்படுவது</translation>
+    </message>
+    <message>
+        <source>Transparent</source>
+        <translation>ஒளிபுகும்</translation>
+    </message>
+    <message>
+        <source>Blurred</source>
+        <translation>மங்கலாக்கப்பட்டது</translation>
+    </message>
+    <message>
         <source>Fill</source>
         <translation>நிரப்பு</translation>
     </message>
@@ -210,6 +222,42 @@
     <message>
         <source>Uncover</source>
         <translation>மறைப்பை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Stickers that follow the faces</source>
+        <translation>முகங்களைப் பின்தொடரும் ஸ்டிக்கர்கள்</translation>
+    </message>
+    <message>
+        <source>Head</source>
+        <translation>தலை</translation>
+    </message>
+    <message>
+        <source>Eyes</source>
+        <translation>கண்கள்</translation>
+    </message>
+    <message>
+        <source>Beside</source>
+        <translation>அருகில்</translation>
+    </message>
+    <message>
+        <source>Face</source>
+        <translation>முகம்</translation>
+    </message>
+    <message>
+        <source>Stick it on</source>
+        <translation>ஒட்டு</translation>
+    </message>
+    <message>
+        <source>A sticker on each chosen face for as long as it is there, moving and growing with it</source>
+        <translation>தேர்ந்தெடுத்த ஒவ்வொரு முகத்திலும் அது இருக்கும் வரை ஒரு ஸ்டிக்கர், அதனுடன் நகர்ந்து பெரிதாகும்</translation>
+    </message>
+    <message>
+        <source>Make them tracks</source>
+        <translation>அவற்றைத் தடங்களாக்கு</translation>
+    </message>
+    <message>
+        <source>So titles and other clips can follow these faces (Follow a track)</source>
+        <translation>தலைப்புகளும் மற்ற கிளிப்புகளும் இந்த முகங்களைப் பின்தொடர (ஒரு தடத்தைப் பின்தொடர்)</translation>
     </message>
     <message>
         <source>Auto reframe</source>
@@ -6208,6 +6256,22 @@ Third, 4</source>
         <translation>மறைக்க வேண்டிய முகங்களைத் தேர்ந்தெடுக்கவும்</translation>
     </message>
     <message>
+        <source>Unknown place on the face</source>
+        <translation>முகத்தில் தெரியாத இடம்</translation>
+    </message>
+    <message>
+        <source>Stickers follow faces only in clips played forwards at a steady speed</source>
+        <translation>முன்னோக்கி நிலையான வேகத்தில் இயங்கும் கிளிப்புகளில் மட்டுமே ஸ்டிக்கர்கள் முகங்களைப் பின்தொடரும்</translation>
+    </message>
+    <message>
+        <source>Choose the faces</source>
+        <translation>முகங்களைத் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Those faces are not on screen in this clip</source>
+        <translation>அந்த முகங்கள் இந்தக் கிளிப்பில் திரையில் இல்லை</translation>
+    </message>
+    <message>
         <source>This clip covers no faces</source>
         <translation>இந்தக் கிளிப் எந்த முகத்தையும் மறைக்கவில்லை</translation>
     </message>
@@ -6620,6 +6684,22 @@ Third, 4</source>
     <message>
         <source>No camera</source>
         <translation>கேமரா இல்லை</translation>
+    </message>
+    <message>
+        <source>Background</source>
+        <translation>பின்னணி</translation>
+    </message>
+    <message>
+        <source>As it is</source>
+        <translation>உள்ளபடியே</translation>
+    </message>
+    <message>
+        <source>Blurred</source>
+        <translation>மங்கலாக்கப்பட்டது</translation>
+    </message>
+    <message>
+        <source>Removed</source>
+        <translation>நீக்கப்பட்டது</translation>
     </message>
     <message>
         <source>The camera goes small in the corner over the screen (picture in picture).</source>
@@ -11382,6 +11462,14 @@ The Journey</source>
     <message>
         <source>Cover Faces</source>
         <translation>முகங்களை மறை</translation>
+    </message>
+    <message>
+        <source>Stickers on Faces</source>
+        <translation>முகங்களில் ஸ்டிக்கர்கள்</translation>
+    </message>
+    <message>
+        <source>Track Faces</source>
+        <translation>முகங்களைத் தடமாக்கு</translation>
     </message>
     <message>
         <source>Change Face Cover</source>

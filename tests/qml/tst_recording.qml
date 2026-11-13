@@ -87,6 +87,9 @@ Item {
             camera.currentIndex = 1
             camera.activated(1)
             compare(panel.cameraIndex, 0)
+            // Its background blurred once recorded.
+            click(panel.contentItem, "cameraBackground:blur")
+            compare(panel.cameraBackground, "blur")
             click(panel.contentItem, "startScreenRecording")
             verify(p.screenRecording)
             tryVerify(() => p.screenRecordingTime > 2.3, 6000)
@@ -109,6 +112,11 @@ Item {
             p.selectedClip = cam.id
             fuzzyCompare(p.selectedClipInfo.visual.scale, 0.3, 1e-6)
             fuzzyCompare(p.selectedClipInfo.visual.x, 0.33, 1e-6)
+            compare(p.selectedClipInfo.cutout.enabled, true) // the background blurred, in the same step
+            compare(p.selectedClipInfo.cutout.blur, 0.6)
+            compare(p.selectedClipInfo.cutout.invert, false)
+            p.selectedClip = screen.id
+            compare(p.selectedClipInfo.cutout.enabled, false) // only the camera
 
             // The screen's cursor: clicks every second, rings on by default.
             p.selectedClip = screen.id
@@ -158,8 +166,18 @@ Item {
             p.selectedClip = cam.id
             fuzzyCompare(p.selectedClipInfo.visual.scale, 1, 1e-6) // alone: full size
             compare(p.selectedClipInfo.cursor, undefined)
+            compare(p.selectedClipInfo.cutout.enabled, false) // as it is, unless asked
+            const firstCamera = Number(cam.id) // (cam reads the live track list)
+            // Removed: the person kept, the background made transparent.
+            p.seek(5)
+            verify(p.startScreenRecording({ camera: "test", cameraBackground: "remove" }))
+            wait(1200)
+            verify(p.stopScreenRecording())
+            verify(p.selectedClip !== firstCamera) // the new recording, selected
+            compare(p.selectedClipInfo.cutout.enabled, true)
+            compare(p.selectedClipInfo.cutout.blur, 0)
             verify(!p.stopScreenRecording())
-            verify(!p.zoomOnClicks(cam.id))
+            verify(!p.zoomOnClicks(firstCamera))
         }
     }
 }

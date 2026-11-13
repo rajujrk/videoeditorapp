@@ -208,7 +208,7 @@ ScrollView {
             function change(values) { page.project.setPortraitCutout(page.clipInfo.id, values) }
 
             Finding {
-                text: qsTr("Keeps the person — or any subject you draw a box around — and makes the background transparent (Vision, on this Mac), so the tracks below show through.")
+                text: qsTr("Keeps the person — or any subject you draw a box around — and makes the background transparent, so the tracks below show through, or blurs it (Vision, on this Mac).")
                 color: Theme.color.textSecondary
             }
             ToggleSwitch {
@@ -245,6 +245,33 @@ ScrollView {
                     variant: "ghost"
                     onClicked: cutout.change({ subject: false })
                 }
+            }
+            // What is cut away: made transparent, or blurred (a background blur).
+            RowLayout {
+                visible: cutout.current.enabled === true
+                Text { text: qsTr("What is cut away"); font: Theme.type.label; color: Theme.color.textSecondary }
+                Item { Layout.fillWidth: true }
+                TextButton {
+                    objectName: "cutoutTransparent"
+                    text: qsTr("Transparent")
+                    variant: (cutout.current.blur || 0) > 0 ? "secondary" : "primary"
+                    onClicked: cutout.change({ blur: 0 })
+                }
+                TextButton {
+                    objectName: "cutoutBlurred"
+                    text: qsTr("Blurred")
+                    variant: (cutout.current.blur || 0) > 0 ? "primary" : "secondary"
+                    onClicked: if (!((cutout.current.blur || 0) > 0)) cutout.change({ blur: 0.6 })
+                }
+            }
+            Setting {
+                objectName: "cutoutBlur"
+                visible: cutout.current.enabled === true && (cutout.current.blur || 0) > 0
+                label: qsTr("Blur")
+                from: 0.05; to: 1; stepSize: 0.05
+                value: cutout.current.blur || 0.6
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: cutout.change({ blur: value })
             }
             ToggleSwitch {
                 objectName: "cutoutInvert"
@@ -438,6 +465,61 @@ ScrollView {
                     text: qsTr("Uncover")
                     variant: "ghost"
                     onClicked: page.project.uncoverFaces(page.clipInfo.id)
+                }
+            }
+            // Stickers that follow the chosen faces; the faces as tracks for others to follow.
+            ColumnLayout {
+                id: faceStickers
+                visible: faces.found !== null && faces.found.tracks.length > 0
+                Layout.fillWidth: true
+                spacing: Theme.space.xs
+                property string place: "head"
+                Text {
+                    text: qsTr("Stickers that follow the faces")
+                    font: Theme.type.label
+                    color: Theme.color.textSecondary
+                }
+                ComboBox {
+                    id: faceSticker
+                    objectName: "faceSticker"
+                    Layout.fillWidth: true
+                    model: page.project.stickers
+                    textRole: "title"
+                    valueRole: "id"
+                }
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: Theme.space.xs
+                    Repeater {
+                        model: [{ id: "head", label: qsTr("Head") }, { id: "eyes", label: qsTr("Eyes") },
+                                { id: "face", label: qsTr("Face") }, { id: "beside", label: qsTr("Beside") }]
+                        delegate: TextButton {
+                            required property var modelData
+                            objectName: "facePlace:" + modelData.id
+                            text: modelData.label
+                            variant: faceStickers.place === modelData.id ? "primary" : "secondary"
+                            onClicked: faceStickers.place = modelData.id
+                        }
+                    }
+                }
+                RowLayout {
+                    TextButton {
+                        objectName: "stickToFaces"
+                        text: qsTr("Stick it on")
+                        variant: "primary"
+                        enabled: faces.chosenIds().length > 0 && faceSticker.currentValue !== undefined
+                        tip: qsTr("A sticker on each chosen face for as long as it is there, moving and growing with it")
+                        onClicked: page.project.stickToFaces(page.clipInfo.id, faceSticker.currentValue, faceStickers.place,
+                                                             faces.chosenIds())
+                    }
+                    TextButton {
+                        objectName: "trackFaces"
+                        text: qsTr("Make them tracks")
+                        variant: "secondary"
+                        enabled: faces.chosenIds().length > 0
+                        tip: qsTr("So titles and other clips can follow these faces (Follow a track)")
+                        onClicked: page.project.trackFaces(page.clipInfo.id, faces.chosenIds())
+                    }
                 }
             }
         }

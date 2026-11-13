@@ -102,7 +102,8 @@ QVariantMap cutoutMap(const PortraitCutout& c)
             {QStringLiteral("subject"), !c.subject.empty()},
             {QStringLiteral("invert"), c.invert},
             {QStringLiteral("softness"), c.softness},
-            {QStringLiteral("shift"), c.shift}};
+            {QStringLiteral("shift"), c.shift},
+            {QStringLiteral("blur"), c.blur}};
 }
 
 QVariantMap faceCoverMap(const FaceMosaic& m)
@@ -6572,6 +6573,7 @@ bool ProjectController::startScreenRecording(const QVariantMap& options)
     }
     const QVariantMap screen = options.value(QStringLiteral("screen")).toMap();
     const QString cameraId = options.value(QStringLiteral("camera")).toString();
+    m_cameraBackground = options.value(QStringLiteral("cameraBackground")).toString();
     if (screen.isEmpty() && cameraId.isEmpty()) {
         reportError(tr("Choose a screen or a camera to record"));
         return false;
@@ -6699,6 +6701,11 @@ bool ProjectController::stopScreenRecording()
     if (m_cameraRecorder) {
         if (const auto t = m_cameraRecorder->stop(&error)) {
             if (auto take = takeOf(t->path, TrackKind::Video, "Camera")) {
+                // Its background as asked: blurred, or removed (the person over the screen).
+                if (m_cameraBackground == QLatin1String("blur"))
+                    take->cutout = PortraitCutout{.enabled = true, .softness = 0.3, .blur = 0.6};
+                else if (m_cameraBackground == QLatin1String("remove"))
+                    take->cutout = PortraitCutout{.enabled = true, .softness = 0.3};
                 // Over a screen: small, in the bottom right corner.
                 if (m_screenRecorder) {
                     take->visual.transform.scale = 0.3;
@@ -7671,16 +7678,14 @@ QVariantList ProjectController::stickers() const
     return stickers::catalog();
 }
 
-bool ProjectController::addSticker(const QString& stickerId)
+Id ProjectController::stickerMedia(const QString& stickerId)
 {
     const QString path = stickers::pathOf(stickerId);
     if (path.isEmpty()) {
         reportError(tr("Unknown sticker %1").arg(stickerId));
-        return false;
+        return kNoId;
     }
-    // Its media, once (a resource path, not a URL); then a clip at the playhead on the lowest
-    // free picture track above the main one (a new track on top if none is free), small, in
-    // the middle.
+    // Its media, once (a resource path, not a URL).
     auto media = std::ranges::find(m_project.media, path.toStdString(), &MediaItem::path);
     if (media == m_project.media.end()) {
         const auto animation = stickers::open(path);
@@ -7690,10 +7695,18 @@ bool ProjectController::addSticker(const QString& stickerId)
                                                                      .width = animation->width(),
                                                                      .height = animation->height(), .still = true,
                                                                      .alpha = true, .lottie = true})))
-            return false;
+            return kNoId;
         media = std::ranges::find(m_project.media, path.toStdString(), &MediaItem::path);
     }
-    return placeOverlay(media->id, 0.4, "Stickers", TVE_TR("core", "Add Sticker"));
+    return media->id;
+}
+
+bool ProjectController::addSticker(const QString& stickerId)
+{
+    // A clip at the playhead on the lowest free picture track above the main one (a new track
+    // on top if none is free), small, in the middle.
+    const Id media = stickerMedia(stickerId);
+    return media != kNoId && placeOverlay(media, 0.4, "Stickers", TVE_TR("core", "Add Sticker"));
 }
 
 bool ProjectController::placeOverlay(Id mediaId, double scale, const std::string& trackName, const std::string& label)
@@ -8315,6 +8328,7 @@ bool ProjectController::setPortraitCutout(double clipId, const QVariantMap& sett
     cutout.invert = settings.value(QStringLiteral("invert"), cutout.invert).toBool();
     cutout.softness = settings.value(QStringLiteral("softness"), cutout.softness).toDouble();
     cutout.shift = settings.value(QStringLiteral("shift"), cutout.shift).toDouble();
+    cutout.blur = settings.value(QStringLiteral("blur"), cutout.blur).toDouble();
     if (settings.contains(QStringLiteral("subject")) && !settings.value(QStringLiteral("subject")).toBool())
         cutout.subject.clear(); // back to people
     const char* label = cutout.enabled == clip->cutout.enabled ? TVE_TR("core", "Change Cutout")
@@ -8436,6 +8450,162 @@ bool ProjectController::coverFaces(double clipId, const QVariantList& faceIds, c
         return false;
     }
     return apply(std::make_unique<SetClipPeopleCommand>(clip->id, std::nullopt, mosaic, TVE_TR("core", "Cover Faces")));
+}
+
+namespace {
+
+// Where a sticker sits on a face, in the face box's widths and heights from its centre, and
+// how wide it is, in face widths.
+struct FacePlacement {
+    double dx, dy, size;
+};
+std::optional<FacePlacement> facePlacement(const QString& name)
+{
+    if (name == QLatin1String("head"))
+        return FacePlacement{0.0, -0.95, 1.0}; // a crown, a hat: above the forehead
+    if (name == QLatin1String("eyes"))
+        return FacePlacement{0.0, -0.12, 0.95}; // across the eyes
+    if (name == QLatin1String("face"))
+        return FacePlacement{0.0, 0.0, 1.35}; // over the whole face
+    if (name == QLatin1String("beside"))
+        return FacePlacement{0.95, -0.35, 0.6}; // up beside the head
+    return std::nullopt;
+}
+
+} // namespace
+
+bool ProjectController::stickToFaces(double clipId, const QString& stickerId, const QString& placementName,
+                                     const QVariantList& faceIds)
+{
+    const Clip* source = peopleClip(toId(clipId), false);
+    if (!source)
+        return false;
+    if (toId(m_faces.value(QStringLiteral("clipId"), -1.0).toDouble()) != source->id || m_faceTracks.empty()) {
+        reportError(tr("Find the faces first"));
+        return false;
+    }
+    const auto placement = facePlacement(placementName);
+    if (!placement) {
+        reportError(tr("Unknown place on the face"));
+        return false;
+    }
+    if (source->reversed || source->freeze || !source->speedRamp.empty()) {
+        reportError(tr("Stickers follow faces only in clips played forwards at a steady speed"));
+        return false;
+    }
+    std::vector<const FaceTrack*> chosen;
+    for (const FaceTrack& track : m_faceTracks)
+        if (faceIds.isEmpty() || faceIds.contains(QVariant(track.id)) || faceIds.contains(QVariant(double(track.id))))
+            chosen.push_back(&track);
+    if (chosen.empty()) {
+        reportError(tr("Choose the faces"));
+        return false;
+    }
+    if (!stickers::pathOf(stickerId).size()) {
+        reportError(tr("Unknown sticker %1").arg(stickerId));
+        return false;
+    }
+    const Id trackId = m_project.locateClip(source->id)->track->id;
+    const MediaItem* video = m_project.findMedia(source->mediaId);
+    const double cw = m_project.settings.width, ch = m_project.settings.height;
+    const double vw = std::max(1, video->width), vh = std::max(1, video->height);
+    const Ticks mediaOut = source->sourceIn + Ticks(std::llround(double(source->duration) * source->speed));
+    const auto timelineAt = [&](Ticks media) {
+        return source->start + Ticks(std::llround(double(media - source->sourceIn) / source->speed));
+    };
+    const auto mediaAt = [&](Ticks timeline) {
+        return source->sourceIn + Ticks(std::llround(double(timeline - source->start) * source->speed));
+    };
+    // The sticker's media (imported once, a step of its own the first time).
+    const Id stickerMediaId = stickerMedia(stickerId);
+    if (stickerMediaId == kNoId)
+        return false;
+    const MediaItem* sticker = m_project.findMedia(stickerMediaId);
+    const double sw = std::max(1, sticker->width), sh = std::max(1, sticker->height);
+    const double fittedWidth = sw * std::min(cw / sw, ch / sh); // the sticker at scale 1, in canvas pixels
+
+    std::vector<Clip> clips;
+    for (const FaceTrack* face : chosen) {
+        const Ticks from = std::max(source->start, timelineAt(std::max(face->start(), source->sourceIn)));
+        const Ticks to = std::min(source->end(), timelineAt(std::min(face->end(), mediaOut)));
+        if (to - from < kTicksPerSecond / 10)
+            continue; // not on screen in this clip (or only for a moment)
+        std::vector<Ticks> times{from};
+        for (const FaceSample& s : face->samples) {
+            const Ticks at = timelineAt(s.time);
+            if (at > from && at < to)
+                times.push_back(at);
+        }
+        times.push_back(to);
+        Keyframes xs, ys, scales;
+        for (const Ticks at : times) {
+            const auto box = face->boxAt(mediaAt(at));
+            if (!box)
+                continue;
+            const LayerPlacement shown = placeLayer(source->visualAt(at), cw, ch, vw, vh);
+            const auto [u, v] = shown.toCanvas(box->x + placement->dx * box->width, box->y + placement->dy * box->height);
+            const auto left = shown.toCanvas(box->x - box->width / 2, box->y);
+            const auto right = shown.toCanvas(box->x + box->width / 2, box->y);
+            const double faceWidth = std::hypot((right[0] - left[0]) * cw, (right[1] - left[1]) * ch);
+            const Ticks t = at - from;
+            xs.push_back({t, std::clamp(u - 0.5, -10.0, 10.0)});
+            ys.push_back({t, std::clamp(v - 0.5, -10.0, 10.0)});
+            scales.push_back({t, std::clamp(placement->size * faceWidth / fittedWidth, 0.01, 20.0)});
+        }
+        if (xs.empty())
+            continue;
+        Clip clip{.mediaId = stickerMediaId, .start = from, .duration = to - from};
+        clip.visual.transform.x = xs.front().value;
+        clip.visual.transform.y = ys.front().value;
+        clip.visual.transform.scale = scales.front().value;
+        if (xs.size() > 1) {
+            clip.keyframes[std::string(tve::property::kX)] = std::move(xs);
+            clip.keyframes[std::string(tve::property::kY)] = std::move(ys);
+            clip.keyframes[std::string(tve::property::kScale)] = std::move(scales);
+        }
+        clips.push_back(std::move(clip));
+    }
+    if (clips.empty()) {
+        reportError(tr("Those faces are not on screen in this clip"));
+        return false;
+    }
+    auto command = std::make_unique<AddClipsAboveCommand>(trackId, std::move(clips), "Stickers",
+                                                          TVE_TR("core", "Stickers on Faces"));
+    auto* raw = command.get();
+    if (!apply(std::move(command)))
+        return false;
+    setSelectedClip(double(raw->clipIds().front()));
+    return true;
+}
+
+bool ProjectController::trackFaces(double clipId, const QVariantList& faceIds)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    if (toId(m_faces.value(QStringLiteral("clipId"), -1.0).toDouble()) != clip->id || m_faceTracks.empty()) {
+        reportError(tr("Find the faces first"));
+        return false;
+    }
+    std::vector<MotionTrack> tracks = clip->motionTracks;
+    int next = 1;
+    for (const MotionTrack& t : tracks)
+        next = std::max(next, t.id + 1);
+    const std::size_t before = tracks.size();
+    for (const FaceTrack& face : m_faceTracks) {
+        if (!faceIds.isEmpty() && !faceIds.contains(QVariant(face.id)) && !faceIds.contains(QVariant(double(face.id))))
+            continue;
+        MotionTrack track{.id = next++};
+        for (const FaceSample& s : face.samples)
+            track.samples.push_back({s.time, s.box.x, s.box.y, s.box.width, s.box.height, 0.0});
+        if (track.samples.size() >= 2)
+            tracks.push_back(std::move(track));
+    }
+    if (tracks.size() == before) {
+        reportError(tr("Choose the faces"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipTracksCommand>(clip->id, std::move(tracks), TVE_TR("core", "Track Faces")));
 }
 
 bool ProjectController::setFaceCover(double clipId, const QVariantMap& options)

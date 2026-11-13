@@ -39,7 +39,7 @@ double extraLoad(const Clip& clip, double pixels, const EffectWeight& weight)
         if (effect.enabled)
             load += weight(effect) * size;
     if (clip.cutout.enabled)
-        load += 0.2; // a person matte found per frame
+        load += 0.2 + (clip.cutout.blur > 0.0 ? 0.1 * size : 0.0); // a person matte per frame (and a blur)
     if (clip.faceMosaic.active())
         load += 0.04;
     if (clip.beauty.active())

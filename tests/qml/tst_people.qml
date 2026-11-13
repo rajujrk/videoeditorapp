@@ -209,6 +209,74 @@ Item {
             verify(!p.setClipColor(id, { protectSkin: 1.5 }))
         }
 
+        function test_background_blur_keeps_the_person_sharp() {
+            const f = createEditor()
+            const p = f.project
+            withPeople(f)
+            // The flag behind the astronaut (in the photo): busy detail; the forehead: the person.
+            const flag = () => patch(f, 0.31, 0.15, 0.03, 0.06)
+            const forehead = () => patch(f, faceX(1.5), 0.185, 0.03, 0.022)
+            tryVerify(() => Math.abs(red(f, 0.03, 0.5) - 128) < 20, 5000, "the grey background")
+            const flagBefore = flag().texture, faceBefore = forehead().texture
+            verify(flagBefore > 4, "the flag has detail: " + flagBefore)
+            click(f.editor, "cutoutSwitch")
+            click(f.editor, "cutoutBlurred")
+            compare(p.undoText, "Change Cutout")
+            compare(p.selectedClipInfo.cutout.blur, 0.6)
+            verify(settled(f.editor, "cutoutBlur").visible)
+            // Behind is blurred, not cut away; the person keeps their detail.
+            tryVerify(() => flag().texture < flagBefore * 0.5, 5000, "the background was not blurred: " + flag().texture)
+            verify(Math.abs(red(f, 0.03, 0.5) - 128) < 20, "the grey stays (not transparent)")
+            verify(forehead().texture > faceBefore * 0.6, "the face stayed sharp: " + forehead().texture)
+            // Back to transparent: the grey goes.
+            click(f.editor, "cutoutTransparent")
+            compare(p.selectedClipInfo.cutout.blur, 0)
+            tryVerify(() => red(f, 0.03, 0.5) < 25, 5000)
+            verify(!p.setPortraitCutout(p.selectedClip, { blur: 2 }))
+        }
+
+        function test_stickers_follow_the_faces() {
+            const f = createEditor()
+            const p = f.project
+            const id = withPeople(f)
+            click(f.editor, "findFaces")
+            waitFinished(1)
+            verify(settled(f.editor, "faceSticker"))
+            findChild(f.editor, "faceSticker").currentIndex = 0
+            click(f.editor, "facePlace:head")
+            click(f.editor, "stickToFaces")
+            compare(p.undoText, "Stickers on Faces")
+            // A sticker clip for as long as the face is there, above the clip, following it.
+            const stickerId = p.selectedClip
+            verify(stickerId !== id)
+            const main = p.tracks.find((t) => t.main)
+            const above = p.tracks.slice(0, p.tracks.indexOf(main)).find((t) => t.clips.some((c) => c.id === stickerId))
+            verify(above, "the sticker is on a track above")
+            const info = p.selectedClipInfo
+            fuzzyCompare(info.start, 0, 0.15)
+            fuzzyCompare(info.start + info.duration, 3, 0.2)
+            const keys = info.keyframes
+            verify(keys.x.length >= 2 && keys.y.length >= 2 && keys.scale.length >= 2)
+            // Moving right with the face (centre offsets in canvas widths), above it.
+            const travel = keys.x[keys.x.length - 1].value - keys.x[0].value
+            fuzzyCompare(travel, faceX(info.start + info.duration) - faceX(info.start), 0.06)
+            fuzzyCompare(keys.x[0].value + 0.5, faceX(info.start), 0.05)
+            verify(keys.y[0].value + 0.5 < 0.2, "on the head: " + (keys.y[0].value + 0.5))
+            verify(keys.scale[0].value > 0.05 && keys.scale[0].value < 0.5)
+            // One step back takes them off; an unknown place is refused.
+            p.undo()
+            verify(!p.tracks.some((t) => t.clips.some((c) => c.id === stickerId)))
+            verify(!p.stickToFaces(id, p.stickers[0].id, "knees"))
+            // The face as a track: a title can follow it.
+            p.selectedClip = id
+            click(f.editor, "trackFaces")
+            compare(p.undoText, "Track Faces")
+            compare(p.selectedClipInfo.motionTracks.length, 1)
+            verify(p.addTitle({ text: "Hi" }, -1, 0))
+            compare(p.tracksToFollow(p.selectedClip).length, 1)
+            verify(p.followTrack(p.selectedClip, id, p.tracksToFollow(p.selectedClip)[0].trackId))
+        }
+
         function test_faces_are_found_chosen_and_covered() {
             const f = createEditor()
             const p = f.project

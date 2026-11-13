@@ -522,3 +522,34 @@ TEST_CASE("the beauty filter smooths and lifts skin, and whitens teeth, only whe
         return t[0];
     });
 }
+
+TEST_CASE("a cutout with a blur blurs what it cuts away and keeps the person sharp")
+{
+    // Fine stripes everywhere; the matte marks the person on the left half.
+    const QImage picture = filled([](int x, int) { return x % 2 ? QColor(240, 240, 240) : QColor(20, 20, 20); });
+    QImage matte(16, 9, QImage::Format_RGBA8888);
+    for (int y = 0; y < 9; ++y)
+        for (int x = 0; x < 16; ++x)
+            matte.setPixelColor(x, y, x < 8 ? QColor(255, 255, 255) : QColor(0, 0, 0));
+    PortraitCutout cutout;
+    cutout.enabled = true;
+    cutout.softness = 0.0;
+    cutout.blur = 1.0;
+    const Pixels out = run({picture, matte}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        return m.cutout(cb, t[0], t[1], cutout);
+    });
+    const auto contrast = [&](double u0) { // between neighbouring stripes
+        const float a = out.at(u0, 0.5)[0], b = out.at(u0 + 1.0 / kW, 0.5)[0];
+        return std::abs(a - b);
+    };
+    CHECK(contrast(0.15) > 0.8f);  // the person: as sharp as before
+    CHECK(contrast(0.8) < 0.25f);  // behind: blurred towards grey
+    CHECK(out.alpha(0.8, 0.5) == Approx(1.0f).margin(0.01)); // not transparent
+    CHECK(out.alpha(0.15, 0.5) == Approx(1.0f).margin(0.01));
+    // Without a blur, cut away as before.
+    cutout.blur = 0.0;
+    const Pixels cut = run({picture, matte}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        return m.cutout(cb, t[0], t[1], cutout);
+    });
+    CHECK(cut.alpha(0.8, 0.5) == Approx(0.0f).margin(0.01));
+}
