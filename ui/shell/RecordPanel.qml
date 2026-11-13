@@ -14,6 +14,7 @@ Popup {
     property var cameras: []
     property int screenIndex: 0   // -1: no screen
     property int cameraIndex: -1  // -1: no camera
+    property string cameraBackground: "" // "", "blur" or "remove"
     property bool systemSound: true
     property bool microphone: true
     signal teleprompterRequested() // open the teleprompter (its own window)
@@ -44,8 +45,10 @@ Popup {
         const options = { systemSound: panel.systemSound, microphone: panel.microphone }
         if (screenIndex >= 0 && screenIndex < screens.length)
             options.screen = screens[screenIndex]
-        if (cameraIndex >= 0 && cameraIndex < cameras.length)
+        if (cameraIndex >= 0 && cameraIndex < cameras.length) {
             options.camera = cameras[cameraIndex].id
+            options.cameraBackground = cameraBackground
+        }
         if (!project.startScreenRecording(options))
             return
         recordedArea = options.screen ? { x: options.screen.x || 0, y: options.screen.y || 0,
@@ -122,6 +125,25 @@ Popup {
                     panel.cameraIndex = index - 1
                     if (panel.cameraIndex >= 0 && panel.project.cameraAccess !== "granted")
                         panel.project.requestCameraAccess()
+                }
+            }
+        }
+        // The camera's background, done afterwards on its clip (Vision, on this Mac).
+        RowLayout {
+            visible: panel.cameraIndex >= 0
+            Layout.fillWidth: true
+            Text { text: qsTr("Background"); font: Theme.type.label; color: Theme.color.textSecondary }
+            Item { Layout.fillWidth: true }
+            Repeater {
+                model: [{ id: "", label: qsTr("As it is") }, { id: "blur", label: qsTr("Blurred") },
+                        { id: "remove", label: qsTr("Removed") }]
+                delegate: TextButton {
+                    required property var modelData
+                    objectName: "cameraBackground:" + (modelData.id || "keep")
+                    text: modelData.label
+                    variant: panel.cameraBackground === modelData.id ? "primary" : "secondary"
+                    enabled: !panel.project.screenRecording
+                    onClicked: panel.cameraBackground = modelData.id
                 }
             }
         }

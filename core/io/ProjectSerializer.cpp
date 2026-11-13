@@ -274,7 +274,7 @@ void from_json(const nlohmann::json& j, TrackSample& s)
     s = {j.at(0).get<Ticks>(), j.at(1).get<double>(), j.at(2).get<double>(), j.at(3).get<double>(),
          j.at(4).get<double>(), j.at(5).get<double>()};
 }
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PortraitCutout, enabled, invert, softness, shift, subject)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PortraitCutout, enabled, invert, softness, shift, subject, blur)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceBeauty, enabled, smooth, brighten, teeth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceBox, x, y, width, height)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceSample, time, box)

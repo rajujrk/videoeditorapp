@@ -98,6 +98,34 @@ private:
     Id m_clipId = kNoId;
 };
 
+// Clips laid over the picture above a track (stickers on faces…): each, in order, on the
+// lowest video track above `belowTrackId` that is unlocked, shown and free for its time — new
+// tracks named `trackName` added on top when none is. The clips come prepared (media, start,
+// duration, placement, keyframes); their ids are given here. One undo step.
+class AddClipsAboveCommand final : public Command {
+public:
+    AddClipsAboveCommand(Id belowTrackId, std::vector<Clip> clips, std::string trackName, std::string label)
+        : m_belowTrackId(belowTrackId), m_clips(std::move(clips)), m_trackName(std::move(trackName)),
+          m_label(std::move(label))
+    {
+    }
+
+    std::string label() const override { return m_label; }
+    std::optional<std::string> redo(Project& project) override;
+    void undo(Project& project) override;
+
+    const std::vector<Id>& clipIds() const { return m_clipIds; }
+
+private:
+    Id m_belowTrackId;
+    std::vector<Clip> m_clips;
+    std::string m_trackName;
+    std::string m_label;
+    std::vector<Id> m_clipIds;   // given on the first redo, kept for the next
+    std::vector<Id> m_trackIds;  // tracks added (the same ids on a redo)
+    std::size_t m_tracksAdded = 0;
+};
+
 class MoveClipCommand final : public Command {
 public:
     MoveClipCommand(Id clipId, Id toTrackId, Ticks newStart) : m_clipId(clipId), m_toTrackId(toTrackId), m_newStart(newStart) {}
@@ -555,6 +583,7 @@ struct RecordedTake {
     std::string trackName;
     ClipVisual visual;    // a camera over the screen: small, in a corner
     CursorEffects cursor; // the screen's mouse
+    PortraitCutout cutout; // a camera's background blurred or removed
 };
 
 class AddRecordingCommand final : public Command {

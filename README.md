@@ -92,6 +92,7 @@ The following improvements were completed after Phase 5:
 - Slice 29b: Exporting to a file size, in several formats at once, and as a Live Photo.
 - Slice 29c: Shortcut presets and a keyboard map, favourites with tags, workspaces, and a full-screen preview on a second display.
 - Slice 30a: A beauty filter for faces (smoothing and brightening skin, whitening teeth) and protecting skin tones from a grade, on the Mac.
+- Slice 30b: Background blur behind people, a blurred or removed camera background in the recorder, and stickers that follow faces.
 
 All previously identified feature gaps have been closed.
 
@@ -119,6 +120,7 @@ All previously identified feature gaps have been closed.
 - Apply looks (filters) and overlays to individual clips.
 - Protect skin tones from a grade or look, so faces keep their colour.
 - Smooth and brighten the skin on every face and whiten teeth, found frame by frame on the Mac.
+- Blur the background behind people, and put stickers on faces that follow them.
 - Add adjustment layers above clips to apply effects across multiple clips.
 
 ### 2.3 Masks, Keying and Compositing
@@ -172,6 +174,7 @@ All previously identified feature gaps have been closed.
 - Display audio level meters.
 - Record voice-overs directly from a microphone at the current playhead position.
 - Read your script from a teleprompter while recording.
+- Blur or remove the camera's background when recording.
 - Draw on the screen while recording it.
 
 ### 2.9 Media Management and Preview
@@ -393,6 +396,17 @@ and **Whiten teeth** turns the bright parts of the open mouth towards white. Eac
 On the Color tab, **Protect skin tones** (under Basic) keeps skin at the colour it had before the
 look and grade, by that much, so a cold or desaturated grade leaves faces natural; on its own it
 changes nothing.
+
+**Background blur, face stickers.** The Cutout section can blur what it cuts away instead of
+making it transparent (**What is cut away: Transparent / Blurred**, with a **Blur** amount): the
+person stays sharp while the background goes soft, like a lens wide open; with **Remove the person
+instead**, the person is blurred. The recorder's **Background** (when a camera is chosen) does it to
+the camera clip as the recording is placed: **Blurred**, **Removed** (the person over the screen) or
+**As it is**, in the same undo step. After **Find faces**, **Stickers that follow the faces** puts a
+library sticker on each chosen face — **Head**, **Eyes**, **Face** or **Beside** — for as long as the
+face is in the clip, on a track above it, with position and size keyframes that follow the face as it
+moves and grows (one undo step; clips played forwards at a steady speed). **Make them tracks** turns
+the faces into motion tracks, so a title or any clip can **Follow** them.
 
 **Motion.** The Analyze tab's **Steady and clean** section measures a clip's camera motion and
 brightness once (in the background; kept per file) with block matching of our own.

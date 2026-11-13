@@ -33,6 +33,7 @@ struct PortraitCutout {
     double softness = 0.3; // edge softness, 0 (hard) .. 1
     double shift = 0.0;    // the edge moved out (> 0, more kept) or in (< 0), -1 .. 1
     std::vector<TrackSample> subject; // the subject's box through the clip (media time); empty: people
+    double blur = 0.0; // 0: what is cut away becomes transparent; > 0 (..1): blurred instead
 
     // The subject's box at a media time (held before its first sample and after its last).
     std::optional<FaceBox> subjectAt(Ticks mediaTime) const;

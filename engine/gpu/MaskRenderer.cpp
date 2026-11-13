@@ -265,6 +265,7 @@ QRhiTexture* MaskRenderer::cutout(QRhiCommandBuffer* cb, QRhiTexture* picture, Q
     u.params[0] = float(std::clamp(cutout.softness, 0.0, 1.0));
     u.params[1] = float(std::clamp(cutout.shift, -1.0, 1.0));
     u.params[2] = cutout.invert ? 1.0f : 0.0f;
+    u.params[3] = float(std::clamp(cutout.blur, 0.0, 1.0));
     return draw(cb, *slot, m_cutoutPipeline, m_cutoutFragment, &u, int(sizeof(CutoutUniforms))) ? slot->output.get()
                                                                                               : picture;
 }

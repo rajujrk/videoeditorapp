@@ -166,6 +166,7 @@ std::optional<std::string> AddRecordingCommand::redo(Project& project)
         Clip clip{.id = m_clipIds[i], .mediaId = take.item.id, .start = m_start, .duration = take.item.duration};
         clip.visual = take.visual;
         clip.cursor = take.cursor;
+        clip.cutout = take.cutout;
         track.insertClip(std::move(clip));
         if (take.kind == TrackKind::Audio)
             project.tracks.insert(project.tracks.begin(), std::move(track));
@@ -372,6 +373,55 @@ void AddClipCommand::undo(Project& project)
     Track* track = project.findTrack(m_trackId);
     assert(track);
     track->removeClip(m_clipId);
+}
+
+// --- AddClipsAboveCommand ---
+
+std::optional<std::string> AddClipsAboveCommand::redo(Project& project)
+{
+    const auto below = project.trackIndex(m_belowTrackId);
+    if (!below)
+        return "track not found";
+    if (m_clips.empty())
+        return "nothing to add";
+    for (const Clip& clip : m_clips) {
+        const MediaItem* media = project.findMedia(clip.mediaId);
+        if (!media || !media->hasVideo)
+            return "media not found";
+        if (clip.start < 0 || clip.duration <= 0)
+            return "clip times are out of range";
+    }
+    m_tracksAdded = 0;
+    for (std::size_t i = 0; i < m_clips.size(); ++i) {
+        Clip clip = m_clips[i];
+        Track* target = nullptr;
+        for (std::size_t t = *below + 1; t < project.tracks.size() && !target; ++t) {
+            Track& candidate = project.tracks[t];
+            if (candidate.kind == TrackKind::Video && !candidate.locked && !candidate.hidden
+                && !candidate.overlaps(clip.start, clip.duration))
+                target = &candidate;
+        }
+        if (!target) {
+            if (m_tracksAdded == m_trackIds.size())
+                m_trackIds.push_back(project.allocateId());
+            project.tracks.push_back(Track{.id = m_trackIds[m_tracksAdded++], .kind = TrackKind::Video, .name = m_trackName});
+            target = &project.tracks.back();
+        }
+        if (i == m_clipIds.size())
+            m_clipIds.push_back(project.allocateId());
+        clip.id = m_clipIds[i];
+        target->insertClip(std::move(clip));
+    }
+    return std::nullopt;
+}
+
+void AddClipsAboveCommand::undo(Project& project)
+{
+    for (const Id id : m_clipIds)
+        if (auto location = project.locateClip(id))
+            location->track->removeClip(id);
+    for (std::size_t i = 0; i < m_tracksAdded; ++i)
+        std::erase_if(project.tracks, [&](const Track& track) { return track.id == m_trackIds[i]; });
 }
 
 // --- MoveClipCommand ---
@@ -1136,7 +1186,8 @@ std::optional<std::string> SetClipPeopleCommand::redo(Project& project)
     if (clip.generated() || clip.compound() || !media || !media->hasVideo || media->still || media->lottie)
         return "only clips of video files can find people";
     if (m_cutout && (!std::isfinite(m_cutout->softness) || m_cutout->softness < 0.0 || m_cutout->softness > 1.0
-                     || !std::isfinite(m_cutout->shift) || m_cutout->shift < -1.0 || m_cutout->shift > 1.0))
+                     || !std::isfinite(m_cutout->shift) || m_cutout->shift < -1.0 || m_cutout->shift > 1.0
+                     || !std::isfinite(m_cutout->blur) || m_cutout->blur < 0.0 || m_cutout->blur > 1.0))
         return "cutout setting out of range";
     if (m_faces && (!std::isfinite(m_faces->amount) || m_faces->amount < 0.0 || m_faces->amount > 1.0
                     || !std::isfinite(m_faces->expand) || m_faces->expand < 0.0 || m_faces->expand > 2.0))

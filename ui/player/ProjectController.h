@@ -770,8 +770,10 @@ public:
     Q_INVOKABLE void requestCameraAccess();
     // options: screen (a listScreenTargets entry, or none), region {x, y, width, height}
     // (points within a display), systemSound, camera (a camera id, or none), microphone,
-    // frameRate. Starts at the playhead; stopScreenRecording puts the screen, the camera
-    // (small, over it) and the microphone on new tracks there, as one undo step.
+    // frameRate, cameraBackground ("blur" or "remove": the camera clip gets a portrait cutout
+    // blurring or removing its background; otherwise as it is). Starts at the playhead;
+    // stopScreenRecording puts the screen, the camera (small, over it) and the microphone on
+    // new tracks there, as one undo step.
     Q_INVOKABLE bool startScreenRecording(const QVariantMap& options);
     // Windows of the app's own kept out of screen recordings while they are open (the
     // teleprompter): a display recording leaves them out, as if they were not there.
@@ -886,8 +888,9 @@ public:
     Q_INVOKABLE void cancelAnalysis();
 
     // People, found with Apple's Vision on this Mac (clips of video files, at any speed).
-    // The portrait cutout: settings enabled, invert, softness (0..1), shift (-1..1), and
-    // subject: false to go back from a smart cutout to people.
+    // The portrait cutout: settings enabled, invert, softness (0..1), shift (-1..1), blur (0:
+    // what is cut away becomes transparent; up to 1: blurred instead), and subject: false to
+    // go back from a smart cutout to people.
     Q_INVOKABLE bool setPortraitCutout(double clipId, const QVariantMap& settings);
     // The beauty filter on the faces found in each frame: settings enabled, smooth, brighten
     // and teeth (each 0..1). One undo step.
@@ -900,6 +903,15 @@ public:
     // Covers the found faces with these ids (all of them when empty): options style
     // ("mosaic", "blur", "fill"), amount (0..1), expand (0..2). One undo step.
     Q_INVOKABLE bool coverFaces(double clipId, const QVariantList& faceIds = {}, const QVariantMap& options = {});
+    // Stickers that follow faces: for each found face with these ids (all when empty), a clip
+    // of the sticker for as long as the face is in the clip, on a free track above it, placed
+    // ("head", "eyes", "face" or "beside") and sized to the face with keyframes. One undo
+    // step (and one to bring the sticker in, the first time).
+    Q_INVOKABLE bool stickToFaces(double clipId, const QString& stickerId, const QString& placement,
+                                  const QVariantList& faceIds = {});
+    // The found faces with these ids (all when empty) become motion tracks of the clip, so
+    // titles and other clips can follow them. One undo step.
+    Q_INVOKABLE bool trackFaces(double clipId, const QVariantList& faceIds = {});
     // How the covered faces are covered (the same options).
     Q_INVOKABLE bool setFaceCover(double clipId, const QVariantMap& options);
     Q_INVOKABLE bool uncoverFaces(double clipId);
@@ -1344,6 +1356,7 @@ private:
     std::unique_ptr<tve::CursorLog> m_cursorLog;
     std::unique_ptr<tve::AudioRecorder> m_screenMicrophone;
     tve::Ticks m_screenRecordingStart = 0;
+    QString m_cameraBackground; // "blur", "remove" or empty: as it is
     double m_screenRecordingTime = 0;
     QTimer* m_screenRecordingClock = nullptr;
     bool m_requestingAccess = false;
@@ -1384,6 +1397,8 @@ private:
     tve::Id importGenerated(const MediaResult& result, tve::GeneratedBy by, bool alpha = false);
     // A clip of `mediaId` at the playhead on the lowest free picture track above the main one
     // (a new one named `trackName` on top if none is free), small and centred.
+    // A library sticker's media: imported the first time (a step of its own); kNoId if unknown.
+    tve::Id stickerMedia(const QString& stickerId);
     bool placeOverlay(tve::Id mediaId, double scale, const std::string& trackName, const std::string& label);
     // Ends a generation job, reporting what went wrong.
     void endGeneration(const QString& job, const MediaResult& result, bool ok);
