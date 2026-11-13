@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get started · TVE feature guide</title>
+<meta name="description" content="Build and run TechieVideoEditor on your Mac, and make your first edit.">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/theme.js"></script>
+</head>
+<body data-page="start">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head"><div class="wrap">
+<a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="28" height="28">TVE <span>Feature guide</span></a>
+<nav class="nav" aria-label="Guide"><a href="index.html">Map</a><a href="features.html">All features</a><a href="shortcuts.html">Shortcuts</a><a href="start.html" aria-current="page">Get started</a></nav>
+<div class="head-tools">
+<form class="search" action="features.html" role="search"><label class="visually-hidden" for="head-q">Search features</label><span data-icon="search"></span><input id="head-q" name="q" type="search" placeholder="Search features" autocomplete="off"></form>
+<button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch theme"></button>
+</div></div></header>
+
+<main id="main" class="wrap">
+<div class="page-head">
+<h1>Get started</h1>
+<p class="lede">TechieVideoEditor is built from source on your Mac. These steps take you from a fresh checkout to your first export.</p>
+</div>
+<article class="doc">
+<h2 id="needs">What you need</h2>
+<ul>
+<li>A Mac with Apple Silicon, on macOS 13 or later, with the Xcode Command Line Tools.</li>
+<li>CMake 3.25 or later, Ninja, pkg-config and Qt 6.7 or later, from Homebrew.</li>
+<li>vcpkg, which builds FFmpeg and the other libraries. Its first build takes a while.</li>
+</ul>
+<pre><code>brew install cmake ninja pkg-config qt
+git clone https://github.com/microsoft/vcpkg ~/vcpkg &amp;&amp; ~/vcpkg/bootstrap-vcpkg.sh</code></pre>
+
+<h2 id="build">Build it</h2>
+<p>From the project folder:</p>
+<pre><code>export VCPKG_ROOT=~/vcpkg
+cmake --preset macos-release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
+cmake --build --preset macos-release</code></pre>
+
+<h2 id="run">Run it</h2>
+<pre><code>build/macos-release/app/TechieVideoEditor.app/Contents/MacOS/TechieVideoEditor</code></pre>
+<p>Video files named after the command are imported and put on the main track; a <code>.tve</code> file is opened. Add <code>--theme light</code> for the light theme.</p>
+
+<h2 id="first-edit">Your first edit</h2>
+<ol class="steps">
+<li><span>On the Home screen, click a canvas shape, such as 16:9. <a href="feature.html#home">Start a project</a></span></li>
+<li><span>Press <kbd>⌘I</kbd> and pick a few videos, then drag them onto the timeline. <a href="feature.html#import-media">Import media</a></span></li>
+<li><span>Drag clip edges to trim, and press <kbd>S</kbd> to split at the playhead. <a href="feature.html#move-trim">Move, trim and split</a></span></li>
+<li><span>Click a transition in the library's Transitions tab to put it on the nearest cut. <a href="feature.html#transitions">Transitions</a></span></li>
+<li><span>Add a title from the Titles tab and type your words in the inspector. <a href="feature.html#titles">Title templates</a></span></li>
+<li><span>Press <kbd>⌘E</kbd>, pick 1080p, and export. <a href="feature.html#export">Export a video</a></span></li>
+</ol>
+
+<h2 id="data">Where your data goes</h2>
+<div class="split-cards">
+<div class="box"><h3><span class="badge"><i></i>On this Mac</span></h3><p>Captions, transcripts, speech clean-up, people, motion and picture analysis run on your Mac. Models download once, checked against their SHA-256, and nothing you edit is uploaded.</p></div>
+<div class="box"><h3><span class="badge key"><i></i>Your own key</span></h3><p>Writing, translation, cloud voices, Copilot and Generate use keys you add in AI settings. Keys stay in your Mac's Keychain; what you send goes to that provider and is billed to your account.</p></div>
+</div>
+
+<h2 id="next">Next</h2>
+<p><a href="index.html">Find features on the map</a> of the editor window, browse <a href="features.html">all features</a>, or learn the <a href="shortcuts.html">keyboard shortcuts</a>.</p>
+</article>
+</main>
+<footer class="site-foot"><div class="wrap"><span>TechieVideoEditor (TVE) · a desktop video editor for macOS on Apple Silicon.</span><span>Screenshots are taken by the app itself.</span></div></footer>
+<script src="assets/icons.js"></script>
+<script src="assets/features.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

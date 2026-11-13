@@ -234,6 +234,9 @@ What's in the repo:
   inspector (Video, Speed, Audio and Effects tabs, and a transition page), and the
   project-bound timeline.
 - `app/` — the application window and command-line options.
+- `web/` — the feature guide: a static website (plain HTML, CSS and JavaScript, no backend)
+  listing every feature with a screenshot, where to find it and the steps to use it. Open
+  `web/index.html` from the folder or serve it from any static host; see [web/README.md](web/README.md).
 
 ### Editor shortcuts
 
