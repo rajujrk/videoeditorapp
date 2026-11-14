@@ -54,6 +54,10 @@ public:
     // Begins a take written to `path` (replacing any file there).
     bool start(const std::string& path, std::string* error = nullptr);
     bool recording() const { return m_recording.load(); }
+    // Paused, the take keeps nothing it hears (and its length stands still) until resumed.
+    void pause() { m_paused = m_recording.load(); }
+    void resume() { m_paused = false; }
+    bool paused() const { return m_paused.load(); }
     // Length of the current take so far, or of the last one after stop().
     Ticks recordedDuration() const;
     // Samples the take lost because the writer could not keep up.
@@ -85,6 +89,7 @@ private:
 
     std::atomic<float> m_peak{0.0f};
     std::atomic<bool> m_recording{false};
+    std::atomic<bool> m_paused{false};
     std::atomic<std::uint32_t> m_take{0};     // bumped by start()
     std::atomic<bool> m_callbackIdle{true};   // the callback is not writing a take
     std::atomic<std::int64_t> m_takeFrames{0};

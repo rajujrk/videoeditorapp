@@ -236,6 +236,19 @@ window.TVE = {
       summary: "Thirds, centre lines, safe areas and rulers over the picture, and a zoom from Fit to 400%.",
       steps: ["Click the grid button under the player and choose the guides to show.", "Use the zoom menu beside it to go from Fit up to 400%."]
     },
+    {
+      id: "transparency-grid", title: "Transparency grid", chapter: "motion", area: "player",
+      where: ["Player", "Transparency grid button"], image: "transparency-grid",
+      summary: "A grey checkerboard wherever nothing covers the canvas, instead of black, so you can see what is transparent. Exports are unchanged.",
+      steps: ["Click the checkerboard button under the player.", "Make a picture smaller, or put a sticker or a picture with transparency on its own: the checkerboard shows around it.", "Click the button again for black."]
+    },
+    {
+      id: "social-safe-areas", title: "Safe areas for vertical social apps", chapter: "motion", area: "player",
+      where: ["Player", "Guides", "Social app safe areas (9:16)"], image: "social-safe-areas",
+      summary: "See where a vertical app's own bars, captions and buttons will cover your picture, and where titles and faces stay clear.",
+      steps: ["Open the Guides menu under the player and choose Social app safe areas.", "Pick Short-video feed, Stories or Live stream: the covered parts are shaded and named, the clear area outlined in green.", "Make the canvas vertical (1080 × 1920) in the same menu changes the project's shape in one step."],
+      note: "These are typical layouts, not any one app's; they are shown in the player only."
+    },
 
     // ---------- Speed ----------
     {
@@ -270,6 +283,13 @@ window.TVE = {
       where: ["Inspector", "Color", "HSL"], image: "hsl",
       summary: "Change one colour without touching the others: eight hue bands and three hue curves.",
       steps: ["Pick a band: red, orange, yellow, green, aqua, blue, purple or magenta.", "Turn its hue, saturation and luminance.", "Or use the hue curves: saturation by hue, hue by hue, and saturation by brightness."]
+    },
+    {
+      id: "grade-compare", title: "Before and after a grade", chapter: "colour", area: "player",
+      where: ["Player", "Before and after button (⇧B)"], image: "grade-compare",
+      summary: "Split the player: the picture before its colour grade on the left of a divider, graded on the right.",
+      steps: ["Grade a clip, then click the Before and after button under the player, or press ⇧B.", "Drag the divider, or its round handle, to either side; double-click it to centre it.", "Click the button (or press ⇧B) again to see the graded picture only."],
+      note: "Effects, keys and masks stay on both sides, so only the grade differs. Nothing is changed or exported."
     },
     {
       id: "scopes", title: "Scopes", chapter: "colour", area: "inspector",
@@ -524,6 +544,18 @@ window.TVE = {
       where: ["Recorder", "Entire screen · A window · An area"], image: "record-area",
       summary: "Choose exactly what to record: a whole display, one window, or a rectangle you draw and size on the display. A red frame marks it while recording, left out of the recording.",
       steps: ["Open the recorder from the screen button in the timeline toolbar.", "Choose Entire screen, A window (then the window), or An area.", "For an area, drag to move it, drag its edges or corners to size it, or use Whole display, 16:9, 9:16 or 1:1; click Use this area (or press Return).", "Click Record; the red frame shows what is being recorded until you stop."]
+    },
+    {
+      id: "record-countdown", title: "A countdown before recording", chapter: "record", area: "timeline", focus: [28, 0, 58, 66],
+      where: ["Recorder", "Countdown"], image: "record-countdown",
+      summary: "Count 3, 5 or 10 seconds down, large in the middle of what will be recorded, before the first frame.",
+      steps: ["Open the recorder and choose Countdown: 3 s, 5 s or 10 s (it is remembered).", "Click Record: the seconds count down over the screen, a ring running out each second.", "Cancel, or Esc, stops it; at zero the countdown goes and recording begins."]
+    },
+    {
+      id: "record-pause", title: "Pause and resume a recording", chapter: "record", area: "timeline", focus: [24, 0, 50, 70],
+      where: ["Recorder", "Pause · Resume"], image: "record-paused",
+      summary: "Pause the screen, camera, microphone and cursor together, and carry on in the same takes; the clips leave every pause out.",
+      steps: ["While recording, click Pause: the clock stands still and the frame round the screen turns amber.", "Click Resume to carry on recording.", "Click Stop: the takes land on the timeline without the pauses (stopping while paused ends them where the pause began)."]
     },
 
     // ---------- On your Mac ----------

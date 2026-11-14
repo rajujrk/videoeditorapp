@@ -347,6 +347,12 @@ Rectangle {
     Shortcut { objectName: "shortcut:toggleClip"; sequences: editor.keys.toggleClip; enabled: editor.visible && !editor.typing && editor.project.selectedClip > 0; onActivated: editor.project.toggleClipEnabled() }
     Shortcut { objectName: "shortcut:defaultTransition"; sequences: editor.keys.defaultTransition; enabled: editor.visible && !editor.typing; onActivated: editor.project.addDefaultTransition() }
     Shortcut { objectName: "shortcut:loop"; sequences: editor.keys.loop; enabled: editor.visible && !editor.typing; onActivated: EditingPreferences.loopPlayback = !EditingPreferences.loopPlayback }
+    Shortcut {
+        objectName: "shortcut:compareGrade"
+        sequences: editor.keys.compareGrade
+        enabled: editor.visible && !editor.typing && editor.project.duration > 0 && !playerPanel.player.lookAround
+        onActivated: playerPanel.player.compareGrade = !playerPanel.player.compareGrade
+    }
     Shortcut { objectName: "shortcut:skimming"; sequences: editor.keys.skimming; enabled: editor.visible && !editor.typing; onActivated: EditingPreferences.skimming = !EditingPreferences.skimming }
     Shortcut { sequences: editor.keys.addMarker; enabled: editor.visible && !editor.typing; onActivated: editor.project.addMarker() }
     Shortcut { sequences: editor.keys.nextMarker; enabled: editor.visible && !editor.typing; onActivated: editor.project.seekMarker(1) }

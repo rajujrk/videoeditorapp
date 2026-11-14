@@ -97,6 +97,7 @@ KeyMap::KeyMap(QObject* parent) : QObject(parent)
     add("loop", QT_TRANSLATE_NOOP("KeyMap", "Loop playback"), "Playback", {QStringLiteral("Ctrl+L")});
     add("skimming", QT_TRANSLATE_NOOP("KeyMap", "Skimming"), "Playback", {QStringLiteral("Shift+S")});
     add("matchFrame", QT_TRANSLATE_NOOP("KeyMap", "Match frame"), "Playback", {QStringLiteral("Shift+F")});
+    add("compareGrade", QT_TRANSLATE_NOOP("KeyMap", "Before and after the grade"), "Playback", {QStringLiteral("Shift+B")});
     add("split", QT_TRANSLATE_NOOP("KeyMap", "Split at the playhead"), "Editing", {QStringLiteral("S")});
     add("blade", QT_TRANSLATE_NOOP("KeyMap", "Blade tool (click clips to cut them)"), "Editing", {QStringLiteral("B")});
     add("selectTool", QT_TRANSLATE_NOOP("KeyMap", "Select tool"), "Editing", {QStringLiteral("V")});

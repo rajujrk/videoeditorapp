@@ -109,6 +109,14 @@ class VideoView : public QQuickRhiItem {
     // Draw the preview at half the canvas's size (each side), a quarter of the pixels to
     // composite: heavy timelines keep up. Export is always at full size.
     Q_PROPERTY(bool halfResolution READ halfResolution WRITE setHalfResolution NOTIFY halfResolutionChanged)
+    // Before and after a grade: left of `compareSplit` (0..1 of the picture's width) the
+    // picture without any clip's colour grade or look, right of it as graded. The preview
+    // only; while comparing, the frame is drawn twice.
+    Q_PROPERTY(bool compareGrade READ compareGrade WRITE setCompareGrade NOTIFY compareChanged)
+    Q_PROPERTY(double compareSplit READ compareSplit WRITE setCompareSplit NOTIFY compareChanged)
+    // Where the canvas is transparent (nothing on it, or pictures with transparency), a grey
+    // checkerboard instead of black. The preview only: exports are as they were.
+    Q_PROPERTY(bool transparencyGrid READ transparencyGrid WRITE setTransparencyGrid NOTIFY transparencyGridChanged)
 
 public:
     explicit VideoView(QQuickItem* parent = nullptr);
@@ -168,6 +176,12 @@ public:
     const tve::ClipSphereView& look() const { return m_look; }
     bool halfResolution() const { return m_halfResolution; }
     void setHalfResolution(bool on);
+    bool compareGrade() const { return m_compareGrade; }
+    void setCompareGrade(bool on);
+    double compareSplit() const { return m_compareSplit; }
+    void setCompareSplit(double split);
+    bool transparencyGrid() const { return m_transparencyGrid; }
+    void setTransparencyGrid(bool on);
     // The views following this one (render thread).
     std::shared_ptr<tve::FrameMirrors> mirrors() const { return m_mirrors; }
 
@@ -188,6 +202,8 @@ signals:
     void displayChanged();
     void lookChanged();
     void halfResolutionChanged();
+    void compareChanged();
+    void transparencyGridChanged();
 
 protected:
     QQuickRhiItemRenderer* createRenderer() override;
@@ -216,6 +232,9 @@ private:
     bool m_lookAround = false;
     tve::ClipSphereView m_look; // (its roll unused)
     bool m_halfResolution = false;
+    bool m_compareGrade = false;
+    double m_compareSplit = 0.5;
+    bool m_transparencyGrid = false;
     std::function<void()> m_stopFileSession; // set while playing a file via `source`
 
     std::vector<tve::EffectInstance> m_effects;

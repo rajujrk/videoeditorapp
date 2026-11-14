@@ -3,12 +3,13 @@ import QtQuick.Window
 import TechieVideoEditor.Theme
 
 // What is being recorded, marked on the screen: a red frame just outside the area (the whole
-// display, a window where it was when recording began, or the chosen part). It takes no clicks
-// and is left out of the recording.
+// display, a window where it was when recording began, or the chosen part), amber and still
+// while paused. It takes no clicks and is left out of the recording.
 Window {
     id: frame
     required property var area // {x, y, width, height}: global points
     readonly property real outside: 4 // the frame's thickness, drawn round the area
+    property bool paused: false
 
     objectName: "recordingFrame"
     title: qsTr("Recording")
@@ -24,13 +25,18 @@ Window {
     visible: true
 
     Rectangle {
+        id: edge
+        objectName: "recordingFrameBorder"
         anchors.fill: parent
         color: "transparent"
-        border.color: Theme.color.danger
+        border.color: frame.paused ? Theme.color.warning : Theme.color.danger
         border.width: frame.outside - 1
         radius: 2
-        // A slow pulse: it is live.
+        opacity: 1
+        // A slow pulse: it is live (still while paused).
         SequentialAnimation on opacity {
+            running: !frame.paused
+            onRunningChanged: if (!running) edge.opacity = 1
             loops: Animation.Infinite
             NumberAnimation { to: 0.55; duration: 900; easing.type: Easing.InOutSine }
             NumberAnimation { to: 1; duration: 900; easing.type: Easing.InOutSine }

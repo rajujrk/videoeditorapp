@@ -12,6 +12,7 @@ qt_add_qml_module(tve_shell
         PlayerPanel.qml
         SourceMonitor.qml
         GuidesOverlay.qml
+        CompareOverlay.qml
         InspectorPanel.qml
         TimelinePanel.qml
         TimelineMenus.qml
@@ -54,6 +55,7 @@ qt_add_qml_module(tve_shell
         LiveDrawing.qml
         ScreenAreaPicker.qml
         RecordingFrame.qml
+        RecordCountdown.qml
         ProjectSettingsDialog.qml
         ImageSequenceDialog.qml
         KeyboardMap.qml

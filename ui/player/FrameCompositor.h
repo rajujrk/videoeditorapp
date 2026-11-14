@@ -66,6 +66,11 @@ public:
     QRhiTexture* render(QRhiCommandBuffer* cb, tve::CompositeFrame& frame, QSize canvas, float seconds,
                         PreviewOverrides* overrides, std::vector<CVMetalTextureRef>& retained);
 
+    // Leaves out every clip's colour grade and look (the "before" of a comparison).
+    void setUngraded(bool on) { m_ungraded = on; }
+    // Starts the canvas transparent rather than black (the preview's transparency grid).
+    void setTransparentCanvas(bool on) { m_transparentCanvas = on; }
+
     // Forgets per-clip state (effect chains, title textures), e.g. for a new project.
     void reset();
     // Lets Core Video recycle textures of pixel buffers no longer in use.
@@ -132,6 +137,8 @@ private:
     QShader m_videoVert;
     QShader m_videoFrag;
     QSize m_canvasSize;
+    bool m_ungraded = false;
+    bool m_transparentCanvas = false;
 
     std::vector<LayerSlot> m_slots;
     std::unique_ptr<QRhiGraphicsPipeline> m_yuvPipeline;

@@ -44,7 +44,29 @@ Ticks CaptureRecorder::elapsed() const
 {
     if (!m_recording)
         return Ticks(double(m_framesWritten) / m_rate * double(kTicksPerSecond));
-    return Ticks(std::chrono::duration<double>(std::chrono::steady_clock::now() - m_begin).count() * double(kTicksPerSecond));
+    std::lock_guard lock(m_mutex);
+    const auto until = m_paused ? m_pausedAt : std::chrono::steady_clock::now();
+    return Ticks(std::chrono::duration<double>(until - m_begin).count() * double(kTicksPerSecond));
+}
+
+void CaptureRecorder::pause()
+{
+    std::lock_guard lock(m_mutex);
+    if (!m_recording || m_paused)
+        return;
+    m_pausedAt = std::chrono::steady_clock::now();
+    m_paused = true;
+}
+
+void CaptureRecorder::resume()
+{
+    std::lock_guard lock(m_mutex);
+    if (!m_paused)
+        return;
+    // The time paused never happened, as far as the file goes.
+    m_begin += std::chrono::steady_clock::now() - m_pausedAt;
+    m_sound.clear(); // (what came while paused)
+    m_paused = false;
 }
 
 bool CaptureRecorder::start(const std::string& path, std::string* error)
@@ -55,6 +77,7 @@ bool CaptureRecorder::start(const std::string& path, std::string* error)
     m_failed = false;
     m_error.clear();
     m_framesWritten = 0;
+    m_paused = false;
     {
         std::lock_guard lock(m_mutex);
         m_sound.clear();
@@ -71,12 +94,17 @@ bool CaptureRecorder::start(const std::string& path, std::string* error)
     };
     callbacks.sound = [this](const float* samples, int frames) {
         std::lock_guard lock(m_mutex);
+        if (m_paused)
+            return;
         m_sound.insert(m_sound.end(), samples, samples + std::size_t(frames) * 2);
     };
     if (!m_source->start(std::move(callbacks), error))
         return false;
     std::filesystem::create_directories(std::filesystem::path(path).parent_path());
-    m_begin = std::chrono::steady_clock::now();
+    {
+        std::lock_guard lock(m_mutex);
+        m_begin = std::chrono::steady_clock::now();
+    }
     m_recording = true;
     m_writer = std::thread([this] { writerLoop(); });
     return true;
@@ -114,11 +142,24 @@ void CaptureRecorder::writerLoop()
     }
     std::vector<float> sound;
     while (!m_failed) {
-        const auto due = m_begin + std::chrono::microseconds(std::int64_t(1e6 * double(m_framesWritten + 1) / m_rate));
+        // Paused: nothing written until resumed (or stopped), the time moved on by resume().
+        if (m_paused) {
+            if (!m_recording)
+                break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            continue;
+        }
+        std::chrono::steady_clock::time_point due;
+        {
+            std::lock_guard lock(m_mutex);
+            due = m_begin + std::chrono::microseconds(std::int64_t(1e6 * double(m_framesWritten + 1) / m_rate));
+        }
         std::this_thread::sleep_until(due);
         CVPixelBufferRef latest = nullptr;
         {
             std::lock_guard lock(m_mutex);
+            if (m_paused)
+                continue; // paused while waiting: this frame is not written
             latest = m_latest ? CVPixelBufferRetain(m_latest) : nullptr;
             sound.swap(m_sound);
             m_sound.clear();
@@ -204,8 +245,19 @@ CursorLog::~CursorLog()
 void CursorLog::start()
 {
     m_log = {};
+    m_paused = false;
     m_running = true;
     m_thread = std::thread([this] { run(); });
+}
+
+void CursorLog::pause()
+{
+    m_paused = true;
+}
+
+void CursorLog::resume()
+{
+    m_paused = false;
 }
 
 CursorEffects CursorLog::stop()
@@ -219,10 +271,18 @@ CursorEffects CursorLog::stop()
 
 void CursorLog::run()
 {
-    const auto begin = std::chrono::steady_clock::now();
+    auto begin = std::chrono::steady_clock::now();
     bool down = false;
     for (int n = 0; m_running; ++n) {
         std::this_thread::sleep_until(begin + std::chrono::microseconds(std::int64_t(1e6 * n / 60)));
+        if (m_paused) {
+            // The time paused is left out: the log's clock waits with the recording's.
+            const auto pausedAt = std::chrono::steady_clock::now();
+            while (m_paused && m_running)
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            begin += std::chrono::steady_clock::now() - pausedAt;
+            continue;
+        }
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count();
         const Ticks time = Ticks(seconds * double(kTicksPerSecond));
         double x = 0.5, y = 0.5;
