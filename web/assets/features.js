@@ -171,6 +171,27 @@ window.TVE = {
       keys: ["⌘T"]
     },
 
+    {
+      id: "media-folders", title: "Media folders, sorting and labels", chapter: "edit", area: "library",
+      where: ["Library", "Media", "Folder and view buttons"], image: "media-library",
+      summary: "Keep media in folders, sort and group it, see it as thumbnails of three sizes or a list, and mark it with colour labels.",
+      steps: ["Click the folder button above the media for a new folder; double-click a folder to open it, and the trail above to go back.", "Drag media onto a folder, or right-click it for Move to folder and Label.", "Open the view menu for sorting, Backwards, Group by kind, Thumbnails or List, the thumbnail size, Show only a label, and Remove unused media…."],
+      note: "Searching looks in every folder. Removing unused media leaves the files on disk, and can be undone."
+    },
+    {
+      id: "import-folder", title: "Import a folder", chapter: "edit", area: "library",
+      where: ["Library", "Media", "⌄", "A folder, with its folders…"], image: "media-list",
+      summary: "Bring in every video, picture and sound in a folder and the folders inside it, kept in library folders like its own.",
+      steps: ["Click the ⌄ button in the Media tab and choose A folder, with its folders….", "Choose the folder.", "Its media lands in a library folder named after it (inside the folder open), each subfolder a folder inside that."]
+    },
+    {
+      id: "project-settings", title: "Project size, frame rate and archive", chapter: "setup", area: "topbar", focus: [25, 15, 50, 65],
+      where: ["Top bar", "Size and frame rate"], image: "project-settings",
+      summary: "Change the project's size or frame rate after you have started, or copy the project and every file it uses into one folder to move or keep.",
+      steps: ["Click the size and frame rate next to the project's name.", "Choose a size (or Custom) and a frame rate, then Change the canvas; clips keep their times.", "For an archive, choose whether to keep only media the timeline uses, click Archive… and pick where to put it."],
+      note: "The archive is a folder \"Name Archive\" with the project and a Media folder; the project pointing at those copies. The project you have open stays as it is."
+    },
+
     // ---------- Placement and animation ----------
     {
       id: "transform", title: "Place clips in the player", chapter: "motion", area: "player",
@@ -471,6 +492,13 @@ window.TVE = {
       keys: ["⌘L", "⇧S"]
     },
 
+    {
+      id: "sound-channels", title: "Mono and one-sided sound", chapter: "audio", area: "inspector",
+      where: ["Inspector", "Audio", "Channels"], image: "sound-channels",
+      summary: "Play a clip's sound as recorded, in mono, with only the left or right channel on both sides (a microphone on one channel), or swapped.",
+      steps: ["Select a clip with sound and open the Audio tab.", "Under Channels, choose Stereo, Mono, Left only, Right only or Swapped.", "The preview and the export both play it that way."]
+    },
+
     // ---------- Recording ----------
     {
       id: "recording", title: "Record the screen and camera", chapter: "record", area: "timeline",
@@ -718,6 +746,7 @@ window.TVE = {
       id: "export", title: "Export a video", chapter: "export", area: "topbar", where: ["Top bar", "Export"], image: "export-dialog",
       summary: "Presets for the web, social apps, ProRes masters, GIFs and sound alone, or every setting by hand, with a size estimate.",
       steps: ["Click Export (⌘E).", "Pick a preset, or set format, size, frame rate, quality, sound and range.", "Click Export to watch the progress, or Add to queue to keep editing."],
+      note: "Save as preset… keeps the settings under a name of yours; your presets follow the built-in ones and can be deleted.",
       keys: ["⌘E"]
     },
     {

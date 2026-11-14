@@ -88,6 +88,9 @@ class ProjectController : public QObject {
     Q_PROPERTY(QString redoText READ redoText NOTIFY projectChanged)
 
     Q_PROPERTY(double playhead READ playhead NOTIFY playheadChanged)
+    Q_PROPERTY(QVariantList bins READ bins NOTIFY projectChanged)
+    Q_PROPERTY(bool archiving READ archiving NOTIFY archiveChanged)
+    Q_PROPERTY(double archiveProgress READ archiveProgress NOTIFY archiveChanged)
     // The time the player shows while skimming (-1: none, it shows the playhead's).
     Q_PROPERTY(double skimTime READ skimTime NOTIFY skimChanged)
     Q_PROPERTY(bool playing READ playing NOTIFY playingChanged)
@@ -239,7 +242,7 @@ class ProjectController : public QObject {
     // progress, error, duration (seconds)} in queue order.
     Q_PROPERTY(QVariantList exportJobs READ exportJobs NOTIFY exportChanged)
     // {id, title, description, format, …} from export_presets.json.
-    Q_PROPERTY(QVariantList exportPresets READ exportPresets NOTIFY languageChanged)
+    Q_PROPERTY(QVariantList exportPresets READ exportPresets NOTIFY exportPresetsChanged)
     // {id, label, extension, video, quality}: the file formats export can write.
     Q_PROPERTY(QVariantList exportFormats READ exportFormats NOTIFY languageChanged)
 
@@ -801,6 +804,45 @@ public:
     double skimTime() const { return m_skimTime; }
     // The trackpad's light tap (a picture meeting the canvas's edge while dragged).
     Q_INVOKABLE void alignmentFeedback();
+
+    // --- Media and project (31b) ---
+    // The library's folders: [{id, name, parent, path (names from the top, joined by " › ")}].
+    QVariantList bins() const;
+    // A folder inside `parent` (-1: the top); its id (0 on failure). Renamed, or taken away (what
+    // was in it moving up). Media and folders moved into a folder (-1: the top).
+    Q_INVOKABLE double addBin(const QString& name, double parent = -1);
+    Q_INVOKABLE bool renameBin(double binId, const QString& name);
+    Q_INVOKABLE bool removeBin(double binId);
+    Q_INVOKABLE bool moveToBin(const QVariantList& mediaIds, double binId, const QVariantList& binIds = {});
+    // A colour label ("none", "red", "orange", "yellow", "green", "blue", "purple") on media.
+    Q_INVOKABLE bool setMediaLabel(const QVariantList& mediaIds, const QString& label);
+    // Media no clip plays; taken out of the project (one undo step), how many.
+    Q_INVOKABLE QVariantList unusedMedia() const;
+    Q_INVOKABLE int removeUnusedMedia();
+    // A clip's sound channels ("stereo", "mono", "left", "right", "swap"): the clip, or the
+    // selection it belongs to. One undo step.
+    Q_INVOKABLE bool setClipChannels(double clipId, const QString& channels);
+    // Every media file in a folder and the folders inside it, imported (one undo step); with
+    // keepFolders, into library folders named like them (the folder itself one of them).
+    // How many were imported (files already in the project count too).
+    Q_INVOKABLE int importFolder(const QUrl& folder, bool keepFolders = true, double intoBin = -1);
+    // The project and its files copied into a new folder "<name> Archive" inside `folder` (in the
+    // background: archiving, archiveProgress; archiveFinished reports, with the archived project's
+    // path): the media (every frame of a sequence), cleaned sound, processed copies, LUTs and
+    // title pictures under Media/, the project pointing at those copies. options: usedOnly
+    // (leave out media nobody uses). The open project stays as it is.
+    Q_INVOKABLE bool archiveProject(const QUrl& folder, const QVariantMap& options = {});
+    Q_INVOKABLE void cancelArchive();
+    bool archiving() const { return m_archiving; }
+    double archiveProgress() const { return m_archiveProgress; }
+    // The canvas's size and frame rate changed (one undo step; clips keep their times and
+    // fit the new shape as they do any canvas).
+    Q_INVOKABLE bool setCanvas(int width, int height, double frameRate);
+    // Export presets of the person's own, beside the built-in ones (custom: true in
+    // exportPresets): the dialog's settings saved under a name (the same name replaces it),
+    // its id; and deleted. Kept in <app data>/export-presets.json (TVE_EXPORT_PRESETS_FILE).
+    Q_INVOKABLE QString saveExportPreset(const QString& name, const QVariantMap& options);
+    Q_INVOKABLE bool removeExportPreset(const QString& id);
     // Media: how many clips use it; taken out of the project with them; shown in Finder.
     Q_INVOKABLE int clipsUsingMedia(double mediaId) const;
     Q_INVOKABLE bool removeMedia(double mediaId);
@@ -1276,6 +1318,9 @@ signals:
     void stickersChanged();
     void playheadChanged();
     void skimChanged();
+    void archiveChanged();
+    void archiveFinished(bool ok, const QString& path, const QString& message);
+    void exportPresetsChanged();
     void playingChanged();
     void selectionChanged();
     void clipboardChanged();
@@ -1417,6 +1462,11 @@ private:
     tve::Id m_selectedTransition = tve::kNoId;
     double m_playhead = 0;
     double m_skimTime = -1; // skimming: the time shown instead of the playhead's
+    // Archiving in the background: its thread, how far, and a request to stop.
+    std::thread m_archiveThread;
+    std::shared_ptr<std::atomic<bool>> m_archiveCancel;
+    bool m_archiving = false;
+    double m_archiveProgress = 0;
     bool m_canvasChosen = false; // false: the first video clip sets the canvas
     bool m_wasPlaying = false;
     QTimer m_playheadTimer;

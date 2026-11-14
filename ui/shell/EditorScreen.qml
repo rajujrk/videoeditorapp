@@ -119,6 +119,7 @@ Rectangle {
                 interchangeDialog.open()
             }
             onShortcutsRequested: shortcutsDialog.open()
+            onProjectSettingsRequested: projectSettings.open()
             onCloudSettingsRequested: cloudSettings.open()
             onWorkspaceChosen: (id) => editor.applyWorkspace(id)
             onSaveWorkspaceRequested: workspaceNameDialog.open()
@@ -248,6 +249,10 @@ Rectangle {
         project: editor.project
     }
 
+    ProjectSettingsDialog {
+        id: projectSettings
+        project: editor.project
+    }
     InterchangeDialog {
         id: interchangeDialog
         objectName: "interchangeDialog"

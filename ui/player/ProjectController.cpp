@@ -38,6 +38,7 @@
 #include "analysis/DepthVision.h"
 #include "commands/SequenceEdits.h"
 #include "commands/TimelineEdits.h"
+#include "commands/MediaEdits.h"
 #include "EditingPreferences.h"
 #include "model/MusicFit.h"
 #include "analysis/MotionAnalysis.h"
@@ -98,6 +99,12 @@
 #include <random>
 
 using namespace tve;
+
+namespace {
+// Names QML uses for media labels and sound channels, in their enums' order.
+constexpr const char* kMediaLabelNames[] = {"none", "red", "orange", "yellow", "green", "blue", "purple"};
+constexpr const char* kChannelNames[] = {"stereo", "mono", "left", "right", "swap"};
+} // namespace
 
 namespace {
 
@@ -910,6 +917,7 @@ ProjectController::ProjectController(QObject* parent)
     // Names shown from here follow the app's language.
     connect(Language::instance(), &Language::changed, this, [this] {
         emit languageChanged();
+        emit exportPresetsChanged();
         emit selectedClipInfoChanged();
         emit stickersChanged();
         emit m_soundLibrary->changed();
@@ -1006,6 +1014,10 @@ ProjectController::~ProjectController()
     m_pauseChanged.notify_all();
     if (m_exportThread.joinable())
         m_exportThread.join();
+    if (m_archiveCancel)
+        *m_archiveCancel = true;
+    if (m_archiveThread.joinable())
+        m_archiveThread.join();
     m_cancelAnalysis = true;
     if (m_analysisThread.joinable())
         m_analysisThread.join();
@@ -1248,6 +1260,9 @@ QVariantList ProjectController::media() const
             {QStringLiteral("spherical"), item.spherical},
             {QStringLiteral("missing"), missing.contains(item.id)},
             {QStringLiteral("placeholder"), item.placeholder},
+            {QStringLiteral("binId"), double(item.binId)},
+            {QStringLiteral("label"), QString::fromLatin1(kMediaLabelNames[int(item.label)])},
+            {QStringLiteral("imported"), double(item.id)},
             {QStringLiteral("colourFill"), item.colourFill ? QVariant(fillMap(*item.colourFill)) : QVariant()},
             {QStringLiteral("generated"),
              item.generated ? QVariant(QVariantMap{{QStringLiteral("provider"), QString::fromStdString(item.generated->provider)},
@@ -2531,6 +2546,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("hasAudio"), sequence || (media && media->hasAudio)},
             {QStringLiteral("audioEnabled"), clip->audioEnabled},
             {QStringLiteral("enabled"), clip->enabled},
+            {QStringLiteral("channels"), QString::fromLatin1(kChannelNames[int(clip->channels)])},
             {QStringLiteral("gainDb"), double(clip->gainDbAt(now))},
             {QStringLiteral("fadeIn"), seconds(clip->fadeIn)},
             {QStringLiteral("fadeOut"), seconds(clip->fadeOut)},
@@ -4575,9 +4591,45 @@ FrameRate frameRateFrom(double fps)
 
 } // namespace
 
+namespace {
+
+QString userPresetsFile()
+{
+    const QString overridden = qEnvironmentVariable("TVE_EXPORT_PRESETS_FILE");
+    return overridden.isEmpty()
+               ? QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(QStringLiteral("export-presets.json"))
+               : overridden;
+}
+
+QVariantList userPresets()
+{
+    QFile file(userPresetsFile());
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    const QJsonObject o = QJsonDocument::fromJson(file.readAll()).object();
+    if (o.value(QStringLiteral("version")).toInt() != 1)
+        return {};
+    return o.value(QStringLiteral("presets")).toArray().toVariantList();
+}
+
+bool writeUserPresets(const QVariantList& presets)
+{
+    QDir().mkpath(QFileInfo(userPresetsFile()).absolutePath());
+    QSaveFile file(userPresetsFile());
+    if (!file.open(QIODevice::WriteOnly))
+        return false;
+    file.write(QJsonDocument(QJsonObject{{QStringLiteral("version"), 1},
+                                         {QStringLiteral("presets"), QJsonArray::fromVariantList(presets)}})
+                   .toJson());
+    return file.commit();
+}
+
+} // namespace
+
 QVariantList ProjectController::exportPresets() const
 {
-    // Their title and description in the app's language (catalogue names).
+    // Their title and description in the app's language (catalogue names); the person's own
+    // after them, as they named them.
     QVariantList list;
     for (const QVariant& preset : presetList()) {
         QVariantMap map = preset.toMap();
@@ -4585,7 +4637,96 @@ QVariantList ProjectController::exportPresets() const
         map[QStringLiteral("description")] = catalogueText(map.value(QStringLiteral("description")).toString());
         list << map;
     }
+    for (const QVariant& preset : userPresets()) {
+        QVariantMap map = preset.toMap();
+        // What it does, said in the app's language each time.
+        const QString formatId = map.value(QStringLiteral("format")).toString();
+        QString format = formatId;
+        for (const ExportFormat& f : kExportFormats)
+            if (formatId == QLatin1String(f.id))
+                format = tr(f.label);
+        QStringList parts{format};
+        const int w = map.value(QStringLiteral("width")).toInt(), h = map.value(QStringLiteral("height")).toInt();
+        if (w > 0 && h > 0)
+            parts << QStringLiteral("%1 × %2").arg(w).arg(h);
+        else
+            parts << tr("the project's size");
+        if (const double fps = map.value(QStringLiteral("frameRate")).toDouble(); fps > 0)
+            parts << tr("%1 fps").arg(QLocale().toString(fps, 'g', 4));
+        if (const double mb = map.value(QStringLiteral("targetSize")).toDouble(); mb > 0)
+            parts << tr("under %1 MB").arg(QLocale().toString(mb, 'g', 6));
+        if (!map.value(QStringLiteral("audio"), true).toBool())
+            parts << tr("no sound");
+        map[QStringLiteral("description")] = tr("Yours: %1").arg(parts.join(QStringLiteral(" · ")));
+        map[QStringLiteral("custom")] = true;
+        list << map;
+    }
     return list;
+}
+
+QString ProjectController::saveExportPreset(const QString& name, const QVariantMap& options)
+{
+    const QString title = name.trimmed();
+    if (title.isEmpty()) {
+        reportError(tr("Give the preset a name"));
+        return {};
+    }
+    const QString format = options.value(QStringLiteral("format")).toString();
+    if (std::ranges::none_of(kExportFormats, [&](const ExportFormat& f) { return format == QLatin1String(f.id); })) {
+        reportError(tr("Choose a format for the preset"));
+        return {};
+    }
+    QVariantMap preset{{QStringLiteral("title"), title}, {QStringLiteral("format"), format}};
+    // The size only when it is not simply the project's (an empty size follows the canvas).
+    const int w = options.value(QStringLiteral("width")).toInt(), h = options.value(QStringLiteral("height")).toInt();
+    if (w > 0 && h > 0 && (w != m_project.settings.width || h != m_project.settings.height || options.value(QStringLiteral("fill")).toBool())) {
+        preset[QStringLiteral("width")] = w;
+        preset[QStringLiteral("height")] = h;
+        preset[QStringLiteral("fill")] = options.value(QStringLiteral("fill")).toBool();
+    }
+    if (const double fps = options.value(QStringLiteral("frameRate")).toDouble(); fps > 0)
+        preset[QStringLiteral("frameRate")] = fps;
+    preset[QStringLiteral("quality")] = options.value(QStringLiteral("quality"), QStringLiteral("standard")).toString();
+    if (const double mb = options.value(QStringLiteral("targetSize")).toDouble(); mb > 0)
+        preset[QStringLiteral("targetSize")] = mb;
+    preset[QStringLiteral("audio")] = options.value(QStringLiteral("audio"), true).toBool();
+    QVariantList presets = userPresets();
+    // The same name replaces it (keeping its id).
+    QString id;
+    for (QVariant& existing : presets) {
+        QVariantMap map = existing.toMap();
+        if (map.value(QStringLiteral("title")).toString().compare(title, Qt::CaseInsensitive) == 0) {
+            id = map.value(QStringLiteral("id")).toString();
+            preset[QStringLiteral("id")] = id;
+            existing = preset;
+        }
+    }
+    if (id.isEmpty()) {
+        id = QStringLiteral("user-") + QUuid::createUuid().toString(QUuid::WithoutBraces).left(8);
+        preset[QStringLiteral("id")] = id;
+        presets << preset;
+    }
+    if (!writeUserPresets(presets)) {
+        reportError(tr("The preset could not be saved"));
+        return {};
+    }
+    emit exportPresetsChanged();
+    return id;
+}
+
+bool ProjectController::removeExportPreset(const QString& id)
+{
+    QVariantList presets = userPresets();
+    const auto before = presets.size();
+    presets.removeIf([&](const QVariant& p) { return p.toMap().value(QStringLiteral("id")).toString() == id; });
+    if (presets.size() == before) {
+        reportError(tr("Only your own presets can be deleted"));
+        return false;
+    }
+    if (!writeUserPresets(presets))
+        return false;
+    emit exportPresetsChanged();
+    return true;
 }
 
 QVariantList ProjectController::exportFormats() const
@@ -12673,4 +12814,391 @@ void ProjectController::endSkim()
 void ProjectController::alignmentFeedback()
 {
     performAlignmentFeedback();
+}
+
+// --- Media and project (31b) ---
+
+QVariantList ProjectController::bins() const
+{
+    QVariantList list;
+    for (const MediaBin& bin : m_project.bins) {
+        QStringList path;
+        for (const std::string& name : tve::binPath(m_project, bin.id))
+            path << QString::fromStdString(name);
+        list << QVariantMap{{QStringLiteral("id"), double(bin.id)},
+                            {QStringLiteral("name"), QString::fromStdString(bin.name)},
+                            {QStringLiteral("parent"), double(bin.parent)},
+                            {QStringLiteral("path"), path.join(QStringLiteral(" › "))}};
+    }
+    return list;
+}
+
+namespace {
+
+std::vector<Id> idsOf(const QVariantList& list)
+{
+    std::vector<Id> ids;
+    for (const QVariant& v : list)
+        if (v.toDouble() > 0)
+            ids.push_back(Id(v.toDouble()));
+    return ids;
+}
+
+Id binOrTop(double binId)
+{
+    return binId > 0 ? Id(binId) : kNoId;
+}
+
+} // namespace
+
+double ProjectController::addBin(const QString& name, double parent)
+{
+    Project after = m_project;
+    Id made = kNoId;
+    if (auto error = tve::addBin(after, name.toStdString(), binOrTop(parent), &made)) {
+        reportError(coreText(*error));
+        return 0;
+    }
+    m_project.setNextId(after.nextId());
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "New Folder"))))
+        return 0;
+    return double(made);
+}
+
+bool ProjectController::renameBin(double binId, const QString& name)
+{
+    Project after = m_project;
+    if (auto error = tve::renameBin(after, binOrTop(binId), name.toStdString())) {
+        reportError(coreText(*error));
+        return false;
+    }
+    if (after == m_project)
+        return true;
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Rename Folder")));
+}
+
+bool ProjectController::removeBin(double binId)
+{
+    Project after = m_project;
+    if (auto error = tve::removeBin(after, binOrTop(binId))) {
+        reportError(coreText(*error));
+        return false;
+    }
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Delete Folder")));
+}
+
+bool ProjectController::moveToBin(const QVariantList& mediaIds, double binId, const QVariantList& binIds)
+{
+    Project after = m_project;
+    if (auto error = tve::moveToBin(after, idsOf(mediaIds), idsOf(binIds), binOrTop(binId))) {
+        reportError(coreText(*error));
+        return false;
+    }
+    if (after == m_project)
+        return true;
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Move to Folder")));
+}
+
+bool ProjectController::setMediaLabel(const QVariantList& mediaIds, const QString& label)
+{
+    const auto name = std::ranges::find_if(kMediaLabelNames, [&](const char* n) { return label == QLatin1String(n); });
+    if (name == std::end(kMediaLabelNames)) {
+        reportError(tr("There is no such label"));
+        return false;
+    }
+    Project after = m_project;
+    if (auto error = tve::setMediaLabel(after, idsOf(mediaIds), MediaLabel(name - std::begin(kMediaLabelNames)))) {
+        reportError(coreText(*error));
+        return false;
+    }
+    if (after == m_project)
+        return true;
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Label Media")));
+}
+
+QVariantList ProjectController::unusedMedia() const
+{
+    QVariantList list;
+    for (Id id : tve::unusedMedia(m_project))
+        list << double(id);
+    return list;
+}
+
+int ProjectController::removeUnusedMedia()
+{
+    Project after = m_project;
+    const int removed = tve::removeUnusedMedia(after);
+    if (removed == 0) {
+        reportError(tr("Every piece of media is in use"));
+        return 0;
+    }
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Remove Unused Media"))))
+        return 0;
+    return removed;
+}
+
+bool ProjectController::setClipChannels(double clipId, const QString& channels)
+{
+    const auto name = std::ranges::find_if(kChannelNames, [&](const char* n) { return channels == QLatin1String(n); });
+    if (name == std::end(kChannelNames)) {
+        reportError(tr("There is no such channel choice"));
+        return false;
+    }
+    const Id id = toId(clipId);
+    std::vector<Id> ids = clipsToCopy();
+    if (std::ranges::find(ids, id) == ids.end())
+        ids = {id};
+    else // (only those of the selection with sound)
+        std::erase_if(ids, [&](Id other) {
+            const Clip* c = findClip(other);
+            const MediaItem* m = c ? m_project.findMedia(c->mediaId) : nullptr;
+            return other != id && !(c && (c->compound() || (m && m->hasAudio)));
+        });
+    Project after = m_project;
+    if (auto error = tve::setClipChannels(after, ids, AudioChannels(name - std::begin(kChannelNames)))) {
+        reportError(coreText(*error));
+        return false;
+    }
+    if (after == m_project)
+        return true;
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Sound Channels")));
+}
+
+namespace {
+
+// The files a folder import takes: those the Import dialog lists.
+bool importableFile(const QString& path)
+{
+    static const QStringList extensions{
+        QStringLiteral("mp4"), QStringLiteral("mov"), QStringLiteral("m4v"), QStringLiteral("mkv"), QStringLiteral("avi"),
+        QStringLiteral("webm"), QStringLiteral("mxf"), QStringLiteral("mts"), QStringLiteral("m2ts"), QStringLiteral("gif"),
+        QStringLiteral("wav"), QStringLiteral("mp3"), QStringLiteral("m4a"), QStringLiteral("aac"), QStringLiteral("flac"),
+        QStringLiteral("aif"), QStringLiteral("aiff"), QStringLiteral("ogg"), QStringLiteral("png"), QStringLiteral("jpg"),
+        QStringLiteral("jpeg"), QStringLiteral("heic"), QStringLiteral("heif"), QStringLiteral("webp"), QStringLiteral("tif"),
+        QStringLiteral("tiff"), QStringLiteral("bmp"), QStringLiteral("svg"), QStringLiteral("exr"), QStringLiteral("dng"),
+        QStringLiteral("cr2"), QStringLiteral("cr3"), QStringLiteral("nef"), QStringLiteral("arw"), QStringLiteral("raf"),
+        QStringLiteral("orf"), QStringLiteral("rw2")};
+    return extensions.contains(QFileInfo(path).suffix().toLower());
+}
+
+constexpr int kMostFolderFiles = 2000;
+
+} // namespace
+
+int ProjectController::importFolder(const QUrl& folderUrl, bool keepFolders, double intoBin)
+{
+    const QString root = folderUrl.isLocalFile() ? folderUrl.toLocalFile() : folderUrl.toString();
+    const QFileInfo rootInfo(root);
+    if (!rootInfo.isDir()) {
+        reportError(tr("Choose a folder to import"));
+        return 0;
+    }
+    // Its files in a steady order: each folder's own files by name, then its folders'.
+    QStringList files;
+    std::function<void(const QString&)> walk = [&](const QString& dir) {
+        const QDir d(dir);
+        for (const QFileInfo& f : d.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::Name | QDir::IgnoreCase))
+            if (importableFile(f.fileName()) && files.size() < kMostFolderFiles)
+                files << f.absoluteFilePath();
+        for (const QFileInfo& f : d.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::IgnoreCase))
+            if (!f.isSymLink())
+                walk(f.absoluteFilePath());
+    };
+    walk(rootInfo.absoluteFilePath());
+    if (files.isEmpty()) {
+        reportError(tr("There is no media in that folder"));
+        return 0;
+    }
+    Project after = m_project;
+    const Id top = binOrTop(intoBin);
+    // Library folders for the folders, made as they are needed (one for the folder itself).
+    std::map<QString, Id> binOf;
+    const auto binFor = [&](const QString& dir) -> Id {
+        if (!keepFolders)
+            return top;
+        QString relative = QDir(rootInfo.absolutePath()).relativeFilePath(dir);
+        Id parent = top;
+        QString sofar;
+        for (const QString& part : relative.split(QLatin1Char('/'), Qt::SkipEmptyParts)) {
+            sofar += QLatin1Char('/') + part;
+            if (const auto it = binOf.find(sofar); it != binOf.end()) {
+                parent = it->second;
+                continue;
+            }
+            Id made = kNoId;
+            if (tve::addBin(after, part.toStdString(), parent, &made))
+                return parent;
+            binOf[sofar] = made;
+            parent = made;
+        }
+        return parent;
+    };
+    int imported = 0, failed = 0;
+    for (const QString& path : files) {
+        const std::string p = path.toStdString();
+        if (std::ranges::any_of(after.media, [&](const MediaItem& m) { return m.path == p; })) {
+            ++imported; // (already here: left where it is)
+            continue;
+        }
+        QString error;
+        std::optional<MediaItem> item = describeMedia(p, &error);
+        if (!item) {
+            ++failed;
+            continue;
+        }
+        item->binId = binFor(QFileInfo(path).absolutePath());
+        ImportMediaCommand import(std::move(*item));
+        if (import.redo(after)) {
+            ++failed;
+            continue;
+        }
+        ++imported;
+    }
+    if (after.media.size() == m_project.media.size() && after.bins.size() == m_project.bins.size()) {
+        if (imported == 0)
+            reportError(tr("None of the files in that folder could be read"));
+        return imported;
+    }
+    m_project.setNextId(after.nextId());
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Import Folder"))))
+        return 0;
+    if (failed > 0)
+        reportError(failed == 1 ? tr("One file in the folder could not be read") : tr("%1 files in the folder could not be read").arg(failed));
+    requestAutoProxies();
+    return imported;
+}
+
+bool ProjectController::archiveProject(const QUrl& folderUrl, const QVariantMap& options)
+{
+    if (m_archiving) {
+        reportError(tr("An archive is being made already"));
+        return false;
+    }
+    const QString parent = folderUrl.isLocalFile() ? folderUrl.toLocalFile() : folderUrl.toString();
+    if (!QFileInfo(parent).isDir()) {
+        reportError(tr("Choose a folder for the archive"));
+        return false;
+    }
+    const bool usedOnly = options.value(QStringLiteral("usedOnly")).toBool();
+    QString base = name();
+    base.replace(QRegularExpression(QStringLiteral("[/:\\\\]")), QStringLiteral("-"));
+    QString root = QDir(parent).filePath(tr("%1 Archive").arg(base));
+    for (int n = 2; QFileInfo::exists(root); ++n)
+        root = QDir(parent).filePath(tr("%1 Archive %2").arg(base).arg(n));
+    if (!QDir().mkpath(root + QStringLiteral("/Media"))) {
+        reportError(tr("The archive folder could not be made"));
+        return false;
+    }
+    // Where each file goes (Media/, a sequence's frames in a folder of their own; names kept,
+    // made unique), worked out here so the copies need nothing of the project.
+    const Project project = rootProject();
+    std::vector<std::pair<std::string, std::string>> copies;
+    std::map<std::string, std::string> moved;
+    std::set<QString> taken;
+    for (const ArchiveFile& f : tve::archiveFiles(project, usedOnly)) {
+        const QFileInfo info(QString::fromStdString(f.path));
+        QString folder = root + QStringLiteral("/Media");
+        if (!f.folder.empty())
+            folder += QLatin1Char('/') + QString::fromStdString(f.folder);
+        QString target = folder + QLatin1Char('/') + info.fileName();
+        for (int n = 2; taken.contains(target.toLower()); ++n)
+            target = folder + QLatin1Char('/') + info.completeBaseName() + QStringLiteral(" %1.").arg(n) + info.suffix();
+        taken.insert(target.toLower());
+        copies.emplace_back(f.path, target.toStdString());
+        moved[f.path] = target.toStdString();
+    }
+    const Project archived = tve::relocated(project, moved, usedOnly);
+    const QString projectPath = QDir(root).filePath(base + QStringLiteral(".tve"));
+
+    m_archiving = true;
+    m_archiveProgress = 0;
+    emit archiveChanged();
+    if (m_archiveThread.joinable())
+        m_archiveThread.join();
+    m_archiveCancel = std::make_shared<std::atomic<bool>>(false);
+    QPointer<ProjectController> self(this);
+    m_archiveThread = std::thread([self, cancel = m_archiveCancel, copies = std::move(copies), archived, projectPath, root] {
+        std::uint64_t total = 0, done = 0;
+        for (const auto& [from, to] : copies) {
+            std::error_code e;
+            total += std::filesystem::file_size(from, e);
+        }
+        QStringList missing;
+        QString failure;
+        for (const auto& [from, to] : copies) {
+            if (*cancel)
+                break;
+            std::error_code e;
+            if (!std::filesystem::exists(from, e)) {
+                missing << QFileInfo(QString::fromStdString(from)).fileName();
+                continue;
+            }
+            std::filesystem::create_directories(std::filesystem::path(to).parent_path(), e);
+            if (!std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing, e)) {
+                failure = QString::fromStdString(e.message());
+                break;
+            }
+            done += std::filesystem::file_size(to, e);
+            const double progress = total > 0 ? double(done) / double(total) : 1.0;
+            QMetaObject::invokeMethod(qApp, [self, progress] {
+                if (!self)
+                    return;
+                self->m_archiveProgress = progress;
+                emit self->archiveChanged();
+            });
+        }
+        if (!*cancel && failure.isEmpty()) {
+            try {
+                tve::saveProject(archived, projectPath.toStdString());
+            } catch (const std::exception& e) {
+                failure = QString::fromUtf8(e.what());
+            }
+        }
+        const bool cancelled = *cancel;
+        QMetaObject::invokeMethod(qApp, [self, cancelled, failure, missing, projectPath, root] {
+            if (!self)
+                return;
+            self->m_archiving = false;
+            self->m_archiveProgress = cancelled || !failure.isEmpty() ? 0 : 1;
+            emit self->archiveChanged();
+            if (cancelled || !failure.isEmpty()) {
+                // What was copied goes again; the archive folder was made for it.
+                QDir(root).removeRecursively();
+                emit self->archiveFinished(false, {}, cancelled ? tr("The archive was cancelled")
+                                                                : tr("The archive could not be made: %1").arg(failure));
+                return;
+            }
+            emit self->archiveFinished(true, projectPath,
+                                       missing.isEmpty() ? QString()
+                                       : missing.size() == 1 ? tr("%1 was missing, so it is not in the archive").arg(missing.first())
+                                                             : tr("%1 missing files are not in the archive").arg(missing.size()));
+        });
+    });
+    return true;
+}
+
+void ProjectController::cancelArchive()
+{
+    if (m_archiveCancel)
+        *m_archiveCancel = true;
+}
+
+bool ProjectController::setCanvas(int width, int height, double frameRate)
+{
+    if (width < 16 || height < 16 || width > 16384 || height > 16384) {
+        reportError(tr("Choose a size from 16 to 16384 pixels a side"));
+        return false;
+    }
+    if (!(frameRate >= 1 && frameRate <= 240)) {
+        reportError(tr("Choose a frame rate from 1 to 240 frames a second"));
+        return false;
+    }
+    ProjectSettings settings = m_project.settings;
+    settings.width = width;
+    settings.height = height;
+    settings.frameRate = frameRateFrom(frameRate);
+    if (settings == m_project.settings)
+        return true;
+    m_canvasChosen = true;
+    return apply(std::make_unique<SetProjectSettingsCommand>(settings, TVE_TR("core", "Change Canvas")));
 }

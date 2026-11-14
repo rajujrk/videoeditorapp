@@ -49,10 +49,27 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ColourFillKind, {
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColourFill, kind, from, to, angle)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ImageSequence, pattern, first, last)
+NLOHMANN_JSON_SERIALIZE_ENUM(MediaLabel, {
+    {MediaLabel::None, "none"},
+    {MediaLabel::Red, "red"},
+    {MediaLabel::Orange, "orange"},
+    {MediaLabel::Yellow, "yellow"},
+    {MediaLabel::Green, "green"},
+    {MediaLabel::Blue, "blue"},
+    {MediaLabel::Purple, "purple"},
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MediaBin, id, name, parent)
+NLOHMANN_JSON_SERIALIZE_ENUM(AudioChannels, {
+    {AudioChannels::Stereo, "stereo"},
+    {AudioChannels::Mono, "mono"},
+    {AudioChannels::Left, "left"},
+    {AudioChannels::Right, "right"},
+    {AudioChannels::Swap, "swap"},
+})
 // Fields added after schema 1 shipped default when absent, so older files still load.
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MediaItem, id, path, duration, hasVideo, hasAudio, width, height,
                                                 frameRate, audioSampleRate, audioChannels, still, alpha, lottie,
-                                                fingerprint, generated, placeholder, colour, spherical, colourFill, sequence)
+                                                fingerprint, generated, placeholder, colour, spherical, colourFill, sequence, binId, label)
 NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
     {BlendMode::Normal, "normal"},
     {BlendMode::Multiply, "multiply"},
@@ -313,7 +330,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, durati
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
                                                 chromaKey, masks, matte, cutout, faceMosaic, beauty, night, depthOfField,
                                                 stabilization, deflicker, denoise, motionTracks, processedVideo, cursor, audioEffects,
-                                                enhancedAudio, keepPitch, sequenceId, groupId, drawing, angles, motionBlur, enabled)
+                                                enhancedAudio, keepPitch, sequenceId, groupId, drawing, angles, motionBlur, enabled, channels)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips, audioEffects)
 NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {
@@ -342,6 +359,8 @@ nlohmann::json projectToJson(const Project& project)
         {"markers", project.markers},
         {"sequences", project.sequences},
     };
+    if (!project.bins.empty())
+        json["bins"] = project.bins;
     if (project.templateInfo)
         json["template"] = *project.templateInfo;
     return json;
@@ -364,6 +383,8 @@ Project projectFromJson(const nlohmann::json& json)
         json.at("markers").get_to(project.markers);
     if (json.contains("sequences"))
         json.at("sequences").get_to(project.sequences);
+    if (json.contains("bins"))
+        json.at("bins").get_to(project.bins);
     if (json.contains("template"))
         project.templateInfo = json.at("template").get<TemplateInfo>();
     project.setNextId(json.at("nextId").get<Id>());

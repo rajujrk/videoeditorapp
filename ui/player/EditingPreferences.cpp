@@ -11,6 +11,12 @@
 #include <algorithm>
 #include <cmath>
 
+namespace {
+const QStringList kSorts{QStringLiteral("imported"), QStringLiteral("name"), QStringLiteral("length"), QStringLiteral("kind")};
+const QStringList kViews{QStringLiteral("grid"), QStringLiteral("list")};
+const QStringList kSizes{QStringLiteral("small"), QStringLiteral("medium"), QStringLiteral("large")};
+} // namespace
+
 EditingPreferences* EditingPreferences::instance()
 {
     static EditingPreferences* preferences = new EditingPreferences;
@@ -50,6 +56,16 @@ void EditingPreferences::load()
     m_loopPlayback = o.value(QStringLiteral("loopPlayback")).toBool(m_loopPlayback);
     m_canvasBorder = o.value(QStringLiteral("canvasBorder")).toBool(m_canvasBorder);
     m_snapToBorder = o.value(QStringLiteral("snapToBorder")).toBool(m_snapToBorder);
+    const auto pick = [&](const char* key, QString& field, const QStringList& allowed) {
+        const QString value = o.value(QLatin1String(key)).toString();
+        if (allowed.contains(value))
+            field = value;
+    };
+    pick("mediaSort", m_mediaSort, kSorts);
+    pick("mediaView", m_mediaView, kViews);
+    pick("mediaSize", m_mediaSize, kSizes);
+    m_mediaDescending = o.value(QStringLiteral("mediaDescending")).toBool(m_mediaDescending);
+    m_mediaGroups = o.value(QStringLiteral("mediaGroups")).toBool(m_mediaGroups);
 }
 
 void EditingPreferences::save() const
@@ -65,7 +81,12 @@ void EditingPreferences::save() const
                         {QStringLiteral("skimming"), m_skimming},
                         {QStringLiteral("loopPlayback"), m_loopPlayback},
                         {QStringLiteral("canvasBorder"), m_canvasBorder},
-                        {QStringLiteral("snapToBorder"), m_snapToBorder}};
+                        {QStringLiteral("snapToBorder"), m_snapToBorder},
+                        {QStringLiteral("mediaSort"), m_mediaSort},
+                        {QStringLiteral("mediaDescending"), m_mediaDescending},
+                        {QStringLiteral("mediaGroups"), m_mediaGroups},
+                        {QStringLiteral("mediaView"), m_mediaView},
+                        {QStringLiteral("mediaSize"), m_mediaSize}};
     file.write(QJsonDocument(o).toJson());
     file.commit();
 }
@@ -97,6 +118,23 @@ void EditingPreferences::setSkimming(bool on) { set(m_skimming, on); }
 void EditingPreferences::setLoopPlayback(bool on) { set(m_loopPlayback, on); }
 void EditingPreferences::setCanvasBorder(bool on) { set(m_canvasBorder, on); }
 void EditingPreferences::setSnapToBorder(bool on) { set(m_snapToBorder, on); }
+void EditingPreferences::setMediaSort(const QString& sort)
+{
+    if (kSorts.contains(sort))
+        set(m_mediaSort, sort);
+}
+void EditingPreferences::setMediaDescending(bool on) { set(m_mediaDescending, on); }
+void EditingPreferences::setMediaGroups(bool on) { set(m_mediaGroups, on); }
+void EditingPreferences::setMediaView(const QString& view)
+{
+    if (kViews.contains(view))
+        set(m_mediaView, view);
+}
+void EditingPreferences::setMediaSize(const QString& size)
+{
+    if (kSizes.contains(size))
+        set(m_mediaSize, size);
+}
 
 void EditingPreferences::reset()
 {
@@ -104,6 +142,10 @@ void EditingPreferences::reset()
     m_defaultTransitionLength = 1.0;
     m_autoRipple = m_skimming = m_loopPlayback = false;
     m_canvasBorder = m_snapToBorder = true;
+    m_mediaSort = QStringLiteral("imported");
+    m_mediaDescending = m_mediaGroups = false;
+    m_mediaView = QStringLiteral("grid");
+    m_mediaSize = QStringLiteral("medium");
     save();
     emit changed();
 }

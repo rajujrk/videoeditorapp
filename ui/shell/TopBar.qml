@@ -16,6 +16,7 @@ Rectangle {
     signal cloudSettingsRequested()
     signal workspaceChosen(string id)
     signal saveWorkspaceRequested()
+    signal projectSettingsRequested()
 
     implicitHeight: Theme.size.topBar
     color: Theme.color.surface
@@ -43,18 +44,29 @@ Rectangle {
             font: Theme.type.caption
             color: Theme.color.textSecondary
         }
-        Rectangle {
+        // The canvas: click for the project's settings (size, frame rate, archive).
+        AbstractButton {
+            id: canvasButton
+            objectName: "canvasButton"
             implicitWidth: canvas.implicitWidth + Theme.space.m
             implicitHeight: 20
-            radius: Theme.radius.round
-            color: Theme.color.surfaceRaised
-            border.color: Theme.color.borderSubtle
-            Text {
+            hoverEnabled: true
+            onClicked: bar.projectSettingsRequested()
+            ToolTip.visible: hovered
+            ToolTip.delay: 600
+            ToolTip.text: qsTr("Project settings: change the size or frame rate, or archive the project with its media")
+            background: Rectangle {
+                radius: Theme.radius.round
+                color: canvasButton.hovered ? Theme.color.surfaceHover : Theme.color.surfaceRaised
+                border.color: canvasButton.hovered ? Theme.color.borderStrong : Theme.color.borderSubtle
+            }
+            contentItem: Text {
                 id: canvas
-                anchors.centerIn: parent
-                text: qsTr("%1 × %2 · %3 fps").arg(bar.project.canvasWidth).arg(bar.project.canvasHeight).arg(Fmt.num(bar.project.frameRate))
+                text: qsTr("%1 × %2 · %3 fps").arg(bar.project.canvasWidth).arg(bar.project.canvasHeight).arg(Fmt.brief(bar.project.frameRate, 3))
                 font: Theme.type.caption
                 color: Theme.color.textSecondary
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
         }
 

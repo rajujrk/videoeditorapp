@@ -2130,6 +2130,38 @@ Rectangle {
                             onCommitted: (v) => inspector.commitAudio(inspector.clipInfo.gainDb, inspector.clipInfo.fadeIn, v)
                         }
                     }
+                    // Which channels are heard where: a microphone on one side, mono, swapped.
+                    Section {
+                        objectName: "channelsSection"
+                        title: qsTr("Channels")
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            Repeater {
+                                model: [{ id: "stereo", label: qsTr("Stereo") }, { id: "mono", label: qsTr("Mono") },
+                                        { id: "left", label: qsTr("Left only") }, { id: "right", label: qsTr("Right only") },
+                                        { id: "swap", label: qsTr("Swapped") }]
+                                delegate: TextButton {
+                                    required property var modelData
+                                    objectName: "channels:" + modelData.id
+                                    text: modelData.label
+                                    variant: (inspector.clipInfo.channels || "stereo") === modelData.id ? "primary" : "secondary"
+                                    onClicked: inspector.project.setClipChannels(inspector.clipInfo.id, modelData.id)
+                                }
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: (inspector.clipInfo.channels || "stereo") === "mono" ? qsTr("Both channels mixed, heard on both sides.")
+                                : inspector.clipInfo.channels === "left" ? qsTr("The left channel on both sides (a microphone on one channel).")
+                                : inspector.clipInfo.channels === "right" ? qsTr("The right channel on both sides (a microphone on one channel).")
+                                : inspector.clipInfo.channels === "swap" ? qsTr("Left and right swapped.")
+                                : qsTr("As recorded.")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                        }
+                    }
                     // Music fitted to a length on this Mac: bars out or again, a touch of speed.
                     Section {
                         id: fitSection

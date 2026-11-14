@@ -1969,6 +1969,22 @@
         <translation>கீழே ஒவ்வொரு அமைப்பையும் தேர்ந்தெடுக்கவும்</translation>
     </message>
     <message>
+        <source>Save as preset…</source>
+        <translation>முன்னமைப்பாகச் சேமி…</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>நீக்கு</translation>
+    </message>
+    <message>
+        <source>Preset name</source>
+        <translation>முன்னமைப்பின் பெயர்</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>சேமி</translation>
+    </message>
+    <message>
         <source>Save as</source>
         <translation>இப்படிச் சேமி</translation>
     </message>
@@ -3974,6 +3990,50 @@ Third, 4</source>
         <translation>மங்கலாக முடி</translation>
     </message>
     <message>
+        <source>Channels</source>
+        <translation>அலைவரிசைகள்</translation>
+    </message>
+    <message>
+        <source>Stereo</source>
+        <translation>ஸ்டீரியோ</translation>
+    </message>
+    <message>
+        <source>Mono</source>
+        <translation>மோனோ</translation>
+    </message>
+    <message>
+        <source>Left only</source>
+        <translation>இடது மட்டும்</translation>
+    </message>
+    <message>
+        <source>Right only</source>
+        <translation>வலது மட்டும்</translation>
+    </message>
+    <message>
+        <source>Swapped</source>
+        <translation>மாற்றப்பட்டது</translation>
+    </message>
+    <message>
+        <source>Both channels mixed, heard on both sides.</source>
+        <translation>இரு அலைவரிசைகளும் கலந்து, இரு பக்கங்களிலும் கேட்கும்.</translation>
+    </message>
+    <message>
+        <source>The left channel on both sides (a microphone on one channel).</source>
+        <translation>இடது அலைவரிசை இரு பக்கங்களிலும் (ஒரு அலைவரிசையில் உள்ள மைக்ரோஃபோன்).</translation>
+    </message>
+    <message>
+        <source>The right channel on both sides (a microphone on one channel).</source>
+        <translation>வலது அலைவரிசை இரு பக்கங்களிலும் (ஒரு அலைவரிசையில் உள்ள மைக்ரோஃபோன்).</translation>
+    </message>
+    <message>
+        <source>Left and right swapped.</source>
+        <translation>இடமும் வலமும் மாற்றப்பட்டன.</translation>
+    </message>
+    <message>
+        <source>As recorded.</source>
+        <translation>பதிவு செய்தபடியே.</translation>
+    </message>
+    <message>
         <source>Fit to length</source>
         <translation>நீளத்துக்கு ஏற்ப பொருத்து</translation>
     </message>
@@ -4924,6 +4984,42 @@ Third, 4</source>
         <translation>கொண்டாட்டம்</translation>
     </message>
     <message>
+        <source>Red</source>
+        <translation>சிவப்பு</translation>
+    </message>
+    <message>
+        <source>Orange</source>
+        <translation>ஆரஞ்சு</translation>
+    </message>
+    <message>
+        <source>Yellow</source>
+        <translation>மஞ்சள்</translation>
+    </message>
+    <message>
+        <source>Green</source>
+        <translation>பச்சை</translation>
+    </message>
+    <message>
+        <source>Blue</source>
+        <translation>நீலம்</translation>
+    </message>
+    <message>
+        <source>Purple</source>
+        <translation>ஊதா</translation>
+    </message>
+    <message>
+        <source>Videos</source>
+        <translation>வீடியோக்கள்</translation>
+    </message>
+    <message>
+        <source>Pictures</source>
+        <translation>படங்கள்</translation>
+    </message>
+    <message>
+        <source>Sound</source>
+        <translation>ஒலி</translation>
+    </message>
+    <message>
         <source>Basic</source>
         <translation>அடிப்படை</translation>
     </message>
@@ -5040,6 +5136,10 @@ Third, 4</source>
         <translation>ஒரு படத் தொடர்…</translation>
     </message>
     <message>
+        <source>A folder, with its folders…</source>
+        <translation>ஒரு கோப்புறை, அதன் கோப்புறைகளுடன்…</translation>
+    </message>
+    <message>
         <source>Search %1</source>
         <translation>%1 தேடு</translation>
     </message>
@@ -5120,6 +5220,102 @@ Third, 4</source>
         <translation>இயக்கக்குறிக்கு அருகிலுள்ள வெட்டின் மேல், மேலே ஒரு டிராக்கில் வைக்க கிளிக் செய்யவும்</translation>
     </message>
     <message>
+        <source>Only media with this label: click to show all</source>
+        <translation>இந்தக் குறியுள்ள ஊடகம் மட்டும்: அனைத்தையும் காட்டச் சொடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>New folder</source>
+        <translation>புதிய கோப்புறை</translation>
+    </message>
+    <message>
+        <source>Sort, group, view and labels</source>
+        <translation>வரிசை, குழு, காட்சி மற்றும் குறிகள்</translation>
+    </message>
+    <message>
+        <source>Thumbnails</source>
+        <translation>சிறுபடங்கள்</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>பட்டியல்</translation>
+    </message>
+    <message>
+        <source>Thumbnail size</source>
+        <translation>சிறுபட அளவு</translation>
+    </message>
+    <message>
+        <source>Small</source>
+        <translation>சிறியது</translation>
+    </message>
+    <message>
+        <source>Medium</source>
+        <translation>நடுத்தரம்</translation>
+    </message>
+    <message>
+        <source>Large</source>
+        <translation>பெரியது</translation>
+    </message>
+    <message>
+        <source>Sort by when imported</source>
+        <translation>இறக்கிய நேரப்படி வரிசைப்படுத்து</translation>
+    </message>
+    <message>
+        <source>Sort by name</source>
+        <translation>பெயர்ப்படி வரிசைப்படுத்து</translation>
+    </message>
+    <message>
+        <source>Sort by length</source>
+        <translation>நீளப்படி வரிசைப்படுத்து</translation>
+    </message>
+    <message>
+        <source>Sort by kind</source>
+        <translation>வகைப்படி வரிசைப்படுத்து</translation>
+    </message>
+    <message>
+        <source>Backwards</source>
+        <translation>தலைகீழாக</translation>
+    </message>
+    <message>
+        <source>Group by kind</source>
+        <translation>வகைப்படி குழுவாக்கு</translation>
+    </message>
+    <message>
+        <source>Show only a label</source>
+        <translation>ஒரு குறியை மட்டும் காட்டு</translation>
+    </message>
+    <message>
+        <source>Every label</source>
+        <translation>எல்லாக் குறிகளும்</translation>
+    </message>
+    <message>
+        <source>Remove unused media…</source>
+        <translation>பயன்படுத்தாத ஊடகத்தை நீக்கு…</translation>
+    </message>
+    <message>
+        <source>Every piece of media is in use</source>
+        <translation>எல்லா ஊடகமும் பயன்பாட்டில் உள்ளது</translation>
+    </message>
+    <message>
+        <source>Nothing to remove.</source>
+        <translation>நீக்க எதுவும் இல்லை.</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>சரி</translation>
+    </message>
+    <message>
+        <source>Remove 1 unused piece of media?</source>
+        <translation>பயன்படுத்தாத 1 ஊடகத்தை நீக்கவா?</translation>
+    </message>
+    <message>
+        <source>Remove %1 unused pieces of media?</source>
+        <translation>பயன்படுத்தாத %1 ஊடகங்களை நீக்கவா?</translation>
+    </message>
+    <message>
+        <source>No clip uses them. The files stay where they are on disk, and you can undo this.</source>
+        <translation>எந்தக் கிளிப்பும் அவற்றைப் பயன்படுத்தவில்லை. கோப்புகள் வட்டில் இருந்த இடத்திலேயே இருக்கும்; இதைச் செயல்தவிர்க்கலாம்.</translation>
+    </message>
+    <message>
         <source>Missing</source>
         <translation>காணவில்லை</translation>
     </message>
@@ -5162,6 +5358,78 @@ Third, 4</source>
     <message>
         <source>Shows: %1</source>
         <translation>காட்டுவது: %1</translation>
+    </message>
+    <message>
+        <source>1 item</source>
+        <translation>1 உருப்படி</translation>
+    </message>
+    <message>
+        <source>%1 items</source>
+        <translation>%1 உருப்படிகள்</translation>
+    </message>
+    <message>
+        <source>%1×%2</source>
+        <translation>%1×%2</translation>
+    </message>
+    <message>
+        <source>Nothing here has that label</source>
+        <translation>இங்கு எதற்கும் அந்தக் குறி இல்லை</translation>
+    </message>
+    <message>
+        <source>Drag media here to keep it in this folder</source>
+        <translation>இந்தக் கோப்புறையில் வைக்க ஊடகத்தை இங்கே இழுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Label</source>
+        <translation>குறி</translation>
+    </message>
+    <message>
+        <source>No label</source>
+        <translation>குறி இல்லை</translation>
+    </message>
+    <message>
+        <source>Move to folder</source>
+        <translation>கோப்புறைக்கு நகர்த்து</translation>
+    </message>
+    <message>
+        <source>Media (the top)</source>
+        <translation>ஊடகம் (மேல்நிலை)</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>திற</translation>
+    </message>
+    <message>
+        <source>Rename…</source>
+        <translation>மறுபெயரிடு…</translation>
+    </message>
+    <message>
+        <source>New folder inside</source>
+        <translation>உள்ளே புதிய கோப்புறை</translation>
+    </message>
+    <message>
+        <source>Delete the folder</source>
+        <translation>கோப்புறையை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Rename the folder</source>
+        <translation>கோப்புறைக்கு மறுபெயரிடு</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>ரத்துசெய்</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>மறுபெயரிடு</translation>
+    </message>
+    <message>
+        <source>Make</source>
+        <translation>உருவாக்கு</translation>
+    </message>
+    <message>
+        <source>Import a folder</source>
+        <translation>ஒரு கோப்புறையை இறக்கு</translation>
     </message>
     <message>
         <source>Delete this preset</source>
@@ -6215,6 +6483,42 @@ Third, 4</source>
         <translation>MP3 · 320 kbit/s, ஒலி மட்டும்</translation>
     </message>
     <message>
+        <source>the project&apos;s size</source>
+        <translation>திட்டத்தின் அளவு</translation>
+    </message>
+    <message>
+        <source>%1 fps</source>
+        <translation>%1 fps</translation>
+    </message>
+    <message>
+        <source>under %1 MB</source>
+        <translation>%1 MB க்குள்</translation>
+    </message>
+    <message>
+        <source>no sound</source>
+        <translation>ஒலி இல்லை</translation>
+    </message>
+    <message>
+        <source>Yours: %1</source>
+        <translation>உங்களுடையது: %1</translation>
+    </message>
+    <message>
+        <source>Give the preset a name</source>
+        <translation>முன்னமைப்புக்கு ஒரு பெயர் கொடுங்கள்</translation>
+    </message>
+    <message>
+        <source>Choose a format for the preset</source>
+        <translation>முன்னமைப்புக்கு ஒரு வடிவத்தைத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>The preset could not be saved</source>
+        <translation>முன்னமைப்பைச் சேமிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Only your own presets can be deleted</source>
+        <translation>உங்கள் சொந்த முன்னமைப்புகளை மட்டுமே நீக்க முடியும்</translation>
+    </message>
+    <message>
         <source>Live Photo · a key photo and 3 seconds around it</source>
         <translation>Live Photo · ஒரு முதன்மைப் படமும் அதைச் சுற்றிய 3 வினாடிகளும்</translation>
     </message>
@@ -6727,6 +7031,78 @@ Third, 4</source>
         <translation>நீக்குவதற்கு குறிப்பான்கள் எதுவும் இல்லை</translation>
     </message>
     <message>
+        <source>There is no such label</source>
+        <translation>அப்படி ஒரு குறி இல்லை</translation>
+    </message>
+    <message>
+        <source>Every piece of media is in use</source>
+        <translation>எல்லா ஊடகமும் பயன்பாட்டில் உள்ளது</translation>
+    </message>
+    <message>
+        <source>There is no such channel choice</source>
+        <translation>அப்படி ஒரு அலைவரிசைத் தேர்வு இல்லை</translation>
+    </message>
+    <message>
+        <source>Choose a folder to import</source>
+        <translation>இறக்க ஒரு கோப்புறையைத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>There is no media in that folder</source>
+        <translation>அந்தக் கோப்புறையில் ஊடகம் இல்லை</translation>
+    </message>
+    <message>
+        <source>None of the files in that folder could be read</source>
+        <translation>அந்தக் கோப்புறையிலுள்ள எந்தக் கோப்பையும் படிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>One file in the folder could not be read</source>
+        <translation>கோப்புறையிலுள்ள ஒரு கோப்பைப் படிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>%1 files in the folder could not be read</source>
+        <translation>கோப்புறையிலுள்ள %1 கோப்புகளைப் படிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>An archive is being made already</source>
+        <translation>ஏற்கனவே ஒரு காப்பகம் உருவாகிறது</translation>
+    </message>
+    <message>
+        <source>Choose a folder for the archive</source>
+        <translation>காப்பகத்திற்கு ஒரு கோப்புறையைத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>%1 Archive</source>
+        <translation>%1 காப்பகம்</translation>
+    </message>
+    <message>
+        <source>%1 Archive %2</source>
+        <translation>%1 காப்பகம் %2</translation>
+    </message>
+    <message>
+        <source>The archive folder could not be made</source>
+        <translation>காப்பகக் கோப்புறையை உருவாக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>The archive was cancelled</source>
+        <translation>காப்பகம் ரத்து செய்யப்பட்டது</translation>
+    </message>
+    <message>
+        <source>The archive could not be made: %1</source>
+        <translation>காப்பகத்தை உருவாக்க முடியவில்லை: %1</translation>
+    </message>
+    <message>
+        <source>%1 was missing, so it is not in the archive</source>
+        <translation>%1 காணவில்லை, அதனால் அது காப்பகத்தில் இல்லை</translation>
+    </message>
+    <message>
+        <source>%1 missing files are not in the archive</source>
+        <translation>காணாமல் போன %1 கோப்புகள் காப்பகத்தில் இல்லை</translation>
+    </message>
+    <message>
+        <source>Choose a size from 16 to 16384 pixels a side</source>
+        <translation>ஒரு பக்கத்திற்கு 16 முதல் 16384 பிக்சல்கள் வரை ஒரு அளவைத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
         <source>Analysis failed: %1</source>
         <translation>பகுப்பாய்வு தோல்வியடைந்தது: %1</translation>
     </message>
@@ -7177,6 +7553,109 @@ Third, 4</source>
     <message>
         <source>There is no such lens</source>
         <translation>அப்படி ஒரு லென்ஸ் இல்லை</translation>
+    </message>
+</context>
+<context>
+    <name>ProjectSettingsDialog</name>
+    <message>
+        <source>Landscape 16:9 · 1280 × 720</source>
+        <translation>கிடைமட்டம் 16:9 · 1280 × 720</translation>
+    </message>
+    <message>
+        <source>Landscape 16:9 · 1920 × 1080</source>
+        <translation>கிடைமட்டம் 16:9 · 1920 × 1080</translation>
+    </message>
+    <message>
+        <source>Landscape 16:9 · 2560 × 1440</source>
+        <translation>கிடைமட்டம் 16:9 · 2560 × 1440</translation>
+    </message>
+    <message>
+        <source>Landscape 16:9 · 3840 × 2160</source>
+        <translation>கிடைமட்டம் 16:9 · 3840 × 2160</translation>
+    </message>
+    <message>
+        <source>Vertical 9:16 · 1080 × 1920</source>
+        <translation>செங்குத்து 9:16 · 1080 × 1920</translation>
+    </message>
+    <message>
+        <source>Portrait 4:5 · 1080 × 1350</source>
+        <translation>நீளவாக்கு 4:5 · 1080 × 1350</translation>
+    </message>
+    <message>
+        <source>Square 1:1 · 1080 × 1080</source>
+        <translation>சதுரம் 1:1 · 1080 × 1080</translation>
+    </message>
+    <message>
+        <source>Cinema 2.39:1 · 2048 × 858</source>
+        <translation>சினிமா 2.39:1 · 2048 × 858</translation>
+    </message>
+    <message>
+        <source>Custom</source>
+        <translation>தனிப்பயன்</translation>
+    </message>
+    <message>
+        <source>Archived to %1. %2</source>
+        <translation>%1 இல் காப்பகமாக்கப்பட்டது. %2</translation>
+    </message>
+    <message>
+        <source>Archived to %1</source>
+        <translation>%1 இல் காப்பகமாக்கப்பட்டது</translation>
+    </message>
+    <message>
+        <source>Project settings</source>
+        <translation>திட்ட அமைப்புகள்</translation>
+    </message>
+    <message>
+        <source>Size</source>
+        <translation>அளவு</translation>
+    </message>
+    <message>
+        <source>pixels</source>
+        <translation>பிக்சல்கள்</translation>
+    </message>
+    <message>
+        <source>Frame rate</source>
+        <translation>சட்ட வீதம்</translation>
+    </message>
+    <message>
+        <source>%1 fps</source>
+        <translation>%1 fps</translation>
+    </message>
+    <message>
+        <source>Clips keep their times. Pictures fit the new shape as they do any canvas; move or scale them afterwards if they should fill it.</source>
+        <translation>கிளிப்புகள் தங்கள் நேரங்களை வைத்திருக்கும். படங்கள் எந்தக் கேன்வாஸிலும் பொருந்துவது போல புதிய வடிவத்தில் பொருந்தும்; நிரப்ப வேண்டுமெனில் பிறகு நகர்த்தவும் அல்லது அளவை மாற்றவும்.</translation>
+    </message>
+    <message>
+        <source>Change the canvas</source>
+        <translation>கேன்வாஸை மாற்று</translation>
+    </message>
+    <message>
+        <source>Archive</source>
+        <translation>காப்பகம்</translation>
+    </message>
+    <message>
+        <source>Copies the project and every file it uses (media, cleaned sound, LUTs) into one new folder, to move or keep. The project open here stays as it is.</source>
+        <translation>திட்டத்தையும் அது பயன்படுத்தும் ஒவ்வொரு கோப்பையும் (ஊடகம், சுத்தமாக்கிய ஒலி, LUTகள்) நகர்த்த அல்லது வைத்துக்கொள்ள ஒரு புதிய கோப்புறைக்கு நகலெடுக்கும். இங்கே திறந்திருக்கும் திட்டம் அப்படியே இருக்கும்.</translation>
+    </message>
+    <message>
+        <source>Only media the timeline uses</source>
+        <translation>காலவரிசை பயன்படுத்தும் ஊடகம் மட்டும்</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>ரத்துசெய்</translation>
+    </message>
+    <message>
+        <source>Archive…</source>
+        <translation>காப்பகமாக்கு…</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>முடிந்தது</translation>
+    </message>
+    <message>
+        <source>Where to put the archive</source>
+        <translation>காப்பகத்தை எங்கே வைப்பது</translation>
     </message>
 </context>
 <context>
@@ -9245,6 +9724,10 @@ The Journey</source>
     <message>
         <source>Autosaved %1</source>
         <translation>தானாகச் சேமித்தது %1</translation>
+    </message>
+    <message>
+        <source>Project settings: change the size or frame rate, or archive the project with its media</source>
+        <translation>திட்ட அமைப்புகள்: அளவு அல்லது சட்ட வீதத்தை மாற்றவும், அல்லது திட்டத்தை அதன் ஊடகத்துடன் காப்பகமாக்கவும்</translation>
     </message>
     <message>
         <source>%1 × %2 · %3 fps</source>
@@ -12569,6 +13052,38 @@ The Journey</source>
         <translation>செங்குத்தாகப் புரட்டு</translation>
     </message>
     <message>
+        <source>New Folder</source>
+        <translation>புதிய கோப்புறை</translation>
+    </message>
+    <message>
+        <source>Rename Folder</source>
+        <translation>கோப்புறைக்கு மறுபெயரிடு</translation>
+    </message>
+    <message>
+        <source>Delete Folder</source>
+        <translation>கோப்புறையை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Move to Folder</source>
+        <translation>கோப்புறைக்கு நகர்த்து</translation>
+    </message>
+    <message>
+        <source>Label Media</source>
+        <translation>ஊடகத்திற்குக் குறியிடு</translation>
+    </message>
+    <message>
+        <source>Remove Unused Media</source>
+        <translation>பயன்படுத்தாத ஊடகத்தை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Sound Channels</source>
+        <translation>ஒலி அலைவரிசைகள்</translation>
+    </message>
+    <message>
+        <source>Import Folder</source>
+        <translation>கோப்புறையை இறக்கு</translation>
+    </message>
+    <message>
         <source>Ramp up</source>
         <translation>வேகமாக்கு</translation>
     </message>
@@ -13635,6 +14150,30 @@ The Journey</source>
     <message>
         <source>Select a picture to flip</source>
         <translation>புரட்ட ஒரு படத்தைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Give the folder a name</source>
+        <translation>கோப்புறைக்கு ஒரு பெயர் கொடுங்கள்</translation>
+    </message>
+    <message>
+        <source>That folder is not in the project</source>
+        <translation>அந்தக் கோப்புறை திட்டத்தில் இல்லை</translation>
+    </message>
+    <message>
+        <source>Choose something to move</source>
+        <translation>நகர்த்த எதையாவது தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>A folder can&apos;t go inside itself</source>
+        <translation>ஒரு கோப்புறை தனக்குள்ளேயே செல்ல முடியாது</translation>
+    </message>
+    <message>
+        <source>Choose media to label</source>
+        <translation>குறியிட ஊடகத்தைத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>Select a clip with sound</source>
+        <translation>ஒலியுள்ள ஒரு கிளிப்பைத் தேர்ந்தெடுங்கள்</translation>
     </message>
 </context>
 </TS>

@@ -136,6 +136,95 @@ Rectangle {
         { id: "nature", label: qsTr("Nature") }, { id: "emoji", label: qsTr("Emoji") }, { id: "party", label: qsTr("Party") }
     ]
     // The Transitions tab's category ("" for all).
+    // The media library: the folder open (0: the top), a colour label to show only, and what
+    // the bin lists there — folders, then (grouped by kind when chosen) media, sorted.
+    property double currentBin: 0
+    property string labelFilter: ""
+    readonly property var labelColours: ({ red: Theme.color.markers.red, orange: Theme.color.markers.orange,
+                                           yellow: Theme.color.markers.yellow, green: Theme.color.markers.green,
+                                           blue: Theme.color.markers.blue, purple: Theme.color.markers.purple })
+    readonly property var labelNames: [{ id: "red", label: qsTr("Red") }, { id: "orange", label: qsTr("Orange") },
+                                       { id: "yellow", label: qsTr("Yellow") }, { id: "green", label: qsTr("Green") },
+                                       { id: "blue", label: qsTr("Blue") }, { id: "purple", label: qsTr("Purple") }]
+    readonly property var binTrail: {
+        const trail = []
+        let id = currentBin
+        for (let guard = 0; id > 0 && guard < 100; ++guard) {
+            const bin = project.bins.find((b) => b.id === id)
+            if (!bin)
+                break
+            trail.unshift(bin)
+            id = bin.parent
+        }
+        return trail
+    }
+    onBinTrailChanged: if (currentBin > 0 && binTrail.length === 0) currentBin = 0 // (it was deleted)
+    function kindOf(m) { return !m.hasVideo ? "audio" : m.still ? "photo" : "video" }
+    function binOf(m) { return m.binId > 0 ? m.binId : 0 }
+    readonly property int mediaColumns: EditingPreferences.mediaSize === "small" ? 3 : EditingPreferences.mediaSize === "large" ? 1 : 2
+    readonly property var binEntries: {
+        const searching = mediaSearch.trimmed !== ""
+        const query = mediaSearch.trimmed.toLowerCase()
+        let media = searching
+                  ? project.media.filter((m) => m.name.toLowerCase().indexOf(query) >= 0 || mediaSearch.hitIds.indexOf(m.id) >= 0)
+                  : project.media.filter((m) => binOf(m) === currentBin)
+        if (labelFilter !== "")
+            media = media.filter((m) => m.label === labelFilter)
+        const sort = EditingPreferences.mediaSort
+        const order = { video: 0, photo: 1, audio: 2 }
+        const compare = (a, b) => sort === "name" ? a.name.localeCompare(b.name)
+                                : sort === "length" ? (a.still ? 0 : a.duration) - (b.still ? 0 : b.duration) || a.id - b.id
+                                : sort === "kind" ? order[kindOf(a)] - order[kindOf(b)] || a.name.localeCompare(b.name)
+                                : a.id - b.id
+        media = media.slice().sort(compare)
+        if (EditingPreferences.mediaDescending)
+            media.reverse()
+        const entries = searching || labelFilter !== "" ? [] : project.bins.filter((b) => (b.parent > 0 ? b.parent : 0) === currentBin)
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((b) => ({ entryKind: "bin", id: b.id, name: b.name,
+                           count: project.media.filter((m) => m.binId === b.id).length
+                                  + project.bins.filter((c) => c.parent === b.id).length }))
+        if (!EditingPreferences.mediaGroups)
+            return entries.concat(media)
+        // Grouped: a heading over each kind; in the grid each starts a row of its own.
+        const grid = EditingPreferences.mediaView === "grid"
+        const pad = () => { while (grid && entries.length % mediaColumns !== 0) entries.push({ entryKind: "gap" }) }
+        for (const group of [{ kind: "video", title: qsTr("Videos") }, { kind: "photo", title: qsTr("Pictures") },
+                             { kind: "audio", title: qsTr("Sound") }]) {
+            const items = media.filter((m) => kindOf(m) === group.kind)
+            if (items.length === 0)
+                continue
+            pad()
+            entries.push({ entryKind: "header", kind: group.kind, name: group.title, count: items.length })
+            if (grid)
+                for (let i = 1; i < mediaColumns; ++i)
+                    entries.push({ entryKind: "gap" })
+            for (const m of items)
+                entries.push(m)
+        }
+        return entries
+    }
+    readonly property var mediaShown: binEntries.filter((e) => e.entryKind === undefined)
+    // Media and folders dropped on a folder move into it.
+    function dropIntoBin(drop, binId) {
+        if (drop.keys.indexOf("application/x-tve-bin") >= 0) {
+            const bin = Number(drop.getDataAsString("application/x-tve-bin"))
+            if (bin !== binId)
+                library.project.moveToBin([], binId, [bin])
+        } else {
+            const media = drop.source && drop.source.mediaId !== undefined ? drop.source.mediaId
+                                                                           : Number(drop.getDataAsString("application/x-tve-media"))
+            library.project.moveToBin([media], binId)
+        }
+        drop.accept(Qt.MoveAction)
+    }
+    // A name asked for: a new folder (binId 0) or renaming one.
+    function askBinName(binId, current) {
+        binNameBox.binId = binId
+        binNameField.text = current || ""
+        binNameBox.open()
+    }
+
     property string transitionCategory: ""
     readonly property var transitionCategories: [
         { id: "", label: qsTr("All") }, { id: "favourites", label: "★" }, { id: "basic", label: qsTr("Basic") }, { id: "slide", label: qsTr("Slide") },
@@ -265,6 +354,7 @@ Rectangle {
                         MenuItem { objectName: "importFrom:devices"; text: qsTr("From an iPhone, camera or card…"); onTriggered: library.importFromRequested("devices") }
                         MenuItem { objectName: "importFrom:project"; text: qsTr("A project, as a compound clip…"); onTriggered: projectDialog.open() }
                         MenuItem { objectName: "importFrom:sequence"; text: qsTr("An image sequence…"); onTriggered: sequenceFrameDialog.open() }
+                        MenuItem { objectName: "importFrom:folder"; text: qsTr("A folder, with its folders…"); onTriggered: folderDialog.open() }
                     }
                 }
             }
@@ -1239,6 +1329,137 @@ Rectangle {
                 query: library.currentTab === 0 ? searchField.text : ""
                 onMomentRequested: (media, start, end) => library.momentRequested(media, start, end)
             }
+            // Where in the library, and how it is shown.
+            RowLayout {
+                id: binBar
+                objectName: "binBar"
+                visible: library.currentTab === 0 && library.project.media.length + library.project.bins.length > 0
+                Layout.fillWidth: true
+                Layout.fillHeight: false
+                Layout.leftMargin: Theme.space.m
+                Layout.rightMargin: Theme.space.m
+                Layout.bottomMargin: Theme.space.xs
+                spacing: Theme.space.xxs
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: Theme.space.xxs
+                    Repeater {
+                        model: [{ id: 0, name: qsTr("Media") }].concat(library.binTrail)
+                        delegate: Row {
+                            id: crumb
+                            required property var modelData
+                            required property int index
+                            spacing: Theme.space.xxs
+                            Text {
+                                visible: crumb.index > 0
+                                text: "›"
+                                font: Theme.type.label
+                                color: Theme.color.textDisabled
+                            }
+                            AbstractButton {
+                                objectName: "binCrumb:" + crumb.modelData.id
+                                hoverEnabled: true
+                                implicitWidth: crumbText.implicitWidth + Theme.space.s
+                                implicitHeight: 22
+                                onClicked: library.currentBin = crumb.modelData.id
+                                background: Rectangle { radius: Theme.radius.s; color: parent.hovered ? Theme.color.surfaceHover : "transparent" }
+                                contentItem: Text {
+                                    id: crumbText
+                                    text: crumb.modelData.name
+                                    font: Theme.type.label
+                                    color: crumb.modelData.id === library.currentBin ? Theme.color.textPrimary : Theme.color.textSecondary
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                // Media and folders dropped here move into it.
+                                DropArea {
+                                    anchors.fill: parent
+                                    keys: ["application/x-tve-media", "application/x-tve-bin"]
+                                    onDropped: (drop) => library.dropIntoBin(drop, crumb.modelData.id)
+                                }
+                            }
+                        }
+                    }
+                }
+                // Showing one label only: its colour, and a way back to all.
+                AbstractButton {
+                    objectName: "labelFilterChip"
+                    visible: library.labelFilter !== ""
+                    implicitWidth: 18
+                    implicitHeight: 18
+                    onClicked: library.labelFilter = ""
+                    background: Rectangle { radius: 9; color: library.labelColours[library.labelFilter] || "transparent" }
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Only media with this label: click to show all")
+                }
+                IconButton {
+                    objectName: "newBin"
+                    iconName: "folder"
+                    tip: qsTr("New folder")
+                    onClicked: library.askBinName(0, qsTr("New folder"))
+                }
+                IconButton {
+                    objectName: "binView"
+                    iconName: "filters"
+                    tip: qsTr("Sort, group, view and labels")
+                    onClicked: binViewMenu.popup(this, 0, height)
+                    AppMenu {
+                        id: binViewMenu
+                        objectName: "binViewMenu"
+                        AppMenuItem { objectName: "binView:grid"; text: qsTr("Thumbnails"); checkable: true; checked: EditingPreferences.mediaView === "grid"; onTriggered: EditingPreferences.mediaView = "grid" }
+                        AppMenuItem { objectName: "binView:list"; text: qsTr("List"); checkable: true; checked: EditingPreferences.mediaView === "list"; onTriggered: EditingPreferences.mediaView = "list" }
+                        AppMenu {
+                            objectName: "binView:size"
+                            title: qsTr("Thumbnail size")
+                            enabled: EditingPreferences.mediaView === "grid"
+                            AppMenuItem { objectName: "binSize:small"; text: qsTr("Small"); checkable: true; checked: EditingPreferences.mediaSize === "small"; onTriggered: EditingPreferences.mediaSize = "small" }
+                            AppMenuItem { objectName: "binSize:medium"; text: qsTr("Medium"); checkable: true; checked: EditingPreferences.mediaSize === "medium"; onTriggered: EditingPreferences.mediaSize = "medium" }
+                            AppMenuItem { objectName: "binSize:large"; text: qsTr("Large"); checkable: true; checked: EditingPreferences.mediaSize === "large"; onTriggered: EditingPreferences.mediaSize = "large" }
+                        }
+                        AppMenuSeparator {}
+                        AppMenuItem { objectName: "binSort:imported"; text: qsTr("Sort by when imported"); checkable: true; checked: EditingPreferences.mediaSort === "imported"; onTriggered: EditingPreferences.mediaSort = "imported" }
+                        AppMenuItem { objectName: "binSort:name"; text: qsTr("Sort by name"); checkable: true; checked: EditingPreferences.mediaSort === "name"; onTriggered: EditingPreferences.mediaSort = "name" }
+                        AppMenuItem { objectName: "binSort:length"; text: qsTr("Sort by length"); checkable: true; checked: EditingPreferences.mediaSort === "length"; onTriggered: EditingPreferences.mediaSort = "length" }
+                        AppMenuItem { objectName: "binSort:kind"; text: qsTr("Sort by kind"); checkable: true; checked: EditingPreferences.mediaSort === "kind"; onTriggered: EditingPreferences.mediaSort = "kind" }
+                        AppMenuItem { objectName: "binSort:descending"; text: qsTr("Backwards"); checkable: true; checked: EditingPreferences.mediaDescending; onTriggered: EditingPreferences.mediaDescending = !EditingPreferences.mediaDescending }
+                        AppMenuItem { objectName: "binGroups"; text: qsTr("Group by kind"); checkable: true; checked: EditingPreferences.mediaGroups; onTriggered: EditingPreferences.mediaGroups = !EditingPreferences.mediaGroups }
+                        AppMenuSeparator {}
+                        AppMenu {
+                            id: labelFilterMenu
+                            objectName: "binView:labels"
+                            title: qsTr("Show only a label")
+                            AppMenuItem { objectName: "labelFilter:all"; text: qsTr("Every label"); checkable: true; checked: library.labelFilter === ""; onTriggered: library.labelFilter = "" }
+                            Instantiator {
+                                model: library.labelNames
+                                delegate: AppMenuItem {
+                                    required property var modelData
+                                    objectName: "labelFilter:" + modelData.id
+                                    text: modelData.label
+                                    checkable: true
+                                    checked: library.labelFilter === modelData.id
+                                    onTriggered: library.labelFilter = modelData.id
+                                }
+                                onObjectAdded: (index, object) => labelFilterMenu.insertItem(index + 1, object)
+                                onObjectRemoved: (index, object) => labelFilterMenu.removeItem(object)
+                            }
+                        }
+                        AppMenuItem {
+                            objectName: "removeUnused"
+                            text: qsTr("Remove unused media…")
+                            onTriggered: {
+                                const unused = library.project.unusedMedia()
+                                if (unused.length === 0) {
+                                    mediaConfirm.ask(qsTr("Every piece of media is in use"), qsTr("Nothing to remove."), qsTr("OK"), () => {})
+                                    return
+                                }
+                                mediaConfirm.ask(unused.length === 1 ? qsTr("Remove 1 unused piece of media?") : qsTr("Remove %1 unused pieces of media?").arg(Fmt.num(unused.length)),
+                                                 qsTr("No clip uses them. The files stay where they are on disk, and you can undo this."),
+                                                 qsTr("Remove"), () => library.project.removeUnusedMedia())
+                            }
+                        }
+                    }
+                }
+            }
             Item {
                 id: mediaBin
                 visible: library.currentTab === 0
@@ -1248,27 +1469,29 @@ Rectangle {
                 GridView {
                     id: mediaGrid
                     objectName: "mediaGrid"
+                    visible: EditingPreferences.mediaView === "grid"
                     anchors.fill: parent
                     anchors.leftMargin: Theme.space.m
                     clip: true
-                    cellWidth: Math.floor(width / 2)
-                    cellHeight: 118
-                    model: mediaSearch.trimmed === ""
-                           ? library.project.media
-                           : library.project.media.filter((m) => m.name.toLowerCase().indexOf(mediaSearch.trimmed.toLowerCase()) >= 0
-                                                                 || mediaSearch.hitIds.indexOf(m.id) >= 0)
+                    cellWidth: Math.floor(width / library.mediaColumns)
+                    cellHeight: EditingPreferences.mediaSize === "small" ? 96 : EditingPreferences.mediaSize === "large" ? 210 : 118
+                    model: visible ? library.binEntries : []
 
                     delegate: Item {
                         id: mediaTile
                         required property var modelData
-                        readonly property double mediaId: modelData.id // read by timeline drop targets
-                        objectName: "media:" + modelData.name
+                        readonly property string entryKind: modelData.entryKind || "media"
+                        readonly property bool isMedia: entryKind === "media"
+                        readonly property double mediaId: isMedia ? modelData.id : -1 // read by timeline drop targets
+                        objectName: isMedia ? "media:" + modelData.name : entryKind + ":" + (modelData.id || modelData.kind || "")
                         width: mediaGrid.cellWidth
                         height: mediaGrid.cellHeight
+                        z: entryKind === "header" ? 2 : 1
+                        readonly property var proxy: (isMedia && library.project.proxyStates[modelData.path]) || ({ state: "none" })
 
                         Drag.active: tileMouse.drag.active
                         Drag.dragType: Drag.Automatic
-                        Drag.supportedActions: Qt.CopyAction
+                        Drag.supportedActions: Qt.CopyAction | Qt.MoveAction
                         Drag.keys: ["application/x-tve-media"]
                         Drag.mimeData: { "application/x-tve-media": String(modelData.id) }
                         // The tile's thumbnail (grabbing the tile on press could outlive it).
@@ -1277,221 +1500,458 @@ Rectangle {
                                             + (modelData.duration * 0.1).toFixed(2) + "@90"
                                           : ""
 
+                        // A piece of media.
+                        Item {
+                            anchors.fill: parent
+                            visible: mediaTile.isMedia
+                            enabled: visible
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.rightMargin: Theme.space.m
+                                anchors.bottomMargin: Theme.space.m
+                                radius: Theme.radius.m
+                                color: Theme.color.surfaceRaised
+                                border.color: tileMouse.containsMouse ? Theme.color.borderStrong : Theme.color.borderSubtle
+
+                                ColumnLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: Theme.space.xs
+                                    spacing: Theme.space.xxs
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        radius: Theme.radius.s
+                                        color: Theme.color.surfaceSunken
+                                        Icon { anchors.centerIn: parent; name: mediaTile.modelData.hasVideo ? "media" : "audio"; color: Theme.color.textDisabled }
+                                        Image {
+                                            objectName: "mediaThumb:" + mediaTile.modelData.name
+                                            visible: mediaTile.modelData.hasVideo === true
+                                            anchors.fill: parent
+                                            anchors.margins: 1
+                                            asynchronous: true
+                                            fillMode: Image.PreserveAspectFit
+                                            source: mediaTile.modelData.hasVideo && !mediaTile.modelData.missing && height >= 4
+                                                    ? "image://tvethumb/!" + encodeURIComponent(mediaTile.modelData.path) + "@"
+                                                      + (mediaTile.modelData.duration * 0.1).toFixed(2) + "@" + Math.round(height * 2)
+                                                    : ""
+                                        }
+                                        // Duration on a scrim so it reads over the thumbnail.
+                                        Rectangle {
+                                            anchors { right: parent.right; bottom: parent.bottom; margins: Theme.space.xs }
+                                            width: durationText.implicitWidth + Theme.space.s
+                                            height: durationText.implicitHeight + Theme.space.xxs
+                                            radius: Theme.radius.s
+                                            color: mediaTile.modelData.missing ? Theme.color.danger : Theme.color.overlay
+                                            Text {
+                                                id: durationText
+                                                anchors.centerIn: parent
+                                                objectName: "mediaDuration:" + mediaTile.modelData.name
+                                                // A still has no length of its own.
+                                                text: mediaTile.modelData.missing ? qsTr("Missing")
+                                                      : mediaTile.modelData.sticker ? qsTr("Sticker") : mediaTile.modelData.still ? qsTr("Image")
+                                                      : library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
+                                                font: Theme.type.caption
+                                                color: "#FFFFFF"
+                                            }
+                                        }
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: Theme.space.xs
+                                        text: mediaTile.modelData.name || ""
+                                        font: Theme.type.label
+                                        color: Theme.color.textPrimary
+                                        elide: Text.ElideMiddle
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: Theme.space.xs
+                                        Layout.rightMargin: Theme.space.xs
+                                        Layout.bottomMargin: Theme.space.xxs
+                                        elide: Text.ElideRight
+                                        text: !mediaTile.modelData.hasVideo
+                                              ? qsTr("Audio only")
+                                              : mediaTile.modelData.sticker
+                                              ? qsTr("Animated sticker")
+                                              : mediaTile.modelData.still
+                                              ? qsTr("%1×%2 · image").arg(mediaTile.modelData.width).arg(mediaTile.modelData.height)
+                                              : mediaTile.modelData.width + "×" + mediaTile.modelData.height
+                                                + " · " + qsTr("%1 fps").arg(Fmt.num(mediaTile.modelData.frameRate, mediaTile.modelData.frameRate % 1 ? 2 : 0))
+                                                + (mediaTile.modelData.alpha ? qsTr(" · transparent") : "")
+                                                + (mediaTile.modelData.colour && !mediaTile.modelData.hdr ? " · " + mediaTile.modelData.colour : "")
+                                                + (mediaTile.modelData.hasAudio ? qsTr(" · sound") : "")
+                                        font: Theme.type.caption
+                                        color: Theme.color.textSecondary
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: tileMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                drag.target: pressedButtons & Qt.RightButton ? null : dragProxy
+                                onPressed: (mouse) => {
+                                    if (mouse.button === Qt.RightButton)
+                                        library.openMediaMenu(mediaTile.modelData, tileMouse, mouse.x, mouse.y)
+                                }
+                                onDoubleClicked: (mouse) => {
+                                    if (mouse.button !== Qt.LeftButton)
+                                        return
+                                    // ⌥: into the source monitor, to choose a part (In and Out) first.
+                                    if (mouse.modifiers & Qt.AltModifier)
+                                        library.sourceRequested(mediaTile.modelData)
+                                    else
+                                        library.project.addClip(mediaTile.modelData.id)
+                                }
+                            }
+                            Item { id: dragProxy }
+
+                            ToolTip {
+                                visible: tileMouse.containsMouse && !tileMouse.drag.active
+                                delay: 800
+                                // (What it shows is read only on hover.)
+                                readonly property var labels: tileMouse.containsMouse ? library.project.mediaLabels(mediaTile.modelData.id, 5) : []
+                                text: (mediaTile.modelData.generated
+                                       ? qsTr("Made by %1: “%2”").arg(mediaTile.modelData.generated.model).arg(mediaTile.modelData.generated.prompt) + "\n" : "")
+                                      + (labels.length > 0 ? qsTr("Shows: %1").arg(labels.map((l) => l.label).join(", ")) + "\n" : "")
+                                      + qsTr("Double-click to add to the timeline (⌥: open in the source monitor), drag onto a track or the player, or right-click for more")
+                            }
+                            // Generated media: marked, its prompt and maker kept.
+                            Rectangle {
+                                objectName: "generatedBadge:" + mediaTile.modelData.name
+                                visible: !!mediaTile.modelData.generated
+                                anchors { left: parent.left; bottom: parent.bottom; leftMargin: Theme.space.s; bottomMargin: Theme.space.m + 44 }
+                                width: aiLabel.implicitWidth + Theme.space.s
+                                height: aiLabel.implicitHeight + Theme.space.xxs
+                                radius: Theme.radius.s
+                                color: Theme.color.accent
+                                Text { id: aiLabel; anchors.centerIn: parent; text: qsTr("AI"); font: Theme.type.caption; color: "#FFFFFF" }
+                            }
+
+                            // 360° media: marked.
+                            Rectangle {
+                                objectName: "sphereBadge:" + mediaTile.modelData.name
+                                visible: mediaTile.modelData.spherical === true
+                                anchors { right: parent.right; top: parent.top; margins: Theme.space.s }
+                                width: sphereLabel.implicitWidth + Theme.space.s
+                                height: sphereLabel.implicitHeight + Theme.space.xxs
+                                radius: Theme.radius.s
+                                color: Theme.color.overlay
+                                Text { id: sphereLabel; anchors.centerIn: parent; text: "360°"; font: Theme.type.caption; color: "#FFFFFF" }
+                            }
+
+                            // HDR media: marked, with how it is encoded (PQ or HLG).
+                            Rectangle {
+                                objectName: "hdrBadge:" + mediaTile.modelData.name
+                                visible: mediaTile.modelData.hdr === true
+                                anchors { right: parent.right; top: parent.top; margins: Theme.space.s }
+                                // (Below the 360° badge when it is both.)
+                                anchors.topMargin: Theme.space.s + (mediaTile.modelData.spherical === true ? 22 : 0)
+                                width: hdrLabel.implicitWidth + Theme.space.s
+                                height: hdrLabel.implicitHeight + Theme.space.xxs
+                                radius: Theme.radius.s
+                                color: Theme.color.overlay
+                                Text { id: hdrLabel; anchors.centerIn: parent; text: mediaTile.modelData.colour || "HDR"; font: Theme.type.caption; color: "#FFFFFF" }
+                                ToolTip {
+                                    visible: hdrBadgeMouse.containsMouse
+                                    text: library.project.projectColour === "sdr"
+                                          ? qsTr("HDR media: shown tone-mapped in this SDR project. Make the project HDR in Color to keep its highlights.")
+                                          : qsTr("HDR media, in this HDR project as it is")
+                                }
+                                MouseArea { id: hdrBadgeMouse; anchors.fill: parent; hoverEnabled: true }
+                            }
+
+                            // Proxy: its state, and (on hover) making or removing one.
+                            Rectangle {
+                                objectName: "proxyBadge:" + mediaTile.modelData.name
+                                visible: mediaTile.proxy.state !== "none"
+                                x: Theme.space.s
+                                y: Theme.space.s
+                                width: proxyLabel.implicitWidth + Theme.space.s
+                                height: proxyLabel.implicitHeight + Theme.space.xxs
+                                radius: Theme.radius.s
+                                color: mediaTile.proxy.state === "ready" ? Theme.color.accent
+                                     : mediaTile.proxy.state === "failed" ? Theme.color.danger : Theme.color.overlay
+                                Text {
+                                    id: proxyLabel
+                                    anchors.centerIn: parent
+                                    text: mediaTile.proxy.state === "making" ? qsTr("Proxy %1").arg(Fmt.percent(mediaTile.proxy.progress))
+                                        : mediaTile.proxy.state === "queued" ? qsTr("Proxy queued")
+                                        : mediaTile.proxy.state === "failed" ? qsTr("Proxy failed") : qsTr("Proxy")
+                                    font: Theme.type.caption
+                                    color: "#FFFFFF"
+                                }
+                                ToolTip {
+                                    visible: proxyBadgeMouse.containsMouse
+                                    text: mediaTile.proxy.state === "ready" ? qsTr("A lighter copy plays in the preview; export uses the original")
+                                        : mediaTile.proxy.state === "failed" ? mediaTile.proxy.error : qsTr("Making a lighter copy for the preview")
+                                }
+                                MouseArea { id: proxyBadgeMouse; anchors.fill: parent; hoverEnabled: true }
+                            }
+                            AbstractButton {
+                                objectName: "proxyAction:" + mediaTile.modelData.name
+                                visible: mediaTile.modelData.hasVideo === true && mediaTile.modelData.still !== true && (tileMouse.containsMouse || hovered)
+                                         && (mediaTile.proxy.state === "none" || mediaTile.proxy.state === "ready"
+                                             || mediaTile.proxy.state === "failed")
+                                anchors { right: parent.right; top: parent.top; rightMargin: Theme.space.m + Theme.space.s; topMargin: Theme.space.s }
+                                hoverEnabled: true
+                                padding: Theme.space.xxs
+                                leftPadding: Theme.space.s
+                                rightPadding: Theme.space.s
+                                onClicked: mediaTile.proxy.state === "ready" ? library.project.deleteProxy(mediaTile.modelData.id)
+                                                                             : library.project.createProxy(mediaTile.modelData.id)
+                                background: Rectangle {
+                                    radius: Theme.radius.s
+                                    color: parent.hovered ? Theme.color.accent : Theme.color.overlay
+                                }
+                                contentItem: Text {
+                                    text: mediaTile.proxy.state === "ready" ? qsTr("Remove proxy") : qsTr("Make proxy")
+                                    font: Theme.type.caption
+                                    color: "#FFFFFF"
+                                }
+                            }
+                        }
+
+                        // Its colour label, along the tile's left edge.
                         Rectangle {
+                            objectName: "mediaLabel:" + (mediaTile.modelData.name || "")
+                            visible: mediaTile.isMedia && (mediaTile.modelData.label || "none") !== "none"
+                            x: 1
+                            y: Theme.radius.m
+                            width: 4
+                            height: parent.height - Theme.space.m - 2 * Theme.radius.m
+                            radius: 2
+                            color: library.labelColours[mediaTile.modelData.label] || "transparent"
+                        }
+                        // A folder: double-click to open, drop media on it, right-click for more.
+                        Rectangle {
+                            objectName: "binTile:" + (mediaTile.modelData.name || "")
+                            visible: mediaTile.entryKind === "bin"
                             anchors.fill: parent
                             anchors.rightMargin: Theme.space.m
                             anchors.bottomMargin: Theme.space.m
                             radius: Theme.radius.m
-                            color: Theme.color.surfaceRaised
-                            border.color: tileMouse.containsMouse ? Theme.color.borderStrong : Theme.color.borderSubtle
-
+                            color: binDrop.containsDrag ? Theme.color.accentSubtle : Theme.color.surfaceRaised
+                            border.color: binDrop.containsDrag ? Theme.color.accent : binMouse.containsMouse ? Theme.color.borderStrong : Theme.color.borderSubtle
                             ColumnLayout {
-                                anchors.fill: parent
-                                anchors.margins: Theme.space.xs
+                                anchors.centerIn: parent
+                                width: parent.width - Theme.space.m
                                 spacing: Theme.space.xxs
-
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    radius: Theme.radius.s
-                                    color: Theme.color.surfaceSunken
-                                    Icon { anchors.centerIn: parent; name: mediaTile.modelData.hasVideo ? "media" : "audio"; color: Theme.color.textDisabled }
-                                    Image {
-                                        objectName: "mediaThumb:" + mediaTile.modelData.name
-                                        visible: mediaTile.modelData.hasVideo
-                                        anchors.fill: parent
-                                        anchors.margins: 1
-                                        asynchronous: true
-                                        fillMode: Image.PreserveAspectFit
-                                        source: mediaTile.modelData.hasVideo && !mediaTile.modelData.missing && height >= 4
-                                                ? "image://tvethumb/!" + encodeURIComponent(mediaTile.modelData.path) + "@"
-                                                  + (mediaTile.modelData.duration * 0.1).toFixed(2) + "@" + Math.round(height * 2)
-                                                : ""
-                                    }
-                                    // Duration on a scrim so it reads over the thumbnail.
-                                    Rectangle {
-                                        anchors { right: parent.right; bottom: parent.bottom; margins: Theme.space.xs }
-                                        width: durationText.implicitWidth + Theme.space.s
-                                        height: durationText.implicitHeight + Theme.space.xxs
-                                        radius: Theme.radius.s
-                                        color: mediaTile.modelData.missing ? Theme.color.danger : Theme.color.overlay
-                                        Text {
-                                            id: durationText
-                                            anchors.centerIn: parent
-                                            objectName: "mediaDuration:" + mediaTile.modelData.name
-                                            // A still has no length of its own.
-                                            text: mediaTile.modelData.missing ? qsTr("Missing")
-                                                  : mediaTile.modelData.sticker ? qsTr("Sticker") : mediaTile.modelData.still ? qsTr("Image")
-                                                  : library.project.timecode(mediaTile.modelData.duration).substring(3, 8)
-                                            font: Theme.type.caption
-                                            color: "#FFFFFF"
-                                        }
-                                    }
-                                }
+                                Icon { Layout.alignment: Qt.AlignHCenter; name: "folder"; size: mediaGrid.cellHeight > 150 ? 40 : 26; color: Theme.color.textSecondary }
                                 Text {
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: Theme.space.xs
-                                    text: mediaTile.modelData.name
+                                    horizontalAlignment: Text.AlignHCenter
+                                    text: mediaTile.modelData.name || ""
                                     font: Theme.type.label
                                     color: Theme.color.textPrimary
                                     elide: Text.ElideMiddle
                                 }
                                 Text {
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: Theme.space.xs
-                                    Layout.rightMargin: Theme.space.xs
-                                    Layout.bottomMargin: Theme.space.xxs
-                                    elide: Text.ElideRight
-                                    text: !mediaTile.modelData.hasVideo
-                                          ? qsTr("Audio only")
-                                          : mediaTile.modelData.sticker
-                                          ? qsTr("Animated sticker")
-                                          : mediaTile.modelData.still
-                                          ? qsTr("%1×%2 · image").arg(mediaTile.modelData.width).arg(mediaTile.modelData.height)
-                                          : mediaTile.modelData.width + "×" + mediaTile.modelData.height
-                                            + " · " + qsTr("%1 fps").arg(Fmt.num(mediaTile.modelData.frameRate, mediaTile.modelData.frameRate % 1 ? 2 : 0))
-                                            + (mediaTile.modelData.alpha ? qsTr(" · transparent") : "")
-                                            + (mediaTile.modelData.colour && !mediaTile.modelData.hdr ? " · " + mediaTile.modelData.colour : "")
-                                            + (mediaTile.modelData.hasAudio ? qsTr(" · sound") : "")
+                                    horizontalAlignment: Text.AlignHCenter
+                                    text: mediaTile.modelData.count === 1 ? qsTr("1 item") : qsTr("%1 items").arg(Fmt.num(mediaTile.modelData.count || 0))
                                     font: Theme.type.caption
                                     color: Theme.color.textSecondary
                                 }
                             }
-                        }
-
-                        MouseArea {
-                            id: tileMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            drag.target: pressedButtons & Qt.RightButton ? null : dragProxy
-                            onPressed: (mouse) => {
-                                if (mouse.button === Qt.RightButton)
-                                    library.openMediaMenu(mediaTile.modelData, tileMouse, mouse.x, mouse.y)
+                            Drag.active: binMouse.drag.active
+                            Drag.dragType: Drag.Automatic
+                            Drag.supportedActions: Qt.MoveAction
+                            Drag.keys: ["application/x-tve-bin"]
+                            Drag.mimeData: { "application/x-tve-bin": String(mediaTile.modelData.id) }
+                            MouseArea {
+                                id: binMouse
+                                anchors.fill: parent
+                                enabled: mediaTile.entryKind === "bin"
+                                hoverEnabled: true
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                drag.target: pressedButtons & Qt.RightButton ? null : binDragProxy
+                                onPressed: (mouse) => {
+                                    if (mouse.button === Qt.RightButton)
+                                        library.openBinMenu(mediaTile.modelData, binMouse, mouse.x, mouse.y)
+                                }
+                                onDoubleClicked: library.currentBin = mediaTile.modelData.id
                             }
-                            onDoubleClicked: (mouse) => {
-                                if (mouse.button !== Qt.LeftButton)
-                                    return
-                                // ⌥: into the source monitor, to choose a part (In and Out) first.
-                                if (mouse.modifiers & Qt.AltModifier)
-                                    library.sourceRequested(mediaTile.modelData)
-                                else
-                                    library.project.addClip(mediaTile.modelData.id)
+                            Item { id: binDragProxy }
+                            DropArea {
+                                id: binDrop
+                                anchors.fill: parent
+                                enabled: mediaTile.entryKind === "bin"
+                                keys: ["application/x-tve-media", "application/x-tve-bin"]
+                                onDropped: (drop) => library.dropIntoBin(drop, mediaTile.modelData.id)
                             }
                         }
-                        Item { id: dragProxy }
-
-                        ToolTip {
-                            visible: tileMouse.containsMouse && !tileMouse.drag.active
-                            delay: 800
-                            // (What it shows is read only on hover.)
-                            readonly property var labels: tileMouse.containsMouse ? library.project.mediaLabels(mediaTile.modelData.id, 5) : []
-                            text: (mediaTile.modelData.generated
-                                   ? qsTr("Made by %1: “%2”").arg(mediaTile.modelData.generated.model).arg(mediaTile.modelData.generated.prompt) + "\n" : "")
-                                  + (labels.length > 0 ? qsTr("Shows: %1").arg(labels.map((l) => l.label).join(", ")) + "\n" : "")
-                                  + qsTr("Double-click to add to the timeline (⌥: open in the source monitor), drag onto a track or the player, or right-click for more")
-                        }
-                        // Generated media: marked, its prompt and maker kept.
-                        Rectangle {
-                            objectName: "generatedBadge:" + mediaTile.modelData.name
-                            visible: !!mediaTile.modelData.generated
-                            anchors { left: parent.left; bottom: parent.bottom; leftMargin: Theme.space.s; bottomMargin: Theme.space.m + 44 }
-                            width: aiLabel.implicitWidth + Theme.space.s
-                            height: aiLabel.implicitHeight + Theme.space.xxs
-                            radius: Theme.radius.s
-                            color: Theme.color.accent
-                            Text { id: aiLabel; anchors.centerIn: parent; text: qsTr("AI"); font: Theme.type.caption; color: "#FFFFFF" }
-                        }
-
-                        // 360° media: marked.
-                        Rectangle {
-                            objectName: "sphereBadge:" + mediaTile.modelData.name
-                            visible: mediaTile.modelData.spherical === true
-                            anchors { right: parent.right; top: parent.top; margins: Theme.space.s }
-                            width: sphereLabel.implicitWidth + Theme.space.s
-                            height: sphereLabel.implicitHeight + Theme.space.xxs
-                            radius: Theme.radius.s
-                            color: Theme.color.overlay
-                            Text { id: sphereLabel; anchors.centerIn: parent; text: "360°"; font: Theme.type.caption; color: "#FFFFFF" }
-                        }
-
-                        // HDR media: marked, with how it is encoded (PQ or HLG).
-                        Rectangle {
-                            objectName: "hdrBadge:" + mediaTile.modelData.name
-                            visible: mediaTile.modelData.hdr === true
-                            anchors { right: parent.right; top: parent.top; margins: Theme.space.s }
-                            // (Below the 360° badge when it is both.)
-                            anchors.topMargin: Theme.space.s + (mediaTile.modelData.spherical === true ? 22 : 0)
-                            width: hdrLabel.implicitWidth + Theme.space.s
-                            height: hdrLabel.implicitHeight + Theme.space.xxs
-                            radius: Theme.radius.s
-                            color: Theme.color.overlay
-                            Text { id: hdrLabel; anchors.centerIn: parent; text: mediaTile.modelData.colour || "HDR"; font: Theme.type.caption; color: "#FFFFFF" }
-                            ToolTip {
-                                visible: hdrBadgeMouse.containsMouse
-                                text: library.project.projectColour === "sdr"
-                                      ? qsTr("HDR media: shown tone-mapped in this SDR project. Make the project HDR in Color to keep its highlights.")
-                                      : qsTr("HDR media, in this HDR project as it is")
-                            }
-                            MouseArea { id: hdrBadgeMouse; anchors.fill: parent; hoverEnabled: true }
-                        }
-
-                        // Proxy: its state, and (on hover) making or removing one.
-                        readonly property var proxy: library.project.proxyStates[modelData.path] || ({ state: "none" })
-                        Rectangle {
-                            objectName: "proxyBadge:" + mediaTile.modelData.name
-                            visible: mediaTile.proxy.state !== "none"
-                            x: Theme.space.s
-                            y: Theme.space.s
-                            width: proxyLabel.implicitWidth + Theme.space.s
-                            height: proxyLabel.implicitHeight + Theme.space.xxs
-                            radius: Theme.radius.s
-                            color: mediaTile.proxy.state === "ready" ? Theme.color.accent
-                                 : mediaTile.proxy.state === "failed" ? Theme.color.danger : Theme.color.overlay
-                            Text {
-                                id: proxyLabel
-                                anchors.centerIn: parent
-                                text: mediaTile.proxy.state === "making" ? qsTr("Proxy %1").arg(Fmt.percent(mediaTile.proxy.progress))
-                                    : mediaTile.proxy.state === "queued" ? qsTr("Proxy queued")
-                                    : mediaTile.proxy.state === "failed" ? qsTr("Proxy failed") : qsTr("Proxy")
-                                font: Theme.type.caption
-                                color: "#FFFFFF"
-                            }
-                            ToolTip {
-                                visible: proxyBadgeMouse.containsMouse
-                                text: mediaTile.proxy.state === "ready" ? qsTr("A lighter copy plays in the preview; export uses the original")
-                                    : mediaTile.proxy.state === "failed" ? mediaTile.proxy.error : qsTr("Making a lighter copy for the preview")
-                            }
-                            MouseArea { id: proxyBadgeMouse; anchors.fill: parent; hoverEnabled: true }
-                        }
-                        AbstractButton {
-                            objectName: "proxyAction:" + mediaTile.modelData.name
-                            visible: mediaTile.modelData.hasVideo && !mediaTile.modelData.still && (tileMouse.containsMouse || hovered)
-                                     && (mediaTile.proxy.state === "none" || mediaTile.proxy.state === "ready"
-                                         || mediaTile.proxy.state === "failed")
-                            anchors { right: parent.right; top: parent.top; rightMargin: Theme.space.m + Theme.space.s; topMargin: Theme.space.s }
-                            hoverEnabled: true
-                            padding: Theme.space.xxs
-                            leftPadding: Theme.space.s
-                            rightPadding: Theme.space.s
-                            onClicked: mediaTile.proxy.state === "ready" ? library.project.deleteProxy(mediaTile.modelData.id)
-                                                                         : library.project.createProxy(mediaTile.modelData.id)
-                            background: Rectangle {
-                                radius: Theme.radius.s
-                                color: parent.hovered ? Theme.color.accent : Theme.color.overlay
-                            }
-                            contentItem: Text {
-                                text: mediaTile.proxy.state === "ready" ? qsTr("Remove proxy") : qsTr("Make proxy")
-                                font: Theme.type.caption
-                                color: "#FFFFFF"
-                            }
+                        // A kind's heading, across the row.
+                        Text {
+                            objectName: "binHeader:" + (mediaTile.modelData.kind || "")
+                            visible: mediaTile.entryKind === "header"
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: mediaGrid.width - Theme.space.m
+                            text: (mediaTile.modelData.name || "") + "  ·  " + Fmt.num(mediaTile.modelData.count || 0)
+                            font: Theme.type.label
+                            color: Theme.color.textSecondary
                         }
                     }
                 }
 
+                // As a list: a row each, with its folder rows and kind headings.
+                ListView {
+                    id: mediaList
+                    objectName: "mediaList"
+                    visible: EditingPreferences.mediaView === "list"
+                    anchors.fill: parent
+                    anchors.leftMargin: Theme.space.m
+                    anchors.rightMargin: Theme.space.m
+                    clip: true
+                    spacing: 2
+                    model: visible ? library.binEntries.filter((e) => e.entryKind !== "gap") : []
+                    delegate: Rectangle {
+                        id: row
+                        required property var modelData
+                        readonly property string entryKind: modelData.entryKind || "media"
+                        readonly property bool isMedia: entryKind === "media"
+                        readonly property double mediaId: isMedia ? modelData.id : -1
+                        objectName: isMedia ? "mediaRow:" + modelData.name : entryKind + "Row:" + (modelData.id || modelData.kind || "")
+                        width: mediaList.width
+                        height: entryKind === "header" ? 26 : 44
+                        radius: Theme.radius.s
+                        color: entryKind === "header" ? "transparent"
+                             : rowDrop.containsDrag ? Theme.color.accentSubtle
+                             : rowMouse.containsMouse ? Theme.color.surfaceHover : Theme.color.surfaceRaised
+                        Drag.active: rowMouse.drag.active
+                        Drag.dragType: Drag.Automatic
+                        Drag.supportedActions: Qt.CopyAction | Qt.MoveAction
+                        Drag.keys: isMedia ? ["application/x-tve-media"] : ["application/x-tve-bin"]
+                        Drag.mimeData: isMedia ? { "application/x-tve-media": String(modelData.id) }
+                                               : { "application/x-tve-bin": String(modelData.id) }
+                        Rectangle {
+                            visible: row.isMedia && (row.modelData.label || "none") !== "none"
+                            x: 0
+                            width: 4
+                            height: parent.height
+                            radius: 2
+                            color: library.labelColours[row.modelData.label] || "transparent"
+                        }
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: Theme.space.s
+                            anchors.rightMargin: Theme.space.s
+                            spacing: Theme.space.s
+                            Rectangle {
+                                visible: row.entryKind !== "header"
+                                Layout.preferredWidth: 56
+                                Layout.preferredHeight: 34
+                                radius: Theme.radius.s
+                                color: Theme.color.surfaceSunken
+                                Icon {
+                                    anchors.centerIn: parent
+                                    name: row.entryKind === "bin" ? "folder" : row.modelData.hasVideo ? "media" : "audio"
+                                    color: Theme.color.textDisabled
+                                    size: 16
+                                }
+                                Image {
+                                    visible: row.isMedia && row.modelData.hasVideo === true
+                                    anchors.fill: parent
+                                    anchors.margins: 1
+                                    asynchronous: true
+                                    fillMode: Image.PreserveAspectFit
+                                    source: row.isMedia && row.modelData.hasVideo && !row.modelData.missing
+                                            ? "image://tvethumb/!" + encodeURIComponent(row.modelData.path) + "@"
+                                              + (row.modelData.duration * 0.1).toFixed(2) + "@68"
+                                            : ""
+                                }
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: row.modelData.name || ""
+                                    font: row.entryKind === "header" ? Theme.type.label : Theme.type.body
+                                    color: row.entryKind === "header" ? Theme.color.textSecondary : Theme.color.textPrimary
+                                    elide: Text.ElideMiddle
+                                }
+                                Text {
+                                    visible: row.entryKind !== "header"
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                    text: row.entryKind === "bin" ? (row.modelData.count === 1 ? qsTr("1 item") : qsTr("%1 items").arg(Fmt.num(row.modelData.count || 0)))
+                                    : row.modelData.missing ? qsTr("Missing")
+                                    : !row.modelData.hasVideo ? qsTr("Sound")
+                                    : row.modelData.still ? qsTr("%1×%2").arg(row.modelData.width).arg(row.modelData.height)
+                                    : row.modelData.width + "×" + row.modelData.height
+                                    font: Theme.type.caption
+                                    color: Theme.color.textSecondary
+                                }
+                            }
+                            Text {
+                                visible: row.entryKind === "header"
+                                text: Fmt.num(row.modelData.count || 0)
+                                font: Theme.type.caption
+                                color: Theme.color.textSecondary
+                            }
+                            Text {
+                                visible: row.isMedia
+                                Layout.preferredWidth: 44
+                                horizontalAlignment: Text.AlignRight
+                                text: row.isMedia && !row.modelData.still ? library.project.timecode(row.modelData.duration).substring(3, 8) : ""
+                                font: Theme.type.mono
+                                color: Theme.color.textSecondary
+                            }
+                        }
+                        MouseArea {
+                            id: rowMouse
+                            anchors.fill: parent
+                            enabled: row.entryKind !== "header"
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            drag.target: pressedButtons & Qt.RightButton ? null : rowDragProxy
+                            onPressed: (mouse) => {
+                                if (mouse.button !== Qt.RightButton)
+                                    return
+                                if (row.isMedia)
+                                    library.openMediaMenu(row.modelData, rowMouse, mouse.x, mouse.y)
+                                else
+                                    library.openBinMenu(row.modelData, rowMouse, mouse.x, mouse.y)
+                            }
+                            onDoubleClicked: (mouse) => {
+                                if (row.entryKind === "bin")
+                                    library.currentBin = row.modelData.id
+                                else if (mouse.modifiers & Qt.AltModifier)
+                                    library.sourceRequested(row.modelData)
+                                else
+                                    library.project.addClip(row.modelData.id)
+                            }
+                        }
+                        Item { id: rowDragProxy }
+                        DropArea {
+                            id: rowDrop
+                            anchors.fill: parent
+                            enabled: row.entryKind === "bin"
+                            keys: ["application/x-tve-media", "application/x-tve-bin"]
+                            onDropped: (drop) => library.dropIntoBin(drop, row.modelData.id)
+                        }
+                    }
+                }
+                // An empty folder.
+                Text {
+                    objectName: "emptyBin"
+                    anchors.centerIn: parent
+                    visible: library.currentBin > 0 && library.binEntries.length === 0 && mediaSearch.trimmed === ""
+                    width: parent.width - Theme.space.xl * 2
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                    text: library.labelFilter !== "" ? qsTr("Nothing here has that label") : qsTr("Drag media here to keep it in this folder")
+                    font: Theme.type.body
+                    color: Theme.color.textSecondary
+                }
+
                 Column {
                     anchors.centerIn: parent
-                    visible: library.project.media.length === 0
+                    visible: library.project.media.length === 0 && library.project.bins.length === 0
                     spacing: Theme.space.s
                     width: parent.width - Theme.space.xl * 2
 
@@ -1607,6 +2067,55 @@ Rectangle {
             enabled: mediaMenu.media !== null && mediaMenu.media.missing !== true && mediaMenu.media.placeholder !== true
             onTriggered: library.project.revealMedia(mediaMenu.media.id)
         }
+        AppMenu {
+            id: labelMenu
+            objectName: "mediaMenu:label"
+            title: qsTr("Label")
+            AppMenuItem {
+                objectName: "mediaLabel:none"
+                text: qsTr("No label")
+                checkable: true
+                checked: mediaMenu.media !== null && (mediaMenu.media.label || "none") === "none"
+                onTriggered: library.project.setMediaLabel([mediaMenu.media.id], "none")
+            }
+            Instantiator {
+                model: library.labelNames
+                delegate: AppMenuItem {
+                    required property var modelData
+                    objectName: "mediaLabel:" + modelData.id
+                    text: modelData.label
+                    checkable: true
+                    checked: mediaMenu.media !== null && mediaMenu.media.label === modelData.id
+                    onTriggered: library.project.setMediaLabel([mediaMenu.media.id], modelData.id)
+                }
+                onObjectAdded: (index, object) => labelMenu.insertItem(index + 1, object)
+                onObjectRemoved: (index, object) => labelMenu.removeItem(object)
+            }
+        }
+        AppMenu {
+            id: moveMenu
+            objectName: "mediaMenu:move"
+            title: qsTr("Move to folder")
+            enabled: library.project.bins.length > 0
+            AppMenuItem {
+                objectName: "moveTo:0"
+                text: qsTr("Media (the top)")
+                enabled: mediaMenu.media !== null && library.binOf(mediaMenu.media) !== 0
+                onTriggered: library.project.moveToBin([mediaMenu.media.id], -1)
+            }
+            Instantiator {
+                model: library.project.bins.slice().sort((a, b) => a.path.localeCompare(b.path))
+                delegate: AppMenuItem {
+                    required property var modelData
+                    objectName: "moveTo:" + modelData.id
+                    text: modelData.path
+                    enabled: mediaMenu.media !== null && library.binOf(mediaMenu.media) !== modelData.id
+                    onTriggered: library.project.moveToBin([mediaMenu.media.id], modelData.id)
+                }
+                onObjectAdded: (index, object) => moveMenu.insertItem(index + 1, object)
+                onObjectRemoved: (index, object) => moveMenu.removeItem(object)
+            }
+        }
         AppMenuSeparator {}
         AppMenuItem {
             objectName: "mediaMenu:remove"
@@ -1626,6 +2135,84 @@ Rectangle {
         }
     }
     ConfirmDialog { id: mediaConfirm; objectName: "mediaConfirm" }
+    // A folder's right-click menu.
+    function openBinMenu(bin, item, x, y) {
+        binMenu.bin = bin
+        binMenu.popup(item, x, y)
+    }
+    AppMenu {
+        id: binMenu
+        objectName: "binMenu"
+        property var bin: null
+        AppMenuItem { objectName: "binMenu:open"; text: qsTr("Open"); onTriggered: library.currentBin = binMenu.bin.id }
+        AppMenuItem { objectName: "binMenu:rename"; text: qsTr("Rename…"); onTriggered: library.askBinName(binMenu.bin.id, binMenu.bin.name) }
+        AppMenuItem { objectName: "binMenu:new"; text: qsTr("New folder inside"); onTriggered: { library.currentBin = binMenu.bin.id; library.askBinName(0, qsTr("New folder")) } }
+        AppMenuSeparator {}
+        AppMenuItem {
+            objectName: "binMenu:delete"
+            text: qsTr("Delete the folder")
+            onTriggered: library.project.removeBin(binMenu.bin.id)
+        }
+    }
+    // A folder's name: a new one in the folder open, or another for one.
+    Popup {
+        id: binNameBox
+        objectName: "binNameBox"
+        property double binId: 0
+        function accept() {
+            const ok = binId > 0 ? library.project.renameBin(binId, binNameField.text)
+                                 : library.project.addBin(binNameField.text, library.currentBin > 0 ? library.currentBin : -1) > 0
+            if (ok)
+                close()
+        }
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        width: 320
+        padding: Theme.space.l
+        onOpened: { binNameField.forceActiveFocus(); binNameField.selectAll() }
+        background: Rectangle { radius: Theme.radius.l; color: Theme.color.surfaceRaised; border.color: Theme.color.borderStrong }
+        contentItem: ColumnLayout {
+            spacing: Theme.space.m
+            Text {
+                text: binNameBox.binId > 0 ? qsTr("Rename the folder") : qsTr("New folder")
+                font: Theme.type.title
+                color: Theme.color.textPrimary
+            }
+            TextField {
+                id: binNameField
+                objectName: "binNameField"
+                Layout.fillWidth: true
+                font: Theme.type.body
+                color: Theme.color.textPrimary
+                selectByMouse: true
+                onAccepted: binNameBox.accept()
+                background: Rectangle {
+                    radius: Theme.radius.s
+                    color: Theme.color.surfaceSunken
+                    border.color: binNameField.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                TextButton { text: qsTr("Cancel"); variant: "secondary"; onClicked: binNameBox.close() }
+                TextButton {
+                    objectName: "binNameAccept"
+                    text: binNameBox.binId > 0 ? qsTr("Rename") : qsTr("Make")
+                    variant: "primary"
+                    enabled: binNameField.text.trim().length > 0
+                    onClicked: binNameBox.accept()
+                }
+            }
+        }
+    }
+    // Every media file in a folder (and its folders), into library folders like them.
+    FolderDialog {
+        id: folderDialog
+        title: qsTr("Import a folder")
+        onAccepted: library.project.importFolder(selectedFolder, true, library.currentBin > 0 ? library.currentBin : -1)
+    }
     // A saved title preset's right-click menu.
     AppMenu {
         id: titlePresetMenu

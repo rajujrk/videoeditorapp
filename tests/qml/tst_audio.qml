@@ -66,8 +66,18 @@ Item {
         }
         // Move there first, like a real cursor: leaving the previous control closes its
         // tooltip, which would otherwise take this click.
+        // (Scrolled into view first: the inspector's tabs scroll.)
         function clickWhenSettled(editor, name) {
-            const item = settled(editor, name)
+            let item = settled(editor, name)
+            for (let a = item.parent; a; a = a.parent) {
+                if (a.contentY === undefined || a.contentHeight === undefined || a.height === undefined)
+                    continue
+                const top = item.mapToItem(a.contentItem, 0, 0).y
+                if (top < a.contentY || top + item.height > a.contentY + a.height)
+                    a.contentY = Math.max(0, Math.min(top - 20, a.contentHeight - a.height))
+                break
+            }
+            item = settled(editor, name)
             mouseMove(item)
             mouseClick(item)
         }

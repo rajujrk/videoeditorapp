@@ -708,6 +708,7 @@ int main(int argc, char** argv)
     qputenv("TVE_FAVOURITES_FILE", (appSettings.path() + QStringLiteral("/favourites.json")).toLocal8Bit());
     qputenv("TVE_WORKSPACES_FILE", (appSettings.path() + QStringLiteral("/workspaces.json")).toLocal8Bit());
     qputenv("TVE_EDITING_FILE", (appSettings.path() + QStringLiteral("/editing.json")).toLocal8Bit());
+    qputenv("TVE_EXPORT_PRESETS_FILE", (appSettings.path() + QStringLiteral("/export-presets.json")).toLocal8Bit());
     qputenv("TVE_PREVIEW_WINDOWED", "1"); // the full-screen preview as a plain window
     QTemporaryDir livePhotoLibrary; // Live Photos "added to Photos" land here, not in the library
     qputenv("TVE_LIVE_PHOTO_LIBRARY", QDir(livePhotoLibrary.path()).canonicalPath().toLocal8Bit());

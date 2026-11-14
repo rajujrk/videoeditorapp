@@ -4,6 +4,7 @@
 #include "commands/EditCommands.h"
 #include "commands/StructureCommands.h"
 #include "decode/AudioDecoder.h"
+#include "encode/WavWriter.h"
 #include "playback/PlaybackClock.h"
 #include "playback/TimelineAudio.h"
 
@@ -787,4 +788,57 @@ TEST_CASE("a VST3 plug-in in the mix, its latency made up")
     const auto wet = drainMix(mixer);
     CHECK(firstLoud(wet) == firstLoud(dry));
     CHECK(peak(wet, 24000, 24480) == Catch::Approx(peak(dry, 24000, 24480) * 1.5f).margin(0.01));
+}
+
+TEST_CASE("a clip's channels: mono, one side on both, or swapped")
+{
+    // A stereo file: a full tone on the left, a quarter of it on the right.
+    const auto dir = std::filesystem::temp_directory_path() / "tve-channels-test";
+    std::filesystem::create_directories(dir);
+    const std::string path = (dir / "left-heavy.wav").string();
+    {
+        auto wav = WavWriter::open(path, audio::kSampleRate, 2);
+        REQUIRE(wav);
+        std::vector<float> frames(std::size_t(audio::kSampleRate) * 2);
+        for (std::int64_t i = 0; i < audio::kSampleRate; ++i) {
+            frames[std::size_t(i) * 2] = tone(i);
+            frames[std::size_t(i) * 2 + 1] = 0.25f * tone(i);
+        }
+        REQUIRE(wav->write(frames.data(), audio::kSampleRate));
+        REQUIRE(wav->finish());
+    }
+    AudioProject p;
+    const Id media = p.push<ImportMediaCommand>(MediaItem{.path = path, .duration = kSec, .hasVideo = false, .hasAudio = true,
+                                                          .audioSampleRate = audio::kSampleRate, .audioChannels = 2})
+                         .mediaId();
+    const Id clip = p.push<AddClipCommand>(p.audioTrack, media, 0, kSec).clipId();
+    // Peaks of each side over the middle of the second.
+    const auto sides = [&](AudioChannels channels) {
+        p.project->locateClip(clip)->clip->channels = channels;
+        TimelineAudio mixer;
+        mixer.restart(p.project, 0);
+        const auto mix = drainMix(mixer);
+        float l = 0, r = 0;
+        for (std::size_t i = 10000; i < 30000 && i * 2 + 1 < mix.size(); ++i) {
+            l = std::max(l, std::abs(mix[i * 2]));
+            r = std::max(r, std::abs(mix[i * 2 + 1]));
+        }
+        return std::pair{l, r};
+    };
+    auto [l, r] = sides(AudioChannels::Stereo);
+    CHECK(l == Catch::Approx(0.5f).margin(0.01));
+    CHECK(r == Catch::Approx(0.125f).margin(0.01));
+    std::tie(l, r) = sides(AudioChannels::Mono);
+    CHECK(l == Catch::Approx(0.3125f).margin(0.01));
+    CHECK(r == Catch::Approx(l).margin(1e-6));
+    std::tie(l, r) = sides(AudioChannels::Left);
+    CHECK(l == Catch::Approx(0.5f).margin(0.01));
+    CHECK(r == Catch::Approx(0.5f).margin(0.01));
+    std::tie(l, r) = sides(AudioChannels::Right);
+    CHECK(l == Catch::Approx(0.125f).margin(0.01));
+    CHECK(r == Catch::Approx(0.125f).margin(0.01));
+    std::tie(l, r) = sides(AudioChannels::Swap);
+    CHECK(l == Catch::Approx(0.125f).margin(0.01));
+    CHECK(r == Catch::Approx(0.5f).margin(0.01));
+    std::filesystem::remove_all(dir);
 }

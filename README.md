@@ -97,6 +97,7 @@ The following improvements were completed after Phase 5:
 - Slice 30d: Music fitted to a length on the Mac, AI transitions made from the frames either side of a cut, and a video from an idea.
 - Slice 30e: Night view for dark shots, and cinematic depth of field from a depth model on the Mac.
 - Slice 31a: Timeline handling — replacing media, clips turned off, placeholders, extend edit, match frame, loop, auto ripple, moving and locking tracks, the default transition, rotate and flip, skimming; a frame border pictures snap to; recording the entire screen, a window or an area.
+- Slice 31b: Media and project — library folders, sorting, grouping, list and thumbnail sizes, colour labels, removing unused media, importing a folder, archiving a project with its media, changing the canvas and frame rate, export presets of your own, and mono or one-sided sound for a clip.
 
 All previously identified feature gaps have been closed.
 
@@ -108,6 +109,7 @@ All previously identified feature gaps have been closed.
 
 - Import video, audio and image files.
 - Import numbered image sequences as one video, SVG drawings, camera RAW photos and OpenEXR.
+- Import a whole folder, its folders becoming folders in the media library.
 - Arrange media on a multi-track timeline.
 - Move, trim, split and delete clips.
 - Support ripple deletion on the main track, or on every track with auto ripple.
@@ -185,6 +187,7 @@ All previously identified feature gaps have been closed.
 - Detach audio from video clips.
 - Mute, hide and lock individual tracks.
 - Display audio level meters.
+- Hear a clip in mono, one channel on both sides, or swapped.
 - Record voice-overs directly from a microphone at the current playhead position.
 - Read your script from a teleprompter while recording.
 - Blur or remove the camera's background when recording.
@@ -194,6 +197,8 @@ All previously identified feature gaps have been closed.
 ### 2.9 Media Management and Preview
 
 - Display thumbnails in the media bin and timeline.
+- Keep media in folders, sort and group it, see it as small, medium or large thumbnails or a list, and mark it with colour labels.
+- Remove media nobody uses, and archive a project with every file it needs into one folder.
 - Search the media bin for what is in the pictures, what is said and the text on screen, and open the moment found.
 - Play and scrub through video content.
 - Watch a full-screen preview on a second display.
@@ -211,6 +216,7 @@ All previously identified feature gaps have been closed.
 - Support H.264 and HEVC video encoding.
 - Support AAC audio encoding.
 - Export under a chosen file size, in several formats in one go, or as a Live Photo.
+- Save export settings as presets of your own.
 
 ---
 
@@ -500,6 +506,32 @@ after, each ticked to apply: **Apply** changes the chosen ones as one undo step 
 keep their timing), and nothing changes before. **Describe the frame** (Generate tab) sends the frame
 at the playhead to Claude, which writes a prompt to make a picture, a sticker or a video like it,
 into the prompt box. Labels are Vision's English names whatever the app's language.
+
+**The media library, kept in order.** The Media tab's bar shows where you are (Media › a folder ›
+…; click a step to go back) with a **New folder** button and a view menu. Folders hold media and other
+folders: double-click one to open it, drop media (or a folder) on it or on a step of the trail to move
+them in, or use the media's **Move to folder**; a folder's menu renames or deletes it (what was in it
+moves up). The view menu sorts by when imported, name, length or kind (or **Backwards**), groups by
+kind under headings, and shows **Thumbnails** (small, medium or large) or a **List**. A media's
+**Label** menu gives it a colour, shown along its edge; **Show only a label** narrows the library to
+one colour. **Remove unused media…** takes out what no clip plays (on the timeline or inside compound
+clips), asking first; the files stay on disk. Import ▾ › **A folder, with its folders…** imports every
+media file in a folder and makes library folders like its own. Searching looks in every folder.
+
+**Project settings and archiving.** Click the size and frame rate in the top bar: choose another size
+(16:9 from 720p to 4K, vertical 9:16, portrait 4:5, square, cinema 2.39:1 or any custom size) or frame
+rate (23.976 to 60) and **Change the canvas**; clips keep their times and pictures fit the new shape.
+**Archive…** copies the project and every file it uses (media and every frame of a sequence, cleaned
+sound, processed copies, LUTs, title pictures) into a new folder "Name Archive" with the project
+pointing at the copies, in the background with a progress bar; **Only media the timeline uses**
+leaves the rest out. The project you have open stays as it is.
+
+**Export presets and sound channels.** In the export dialog, **Save as preset…** keeps the chosen
+format, size, frame rate, quality, file size and sound under a name (the same name replaces it); your
+presets follow the built-in ones, described in your language, and **Delete** removes one. They are
+kept in `export-presets.json` (`TVE_EXPORT_PRESETS_FILE`). The Audio tab's **Channels** plays a clip
+as recorded, in **Mono**, with the **Left only** or **Right only** channel on both sides (a microphone
+on one channel) or **Swapped**; the export mixes it the same way.
 
 **Timeline handling.** A clip's right-click menu offers **Replace with** (any picture, or any
 sound on a sound track, from the project): the clip keeps its place, length, speed, look, effects,
