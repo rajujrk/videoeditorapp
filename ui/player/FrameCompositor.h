@@ -1,5 +1,6 @@
 #pragma once
 
+#include "analysis/DepthVision.h"
 #include "decode/LottieAnimation.h"
 #include "playback/CompositeFrame.h"
 
@@ -119,6 +120,11 @@ private:
     // Where the beauty filter works in a clip's decoded frame: the faces' skin and teeth from
     // Vision's landmarks (tve::beautyMask), found once per frame; null when there are no faces.
     QRhiTexture* beautyMask(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame);
+    // A clip's decoded frame's depth (tve::estimateDepth), estimated once per frame, and the
+    // nearness to focus at (0..1; autofocus looks for faces in the frame); null without the
+    // depth model.
+    QRhiTexture* depthMap(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame,
+                          const tve::DepthOfField& settings, float* focus);
 
     QRhi* m_rhi;
     CVMetalTextureCacheRef m_textureCache = nullptr;
@@ -170,6 +176,15 @@ private:
         std::unique_ptr<QRhiTexture> texture;
     };
     std::map<tve::Id, BeautyMaskTexture> m_beautyMasks;
+    struct DepthTexture {
+        const void* frame = nullptr;
+        tve::Ticks pts = -1;
+        tve::DepthMap map; // (kept: the focus point can move without estimating again)
+        std::vector<tve::FaceBox> faces; // found in the same frame, for autofocus
+        bool facesLooked = false;
+        std::unique_ptr<QRhiTexture> texture;
+    };
+    std::map<tve::Id, DepthTexture> m_depthMaps;
     struct DenoiseHistory {
         std::unique_ptr<QRhiTexture> texture; // the last frame drawn, denoised
         tve::Ticks frame = -1;

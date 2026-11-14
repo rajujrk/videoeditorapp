@@ -649,6 +649,10 @@ int main(int argc, char** argv)
     const QString realModel = QStringLiteral(TVE_SAMPLES_DIR "/models/ggml-base.en-q5_1.bin");
     if (QFileInfo::exists(realModel))
         QFile::link(realModel, modelSource.path() + QStringLiteral("/ggml-base.en-q5_1.bin"));
+    // The depth model's files under <id>/ (as Hugging Face serves them, file by file).
+    const QString depthPackage = QStringLiteral(TVE_SAMPLES_DIR "/models/depth-anything-v2-small-f16/DepthAnythingV2SmallF16.mlpackage");
+    if (QFileInfo::exists(depthPackage))
+        QFile::link(depthPackage, modelSource.path() + QStringLiteral("/depth-anything-v2-small-f16"));
     const QString enhanceModel = QStringLiteral(TVE_SAMPLES_DIR "/models/DeepFilterNet3_onnx.tar.gz");
     if (QFileInfo::exists(enhanceModel))
         QFile::link(enhanceModel, modelSource.path() + QStringLiteral("/DeepFilterNet3_onnx.tar.gz"));

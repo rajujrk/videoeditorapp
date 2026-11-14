@@ -357,6 +357,73 @@ Item {
             verify(p.lastError.indexOf("steady speed") > 0, p.lastError)
         }
 
+        function test_night_view_lifts_a_dark_shot() {
+            const f = createEditor()
+            const p = f.project
+            const id = withPeople(f)
+            tryVerify(() => Math.abs(red(f, 0.03, 0.5) - 128) < 20, 5000, "the grey background")
+            click(f.editor, "nightSwitch")
+            compare(p.undoText, "Night View")
+            compare(p.selectedClipInfo.night.enabled, true)
+            // The mid grey lifted (the shadows lifted most, the colours kept).
+            tryVerify(() => red(f, 0.03, 0.5) > 150, 5000, "the picture was not lifted: " + red(f, 0.03, 0.5))
+            verify(p.setNightView(id, { strength: 1 }))
+            compare(p.undoText, "Change Night View")
+            tryVerify(() => red(f, 0.03, 0.5) > 175, 5000, "not lifted more: " + red(f, 0.03, 0.5))
+            verify(!p.setNightView(id, { strength: 2 }))
+            p.undo()
+            p.undo()
+            compare(p.selectedClipInfo.night.enabled, false)
+            tryVerify(() => Math.abs(red(f, 0.03, 0.5) - 128) < 20, 5000)
+        }
+
+        function test_depth_of_field_blurs_what_is_away_from_the_focus() {
+            const f = createEditor()
+            const p = f.project
+            if (p.importMedia(["file://" + samplesDir + "/shaky.mp4"]) !== 1)
+                skip("shaky.mp4 missing: run tools/make_test_media.sh")
+            if (!p.depthModel.downloaded && p.depthModel.id === undefined)
+                fail("no depth model in the catalogue")
+            verify(p.addClip(p.media[0].id))
+            const id = Number(p.tracks.find((t) => t.main).clips[0].id)
+            p.selectedClip = id
+            p.seek(1)
+            click(f.editor, "inspectorTab:Analyze")
+            scrollIntoView(settled(f.editor, "depthSection"))
+
+            // The model first: downloaded once (here from the test's scratch "server").
+            if (!p.depthModel.downloaded) {
+                verify(!findChild(f.editor, "depthSwitch").visible)
+                verify(settled(f.editor, "depthModelNote").text.indexOf("Depth Anything V2 Small") >= 0)
+                verify(!p.setDepthOfField(id, { enabled: true }))
+                verify(p.lastError.indexOf("Download the depth model first") === 0, p.lastError)
+                click(f.editor, "downloadDepthModel")
+                tryVerify(() => p.depthModel.downloaded === true, 60000, "the depth model never arrived")
+            }
+            // (shaky.mp4 at 1 s: the helmet bottom left nearest, the backdrop top right farthest.)
+            const back = () => patch(f, 0.88, 0.12, 0.06, 0.08).texture
+            const helmet = () => patch(f, 0.14, 0.86, 0.1, 0.1).texture
+            wait(300)
+            const backBefore = back(), helmetBefore = helmet()
+            verify(backBefore > 2, backBefore)
+
+            click(f.editor, "depthSwitch")
+            compare(p.undoText, "Depth of Field")
+            verify(p.setDepthOfField(id, { blur: 1 }))
+            // Autofocus (a face, or the nearest subject): the backdrop blurred.
+            tryVerify(() => back() < backBefore * 0.6, 5000, "the backdrop was not blurred: " + back() + " / " + backBefore)
+            // Focused on the backdrop instead: the other way round.
+            verify(p.setDepthOfField(id, { autoFocus: false, focusX: 0.88, focusY: 0.12 }))
+            compare(p.selectedClipInfo.depthOfField.autoFocus, false)
+            tryVerify(() => back() > backBefore * 0.8, 5000, "the backdrop is not sharp: " + back())
+            tryVerify(() => helmet() < helmetBefore * 0.7, 5000, "the helmet was not blurred: " + helmet())
+            verify(!p.setDepthOfField(id, { range: -1 }))
+            p.undo()
+            p.undo()
+            p.undo()
+            compare(p.selectedClipInfo.depthOfField.enabled, false)
+        }
+
         function test_only_video_clips_find_people() {
             const f = createEditor()
             const p = f.project

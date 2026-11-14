@@ -43,3 +43,14 @@ if [[ ! -f "$out/deepfilternet3/enc.onnx" ]]; then
     rm -rf "$scratch"
     echo "unpacked: deepfilternet3/"
 fi
+
+# Depth Anything V2 Small as Core ML (Apache-2.0), Apple's conversion at a fixed revision:
+# 49,820,122 bytes in three files, into depth-anything-v2-small-f16/DepthAnythingV2SmallF16.mlpackage/.
+depth="https://huggingface.co/apple/coreml-depth-anything-v2-small/resolve/cfef6f6f2a70783dedc0bfae40cecbc2052285d3/DepthAnythingV2SmallF16.mlpackage"
+pkg="depth-anything-v2-small-f16/DepthAnythingV2SmallF16.mlpackage"
+mkdir -p "$out/$pkg/Data/com.apple.CoreML/weights"
+fetch "$pkg/Manifest.json" 2883ae290c48fe916dc5ececac03a7d847fa277165a49ef5652fa1d2b9cb55f7 "$depth/Manifest.json"
+fetch "$pkg/Data/com.apple.CoreML/model.mlmodel" 44ac97a3efcfd52113183fb2862ff59cd0368e9ec2e30a90a54980dd11407042 \
+    "$depth/Data/com.apple.CoreML/model.mlmodel"
+fetch "$pkg/Data/com.apple.CoreML/weights/weight.bin" fa60d9b6a155734f59029ebb882fd54e549bfaee3539c1a9cbd2cbbab64a0fed \
+    "$depth/Data/com.apple.CoreML/weights/weight.bin"

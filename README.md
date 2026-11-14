@@ -95,6 +95,7 @@ The following improvements were completed after Phase 5:
 - Slice 30b: Background blur behind people, a blurred or removed camera background in the recorder, and stickers that follow faces.
 - Slice 30c: Smart search across what media shows, says and has on screen; Claude proofreading titles and captions, and writing a prompt from a picture.
 - Slice 30d: Music fitted to a length on the Mac, AI transitions made from the frames either side of a cut, and a video from an idea.
+- Slice 30e: Night view for dark shots, and cinematic depth of field from a depth model on the Mac.
 
 All previously identified feature gaps have been closed.
 
@@ -123,6 +124,7 @@ All previously identified feature gaps have been closed.
 - Protect skin tones from a grade or look, so faces keep their colour.
 - Smooth and brighten the skin on every face and whiten teeth, found frame by frame on the Mac.
 - Blur the background behind people, and put stickers on faces that follow them.
+- Lift dark shots with night view, and blur what is away from the focus with depth of field, on the Mac.
 - Add adjustment layers above clips to apply effects across multiple clips.
 
 ### 2.3 Masks, Keying and Compositing
@@ -491,6 +493,19 @@ after, each ticked to apply: **Apply** changes the chosen ones as one undo step 
 keep their timing), and nothing changes before. **Describe the frame** (Generate tab) sends the frame
 at the playhead to Claude, which writes a prompt to make a picture, a sticker or a video like it,
 into the prompt box. Labels are Vision's English names whatever the app's language.
+
+**Night view, depth of field.** The Analyze tab's **Night view** lifts a dark shot the way a camera's
+night mode does. It first smooths the grain the lift would show (an edge-keeping blur, colour noise
+more than detail, **Smooth grain**), then raises the brightness along a curve that is steep from
+black and flat towards white (**Lift**): shadows come up a lot, highlights hardly, colours keep
+their hue, and anything that would clip is drawn towards grey rather than burnt out. **Depth of
+field** blurs what is nearer or farther than the focus like a lens wide open, more the further it
+is, from a depth map estimated in every frame as it is drawn. The depth comes from Depth Anything V2
+Small (Apache-2.0) as Apple's Core ML conversion, about 50 MB, downloaded once from Apple's page on
+Hugging Face when you ask (each file checked by its SHA-256) and run on this Mac. Focus is on **a
+face, or the nearest** subject when there is no face, or on **a point** (Across, Down); **Blur** sets
+the strongest blur and **In focus** how much depth either side stays sharp. Each change is one undo
+step; both work on clips of video files, before the people tools and the grade.
 
 **Music fitted to a length, AI transitions, a video from an idea.** For music on an audio track,
 the Audio tab's **Fit to length** (seconds, or **To the video's end**) measures the music on this Mac
@@ -1088,7 +1103,7 @@ export VCPKG_ROOT=~/vcpkg
 cmake --preset macos-release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
 cmake --build --preset macos-release
 tools/make_test_media.sh          # synthetic test videos, a spoken sample (via `say`) and a public-domain NASA portrait (1.1 MB, SHA-256 checked) with clips made from it, and clips with known motion and sound offsets, in samples/
-tools/fetch_models.sh             # the models the tests use (Whisper 57 MB, DeepFilterNet3 8 MB, SHA-256 checked) into samples/models/
+tools/fetch_models.sh             # the models the tests use (Whisper 57 MB, DeepFilterNet3 8 MB, Depth Anything V2 Small 50 MB, SHA-256 checked) into samples/models/
 ctest --preset macos-release
 ```
 

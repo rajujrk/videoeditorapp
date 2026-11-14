@@ -265,6 +265,18 @@ ReframePath reframe(const std::vector<SubjectSample>& subject, double pictureWid
     return path;
 }
 
+bool NightView::valid() const
+{
+    const auto unit = [](double v) { return std::isfinite(v) && v >= 0.0 && v <= 1.0; };
+    return unit(strength) && unit(denoise);
+}
+
+bool DepthOfField::valid() const
+{
+    const auto unit = [](double v) { return std::isfinite(v) && v >= 0.0 && v <= 1.0; };
+    return unit(blur) && unit(focusX) && unit(focusY) && unit(range);
+}
+
 bool FaceBeauty::valid() const
 {
     const auto unit = [](double v) { return std::isfinite(v) && v >= 0.0 && v <= 1.0; };

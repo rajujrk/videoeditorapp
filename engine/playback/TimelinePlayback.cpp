@@ -281,6 +281,8 @@ void TimelinePlayback::buildLayersOf(const Project& project, const std::vector<T
                            float(clip.faceMosaic.amount)};
         people.cutout.subject.clear(); // (the box at this frame is enough)
         people.beauty = clip.beauty;
+        people.night = clip.night;
+        people.depth = clip.depthOfField;
         if (clip.cutout.enabled)
             people.subject = clip.cutout.subjectAt(sourceTime);
         return people;

@@ -579,6 +579,18 @@ Dark and light:
 ![A video from an idea, dark](images/idea-video-dark.png)
 ![A video from an idea, light](images/idea-video-light.png)
 
+The Analyze tab's Night view and Depth of field, as the other people sections: a switch and
+percentage sliders, the explanation in `textSecondary`. Depth of field first offers the model's
+download as a `secondary` button with its size and licence; once it is here, A face, or the nearest
+and A point are a pair of buttons, the chosen one `primary`. A dark, grainy shot lifted by night
+view, and a portrait with its face sharp and the flag and shuttle behind it blurred. Dark and
+light:
+
+![Night view, dark](images/night-view-dark.png)
+![Night view, light](images/night-view-light.png)
+![Depth of field, dark](images/depth-of-field-dark.png)
+![Depth of field, light](images/depth-of-field-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

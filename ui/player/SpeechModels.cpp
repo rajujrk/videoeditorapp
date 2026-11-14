@@ -54,6 +54,19 @@ const std::vector<SpeechModels::Model>& SpeechModels::catalog()
          QStringLiteral("https://github.com/Rikorose/DeepFilterNet/raw/main/models/DeepFilterNet3_onnx.tar.gz"),
          {QStringLiteral("enc.onnx"), QStringLiteral("erb_dec.onnx"), QStringLiteral("df_dec.onnx"),
           QStringLiteral("config.ini")}},
+        // Depth: Apple's Core ML conversion of Depth Anything V2 Small, at a fixed revision
+        // (sizes and SHA-256 from its file list; the manifest's measured).
+        {QStringLiteral("depth-anything-v2-small-f16"), QStringLiteral("Depth Anything V2 Small"),
+         QStringLiteral("DepthAnythingV2SmallF16.mlpackage"), 617 + 399433 + 49419072, QString(), false,
+         QStringLiteral(QT_TRANSLATE_NOOP("SpeechModels", "depth of field")), QStringLiteral("depth"),
+         QStringLiteral("https://huggingface.co/apple/coreml-depth-anything-v2-small/resolve/"
+                        "cfef6f6f2a70783dedc0bfae40cecbc2052285d3/DepthAnythingV2SmallF16.mlpackage/"),
+         {},
+         {{QStringLiteral("Manifest.json"), 617, QStringLiteral("2883ae290c48fe916dc5ececac03a7d847fa277165a49ef5652fa1d2b9cb55f7")},
+          {QStringLiteral("Data/com.apple.CoreML/model.mlmodel"), 399433,
+           QStringLiteral("44ac97a3efcfd52113183fb2862ff59cd0368e9ec2e30a90a54980dd11407042")},
+          {QStringLiteral("Data/com.apple.CoreML/weights/weight.bin"), 49419072,
+           QStringLiteral("fa60d9b6a155734f59029ebb882fd54e549bfaee3539c1a9cbd2cbbab64a0fed")}}},
     };
     return models;
 }
@@ -71,6 +84,13 @@ std::optional<QString> SpeechModels::path(const QString& id) const
     const Model* model = find(id);
     if (!model)
         return std::nullopt;
+    if (!model->parts.isEmpty()) {
+        const QDir folder(QDir(m_directory).filePath(model->id + QLatin1Char('/') + model->file));
+        for (const Model::Part& part : model->parts)
+            if (QFileInfo(folder.filePath(part.path)).size() != part.size)
+                return std::nullopt;
+        return folder.path();
+    }
     if (!model->contents.isEmpty()) {
         const QDir folder(QDir(m_directory).filePath(model->id));
         for (const QString& name : model->contents)
@@ -107,10 +127,11 @@ QVariantMap SpeechModels::progress() const
         return {};
     const Model* model = find(m_downloading);
     const double total = model ? double(model->size) : 0.0;
+    const double received = double(m_partsBefore + m_received);
     return {{QStringLiteral("id"), m_downloading},
-            {QStringLiteral("received"), double(m_received)},
+            {QStringLiteral("received"), received},
             {QStringLiteral("total"), total},
-            {QStringLiteral("progress"), total > 0 ? double(m_received) / total : 0.0}};
+            {QStringLiteral("progress"), total > 0 ? received / total : 0.0}};
 }
 
 bool SpeechModels::download(const QString& id, QString* error)
@@ -129,6 +150,16 @@ bool SpeechModels::download(const QString& id, QString* error)
         return true;
     }
     QDir().mkpath(m_directory);
+    if (!model->parts.isEmpty()) {
+        // Into <id>.part/<file>/, then moved to <id>/ once every part is in.
+        QDir(QDir(m_directory).filePath(model->id + QStringLiteral(".part"))).removeRecursively();
+        m_downloading = id;
+        m_partsBefore = 0;
+        m_cancelled = false;
+        fetchPart(*model, 0);
+        emit changed();
+        return true;
+    }
     m_file = std::make_unique<QFile>(QDir(m_directory).filePath(model->file + QStringLiteral(".part")));
     if (!m_file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         *error = tr("Cannot write to %1").arg(m_directory);
@@ -176,6 +207,63 @@ bool SpeechModels::download(const QString& id, QString* error)
     });
     emit changed();
     return true;
+}
+
+void SpeechModels::fetchPart(const Model& model, int index)
+{
+    const Model::Part& part = model.parts[index];
+    const QDir scratch(QDir(m_directory).filePath(model.id + QStringLiteral(".part/") + model.file));
+    const QString target = scratch.filePath(part.path);
+    QDir().mkpath(QFileInfo(target).path());
+    m_file = std::make_unique<QFile>(target);
+    if (!m_file->open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return end(false, tr("Cannot write to %1").arg(m_directory));
+    m_hash = std::make_unique<QCryptographicHash>(QCryptographicHash::Sha256);
+    m_received = 0;
+    const QString url = !m_baseUrl.isEmpty() ? m_baseUrl + model.id + QLatin1Char('/') + part.path : model.url + part.path;
+    QNetworkRequest request{QUrl(url)};
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    m_reply = m_network->get(request);
+    connect(m_reply, &QNetworkReply::readyRead, this, [this] {
+        const QByteArray data = m_reply->readAll();
+        m_file->write(data);
+        m_hash->addData(data);
+        m_received += data.size();
+        emit changed();
+    });
+    connect(m_reply, &QNetworkReply::finished, this, [this, &model, index] {
+        const QByteArray rest = m_reply->readAll();
+        m_file->write(rest);
+        m_hash->addData(rest);
+        m_received += rest.size();
+        m_file->close();
+        const Model::Part& part = model.parts[index];
+        const QString scratch = QDir(m_directory).filePath(model.id + QStringLiteral(".part"));
+        const auto fail = [&](const QString& why) {
+            m_file.reset();
+            QDir(scratch).removeRecursively();
+            end(false, why);
+        };
+        if (m_cancelled)
+            return fail({});
+        if (m_reply->error() != QNetworkReply::NoError)
+            return fail(tr("Download failed: %1").arg(m_reply->errorString()));
+        if (m_received != part.size || QString::fromLatin1(m_hash->result().toHex()) != part.sha256)
+            return fail(tr("The downloaded model is not the expected file (size or SHA-256 differs)"));
+        m_reply->deleteLater();
+        m_reply = nullptr;
+        m_partsBefore += m_received;
+        if (index + 1 < model.parts.size())
+            return fetchPart(model, index + 1);
+        // All in: into place.
+        m_file.reset();
+        const QString target = QDir(m_directory).filePath(model.id);
+        QDir(target).removeRecursively();
+        if (!QDir().rename(scratch, target))
+            return fail(tr("Cannot keep the downloaded model in %1").arg(m_directory));
+        m_partsBefore = 0;
+        end(true, {});
+    });
 }
 
 void SpeechModels::cancel()
@@ -234,6 +322,7 @@ void SpeechModels::end(bool ok, const QString& error)
         m_reply->deleteLater();
     m_downloading.clear();
     m_received = 0;
+    m_partsBefore = 0;
     emit changed();
     emit finished(id, ok, error);
 }

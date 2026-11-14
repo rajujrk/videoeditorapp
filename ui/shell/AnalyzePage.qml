@@ -301,6 +301,154 @@ ScrollView {
             }
         }
 
+        // Night view: a dark shot lifted, its grain smoothed first.
+        Section {
+            id: night
+            objectName: "nightSection"
+            visible: page.canFindPeople
+            Layout.fillWidth: true
+            title: qsTr("Night view")
+            readonly property var current: page.clipInfo.night || ({})
+            readonly property bool on: current.enabled === true
+            function change(values) { page.project.setNightView(page.clipInfo.id, values) }
+
+            Finding {
+                text: qsTr("Lifts a dark shot like a camera's night mode: the shadows brought up a lot and the highlights hardly, after smoothing the grain the lift would show.")
+                color: Theme.color.textSecondary
+            }
+            ToggleSwitch {
+                objectName: "nightSwitch"
+                text: qsTr("Night view")
+                checked: night.on
+                onToggled: night.change({ enabled: checked })
+            }
+            Setting {
+                objectName: "nightStrength"
+                visible: night.on
+                label: qsTr("Lift")
+                from: 0; to: 1; stepSize: 0.05
+                value: night.current.strength !== undefined ? night.current.strength : 0.6
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: night.change({ strength: value })
+            }
+            Setting {
+                objectName: "nightDenoise"
+                visible: night.on
+                label: qsTr("Smooth grain")
+                from: 0; to: 1; stepSize: 0.05
+                value: night.current.denoise !== undefined ? night.current.denoise : 0.5
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: night.change({ denoise: value })
+            }
+        }
+
+        // Depth of field: what is not at the focus distance blurred, from a depth map found in
+        // each frame by the depth model (downloaded once).
+        Section {
+            id: depth
+            objectName: "depthSection"
+            visible: page.canFindPeople
+            Layout.fillWidth: true
+            title: qsTr("Depth of field")
+            readonly property var current: page.clipInfo.depthOfField || ({})
+            readonly property bool on: current.enabled === true
+            readonly property var model: page.project.depthModel
+            readonly property var download: page.project.modelDownload
+            readonly property bool downloading: download.id === model.id
+            function change(values) { page.project.setDepthOfField(page.clipInfo.id, values) }
+
+            Finding {
+                text: qsTr("Blurs what is nearer or farther than the focus, like a lens wide open, from the depth a model finds in each frame on this Mac.")
+                color: Theme.color.textSecondary
+            }
+            // The model, until it is here.
+            Finding {
+                objectName: "depthModelNote"
+                visible: !depth.model.downloaded
+                text: depth.downloading
+                      ? qsTr("Downloading the depth model… %1 %").arg(Math.round((depth.download.progress || 0) * 100))
+                      : qsTr("It needs the depth model (Depth Anything V2 Small, Apache-2.0, %1), downloaded once from Apple's page on Hugging Face.")
+                            .arg(Fmt.mb(depth.model.size || 0))
+                color: Theme.color.textSecondary
+            }
+            TextButton {
+                objectName: "downloadDepthModel"
+                visible: !depth.model.downloaded && !depth.downloading
+                text: qsTr("Download the depth model")
+                iconName: "import"
+                variant: "secondary"
+                enabled: page.project.modelDownload.id === undefined
+                onClicked: page.project.downloadSpeechModel(depth.model.id)
+            }
+            TextButton {
+                objectName: "cancelDepthModel"
+                visible: depth.downloading
+                text: qsTr("Stop")
+                variant: "ghost"
+                onClicked: page.project.cancelModelDownload()
+            }
+            ToggleSwitch {
+                objectName: "depthSwitch"
+                visible: depth.model.downloaded === true
+                text: qsTr("Depth of field")
+                checked: depth.on
+                onToggled: depth.change({ enabled: checked })
+            }
+            Setting {
+                objectName: "depthBlur"
+                visible: depth.on
+                label: qsTr("Blur")
+                from: 0; to: 1; stepSize: 0.05
+                value: depth.current.blur !== undefined ? depth.current.blur : 0.5
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: depth.change({ blur: value })
+            }
+            Setting {
+                objectName: "depthRange"
+                visible: depth.on
+                label: qsTr("In focus")
+                from: 0; to: 1; stepSize: 0.05
+                value: depth.current.range !== undefined ? depth.current.range : 0.15
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: depth.change({ range: value })
+            }
+            Flow {
+                visible: depth.on
+                Layout.fillWidth: true
+                spacing: Theme.space.xs
+                TextButton {
+                    objectName: "depthFocus:auto"
+                    text: qsTr("A face, or the nearest")
+                    variant: depth.current.autoFocus !== false ? "primary" : "secondary"
+                    onClicked: depth.change({ autoFocus: true })
+                }
+                TextButton {
+                    objectName: "depthFocus:point"
+                    text: qsTr("A point")
+                    variant: depth.current.autoFocus === false ? "primary" : "secondary"
+                    onClicked: depth.change({ autoFocus: false })
+                }
+            }
+            Setting {
+                objectName: "depthFocusX"
+                visible: depth.on && depth.current.autoFocus === false
+                label: qsTr("Across")
+                from: 0; to: 1; stepSize: 0.01
+                value: depth.current.focusX !== undefined ? depth.current.focusX : 0.5
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: depth.change({ focusX: value })
+            }
+            Setting {
+                objectName: "depthFocusY"
+                visible: depth.on && depth.current.autoFocus === false
+                label: qsTr("Down")
+                from: 0; to: 1; stepSize: 0.01
+                value: depth.current.focusY !== undefined ? depth.current.focusY : 0.5
+                format: (v) => Math.round(v * 100) + " %"
+                onCommitted: depth.change({ focusY: value })
+            }
+        }
+
         // Beauty: the faces in each frame (Vision's landmarks), their skin smoothed and lifted,
         // their teeth whitened.
         Section {

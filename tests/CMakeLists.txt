@@ -69,6 +69,7 @@ add_executable(tve_engine_tests
     engine/test_speech_enhancer.cpp
     engine/test_people_vision.cpp
     engine/test_content_vision.mm
+    engine/test_depth_vision.mm
     engine/test_motion_analysis.cpp
     engine/test_multicam.cpp
     engine/test_video_processing.cpp

@@ -553,3 +553,90 @@ TEST_CASE("a cutout with a blur blurs what it cuts away and keeps the person sha
     });
     CHECK(cut.alpha(0.8, 0.5) == Approx(0.0f).margin(0.01));
 }
+
+TEST_CASE("night view lifts the dark, smooths its grain and keeps the highlights and colours")
+{
+    // A dark grainy grey on the left, a dark red block, and white on the right.
+    const QImage picture = filled([](int x, int y) {
+        if (x >= 48)
+            return QColor(250, 250, 250);
+        if (x >= 32 && y < 18)
+            return QColor(40, 12, 10);
+        const int g = ((x * 7 + y * 13) % 3 - 1) * 6;
+        return QColor(24 + g, 24 + g, 24 + g);
+    });
+    NightView night;
+    night.enabled = true;
+    night.strength = 1.0;
+    night.denoise = 1.0;
+    const Pixels out = run({picture}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        return m.night(cb, t[0], night);
+    });
+    const auto at = [&](int x, int y) { return out.at((x + 0.5) / kW, (y + 0.5) / kH); };
+    const auto mean = [&](int x0, int x1, int y0, int y1, bool original) {
+        double sum = 0.0;
+        int n = 0;
+        for (int y = y0; y < y1; ++y)
+            for (int x = x0; x < x1; ++x, ++n)
+                sum += original ? picture.pixelColor(x, y).greenF() : at(x, y)[1];
+        return sum / n;
+    };
+    const auto spread = [&](int x0, int x1, int y0, int y1, bool original) {
+        const double m = mean(x0, x1, y0, y1, original);
+        double sum = 0.0;
+        int n = 0;
+        for (int y = y0; y < y1; ++y)
+            for (int x = x0; x < x1; ++x, ++n)
+                sum += std::abs((original ? picture.pixelColor(x, y).greenF() : at(x, y)[1]) - m);
+        return sum / n / m; // relative to the brightness
+    };
+    CHECK(mean(4, 28, 20, 34, false) > mean(4, 28, 20, 34, true) * 3); // much brighter
+    CHECK(spread(4, 28, 20, 34, false) < spread(4, 28, 20, 34, true) * 0.6); // and less grainy for it
+    CHECK(at(56, 18)[1] == Approx(250 / 255.0f).margin(0.02)); // white stays white
+    const float* red = at(40, 6); // the red lifted, still red
+    CHECK(red[0] > 40 / 255.0f * 2);
+    CHECK(red[0] > red[1] * 2.5f);
+    // Off: the picture itself.
+    night.enabled = false;
+    run({picture}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        CHECK(m.night(cb, t[0], night) == t[0]);
+        return t[0];
+    });
+}
+
+TEST_CASE("depth of field blurs what is away from the focus and keeps the focus sharp")
+{
+    // Fine stripes everywhere; the depth: near on the left half, far on the right.
+    const QImage picture = filled([](int x, int) { return x % 2 ? QColor(240, 240, 240) : QColor(20, 20, 20); });
+    QImage depth(16, 9, QImage::Format_RGBA8888);
+    for (int y = 0; y < 9; ++y)
+        for (int x = 0; x < 16; ++x)
+            depth.setPixelColor(x, y, x < 8 ? QColor(255, 255, 255) : QColor(0, 0, 0));
+    DepthOfField settings;
+    settings.enabled = true;
+    settings.blur = 1.0;
+    settings.range = 0.1;
+    const auto apply = [&](float focus) {
+        return run({picture, depth}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+            return m.depthBlur(cb, t[0], t[1], settings, focus);
+        });
+    };
+    const auto contrast = [](const Pixels& p, double u0) {
+        return std::abs(p.at(u0, 0.5)[0] - p.at(u0 + 1.0 / kW, 0.5)[0]);
+    };
+    // Focused near: the left stays sharp, the right is blurred.
+    const Pixels near = apply(1.0f);
+    CHECK(contrast(near, 0.15) > 0.8f);
+    CHECK(contrast(near, 0.8) < contrast(near, 0.15) * 0.6f);
+    // Focused far: the other way round.
+    const Pixels far = apply(0.0f);
+    CHECK(contrast(far, 0.8) > 0.8f);
+    CHECK(contrast(far, 0.15) < contrast(far, 0.8) * 0.6f);
+    // Off, or without depth: the picture itself.
+    settings.blur = 0.0;
+    run({picture, depth}, [&](MaskRenderer& m, QRhiCommandBuffer* cb, std::vector<QRhiTexture*> t) {
+        CHECK(m.depthBlur(cb, t[0], t[1], settings, 1.0f) == t[0]);
+        CHECK(m.depthBlur(cb, t[0], nullptr, DepthOfField{.enabled = true}, 1.0f) == t[0]);
+        return t[0];
+    });
+}

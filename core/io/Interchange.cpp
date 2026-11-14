@@ -40,9 +40,10 @@ void noteClip(const Clip& clip, const MediaItem* media, bool videoTrack, Notes& 
             notes.add(TVE_TR("core", "Video effects and plug-ins"));
         if (clip.chromaKey.enabled || !clip.masks.empty() || clip.matte != MatteMode::None)
             notes.add(TVE_TR("core", "Keys, masks and mattes"));
-        if (clip.cutout.enabled || clip.faceMosaic.active() || clip.beauty.active() || clip.stabilization.enabled || clip.deflicker.enabled
+        if (clip.cutout.enabled || clip.faceMosaic.active() || clip.beauty.active() || clip.night.active()
+            || clip.depthOfField.active() || clip.stabilization.enabled || clip.deflicker.enabled
             || clip.denoise > 0.0 || clip.cursor.shows() || clip.processedVideo)
-            notes.add(TVE_TR("core", "Cutouts, covered faces, beauty, stabilization, denoise and cursor effects"));
+            notes.add(TVE_TR("core", "Cutouts, covered faces, beauty, night view, depth of field, stabilization, denoise and cursor effects"));
     }
     if (clip.gainDb != 0.0f || clip.fadeIn > 0 || clip.fadeOut > 0)
         notes.add(TVE_TR("core", "Clip volume and fades"));

@@ -16,11 +16,13 @@ class QFile;
 class QNetworkAccessManager;
 class QNetworkReply;
 
-// The speech models the app can use — speech recognition (Whisper, MIT, from the official
-// whisper.cpp model repository) and speech enhancement (DeepFilterNet3, MIT / Apache-2.0,
-// from its GitHub repository) — which of them are on this computer, and downloading one:
+// The models the app can use — speech recognition (Whisper, MIT, from the official
+// whisper.cpp model repository), speech enhancement (DeepFilterNet3, MIT / Apache-2.0, from
+// its GitHub repository) and depth (Depth Anything V2 Small as Core ML, Apache-2.0, from
+// Apple's Hugging Face repository) — which of them are on this computer, and downloading one:
 // streamed to a ".part" file, checked against its known size and SHA-256, then moved into
-// place (an archive is unpacked into a folder of the model's id). Models live in
+// place (an archive is unpacked into a folder of the model's id; a model of several files,
+// such as a Core ML package, is fetched file by file into that folder). Models live in
 // <app data>/Models (TVE_MODEL_DIR moves them; TVE_MODEL_BASE_URL is where they all come
 // from, for tests).
 class SpeechModels : public QObject {
@@ -38,6 +40,14 @@ public:
         QString kind = QStringLiteral("transcribe"); // or "enhance"
         QString url;          // where it comes from ("": the whisper.cpp repository)
         QStringList contents; // an archive (.tar.gz): the files it must hold, unpacked
+        // A model of several files (`file` the folder they make, e.g. a .mlpackage; `size`
+        // their total): each fetched from `url` + its path, checked, into <id>/<file>/.
+        struct Part {
+            QString path; // inside `file`
+            qint64 size = 0;
+            QString sha256;
+        };
+        QList<Part> parts;
     };
 
     explicit SpeechModels(QObject* parent = nullptr);
@@ -68,6 +78,8 @@ private:
     void end(bool ok, const QString& error);
     // Unpacks a downloaded archive into <directory>/<id>; why not, or empty.
     QString unpack(const Model& model, const QString& archive);
+    // Fetches part `index` of the model downloading (the next once it is in).
+    void fetchPart(const Model& model, int index);
 
     QString m_directory;
     QString m_baseUrl;
@@ -77,5 +89,6 @@ private:
     std::unique_ptr<QCryptographicHash> m_hash;
     QString m_downloading;
     qint64 m_received = 0;
+    qint64 m_partsBefore = 0; // bytes of the parts already in
     bool m_cancelled = false;
 };

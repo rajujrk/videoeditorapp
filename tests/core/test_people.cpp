@@ -339,3 +339,47 @@ TEST_CASE("clips laid above a track go on the lowest free tracks, new ones when 
     CHECK(p.tryPush<AddClipsAboveCommand>(p.track, std::vector<Clip>{}, "Stickers", "x").value() == "nothing to add");
     CHECK(p.tryPush<AddClipsAboveCommand>(Id(9999), later, "Stickers", "x").value() == "track not found");
 }
+
+TEST_CASE("night view and depth of field are clip settings: checked, undone, kept by splits and saved")
+{
+    PeopleProject p;
+    const Id clip = p.push<AddClipCommand>(p.track, p.video, 0, 10 * kSec, 0).clipId();
+    CHECK_FALSE(p.clip(clip).night.active()); // off by default
+    CHECK_FALSE(p.clip(clip).depthOfField.active());
+    const NightView night{.enabled = true, .strength = 0.8, .denoise = 0.3};
+    const DepthOfField depth{.enabled = true, .blur = 0.7, .autoFocus = false, .focusX = 0.3, .focusY = 0.6, .range = 0.2};
+    p.push<SetClipPeopleCommand>(clip, night, "Night View");
+    CHECK(p.clip(clip).night == night);
+    p.push<SetClipPeopleCommand>(clip, depth, "Depth of Field");
+    CHECK(p.clip(clip).depthOfField == depth);
+    CHECK(p.clip(clip).night == night); // each leaves the other
+    p.stack.undo();
+    CHECK(p.clip(clip).depthOfField == DepthOfField{});
+    CHECK(p.clip(clip).night == night);
+    p.stack.redo();
+
+    auto& split = p.push<SplitClipCommand>(clip, 4 * kSec);
+    CHECK(p.clip(split.rightClipId()).night == night);
+    CHECK(p.clip(split.rightClipId()).depthOfField == depth);
+    nlohmann::json json = projectToJson(p.project);
+    Project loaded = projectFromJson(json);
+    CHECK(loaded.locateClip(clip)->clip->night == night);
+    CHECK(loaded.locateClip(clip)->clip->depthOfField == depth);
+    for (auto& t : json["tracks"])
+        for (auto& c : t["clips"]) {
+            c.erase("night");
+            c.erase("depthOfField");
+        }
+    Project older = projectFromJson(json);
+    CHECK(older.locateClip(clip)->clip->night == NightView{}); // older projects
+    CHECK(older.locateClip(clip)->clip->depthOfField == DepthOfField{});
+
+    // Active only with something to do; out of range refused; only video files.
+    CHECK_FALSE((DepthOfField{.enabled = true, .blur = 0.0}).active());
+    CHECK_FALSE((NightView{.enabled = true, .strength = 0.0, .denoise = 0.0}).active());
+    CHECK(p.tryPush<SetClipPeopleCommand>(clip, NightView{true, 1.5, 0.0}, "x").value() == "night view setting out of range");
+    CHECK(p.tryPush<SetClipPeopleCommand>(clip, DepthOfField{.enabled = true, .focusX = 2.0}, "x").value()
+          == "depth of field setting out of range");
+    const Id photo = p.push<AddClipCommand>(p.track, p.still, 20 * kSec, 2 * kSec, 0).clipId();
+    CHECK(p.tryPush<SetClipPeopleCommand>(photo, night, "Night View").value() == "only clips of video files can find people");
+}

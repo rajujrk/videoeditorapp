@@ -61,6 +61,13 @@ public:
     // Skin tones in `graded` mixed back towards `original` (the picture before its look and
     // grade, the same size) by `amount` (protect.frag); `graded` itself when 0.
     QRhiTexture* protectSkin(QRhiCommandBuffer* cb, QRhiTexture* graded, QRhiTexture* original, float amount);
+    // Night view (night.frag); `picture` itself when it is off.
+    QRhiTexture* night(QRhiCommandBuffer* cb, QRhiTexture* picture, const NightView& night);
+    // Depth of field (depthblur.frag) from `depth` (one channel of any size: nearness 0..1,
+    // see tve::DepthMap), focused at nearness `focus` (0..1); `picture` itself when it is off
+    // or there is no depth.
+    QRhiTexture* depthBlur(QRhiCommandBuffer* cb, QRhiTexture* picture, QRhiTexture* depth, const DepthOfField& settings,
+                           float focus);
 
     // Stabilized and/or evened out (steady.frag): zoomed by `zoom`, the correction (a
     // SteadySample's dx, dy, angle, scale) applied, colour times `gain`.
@@ -97,6 +104,8 @@ private:
     QShader m_cursorFragment;
     QShader m_beautyFragment;
     QShader m_protectFragment;
+    QShader m_nightFragment;
+    QShader m_depthFragment;
     std::unique_ptr<QRhiSampler> m_sampler;
     std::unique_ptr<QRhiRenderPassDescriptor> m_renderPass;
     std::unique_ptr<QRhiGraphicsPipeline> m_maskPipeline;
@@ -108,6 +117,8 @@ private:
     std::unique_ptr<QRhiGraphicsPipeline> m_cursorPipeline;
     std::unique_ptr<QRhiGraphicsPipeline> m_beautyPipeline;
     std::unique_ptr<QRhiGraphicsPipeline> m_protectPipeline;
+    std::unique_ptr<QRhiGraphicsPipeline> m_nightPipeline;
+    std::unique_ptr<QRhiGraphicsPipeline> m_depthPipeline;
     std::vector<Slot> m_slots;
     std::size_t m_used = 0;
 };
