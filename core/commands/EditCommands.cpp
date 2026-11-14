@@ -543,6 +543,8 @@ std::optional<std::string> SplitClipCommand::redo(Project& project)
     right.cutout = clip.cutout;
     right.faceMosaic = clip.faceMosaic; // face tracks are in media time: the same for both halves
     right.beauty = clip.beauty;
+    right.night = clip.night;
+    right.depthOfField = clip.depthOfField;
     right.stabilization = clip.stabilization; // likewise motion
     right.deflicker = clip.deflicker;
     right.denoise = clip.denoise;
@@ -1194,11 +1196,21 @@ std::optional<std::string> SetClipPeopleCommand::redo(Project& project)
         return "face cover setting out of range";
     if (m_beauty && !m_beauty->valid())
         return "beauty setting out of range";
+    if (m_night && !m_night->valid())
+        return "night view setting out of range";
+    if (m_depth && !m_depth->valid())
+        return "depth of field setting out of range";
     m_previousCutout = clip.cutout;
     m_previousFaces = clip.faceMosaic;
     m_previousBeauty = clip.beauty;
+    m_previousNight = clip.night;
+    m_previousDepth = clip.depthOfField;
     if (m_beauty)
         location->clip->beauty = *m_beauty;
+    if (m_night)
+        location->clip->night = *m_night;
+    if (m_depth)
+        location->clip->depthOfField = *m_depth;
     if (m_cutout)
         location->clip->cutout = *m_cutout;
     if (m_faces)
@@ -1212,6 +1224,8 @@ void SetClipPeopleCommand::undo(Project& project)
     clip.cutout = m_previousCutout;
     clip.faceMosaic = m_previousFaces;
     clip.beauty = m_previousBeauty;
+    clip.night = m_previousNight;
+    clip.depthOfField = m_previousDepth;
 }
 
 // --- SetClipEnhancedAudioCommand ---

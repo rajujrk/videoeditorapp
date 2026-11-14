@@ -35,6 +35,7 @@
 #include "speech/SpeechEnhancer.h"
 #include "analysis/PeopleVision.h"
 #include "analysis/ContentVision.h"
+#include "analysis/DepthVision.h"
 #include "commands/SequenceEdits.h"
 #include "model/MusicFit.h"
 #include "analysis/MotionAnalysis.h"
@@ -909,6 +910,17 @@ ProjectController::ProjectController(QObject* parent)
         emit stickersChanged();
         emit m_soundLibrary->changed();
     });
+    // A project using depth of field loads the depth model (if it is here).
+    connect(this, &ProjectController::projectChanged, this, [this] {
+        if (tve::hasDepthModel())
+            return;
+        for (const Track& track : m_project.tracks)
+            for (const Clip& clip : track.clips)
+                if (clip.depthOfField.active()) {
+                    ensureDepthModel();
+                    return;
+                }
+    });
     // What search can reach follows the media bin and the transcripts.
     connect(this, &ProjectController::projectChanged, this, &ProjectController::searchIndexChanged);
     connect(this, &ProjectController::transcriptChanged, this, &ProjectController::searchIndexChanged);
@@ -954,6 +966,8 @@ ProjectController::ProjectController(QObject* parent)
     connect(&m_speechModels, &SpeechModels::finished, this, [this](const QString& id, bool ok, const QString& error) {
         if (!ok && !error.isEmpty())
             reportError(error);
+        if (ok && id == QLatin1String("depth-anything-v2-small-f16"))
+            ensureDepthModel();
         emit speechModelsChanged();
         emit modelDownloadFinished(id, ok, error);
     });
@@ -2546,6 +2560,15 @@ QVariantMap ProjectController::selectedClipInfo() const
                                                    {QStringLiteral("smooth"), clip->beauty.smooth},
                                                    {QStringLiteral("brighten"), clip->beauty.brighten},
                                                    {QStringLiteral("teeth"), clip->beauty.teeth}}},
+            {QStringLiteral("night"), QVariantMap{{QStringLiteral("enabled"), clip->night.enabled},
+                                                  {QStringLiteral("strength"), clip->night.strength},
+                                                  {QStringLiteral("denoise"), clip->night.denoise}}},
+            {QStringLiteral("depthOfField"), QVariantMap{{QStringLiteral("enabled"), clip->depthOfField.enabled},
+                                                         {QStringLiteral("blur"), clip->depthOfField.blur},
+                                                         {QStringLiteral("range"), clip->depthOfField.range},
+                                                         {QStringLiteral("autoFocus"), clip->depthOfField.autoFocus},
+                                                         {QStringLiteral("focusX"), clip->depthOfField.focusX},
+                                                         {QStringLiteral("focusY"), clip->depthOfField.focusY}}},
             {QStringLiteral("stabilization"), QVariantMap{{QStringLiteral("enabled"), clip->stabilization.enabled},
                                                           {QStringLiteral("smoothness"), clip->stabilization.smoothness},
                                                           {QStringLiteral("lock"), clip->stabilization.lock},
@@ -9173,6 +9196,48 @@ bool ProjectController::setFaceBeauty(double clipId, const QVariantMap& settings
     return apply(std::make_unique<SetClipPeopleCommand>(clip->id, beauty, label));
 }
 
+bool ProjectController::setNightView(double clipId, const QVariantMap& settings)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    NightView night = clip->night;
+    night.enabled = settings.value(QStringLiteral("enabled"), night.enabled).toBool();
+    night.strength = settings.value(QStringLiteral("strength"), night.strength).toDouble();
+    night.denoise = settings.value(QStringLiteral("denoise"), night.denoise).toDouble();
+    if (night == clip->night)
+        return true;
+    const char* label = night.enabled == clip->night.enabled ? TVE_TR("core", "Change Night View")
+                      : night.enabled                         ? TVE_TR("core", "Night View")
+                                                              : TVE_TR("core", "Remove Night View");
+    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, night, label));
+}
+
+bool ProjectController::setDepthOfField(double clipId, const QVariantMap& settings)
+{
+    const Clip* clip = peopleClip(toId(clipId), false);
+    if (!clip)
+        return false;
+    DepthOfField depth = clip->depthOfField;
+    depth.enabled = settings.value(QStringLiteral("enabled"), depth.enabled).toBool();
+    depth.blur = settings.value(QStringLiteral("blur"), depth.blur).toDouble();
+    depth.range = settings.value(QStringLiteral("range"), depth.range).toDouble();
+    depth.autoFocus = settings.value(QStringLiteral("autoFocus"), depth.autoFocus).toBool();
+    depth.focusX = settings.value(QStringLiteral("focusX"), depth.focusX).toDouble();
+    depth.focusY = settings.value(QStringLiteral("focusY"), depth.focusY).toDouble();
+    if (depth == clip->depthOfField)
+        return true;
+    if (depth.enabled && !ensureDepthModel()) {
+        if (!m_speechModels.path(QStringLiteral("depth-anything-v2-small-f16")))
+            reportError(tr("Download the depth model first"));
+        return false;
+    }
+    const char* label = depth.enabled == clip->depthOfField.enabled ? TVE_TR("core", "Change Depth of Field")
+                      : depth.enabled                                ? TVE_TR("core", "Depth of Field")
+                                                                     : TVE_TR("core", "Remove Depth of Field");
+    return apply(std::make_unique<SetClipPeopleCommand>(clip->id, depth, label));
+}
+
 bool ProjectController::findFaces(double clipId)
 {
     if (analyzing()) {
@@ -10243,6 +10308,28 @@ QString enhancedDirectory()
 constexpr const char* kEnhanceModel = "deepfilternet3";
 
 } // namespace
+
+QVariantMap ProjectController::depthModel() const
+{
+    const QVariantList list = m_speechModels.list(QStringLiteral("depth"));
+    return list.isEmpty() ? QVariantMap() : list.first().toMap();
+}
+
+bool ProjectController::ensureDepthModel()
+{
+    if (tve::hasDepthModel())
+        return true;
+    const auto path = m_speechModels.path(QStringLiteral("depth-anything-v2-small-f16"));
+    if (!path)
+        return false;
+    std::string error;
+    if (!tve::setDepthModel(path->toStdString(), &error)) {
+        reportError(coreText(error));
+        return false;
+    }
+    updatePlayback(); // (drawn again with it)
+    return true;
+}
 
 QVariantMap ProjectController::enhanceModel() const
 {

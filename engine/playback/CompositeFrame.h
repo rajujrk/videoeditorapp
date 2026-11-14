@@ -24,8 +24,10 @@ struct LayerPeople {
     FaceCover cover = FaceCover::Mosaic;
     float amount = 0.5f;
     FaceBeauty beauty; // faces found in this very frame
+    NightView night;
+    DepthOfField depth; // depth estimated in this very frame
 
-    bool any() const { return cutout.enabled || !faces.empty() || beauty.active(); }
+    bool any() const { return cutout.enabled || !faces.empty() || beauty.active() || night.active() || depth.active(); }
 };
 
 // How a clip's picture is steadied at one frame: the stabilization's correction and zoom,

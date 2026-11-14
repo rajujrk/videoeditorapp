@@ -474,6 +474,17 @@ window.TVE = {
       steps: ["Select a video clip and click Find faces in the Analyze tab.", "Choose the faces, a sticker and where it goes: Head, Eyes, Face or Beside.", "Click Stick it on. Make them tracks lets titles follow the faces too."]
     },
     {
+      id: "night-view", title: "Night view", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Night view"], image: "night-view", privacy: "mac",
+      summary: "Lift a dark shot like a phone's night mode: the shadows come up, the highlights stay, and the grain is smoothed first.",
+      steps: ["Select a video clip and open the Analyze tab.", "Turn on Night view.", "Set Lift for how much brighter, and Smooth grain for how much grain to take away."]
+    },
+    {
+      id: "depth-of-field", title: "Depth of field", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Depth of field"], image: "depth-of-field", privacy: "mac",
+      summary: "Blur what is in front of or behind your subject, like a lens wide open, using the depth a model finds in every frame.",
+      steps: ["Select a video clip and open the Analyze tab.", "Click Download the depth model the first time (about 50 MB, once), then turn on Depth of field.", "Set Blur and In focus; focus on a face (or the nearest thing), or choose A point."],
+      note: "The depth model runs on your Mac; nothing is sent anywhere."
+    },
+    {
       id: "smart-search", title: "Smart search", chapter: "local", area: "library", where: ["Library", "Media", "Search"], image: "smart-search", privacy: "mac",
       summary: "Find the moments in your media by what is in the picture, what is said and the text on screen, not just by file name.",
       steps: ["In the Media tab, start typing in the search field and click Look at media once; your Mac labels every picture and video and reads the text on screen.", "Type in the search field: each moment shows whether it was Seen, Said or On screen.", "Click a moment to open it in the source monitor with In and Out around it, or double-click to put it on the timeline."],

@@ -44,6 +44,10 @@ double extraLoad(const Clip& clip, double pixels, const EffectWeight& weight)
         load += 0.04;
     if (clip.beauty.active())
         load += 0.12 * std::max(1.0, size); // face landmarks per frame, and an edge-keeping blur
+    if (clip.night.active())
+        load += 0.06 * size; // an edge-keeping blur
+    if (clip.depthOfField.active())
+        load += 0.3 + 0.1 * size; // a depth model per frame, and a lens blur
     if (clip.denoise > 0.0)
         load += 0.08 * size;
     if (clip.stabilization.enabled)

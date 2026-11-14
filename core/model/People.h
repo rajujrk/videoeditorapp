@@ -55,6 +55,38 @@ struct FaceBeauty {
     friend bool operator==(const FaceBeauty&, const FaceBeauty&) = default;
 };
 
+// Night view: a dark shot lifted, as a camera's night mode would — the shadows brought up a
+// lot and the highlights hardly (the colours kept), after the grain the lift would show is
+// smoothed away (an edge-keeping blur; the colour noise more than the detail).
+struct NightView {
+    bool enabled = false;
+    double strength = 0.6; // 0..1: how much the dark is lifted
+    double denoise = 0.5;  // 0..1: how much grain is smoothed first
+
+    bool active() const { return enabled && (strength > 0.0 || denoise > 0.0); }
+    bool valid() const;
+
+    friend bool operator==(const NightView&, const NightView&) = default;
+};
+
+// Cinematic depth of field: what is not at the focus distance blurred like a lens wide open,
+// more the further from it, from a depth map estimated in every frame as it is drawn (a
+// depth model on this Mac). Focus follows the largest face (or, with none, the nearest
+// subject), or a point in the picture.
+struct DepthOfField {
+    bool enabled = false;
+    double blur = 0.5;     // 0..1: the most blur (1: a disc 2.5 % of the picture's height)
+    bool autoFocus = true; // focus on the largest face, else the nearest subject
+    double focusX = 0.5;   // else on what is here (fractions of the picture, origin top left)
+    double focusY = 0.5;
+    double range = 0.15;   // 0..1: how much of the depth either side of the focus stays sharp
+
+    bool active() const { return enabled && blur > 0.0; }
+    bool valid() const;
+
+    friend bool operator==(const DepthOfField&, const DepthOfField&) = default;
+};
+
 // One face where it was seen, at a media time.
 struct FaceSample {
     Ticks time = 0;

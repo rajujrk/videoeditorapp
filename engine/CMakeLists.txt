@@ -72,6 +72,8 @@ add_library(tve_engine STATIC
     analysis/VisionSupport.h
     analysis/ContentVision.h
     analysis/ContentVision.mm
+    analysis/DepthVision.h
+    analysis/DepthVision.mm
     speech/Transcriber.h
     speech/Transcriber.cpp
     speech/SpeechEnhancer.h
@@ -156,6 +158,7 @@ target_link_libraries(tve_engine
         "-framework Accelerate"
         "-framework Foundation"
         "-framework Vision"
+        "-framework CoreML"
         "-framework CoreGraphics"
         "-framework ScreenCaptureKit"
         "-framework AVFoundation"

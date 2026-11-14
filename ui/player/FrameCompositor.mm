@@ -15,6 +15,7 @@
 #include "gpu/EffectChain.h"
 #include "gpu/LayerPlacement.h"
 #include "gpu/TransitionRenderer.h"
+#include "analysis/DepthVision.h"
 #include "analysis/PeopleVision.h"
 
 #include <QColorSpace>
@@ -172,6 +173,7 @@ void FrameCompositor::reset()
     m_stills.clear();
     m_personMattes.clear();
     m_beautyMasks.clear();
+    m_depthMaps.clear();
     m_denoise.clear();
 }
 
@@ -452,6 +454,43 @@ QRhiTexture* FrameCompositor::beautyMask(QRhiCommandBuffer* cb, tve::Id clipId, 
     return mask.texture.get();
 }
 
+QRhiTexture* FrameCompositor::depthMap(QRhiCommandBuffer* cb, tve::Id clipId, const tve::DecodedFrame& frame,
+                                       const tve::DepthOfField& settings, float* focus)
+{
+    DepthTexture& depth = m_depthMaps[clipId];
+    if (depth.frame != frame.pixelBuffer() || depth.pts != frame.pts()) {
+        depth.frame = frame.pixelBuffer();
+        depth.pts = frame.pts();
+        depth.faces.clear();
+        depth.facesLooked = false;
+        depth.map = tve::estimateDepth(frame.pixelBuffer());
+        if (!depth.map)
+            return nullptr;
+        const QSize size(depth.map.width, depth.map.height);
+        if (!depth.texture || depth.texture->pixelSize() != size) {
+            depth.texture.reset(m_rhi->newTexture(QRhiTexture::R8, size));
+            if (!depth.texture->create()) {
+                depth.texture.reset();
+                depth.map = {};
+                return nullptr;
+            }
+        }
+        QRhiTextureSubresourceUploadDescription data(depth.map.pixels.data(), quint32(depth.map.pixels.size()));
+        data.setDataStride(quint32(depth.map.width));
+        QRhiResourceUpdateBatch* upload = m_rhi->nextResourceUpdateBatch();
+        upload->uploadTexture(depth.texture.get(), QRhiTextureUploadDescription({0, 0, data}));
+        cb->resourceUpdate(upload);
+    }
+    if (!depth.map || !depth.texture)
+        return nullptr;
+    if (settings.autoFocus && !depth.facesLooked) {
+        depth.faces = tve::detectFaces(frame.pixelBuffer());
+        depth.facesLooked = true;
+    }
+    *focus = float(tve::focusNearness(depth.map, settings, depth.faces)) / 255.0f;
+    return depth.texture.get();
+}
+
 QRhiTexture* FrameCompositor::denoised(QRhiCommandBuffer* cb, tve::Id clipId, QRhiTexture* picture, tve::Ticks frame,
                                        float strength)
 {
@@ -505,6 +544,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::set<tve::Id> liveStickers;
     std::set<tve::Id> liveMattes;
     std::set<tve::Id> liveBeauty;
+    std::set<tve::Id> liveDepth;
     std::set<tve::Id> liveDenoise;
     std::set<tve::Id> liveCanvasClips;
     std::size_t effectCanvasIndex = 0;
@@ -580,9 +620,17 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
                 own = m_stills[stillPath].colour;
             picture = m_colour->apply(cb, picture, tve::conversion(own, working));
         }
-        // First of all, on the decoded picture: people (the cutout from a matte found in this
-        // very frame, then covered faces), where Vision saw them.
+        // First of all, on the decoded picture: a dark shot lifted, the depth of field (from a
+        // depth map estimated in this very frame), then people (the cutout from a matte found
+        // in this very frame, then covered faces), where Vision saw them.
         if (people && decoded.pixelBuffer()) {
+            picture = m_masks->night(cb, picture, people->night);
+            if (people->depth.active()) {
+                liveDepth.insert(clipId);
+                float focus = 1.0f;
+                if (QRhiTexture* depth = depthMap(cb, clipId, decoded, people->depth, &focus))
+                    picture = m_masks->depthBlur(cb, picture, depth, people->depth, focus);
+            }
             if (people->cutout.enabled) {
                 liveMattes.insert(clipId);
                 picture = m_masks->cutout(cb, picture, personMatte(cb, clipId, decoded, people->subject), people->cutout);
@@ -823,6 +871,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     std::erase_if(m_stickers, [&](const auto& entry) { return !liveStickers.contains(entry.first); });
     std::erase_if(m_personMattes, [&](const auto& entry) { return !liveMattes.contains(entry.first); });
     std::erase_if(m_beautyMasks, [&](const auto& entry) { return !liveBeauty.contains(entry.first); });
+    std::erase_if(m_depthMaps, [&](const auto& entry) { return !liveDepth.contains(entry.first); });
     std::erase_if(m_denoise, [&](const auto& entry) { return !liveDenoise.contains(entry.first); });
     // Stills stay a while after they leave the screen (scrubbing back and forth), then go.
     std::erase_if(m_stills, [&](const auto& entry) { return m_renders - entry.second.lastUsed > 120; });

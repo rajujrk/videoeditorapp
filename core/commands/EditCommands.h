@@ -407,6 +407,15 @@ public:
         : m_clipId(clipId), m_beauty(beauty), m_label(std::move(label))
     {
     }
+    // Night view and depth of field ("Night View", "Depth of Field"…).
+    SetClipPeopleCommand(Id clipId, NightView night, std::string label)
+        : m_clipId(clipId), m_night(night), m_label(std::move(label))
+    {
+    }
+    SetClipPeopleCommand(Id clipId, DepthOfField depth, std::string label)
+        : m_clipId(clipId), m_depth(depth), m_label(std::move(label))
+    {
+    }
 
     std::string label() const override { return m_label; }
     std::optional<std::string> redo(Project& project) override;
@@ -417,10 +426,14 @@ private:
     std::optional<PortraitCutout> m_cutout;
     std::optional<FaceMosaic> m_faces;
     std::optional<FaceBeauty> m_beauty;
+    std::optional<NightView> m_night;
+    std::optional<DepthOfField> m_depth;
     std::string m_label;
     PortraitCutout m_previousCutout;
     FaceMosaic m_previousFaces;
     FaceBeauty m_previousBeauty;
+    NightView m_previousNight;
+    DepthOfField m_previousDepth;
 };
 
 // Plays a clip's sound from a cleaned copy (speech enhancement), or (nullopt) its own again.

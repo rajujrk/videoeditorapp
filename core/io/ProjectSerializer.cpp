@@ -276,6 +276,8 @@ void from_json(const nlohmann::json& j, TrackSample& s)
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PortraitCutout, enabled, invert, softness, shift, subject, blur)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceBeauty, enabled, smooth, brighten, teeth)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(NightView, enabled, strength, denoise)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(DepthOfField, enabled, blur, autoFocus, focusX, focusY, range)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceBox, x, y, width, height)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceSample, time, box)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceTrack, id, samples)
@@ -309,8 +311,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Deflicker, enabled, strength, sa
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
-                                                chromaKey, masks, matte, cutout, faceMosaic, beauty, stabilization, deflicker,
-                                                denoise, motionTracks, processedVideo, cursor, audioEffects,
+                                                chromaKey, masks, matte, cutout, faceMosaic, beauty, night, depthOfField,
+                                                stabilization, deflicker, denoise, motionTracks, processedVideo, cursor, audioEffects,
                                                 enhancedAudio, keepPitch, sequenceId, groupId, drawing, angles, motionBlur)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips, audioEffects)

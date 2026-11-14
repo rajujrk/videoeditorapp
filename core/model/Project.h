@@ -502,6 +502,10 @@ struct Clip {
     PortraitCutout cutout;
     FaceMosaic faceMosaic;
     FaceBeauty beauty; // after the cutout and covers
+    // Picture enhancement, first of all (before the people): a dark shot lifted, then the
+    // depth of field.
+    NightView night;
+    DepthOfField depthOfField;
     // Motion (core/model/Motion.h), after the people, before colour, masks and effects:
     // steadied and its flicker evened out, then denoised over time (strength 0..1, 0: off).
     Stabilization stabilization;

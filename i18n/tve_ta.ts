@@ -196,6 +196,66 @@
         <translation>மங்கலாக்கப்பட்டது</translation>
     </message>
     <message>
+        <source>Night view</source>
+        <translation>இரவுக் காட்சி</translation>
+    </message>
+    <message>
+        <source>Lifts a dark shot like a camera&apos;s night mode: the shadows brought up a lot and the highlights hardly, after smoothing the grain the lift would show.</source>
+        <translation>கேமராவின் இரவு முறையைப் போல இருண்ட காட்சியை ஒளிரச் செய்யும்: நிழல்கள் அதிகமாகவும் ஒளிர்வான பகுதிகள் சிறிதளவும் உயர்த்தப்படும்; அதற்கு முன் வெளிப்படும் துகள்கள் மென்மையாக்கப்படும்.</translation>
+    </message>
+    <message>
+        <source>Lift</source>
+        <translation>உயர்த்தல்</translation>
+    </message>
+    <message>
+        <source>Smooth grain</source>
+        <translation>துகளை மென்மையாக்கு</translation>
+    </message>
+    <message>
+        <source>Depth of field</source>
+        <translation>புல ஆழம்</translation>
+    </message>
+    <message>
+        <source>Blurs what is nearer or farther than the focus, like a lens wide open, from the depth a model finds in each frame on this Mac.</source>
+        <translation>இந்த Mac இலேயே ஒரு மாதிரி ஒவ்வொரு சட்டகத்திலும் கண்டறியும் ஆழத்தைக் கொண்டு, முழுதாகத் திறந்த லென்ஸ் போல, குவியத்தை விட அருகில் அல்லது தொலைவில் உள்ளவற்றை மங்கச் செய்யும்.</translation>
+    </message>
+    <message>
+        <source>Downloading the depth model… %1 %</source>
+        <translation>ஆழ மாதிரியைப் பதிவிறக்குகிறது… %1 %</translation>
+    </message>
+    <message>
+        <source>It needs the depth model (Depth Anything V2 Small, Apache-2.0, %1), downloaded once from Apple&apos;s page on Hugging Face.</source>
+        <translation>இதற்கு ஆழ மாதிரி (Depth Anything V2 Small, Apache-2.0, %1) தேவை; Hugging Face இல் உள்ள Apple இன் பக்கத்திலிருந்து ஒருமுறை பதிவிறக்கப்படும்.</translation>
+    </message>
+    <message>
+        <source>Download the depth model</source>
+        <translation>ஆழ மாதிரியைப் பதிவிறக்கு</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>நிறுத்து</translation>
+    </message>
+    <message>
+        <source>In focus</source>
+        <translation>குவியத்தில்</translation>
+    </message>
+    <message>
+        <source>A face, or the nearest</source>
+        <translation>ஒரு முகம், அல்லது அருகில் உள்ளது</translation>
+    </message>
+    <message>
+        <source>A point</source>
+        <translation>ஒரு புள்ளி</translation>
+    </message>
+    <message>
+        <source>Across</source>
+        <translation>குறுக்காக</translation>
+    </message>
+    <message>
+        <source>Down</source>
+        <translation>கீழாக</translation>
+    </message>
+    <message>
         <source>Fill</source>
         <translation>நிரப்பு</translation>
     </message>
@@ -6611,6 +6671,10 @@ Third, 4</source>
         <translation>ஒரு வீடியோ கோப்பின் கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
     </message>
     <message>
+        <source>Download the depth model first</source>
+        <translation>முதலில் ஆழ மாதிரியைப் பதிவிறக்கவும்</translation>
+    </message>
+    <message>
         <source>Looking for faces</source>
         <translation>முகங்களைத் தேடுகிறது</translation>
     </message>
@@ -7511,6 +7575,10 @@ Third, 4</source>
     <message>
         <source>speech enhancement · 48 kHz</source>
         <translation>பேச்சு மேம்பாடு · 48 kHz</translation>
+    </message>
+    <message>
+        <source>depth of field</source>
+        <translation>புல ஆழம்</translation>
     </message>
     <message>
         <source>Unknown speech model: %1</source>
@@ -11851,6 +11919,30 @@ The Journey</source>
         <translation>அழகூட்டலை அகற்று</translation>
     </message>
     <message>
+        <source>Change Night View</source>
+        <translation>இரவுக் காட்சியை மாற்று</translation>
+    </message>
+    <message>
+        <source>Night View</source>
+        <translation>இரவுக் காட்சி</translation>
+    </message>
+    <message>
+        <source>Remove Night View</source>
+        <translation>இரவுக் காட்சியை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Change Depth of Field</source>
+        <translation>புல ஆழத்தை மாற்று</translation>
+    </message>
+    <message>
+        <source>Depth of Field</source>
+        <translation>புல ஆழம்</translation>
+    </message>
+    <message>
+        <source>Remove Depth of Field</source>
+        <translation>புல ஆழத்தை நீக்கு</translation>
+    </message>
+    <message>
         <source>Cover Faces</source>
         <translation>முகங்களை மறை</translation>
     </message>
@@ -12199,8 +12291,8 @@ The Journey</source>
         <translation>கீக்கள், மாஸ்க்குகள், மேட்டுகள்</translation>
     </message>
     <message>
-        <source>Cutouts, covered faces, beauty, stabilization, denoise and cursor effects</source>
-        <translation>வெட்டியெடுப்புகள், மறைத்த முகங்கள், அழகூட்டல், நிலைப்படுத்தல், இரைச்சல் நீக்கம், கர்சர் விளைவுகள்</translation>
+        <source>Cutouts, covered faces, beauty, night view, depth of field, stabilization, denoise and cursor effects</source>
+        <translation>வெட்டியெடுப்புகள், மறைக்கப்பட்ட முகங்கள், அழகுபடுத்தல், இரவுக் காட்சி, புல ஆழம், நிலைப்படுத்தல், இரைச்சல் நீக்கம் மற்றும் கர்சர் விளைவுகள்</translation>
     </message>
     <message>
         <source>Clip volume and fades</source>
@@ -13125,6 +13217,18 @@ The Journey</source>
     <message>
         <source>Could not look at this picture.</source>
         <translation>இந்தப் படத்தைப் பார்க்க முடியவில்லை.</translation>
+    </message>
+    <message>
+        <source>The depth model is not there.</source>
+        <translation>ஆழ மாதிரி அங்கு இல்லை.</translation>
+    </message>
+    <message>
+        <source>The depth model could not be prepared.</source>
+        <translation>ஆழ மாதிரியைத் தயார் செய்ய முடியவில்லை.</translation>
+    </message>
+    <message>
+        <source>The depth model could not be loaded.</source>
+        <translation>ஆழ மாதிரியை ஏற்ற முடியவில்லை.</translation>
     </message>
 </context>
 </TS>

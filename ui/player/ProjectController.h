@@ -207,6 +207,8 @@ class ProjectController : public QObject {
     Q_PROPERTY(QVariantList speechModels READ speechModels NOTIFY speechModelsChanged)
     // The speech enhancement model: {id, title, size, note, downloaded}.
     Q_PROPERTY(QVariantMap enhanceModel READ enhanceModel NOTIFY speechModelsChanged)
+    // The depth model (depth of field): {id, title, size, note, downloaded}.
+    Q_PROPERTY(QVariantMap depthModel READ depthModel NOTIFY speechModelsChanged)
     // Apple's upscaling model: {status: "unsupported", "download", "downloading" or "ready", progress}.
     Q_PROPERTY(QVariantMap upscaleModel READ upscaleModel NOTIFY upscaleModelChanged)
     Q_PROPERTY(QVariantMap modelDownload READ modelDownload NOTIFY speechModelsChanged)
@@ -402,6 +404,7 @@ public:
     QVariantMap beats() const { return m_beats; }
     QVariantList speechModels() const { return m_speechModels.list(); }
     QVariantMap enhanceModel() const;
+    QVariantMap depthModel() const;
     QVariantMap upscaleModel() const;
     QVariantMap modelDownload() const { return m_speechModels.progress(); }
     QVariantList captionLanguages() const;
@@ -879,6 +882,12 @@ public:
     // step, after measuring the music in the background (analysisFinished; musicFitted says
     // what changed).
     Q_INVOKABLE bool fitMusic(double clipId, double seconds);
+    // Night view on a video clip: settings enabled, strength, denoise (each 0..1); one undo step.
+    Q_INVOKABLE bool setNightView(double clipId, const QVariantMap& settings);
+    // Depth of field on a video clip: settings enabled, blur, range (0..1), autoFocus, focusX,
+    // focusY; one undo step. Turning it on needs the depth model (depthModel; downloaded with
+    // downloadSpeechModel).
+    Q_INVOKABLE bool setDepthOfField(double clipId, const QVariantMap& settings);
     // Where the last picture on the timeline ends (seconds): music fitted to the video.
     Q_INVOKABLE double picturesEnd() const;
     // An AI transition (Google, job "transition"): a video made from the last frame before a
@@ -1509,6 +1518,8 @@ private:
     const tve::ContentIndex* contentOf(const tve::MediaItem& media);
     // What is said in a media, for search: its transcript here, else one kept on disk.
     const std::vector<tve::TimedWord>& searchWords(const tve::MediaItem& media);
+    // Loads the depth model if it is downloaded (and not loaded); whether it is loaded.
+    bool ensureDepthModel();
     std::map<std::string, std::vector<tve::TimedWord>> m_searchWords; // by fingerprint
     bool lookable(const tve::MediaItem& media) const;
     QVariantList m_textFixes;

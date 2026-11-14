@@ -88,6 +88,8 @@ MaskRenderer::MaskRenderer(QRhi* rhi) : m_rhi(rhi)
     m_denoiseFragment = readShader(QStringLiteral(":/gpu/shaders/denoise.frag.qsb"));
     m_beautyFragment = readShader(QStringLiteral(":/gpu/shaders/beauty.frag.qsb"));
     m_protectFragment = readShader(QStringLiteral(":/gpu/shaders/protect.frag.qsb"));
+    m_nightFragment = readShader(QStringLiteral(":/gpu/shaders/night.frag.qsb"));
+    m_depthFragment = readShader(QStringLiteral(":/gpu/shaders/depthblur.frag.qsb"));
     m_cursorFragment = readShader(QStringLiteral(":/gpu/shaders/cursor.frag.qsb"));
     m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
                                       QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
@@ -377,6 +379,55 @@ QRhiTexture* MaskRenderer::beauty(QRhiCommandBuffer* cb, QRhiTexture* picture, Q
     u.params[2] = float(std::clamp(beauty.teeth, 0.0, 1.0));
     return draw(cb, *slot, m_beautyPipeline, m_beautyFragment, &u, int(sizeof(CutoutUniforms))) ? slot->output.get()
                                                                                               : picture;
+}
+
+QRhiTexture* MaskRenderer::night(QRhiCommandBuffer* cb, QRhiTexture* picture, const NightView& night)
+{
+    if (!picture || !night.active() || !m_vertex.isValid() || !m_nightFragment.isValid())
+        return picture;
+    const QSize size = picture->pixelSize();
+    Slot* slot = nextSlot(size, int(sizeof(CutoutUniforms)));
+    if (!slot)
+        return picture;
+    slot->bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(
+            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, slot->uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, picture, m_sampler.get()),
+    });
+    CutoutUniforms u{}; // (the same layout)
+    u.texelSize[0] = 1.0f / float(size.width());
+    u.texelSize[1] = 1.0f / float(size.height());
+    u.flipY = m_rhi->isYUpInNDC() ? 1.0f : 0.0f;
+    u.params[0] = float(std::clamp(night.strength, 0.0, 1.0));
+    u.params[1] = float(std::clamp(night.denoise, 0.0, 1.0));
+    return draw(cb, *slot, m_nightPipeline, m_nightFragment, &u, int(sizeof(CutoutUniforms))) ? slot->output.get()
+                                                                                            : picture;
+}
+
+QRhiTexture* MaskRenderer::depthBlur(QRhiCommandBuffer* cb, QRhiTexture* picture, QRhiTexture* depth,
+                                     const DepthOfField& settings, float focus)
+{
+    if (!picture || !depth || !settings.active() || !m_vertex.isValid() || !m_depthFragment.isValid())
+        return picture;
+    const QSize size = picture->pixelSize();
+    Slot* slot = nextSlot(size, int(sizeof(CutoutUniforms)));
+    if (!slot)
+        return picture;
+    slot->bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(
+            0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage, slot->uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, picture, m_sampler.get()),
+        QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, depth, m_sampler.get()),
+    });
+    CutoutUniforms u{};
+    u.texelSize[0] = 1.0f / float(size.width());
+    u.texelSize[1] = 1.0f / float(size.height());
+    u.flipY = m_rhi->isYUpInNDC() ? 1.0f : 0.0f;
+    u.params[0] = float(std::clamp(settings.blur, 0.0, 1.0) * 0.025); // a disc up to 2.5 % of the height
+    u.params[1] = std::clamp(focus, 0.0f, 1.0f);
+    u.params[2] = float(std::clamp(settings.range, 0.0, 1.0));
+    return draw(cb, *slot, m_depthPipeline, m_depthFragment, &u, int(sizeof(CutoutUniforms))) ? slot->output.get()
+                                                                                            : picture;
 }
 
 QRhiTexture* MaskRenderer::protectSkin(QRhiCommandBuffer* cb, QRhiTexture* graded, QRhiTexture* original, float amount)
