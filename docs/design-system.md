@@ -621,6 +621,31 @@ is 3 px of `danger` pulsing between 55 % and 100 % every 1.8 s. Dark and light:
 ![The area picker, dark](images/record-area-dark.png)
 ![The area picker, light](images/record-area-light.png)
 
+The media library's bar: the trail (`label`, the folder open in `textPrimary`, the others
+`textSecondary`, › between them in `textDisabled`), New folder and the view menu as `IconButton`s. A
+folder is a tile like media's with the `folder` icon and its item count in `caption`, `accentSubtle`
+with an `accent` edge while something is dragged over it. Grouped, each kind's heading (`label`,
+`textSecondary`, its count after a ·) starts a row of its own. A colour label is a 4 px strip in the
+marker colour down the tile's left edge (or the list row's). List rows are 44 px: a 56 × 34 thumbnail,
+the name over its size in `caption`, the length in `mono`. Dark (thumbnails, small, grouped) and light
+(a list):
+
+![The media library, dark](images/media-library-dark.png)
+![The media library, light](images/media-library-light.png)
+![The media library as a list, dark](images/media-list-dark.png)
+![The media library as a list, light](images/media-list-light.png)
+
+Project settings opens from the canvas chip in the top bar (now a button: `surfaceHover` and
+`borderStrong` on hover). Canvas and Archive are two parts of one popup split by a `Divider`; the
+archive's progress is a `ProgressBar` beside Cancel, its result in `caption` below. The Audio tab's
+Channels are five `TextButton`s that wrap, the chosen one `primary`, with what it does in `caption`.
+Dark and light:
+
+![Project settings, dark](images/project-settings-dark.png)
+![Project settings, light](images/project-settings-light.png)
+![Sound channels, dark](images/sound-channels-dark.png)
+![Sound channels, light](images/sound-channels-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

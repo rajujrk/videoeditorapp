@@ -53,6 +53,18 @@ struct GeneratedBy {
     friend bool operator==(const GeneratedBy&, const GeneratedBy&) = default;
 };
 
+// A colour to sort media by at a glance (the same colours as markers).
+enum class MediaLabel { None, Red, Orange, Yellow, Green, Blue, Purple };
+
+// A folder in the media library: media and other folders inside it (kNoId: at the top).
+struct MediaBin {
+    Id id = kNoId;
+    std::string name;
+    Id parent = kNoId;
+
+    friend bool operator==(const MediaBin&, const MediaBin&) = default;
+};
+
 struct MediaItem {
     Id id = kNoId;
     std::string path;
@@ -90,6 +102,9 @@ struct MediaItem {
     // Numbered pictures played as video (model/ImageSequence.h): `path` is the first frame,
     // `frameRate` the rate chosen at import and `duration` its frames at that rate.
     std::optional<ImageSequence> sequence;
+    // Where it is kept in the library (a MediaBin; kNoId: the top), and its colour label.
+    Id binId = kNoId;
+    MediaLabel label = MediaLabel::None;
 
     // A lighter copy of the pictures for the preview to decode instead (same frames and
     // times). Set only in the snapshots handed to playback; never saved.
@@ -473,6 +488,10 @@ struct ClipLook {
     friend bool operator==(const ClipLook&, const ClipLook&) = default;
 };
 
+// A clip's sound channels: as they are, both mixed to one heard on both sides (mono), the
+// left or the right alone on both sides (a microphone on one channel), or swapped.
+enum class AudioChannels { Stereo, Mono, Left, Right, Swap };
+
 struct Clip {
     Id id = kNoId;
     Id mediaId = kNoId;
@@ -558,6 +577,8 @@ struct Clip {
     double motionBlur = 0.0;
     // Turned off: it stays on the timeline (and in every edit) but is neither seen nor heard.
     bool enabled = true;
+    // Which of its sound's channels go where (see AudioChannels).
+    AudioChannels channels = AudioChannels::Stereo;
 
     // A clip with no media to play: a title, a drawing or an adjustment layer.
     bool generated() const { return text.has_value() || drawing.has_value() || adjustment; }
@@ -727,6 +748,7 @@ public:
     std::vector<Track> tracks;
     std::vector<Marker> markers;     // sorted by time
     std::vector<Sequence> sequences; // the insides of compound clips
+    std::vector<MediaBin> bins;      // the media library's folders
     std::optional<TemplateInfo> templateInfo; // when made from a template
 
     Id allocateId() { return m_nextId++; }

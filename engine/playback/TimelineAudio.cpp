@@ -383,6 +383,20 @@ void TimelineAudio::mixClip(const Project& project, const Track& track, const Cl
         // Fades are linear, so interpolating the gain across the span is exact; transition
         // crossfades are curves, close enough to linear over one chunk. Fades apply inside the
         // clip and hold their edge value in the handles.
+        // Its channels as chosen (a decoder gives mono files on both sides already).
+        if (read > 0 && clip.channels != AudioChannels::Stereo) {
+            for (int i = 0; i < read; ++i) {
+                float& l = dst[std::size_t(i) * 2];
+                float& r = dst[std::size_t(i) * 2 + 1];
+                switch (clip.channels) {
+                case AudioChannels::Mono: l = r = 0.5f * (l + r); break;
+                case AudioChannels::Left: r = l; break;
+                case AudioChannels::Right: l = r; break;
+                case AudioChannels::Swap: std::swap(l, r); break;
+                case AudioChannels::Stereo: break;
+                }
+            }
+        }
         if (read > 0) {
             const auto gainAt = [&](Ticks time) {
                 return clip.gainAt(std::clamp(time, clip.start, clip.end())) * transitionGainAt(track, clip, time);

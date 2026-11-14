@@ -32,6 +32,7 @@ Popup {
         message = ""
         jobId = 0
         presetPicker.currentIndex = 0
+        presetNameRow.visible = false
         formatPicker.currentIndex = 0
         sizePicker.currentIndex = 0
         ratePicker.currentIndex = 0
@@ -160,6 +161,13 @@ Popup {
         sizePicker.currentIndex = Math.max(0, sizeIndex) // the canvas when it is already that size
         ratePicker.currentIndex = Math.max(0, rates.findIndex((r) => r.fps === (preset.frameRate || 0)))
         quality = preset.quality || "standard"
+        // Your own presets keep a file size and the sound too.
+        if (preset.targetSize > 0) {
+            quality = "size"
+            targetField.text = String(preset.targetSize)
+        }
+        if (preset.audio !== undefined)
+            soundSwitch.checked = preset.audio
     }
     function start(watch) {
         let ok
@@ -259,13 +267,75 @@ Popup {
                     textRole: "title"
                     onActivated: dialog.applyPreset(model[currentIndex])
                 }
-                Text {
-                    objectName: "exportPresetDescription"
+                RowLayout {
                     Layout.fillWidth: true
-                    text: presetPicker.model[Math.max(0, presetPicker.currentIndex)].description
-                    font: Theme.type.caption
-                    color: Theme.color.textSecondary
-                    wrapMode: Text.WordWrap
+                    spacing: Theme.space.xs
+                    Text {
+                        objectName: "exportPresetDescription"
+                        Layout.fillWidth: true
+                        text: presetPicker.model[Math.max(0, presetPicker.currentIndex)].description
+                        font: Theme.type.caption
+                        color: Theme.color.textSecondary
+                        wrapMode: Text.WordWrap
+                    }
+                    // The settings below kept under a name, or one of yours deleted.
+                    TextButton {
+                        objectName: "saveExportPreset"
+                        text: qsTr("Save as preset…")
+                        variant: "ghost"
+                        onClicked: {
+                            presetNameField.text = presetPicker.model[presetPicker.currentIndex].custom === true
+                                                   ? presetPicker.model[presetPicker.currentIndex].title : ""
+                            presetNameRow.visible = true
+                            presetNameField.forceActiveFocus()
+                        }
+                    }
+                    TextButton {
+                        objectName: "deleteExportPreset"
+                        visible: presetPicker.model[Math.max(0, presetPicker.currentIndex)].custom === true
+                        text: qsTr("Delete")
+                        variant: "ghost"
+                        onClicked: {
+                            if (dialog.project.removeExportPreset(presetPicker.model[presetPicker.currentIndex].id))
+                                presetPicker.currentIndex = 0
+                        }
+                    }
+                }
+                RowLayout {
+                    id: presetNameRow
+                    objectName: "exportPresetNameRow"
+                    visible: false
+                    Layout.fillWidth: true
+                    TextField {
+                        id: presetNameField
+                        objectName: "exportPresetName"
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("Preset name")
+                        placeholderTextColor: Theme.color.textDisabled
+                        font: Theme.type.body
+                        color: Theme.color.textPrimary
+                        selectByMouse: true
+                        onAccepted: presetSave.clicked()
+                        background: Rectangle {
+                            radius: Theme.radius.s
+                            color: Theme.color.surfaceSunken
+                            border.color: presetNameField.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
+                        }
+                    }
+                    TextButton {
+                        id: presetSave
+                        objectName: "exportPresetSave"
+                        text: qsTr("Save")
+                        variant: "primary"
+                        enabled: presetNameField.text.trim().length > 0
+                        onClicked: {
+                            const id = dialog.project.saveExportPreset(presetNameField.text, dialog.options)
+                            if (id === "")
+                                return
+                            presetNameRow.visible = false
+                            presetPicker.currentIndex = presetPicker.model.findIndex((p) => p.id === id)
+                        }
+                    }
                 }
             }
 

@@ -54,6 +54,7 @@ qt_add_qml_module(tve_shell
         LiveDrawing.qml
         ScreenAreaPicker.qml
         RecordingFrame.qml
+        ProjectSettingsDialog.qml
         ImageSequenceDialog.qml
         KeyboardMap.qml
         FavouriteBadge.qml
