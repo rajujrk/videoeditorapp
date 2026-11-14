@@ -1,5 +1,6 @@
 #pragma once
 
+#include "model/MusicFit.h"
 #include "model/Project.h"
 
 #include <optional>
@@ -67,5 +68,19 @@ enum class PlaceMode { Insert, Overwrite, Append };
 // (cut out), or after the track's last clip.
 std::optional<std::string> placeMedia(Project& project, Id trackId, Id mediaId, Ticks sourceIn, Ticks duration,
                                       Ticks at, PlaceMode mode, Id* madeClipId);
+
+// --- Made to fit (AI transitions, music fitted to a length) ---
+
+// Room for `length` at `at`: every clip starting at or after it, on every track, and the
+// markers from there, moved that much later (clips running across it stay). A locked track
+// with clips to move refuses.
+std::optional<std::string> insertTime(Project& project, Ticks at, Ticks length);
+
+// A clip of music replaced by a clip per piece of the fit, one after another from where it
+// starts, grouped, played at the fit's speed with the pitch kept, a short fade at each join
+// and the end faded when the fit trimmed it; its keyframes are dropped (they were timed for
+// the whole). Refused for a clip not at normal speed, or when the music would run into the
+// next clip on its track. `made`: the new clips, in order.
+std::optional<std::string> fitClipToPieces(Project& project, Id clipId, const MusicFit& fit, std::vector<Id>* made);
 
 } // namespace tve

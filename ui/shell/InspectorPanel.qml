@@ -2130,6 +2130,88 @@ Rectangle {
                             onCommitted: (v) => inspector.commitAudio(inspector.clipInfo.gainDb, inspector.clipInfo.fadeIn, v)
                         }
                     }
+                    // Music fitted to a length on this Mac: bars out or again, a touch of speed.
+                    Section {
+                        id: fitSection
+                        objectName: "fitMusicSection"
+                        visible: inspector.clipInfo.trackKind === "audio"
+                        title: qsTr("Fit to length")
+                        // What the last fit did, for the clip it was on.
+                        property var result: null
+                        property bool fitting: false
+                        Connections {
+                            target: inspector.project
+                            function onMusicFitted(clipId, seconds, bars, speed) {
+                                fitSection.result = { clipId: clipId, seconds: seconds, bars: bars, speed: speed }
+                            }
+                            function onAnalysisFinished() { fitSection.fitting = false }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTr("Takes whole bars out of the middle, or plays some again, where the music sounds alike; a touch of speed (the pitch kept) or a fade does the rest.")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.s
+                            TextField {
+                                id: fitLength
+                                objectName: "fitLength"
+                                Layout.preferredWidth: 72
+                                horizontalAlignment: TextInput.AlignRight
+                                validator: DoubleValidator { bottom: 1; top: 3600; decimals: 1; notation: DoubleValidator.StandardNotation }
+                                // The clip's own length to start with.
+                                text: (inspector.clipInfo.duration || 0).toFixed(1)
+                                // (Set again when another clip is chosen, not when this one is fitted.)
+                                property var forClip: inspector.clipInfo.id
+                                onForClipChanged: if (fitSection.result === null || fitSection.result.clipId !== forClip)
+                                                      text = (inspector.clipInfo.duration || 0).toFixed(1)
+                            }
+                            Text { text: qsTr("seconds"); font: Theme.type.body; color: Theme.color.textSecondary }
+                            Item { Layout.fillWidth: true }
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            TextButton {
+                                objectName: "fitToVideo"
+                                readonly property real length: inspector.project.picturesEnd() - (inspector.clipInfo.start || 0)
+                                visible: length >= 1
+                                text: qsTr("To the video's end")
+                                variant: "ghost"
+                                tip: qsTr("The length from where the music starts to where the last picture ends")
+                                onClicked: fitLength.text = length.toFixed(1)
+                            }
+                            TextButton {
+                                objectName: "fitMusic"
+                                text: fitSection.fitting ? qsTr("Fitting…") : qsTr("Fit")
+                                variant: "secondary"
+                                enabled: !inspector.project.analyzing && fitLength.acceptableInput
+                                onClicked: fitSection.fitting = inspector.project.fitMusic(inspector.clipInfo.id, Number(fitLength.text))
+                            }
+                        }
+                        Text {
+                            objectName: "fitResult"
+                            readonly property var r: fitSection.result
+                            visible: r !== null && r.clipId === inspector.clipInfo.id
+                            Layout.fillWidth: true
+                            readonly property string bars: !r ? ""
+                                : r.bars < 0 ? (r.bars === -1 ? qsTr("Took 1 bar out") : qsTr("Took %1 bars out").arg(-r.bars))
+                                : r.bars > 0 ? (r.bars === 1 ? qsTr("Played 1 bar again") : qsTr("Played %1 bars again").arg(r.bars))
+                                : qsTr("Kept every bar")
+                            readonly property string pace: !r || Math.abs(r.speed - 1) <= 0.0005 ? ""
+                                : r.speed > 1 ? qsTr("played %1 % faster").arg(((r.speed - 1) * 100).toFixed(1))
+                                : qsTr("played %1 % slower").arg(((1 - r.speed) * 100).toFixed(1))
+                            text: !r ? ""
+                                : pace !== "" ? qsTr("%1, %2; it now plays for %3 s.").arg(bars).arg(pace).arg(r.seconds.toFixed(1))
+                                : qsTr("%1; it now plays for %2 s.").arg(bars).arg(r.seconds.toFixed(1))
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+                    }
                     TextButton {
                         objectName: "detachAudioButton"
                         visible: inspector.clipInfo.trackKind === "video"

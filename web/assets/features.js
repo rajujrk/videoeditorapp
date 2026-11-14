@@ -380,6 +380,12 @@ window.TVE = {
       steps: ["Drag the round knobs at a clip's top corners to set fades, or use the Audio tab.", "Click Detach audio to move a video's sound to an audio track.", "With several clips selected, turn them all up or down, set one volume, or Normalize each."]
     },
     {
+      id: "fit-music", title: "Fit music to a length", chapter: "audio", area: "inspector", where: ["Inspector", "Audio", "Fit to length"], image: "fit-music", privacy: "mac",
+      summary: "Make a song last exactly as long as your video: whole bars come out of the middle, or play again, where the music sounds alike.",
+      steps: ["Select the music on an audio track and open the Audio tab.", "Type the length in seconds, or click To the video's end.", "Click Fit. The song becomes grouped pieces; one undo puts it back."],
+      note: "A small difference is made up by playing it up to 4 % faster or slower with the pitch kept, or by fading the end."
+    },
+    {
       id: "audio-effects", title: "Audio effects and loudness", chapter: "audio", area: "inspector",
       where: ["Inspector", "Audio", "Audio effects"], image: "audio-effects",
       summary: "45 original audio effects: EQ, dynamics, rooms, echoes, modulation, pitch, voices and clean-up; Normalize to −14, −16 or −23 LUFS.",
@@ -517,6 +523,18 @@ window.TVE = {
       summary: "Make a picture or sticker, a video, music or a sound effect from a description, with OpenAI, Google Gemini or ElevenLabs.",
       steps: ["Pick Picture, Sticker, Video, Music or Sound effect.", "Describe it and choose shape, quality or length.", "Click Generate; results go into the media bin or at the playhead, marked AI."],
       note: "What you may do with the results is set by each provider's terms, summarised under the Generate button."
+    },
+    {
+      id: "ai-transition", title: "AI transitions", chapter: "cloud", area: "library", where: ["Library", "Generate", "Video", "Between two clips"], image: "ai-transition", privacy: "key",
+      summary: "Google makes a shot that turns one clip into the next, from the last frame before a cut to the first after it.",
+      steps: ["Move the playhead near a cut between two picture clips.", "In the Generate tab, pick Video, then Between two clips; say how it should move if you like.", "Click Make the transition. It goes between the clips and what comes later moves along."],
+      note: "Only those two frames are sent to Google."
+    },
+    {
+      id: "idea-video", title: "A video from an idea", chapter: "cloud", area: "library", where: ["Library", "Generate", "From an idea"], image: "idea-video", privacy: "key",
+      summary: "Describe an idea: Claude plans a few shots with captions, you change what you like, and Google makes each shot.",
+      steps: ["In the Generate tab, pick From an idea, describe it and choose how many shots.", "Click Plan it, then read and change each shot's description and caption.", "Click Make the video; the shots go after your last clip with their captions."],
+      note: "Needs both a Claude key and a Google key. If a shot fails, the ones already made stay in the media bin."
     },
     {
       id: "image-prompt", title: "A prompt from a picture", chapter: "cloud", area: "library", where: ["Library", "Generate", "Describe the frame"], image: "image-prompt", privacy: "key",

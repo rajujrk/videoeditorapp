@@ -2186,6 +2186,14 @@
         <translation>ஒலி விளைவு</translation>
     </message>
     <message>
+        <source>From an idea</source>
+        <translation>ஒரு யோசனையிலிருந்து</translation>
+    </message>
+    <message>
+        <source>Add your Claude and Google AI (Gemini API) keys in AI settings to make a video from an idea.</source>
+        <translation>ஒரு யோசனையிலிருந்து வீடியோ உருவாக்க AI அமைப்புகளில் உங்கள் Claude மற்றும் Google AI (Gemini API) விசைகளைச் சேர்க்கவும்.</translation>
+    </message>
+    <message>
         <source>Add your %1 key in AI settings to make video.</source>
         <translation>வீடியோ உருவாக்க, AI அமைப்புகளில் உங்கள் %1 சாவியைச் சேர்க்கவும்.</translation>
     </message>
@@ -2222,6 +2230,18 @@
         <translation>வீடியோவை நீட்டி</translation>
     </message>
     <message>
+        <source>Between two clips</source>
+        <translation>இரண்டு கிளிப்புகளுக்கு இடையே</translation>
+    </message>
+    <message>
+        <source>Your idea: what happens, for whom, and the mood</source>
+        <translation>உங்கள் யோசனை: என்ன நடக்கிறது, யாருக்காக, என்ன மனநிலை</translation>
+    </message>
+    <message>
+        <source>How it moves (optional): a whip pan, a morph, through a window…</source>
+        <translation>எப்படி நகர்கிறது (விருப்பம்): வேகமான சுழற்சி, உருமாற்றம், சாளரம் வழியாக…</translation>
+    </message>
+    <message>
         <source>A sticker of… (one object, it is cut out)</source>
         <translation>ஒரு ஸ்டிக்கர்… (ஒரே பொருள், அது வெட்டியெடுக்கப்படும்)</translation>
     </message>
@@ -2244,6 +2264,34 @@
     <message>
         <source>Describe the picture</source>
         <translation>படத்தை விவரிக்கவும்</translation>
+    </message>
+    <message>
+        <source>Move the playhead near a cut between two picture clips.</source>
+        <translation>இரண்டு பட கிளிப்புகளுக்கு இடையிலான வெட்டுக்கு அருகில் இயக்கமுனையை நகர்த்தவும்.</translation>
+    </message>
+    <message>
+        <source>The cut at %1, from %2 to %3. Google makes a shot from the last frame before it to the first after it, and it goes between them; what comes later moves along.</source>
+        <translation>%1 இல் உள்ள வெட்டு, %2 இலிருந்து %3 க்கு. அதற்கு முந்தைய கடைசி சட்டகத்திலிருந்து பிந்தைய முதல் சட்டகம் வரை Google ஒரு காட்சியை உருவாக்கும்; அது இரண்டுக்கும் இடையே வைக்கப்படும், பின்னால் உள்ளவை நகரும்.</translation>
+    </message>
+    <message>
+        <source>Shots</source>
+        <translation>காட்சிகள்</translation>
+    </message>
+    <message>
+        <source>Change any shot before it is made. Each is made on its own, about five seconds long, and they go after the last clip with their captions.</source>
+        <translation>உருவாக்கப்படும் முன் எந்தக் காட்சியையும் மாற்றலாம். ஒவ்வொன்றும் தனித்தனியாக, சுமார் ஐந்து விநாடிகள் நீளத்தில் உருவாக்கப்பட்டு, வசனங்களுடன் கடைசி கிளிப்புக்குப் பின் வைக்கப்படும்.</translation>
+    </message>
+    <message>
+        <source>Shot %1</source>
+        <translation>காட்சி %1</translation>
+    </message>
+    <message>
+        <source>Caption (optional)</source>
+        <translation>வசனம் (விருப்பம்)</translation>
+    </message>
+    <message>
+        <source>Start over</source>
+        <translation>மீண்டும் தொடங்கு</translation>
     </message>
     <message>
         <source>Describing…</source>
@@ -2334,8 +2382,20 @@
         <translation>ஸ்டிக்கரை உருவாக்கு</translation>
     </message>
     <message>
+        <source>Make the video (%1 shots)</source>
+        <translation>வீடியோவை உருவாக்கு (%1 காட்சிகள்)</translation>
+    </message>
+    <message>
+        <source>Plan it</source>
+        <translation>திட்டமிடு</translation>
+    </message>
+    <message>
         <source>Extend</source>
         <translation>நீட்டி</translation>
+    </message>
+    <message>
+        <source>Make the transition</source>
+        <translation>மாற்றத்தை உருவாக்கு</translation>
     </message>
     <message>
         <source>Generate</source>
@@ -2344,6 +2404,10 @@
     <message>
         <source>Stop</source>
         <translation>நிறுத்து</translation>
+    </message>
+    <message>
+        <source>Planned by Claude, then each shot made by Google&apos;s Gemini Omni Flash, with your keys. Videos carry Google&apos;s invisible SynthID watermark.</source>
+        <translation>உங்கள் விசைகளுடன், Claude திட்டமிடும், பின் ஒவ்வொரு காட்சியையும் Google இன் Gemini Omni Flash உருவாக்கும். வீடியோக்களில் Google இன் கண்ணுக்குத் தெரியாத SynthID நீர்க்குறி இருக்கும்.</translation>
     </message>
     <message>
         <source>Made by OpenAI with your key; under OpenAI&apos;s terms the pictures are yours to use.</source>
@@ -3850,6 +3914,54 @@ Third, 4</source>
         <translation>மங்கலாக முடி</translation>
     </message>
     <message>
+        <source>Fit to length</source>
+        <translation>நீளத்துக்கு ஏற்ப பொருத்து</translation>
+    </message>
+    <message>
+        <source>Takes whole bars out of the middle, or plays some again, where the music sounds alike; a touch of speed (the pitch kept) or a fade does the rest.</source>
+        <translation>இசை ஒத்து ஒலிக்கும் இடங்களில் நடுவிலிருந்து முழு தாளப்பகுதிகளை நீக்கும், அல்லது சிலவற்றை மீண்டும் இசைக்கும்; சிறிது வேக மாற்றம் (சுருதி மாறாமல்) அல்லது மங்கல் மீதியைச் சரிசெய்யும்.</translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <translation>விநாடிகள்</translation>
+    </message>
+    <message>
+        <source>To the video&apos;s end</source>
+        <translation>வீடியோவின் முடிவு வரை</translation>
+    </message>
+    <message>
+        <source>The length from where the music starts to where the last picture ends</source>
+        <translation>இசை தொடங்கும் இடத்திலிருந்து கடைசிப் படம் முடியும் இடம் வரையிலான நீளம்</translation>
+    </message>
+    <message>
+        <source>Fitting…</source>
+        <translation>பொருத்துகிறது…</translation>
+    </message>
+    <message>
+        <source>Fit</source>
+        <translation>பொருத்து</translation>
+    </message>
+    <message>
+        <source>Took 1 bar out</source>
+        <translation>1 தாளப்பகுதி நீக்கப்பட்டது</translation>
+    </message>
+    <message>
+        <source>Took %1 bars out</source>
+        <translation>%1 தாளப்பகுதிகள் நீக்கப்பட்டன</translation>
+    </message>
+    <message>
+        <source>Played 1 bar again</source>
+        <translation>1 தாளப்பகுதி மீண்டும் இசைக்கப்பட்டது</translation>
+    </message>
+    <message>
+        <source>Played %1 bars again</source>
+        <translation>%1 தாளப்பகுதிகள் மீண்டும் இசைக்கப்பட்டன</translation>
+    </message>
+    <message>
+        <source>Kept every bar</source>
+        <translation>எல்லாத் தாளப்பகுதிகளும் வைக்கப்பட்டன</translation>
+    </message>
+    <message>
         <source>Detach audio</source>
         <translation>ஒலியைப் பிரி</translation>
     </message>
@@ -3924,6 +4036,22 @@ Third, 4</source>
     <message>
         <source>Measuring…</source>
         <translation>அளக்கிறது…</translation>
+    </message>
+    <message>
+        <source>played %1 % faster</source>
+        <translation>%1 % வேகமாக இசைக்கப்பட்டது</translation>
+    </message>
+    <message>
+        <source>played %1 % slower</source>
+        <translation>%1 % மெதுவாக இசைக்கப்பட்டது</translation>
+    </message>
+    <message>
+        <source>%1, %2; it now plays for %3 s.</source>
+        <translation>%1, %2; இப்போது %3 விநாடிகள் இசைக்கிறது.</translation>
+    </message>
+    <message>
+        <source>%1; it now plays for %2 s.</source>
+        <translation>%1; இப்போது %2 விநாடிகள் இசைக்கிறது.</translation>
     </message>
     <message>
         <source>Normalize</source>
@@ -6243,6 +6371,58 @@ Third, 4</source>
         <translation>Google வீடியோவை உருவாக்குகிறது; இதற்குச் சில நிமிடங்கள் ஆகலாம்…</translation>
     </message>
     <message>
+        <source>That clip has no picture clip right before it</source>
+        <translation>அந்தக் கிளிப்புக்கு உடனடியாக முன் எந்தப் பட கிளிப்பும் இல்லை</translation>
+    </message>
+    <message>
+        <source>There is no cut between two picture clips here</source>
+        <translation>இங்கே இரண்டு பட கிளிப்புகளுக்கு இடையே வெட்டு இல்லை</translation>
+    </message>
+    <message>
+        <source>Add your Google AI (Gemini API) key in AI settings first</source>
+        <translation>முதலில் AI அமைப்புகளில் உங்கள் Google AI (Gemini API) விசையைச் சேர்க்கவும்</translation>
+    </message>
+    <message>
+        <source>Could not read the frames either side of the cut</source>
+        <translation>வெட்டின் இருபுறமும் உள்ள சட்டகங்களைப் படிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Google is making the transition; this can take a few minutes…</source>
+        <translation>Google மாற்றத்தை உருவாக்குகிறது; இதற்கு சில நிமிடங்கள் ஆகலாம்…</translation>
+    </message>
+    <message>
+        <source>The cut changed while the transition was made; it is in the media bin</source>
+        <translation>மாற்றம் உருவாக்கப்படும்போது வெட்டு மாறிவிட்டது; அது ஊடகத் தொட்டியில் உள்ளது</translation>
+    </message>
+    <message>
+        <source>Describe your idea first</source>
+        <translation>முதலில் உங்கள் யோசனையை விவரிக்கவும்</translation>
+    </message>
+    <message>
+        <source>The plan came back unreadable; try again</source>
+        <translation>திட்டம் படிக்க முடியாதபடி வந்தது; மீண்டும் முயற்சிக்கவும்</translation>
+    </message>
+    <message>
+        <source>Planned by %1</source>
+        <translation>%1 திட்டமிட்டது</translation>
+    </message>
+    <message>
+        <source>Every shot needs a description</source>
+        <translation>ஒவ்வொரு காட்சிக்கும் ஒரு விவரிப்பு தேவை</translation>
+    </message>
+    <message>
+        <source>Plan between one and six shots first</source>
+        <translation>முதலில் ஒன்று முதல் ஆறு காட்சிகளைத் திட்டமிடுங்கள்</translation>
+    </message>
+    <message>
+        <source>Google is making shot %1 of %2; this can take a few minutes…</source>
+        <translation>Google %2 இல் காட்சி %1 ஐ உருவாக்குகிறது; இதற்கு சில நிமிடங்கள் ஆகலாம்…</translation>
+    </message>
+    <message>
+        <source>Made %1 of %2 shots (they are in the media bin): %3</source>
+        <translation>%2 இல் %1 காட்சிகள் உருவாக்கப்பட்டன (அவை ஊடகத் தொட்டியில் உள்ளன): %3</translation>
+    </message>
+    <message>
         <source>Describe the sound first</source>
         <translation>முதலில் ஒலியை விவரிக்கவும்</translation>
     </message>
@@ -6409,6 +6589,18 @@ Third, 4</source>
     <message>
         <source>Finding the beat</source>
         <translation>தாளத்தைக் கண்டறிகிறது</translation>
+    </message>
+    <message>
+        <source>Select music on an audio track to fit</source>
+        <translation>பொருத்த, ஒலித் தடத்தில் உள்ள இசையைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Choose a length between 1 second and an hour</source>
+        <translation>1 விநாடிக்கும் ஒரு மணி நேரத்துக்கும் இடையிலான நீளத்தைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Finding the bars</source>
+        <translation>தாளப்பகுதிகளைக் கண்டறிகிறது</translation>
     </message>
     <message>
         <source>Find the beat first</source>
@@ -11515,6 +11707,14 @@ The Journey</source>
         <translation>AI ஸ்டிக்கரைச் சேர்</translation>
     </message>
     <message>
+        <source>AI Transition</source>
+        <translation>AI மாற்றம்</translation>
+    </message>
+    <message>
+        <source>Video from an Idea</source>
+        <translation>யோசனையிலிருந்து வீடியோ</translation>
+    </message>
+    <message>
         <source>Add AI Music</source>
         <translation>AI இசையைச் சேர்</translation>
     </message>
@@ -11617,6 +11817,10 @@ The Journey</source>
     <message>
         <source>Mark Scenes</source>
         <translation>காட்சிகளைக் குறி</translation>
+    </message>
+    <message>
+        <source>Fit Music to Length</source>
+        <translation>இசையை நீளத்துக்குப் பொருத்து</translation>
     </message>
     <message>
         <source>Add Beat Markers</source>
@@ -12905,6 +13109,18 @@ The Journey</source>
     <message>
         <source>choose a part of the media to place (In before Out)</source>
         <translation>வைக்க மீடியாவின் ஒரு பகுதியைத் தேர்ந்தெடுக்கவும் (முடிவுக்கு முன் தொடக்கம்)</translation>
+    </message>
+    <message>
+        <source>music can be fitted only at normal speed</source>
+        <translation>இசையை இயல்பான வேகத்தில் மட்டுமே பொருத்த முடியும்</translation>
+    </message>
+    <message>
+        <source>nothing to fit</source>
+        <translation>பொருத்த எதுவும் இல்லை</translation>
+    </message>
+    <message>
+        <source>there is not room for the music on its track</source>
+        <translation>அதன் தடத்தில் இசைக்கு இடம் இல்லை</translation>
     </message>
     <message>
         <source>Could not look at this picture.</source>

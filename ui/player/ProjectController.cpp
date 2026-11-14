@@ -35,6 +35,8 @@
 #include "speech/SpeechEnhancer.h"
 #include "analysis/PeopleVision.h"
 #include "analysis/ContentVision.h"
+#include "commands/SequenceEdits.h"
+#include "model/MusicFit.h"
 #include "analysis/MotionAnalysis.h"
 #include "analysis/Tracking.h"
 #include "encode/VideoProcessing.h"
@@ -6787,6 +6789,360 @@ bool ProjectController::generateVideo(const QString& prompt, const QVariantMap& 
     return started;
 }
 
+// --- AI transitions and videos from an idea (Google, with Claude planning) ---
+
+namespace {
+
+// A clip and its track, read only.
+struct Located {
+    const Track* track = nullptr;
+    const Clip* clip = nullptr;
+};
+std::optional<Located> locate(const Project& project, Id clipId)
+{
+    for (const Track& track : project.tracks)
+        if (const auto clip = std::ranges::find(track.clips, clipId, &Clip::id); clip != track.clips.end())
+            return Located{&track, &*clip};
+    return std::nullopt;
+}
+
+// The pictures' shape for generated video: tall when the canvas is.
+QString videoAspect(const ProjectSettings& settings)
+{
+    return settings.height > settings.width ? QStringLiteral("9:16") : QStringLiteral("16:9");
+}
+
+} // namespace
+
+std::optional<ProjectController::Cut> ProjectController::cutFor(double clipId) const
+{
+    const auto picture = [](const Track& track, const Clip& clip) {
+        return track.kind != TrackKind::Audio && !track.captions && !clip.text && !clip.drawing && !clip.adjustment;
+    };
+    if (clipId >= 0) {
+        const auto location = locate(m_project, toId(clipId));
+        if (!location)
+            return std::nullopt;
+        const Track& track = *location->track;
+        for (const Clip& before : track.clips)
+            if (before.end() == location->clip->start && picture(track, before) && picture(track, *location->clip))
+                return Cut{track.id, before.id, location->clip->id, location->clip->start};
+        return std::nullopt;
+    }
+    // The cut nearest the playhead, on the selected clip's track if it has one, else the
+    // main track's.
+    const Ticks playhead = ticks(m_playhead);
+    const auto nearest = [&](const Track* track) {
+        std::optional<Cut> best;
+        for (std::size_t i = 1; track && i < track->clips.size(); ++i) {
+            const Clip& a = track->clips[i - 1];
+            const Clip& b = track->clips[i];
+            if (a.end() != b.start || !picture(*track, a) || !picture(*track, b))
+                continue;
+            if (!best || std::llabs(b.start - playhead) < std::llabs(best->at - playhead))
+                best = Cut{track->id, a.id, b.id, b.start};
+        }
+        return best;
+    };
+    if (const auto selected = locate(m_project, toId(selectedClip())))
+        if (auto cut = nearest(selected->track))
+            return cut;
+    return nearest(m_project.findTrack(mainTrackId()));
+}
+
+QVariantMap ProjectController::aiTransitionCut() const
+{
+    const auto cut = cutFor(-1);
+    if (!cut)
+        return {};
+    const auto name = [this](Id id) {
+        const Clip* clip = locate(m_project, id)->clip;
+        const MediaItem* media = m_project.findMedia(clip->mediaId);
+        return media ? mediaName(*media) : QString();
+    };
+    return {{QStringLiteral("at"), seconds(cut->at)}, {QStringLiteral("before"), name(cut->beforeId)},
+            {QStringLiteral("after"), name(cut->afterId)}, {QStringLiteral("clipId"), double(cut->afterId)}};
+}
+
+bool ProjectController::aiTransition(double clipId, const QString& style)
+{
+    const auto cut = cutFor(clipId);
+    if (!cut) {
+        reportError(clipId >= 0 ? tr("That clip has no picture clip right before it")
+                                : tr("There is no cut between two picture clips here"));
+        return false;
+    }
+    if (m_cloud->busy()) {
+        reportError(tr("Another AI job is running"));
+        return false;
+    }
+    if (!m_cloud->hasGoogleKey()) {
+        reportError(tr("Add your Google AI (Gemini API) key in AI settings first"));
+        return false;
+    }
+    // The last frame before the cut and the first after it, of that track alone.
+    Project only = m_project;
+    for (Track& track : only.tracks) {
+        if (track.id != cut->trackId)
+            track.clips.clear();
+        for (Clip& clip : track.clips)
+            if (clip.id == cut->afterId)
+                clip.transitionIn.reset();
+    }
+    const auto snapshot = std::make_shared<const Project>(std::move(only));
+    QSize size(m_project.settings.width, m_project.settings.height);
+    if (std::max(size.width(), size.height()) > 1280)
+        size.scale(1280, 1280, Qt::KeepAspectRatio);
+    StillRenderer renderer;
+    if (!renderer.isValid()) {
+        reportError(tr("Could not read the frames either side of the cut"));
+        return false;
+    }
+    const QImage first = renderer.render(snapshot, cut->at - frameDuration(m_project.settings.frameRate), size);
+    const QImage last = renderer.render(snapshot, cut->at, size);
+    const QString base = generatedBase(QStringLiteral("Transition"));
+    if (!QDir().mkpath(generatedDirectory()) || first.isNull() || last.isNull() || !first.save(base + QStringLiteral(" from.png"))
+        || !last.save(base + QStringLiteral(" to.png"))) {
+        reportError(tr("Could not read the frames either side of the cut"));
+        return false;
+    }
+    VideoOptions video;
+    video.mode = QStringLiteral("frames");
+    video.images = {base + QStringLiteral(" from.png"), base + QStringLiteral(" to.png")};
+    video.aspect = videoAspect(m_project.settings);
+    QString prompt = QStringLiteral(
+        "A smooth, continuous transition from the first frame to the last: one unbroken camera move that turns the "
+        "first shot into the second, keeping the look of both.");
+    if (!style.trimmed().isEmpty())
+        prompt += QStringLiteral(" Style of the transition: %1.").arg(style.trimmed());
+    const Cut at = *cut;
+    QPointer<ProjectController> self(this);
+    const bool started = m_cloud->generateMedia(
+        QStringLiteral("transition"), tr("Google is making the transition; this can take a few minutes…"),
+        [prompt, video, base](QNetworkAccessManager* network, QObject* parent) {
+            return cloudmedia::video(network, prompt, video, base, parent);
+        },
+        [self, at, prompt](const MediaResult& result) {
+            if (!self)
+                return;
+            const QString job = QStringLiteral("transition");
+            if (!result.ok) {
+                self->endGeneration(job, result, false);
+                return;
+            }
+            const auto clipName = [&](Id id) {
+                const auto l = self->m_project.locateClip(id);
+                const MediaItem* m = l ? self->m_project.findMedia(l->clip->mediaId) : nullptr;
+                return m ? mediaName(*m).toStdString() : std::string();
+            };
+            const Id media = self->importGenerated(
+                result, GeneratedBy{.provider = "google", .kind = "video", .prompt = prompt.toStdString(),
+                                    .source = "between " + clipName(at.beforeId) + " and " + clipName(at.afterId)});
+            if (media == kNoId) {
+                self->endGeneration(job, result, false);
+                return;
+            }
+            // Put between the two, if the cut is still there; everything after it moves later.
+            const auto before = self->m_project.locateClip(at.beforeId);
+            const auto after = self->m_project.locateClip(at.afterId);
+            if (!before || !after || before->track->id != at.trackId || after->track->id != at.trackId
+                || before->clip->end() != at.at || after->clip->start != at.at) {
+                MediaResult moved = result;
+                moved.error = tr("The cut changed while the transition was made; it is in the media bin");
+                self->endGeneration(job, moved, false);
+                return;
+            }
+            const Ticks length = self->m_project.findMedia(media)->duration;
+            Project edited = self->m_project;
+            std::optional<std::string> error = tve::insertTime(edited, at.at, length);
+            AddClipCommand add(at.trackId, media, at.at, length, 0);
+            if (!error) {
+                edited.locateClip(at.afterId)->clip->transitionIn.reset();
+                error = add.redo(edited);
+            }
+            if (error) {
+                MediaResult failed = result;
+                failed.error = coreText(*error);
+                self->endGeneration(job, failed, false);
+                return;
+            }
+            self->m_project.setNextId(edited.nextId());
+            const bool ok = self->apply(std::make_unique<ApplyEditsCommand>(self->m_project, std::move(edited),
+                                                                            TVE_TR("core", "AI Transition")));
+            if (ok)
+                self->setSelectedClip(double(add.clipId()));
+            self->endGeneration(job, result, ok);
+        });
+    if (!started)
+        reportError(tr("Another AI job is running"));
+    return started;
+}
+
+bool ProjectController::planIdea(const QString& idea, const QVariantMap& options)
+{
+    if (idea.trimmed().isEmpty()) {
+        reportError(tr("Describe your idea first"));
+        return false;
+    }
+    if (m_cloud->busy()) {
+        reportError(tr("Another AI job is running"));
+        return false;
+    }
+    const int shots = std::clamp(options.value(QStringLiteral("shots"), 4).toInt(), 2, 6);
+    const TextRequest request = cloudfeatures::ideaRequest(idea, shots, options.value(QStringLiteral("style")).toString(),
+                                                           videoAspect(m_project.settings), m_cloud->claudeModel());
+    QPointer<ProjectController> self(this);
+    const bool started = m_cloud->generate(QStringLiteral("plan"), request, [self, shots](const TextResult& result) {
+        if (!self)
+            return;
+        CloudServices* cloud = self->m_cloud;
+        const auto plan = result.ok ? cloudfeatures::readIdea(result.text, shots) : std::nullopt;
+        const QString error = result.cancelled ? QString()
+                            : !result.ok      ? result.error
+                            : !plan           ? tr("The plan came back unreadable; try again")
+                                              : QString();
+        if (plan) {
+            QVariantList list;
+            for (const cloudfeatures::IdeaShot& shot : plan->shots)
+                list << QVariantMap{{QStringLiteral("prompt"), shot.prompt}, {QStringLiteral("caption"), shot.caption}};
+            self->m_ideaPlan = {{QStringLiteral("title"), plan->title}, {QStringLiteral("shots"), list}};
+            emit self->ideaPlanChanged();
+        }
+        cloud->endJob(plan ? tr("Planned by %1").arg(answeredBy(cloud, result.usage.model)) : error);
+        emit cloud->jobFinished(QStringLiteral("plan"), bool(plan), error);
+        if (!error.isEmpty())
+            self->reportError(error);
+    });
+    if (!started)
+        reportError(tr("Another AI job is running"));
+    return started;
+}
+
+void ProjectController::clearIdeaPlan()
+{
+    if (m_ideaPlan.isEmpty())
+        return;
+    m_ideaPlan.clear();
+    emit ideaPlanChanged();
+}
+
+bool ProjectController::makeIdeaVideo(const QVariantMap& plan)
+{
+    struct Making {
+        QString title;
+        QList<cloudfeatures::IdeaShot> shots;
+        std::vector<Id> media;
+        QString aspect;
+    };
+    auto state = std::make_shared<Making>();
+    state->title = plan.value(QStringLiteral("title")).toString().trimmed();
+    for (const QVariant& value : plan.value(QStringLiteral("shots")).toList()) {
+        const QVariantMap shot = value.toMap();
+        const QString prompt = shot.value(QStringLiteral("prompt")).toString().trimmed();
+        if (prompt.isEmpty()) {
+            reportError(tr("Every shot needs a description"));
+            return false;
+        }
+        state->shots.push_back({prompt, shot.value(QStringLiteral("caption")).toString().trimmed()});
+    }
+    if (state->shots.isEmpty() || state->shots.size() > 6) {
+        reportError(tr("Plan between one and six shots first"));
+        return false;
+    }
+    if (m_cloud->busy()) {
+        reportError(tr("Another AI job is running"));
+        return false;
+    }
+    if (!m_cloud->hasGoogleKey()) {
+        reportError(tr("Add your Google AI (Gemini API) key in AI settings first"));
+        return false;
+    }
+    state->aspect = videoAspect(m_project.settings);
+    QPointer<ProjectController> self(this);
+    auto step = std::make_shared<std::function<void()>>();
+    *step = [self, state, step] {
+        if (!self)
+            return;
+        const int i = int(state->media.size());
+        const int n = int(state->shots.size());
+        VideoOptions video;
+        video.aspect = state->aspect;
+        const QString prompt = state->shots[i].prompt;
+        const QString base = self->generatedBase(QStringLiteral("Shot"));
+        const QString status = tr("Google is making shot %1 of %2; this can take a few minutes…").arg(i + 1).arg(n);
+        const bool started = self->m_cloud->generateMedia(
+            QStringLiteral("idea"), status,
+            [prompt, video, base](QNetworkAccessManager* network, QObject* parent) {
+                return cloudmedia::video(network, prompt, video, base, parent);
+            },
+            [self, state, step, prompt, i, n](const MediaResult& result) {
+                if (!self)
+                    return;
+                const QString job = QStringLiteral("idea");
+                const auto fail = [&](MediaResult failed) {
+                    if (!state->media.empty() && !failed.cancelled)
+                        failed.error = tr("Made %1 of %2 shots (they are in the media bin): %3").arg(state->media.size()).arg(n).arg(failed.error);
+                    self->endGeneration(job, failed, false);
+                    *step = nullptr; // (breaks the cycle)
+                };
+                if (!result.ok) {
+                    fail(result);
+                    return;
+                }
+                const Id media = self->importGenerated(result, GeneratedBy{.provider = "google", .kind = "video",
+                                                                           .prompt = prompt.toStdString(),
+                                                                           .source = "idea: " + state->title.toStdString()});
+                if (media == kNoId) {
+                    fail(result);
+                    return;
+                }
+                state->media.push_back(media);
+                if (i + 1 < n) {
+                    self->m_cloud->setProgress(double(i + 1) / n, QString());
+                    (*step)();
+                    return;
+                }
+                // All made: after the main track's last clip, in order, with their captions.
+                Project edited = self->m_project;
+                std::vector<CaptionBlock> captions = self->captionBlocks();
+                const Id main = self->mainTrackId();
+                std::optional<std::string> error;
+                for (std::size_t k = 0; k < state->media.size() && !error; ++k) {
+                    const Ticks length = edited.findMedia(state->media[k])->duration;
+                    Id made = kNoId;
+                    error = tve::placeMedia(edited, main, state->media[k], 0, length, 0, PlaceMode::Append, &made);
+                    if (!error && !state->shots[int(k)].caption.isEmpty()) {
+                        const Clip* clip = edited.locateClip(made)->clip;
+                        captions.push_back({clip->start, clip->end(), state->shots[int(k)].caption.toStdString(), {}});
+                    }
+                }
+                if (!error && captions.size() != self->captionBlocks().size()) {
+                    std::ranges::stable_sort(captions, {}, &CaptionBlock::start);
+                    auto [style, visual] = self->captionLook();
+                    SetCaptionsCommand set(std::move(captions), "", style, visual);
+                    error = set.redo(edited);
+                }
+                if (error) {
+                    MediaResult failed = result;
+                    failed.error = coreText(*error);
+                    fail(failed);
+                    return;
+                }
+                self->m_project.setNextId(edited.nextId());
+                const bool ok = self->apply(std::make_unique<ApplyEditsCommand>(self->m_project, std::move(edited),
+                                                                                TVE_TR("core", "Video from an Idea")));
+                self->endGeneration(job, result, ok);
+                *step = nullptr;
+            });
+        if (!started) {
+            self->m_cloud->endJob(QString());
+            *step = nullptr;
+        }
+    };
+    (*step)();
+    return true;
+}
+
 bool ProjectController::generateSound(const QString& prompt, const QVariantMap& options)
 {
     if (prompt.trimmed().isEmpty()) {
@@ -8655,6 +9011,71 @@ bool ProjectController::findBeats(double clipId)
         }
         m_beats = {{QStringLiteral("clipId"), double(id)}, {QStringLiteral("bpm"), found.bpm}, {QStringLiteral("times"), times}};
         emit analysisChanged();
+        emit analysisFinished(true, {});
+    });
+    return true;
+}
+
+double ProjectController::picturesEnd() const
+{
+    Ticks end = 0;
+    for (const Track& track : m_project.tracks)
+        if (track.kind != TrackKind::Audio && !track.captions)
+            for (const Clip& clip : track.clips)
+                if (!clip.text)
+                    end = std::max(end, clip.end());
+    return seconds(end);
+}
+
+bool ProjectController::fitMusic(double clipId, double length)
+{
+    if (analyzing()) {
+        reportError(tr("An analysis is already running"));
+        return false;
+    }
+    const auto location = m_project.locateClip(toId(clipId));
+    if (!location || location->track->kind != TrackKind::Audio) {
+        reportError(tr("Select music on an audio track to fit"));
+        return false;
+    }
+    if (!(length >= 1.0 && length <= 3600.0)) {
+        reportError(tr("Choose a length between 1 second and an hour"));
+        return false;
+    }
+    const Clip* clip = analysableClip(location->clip->id, true, false);
+    if (!clip)
+        return false;
+    const Id id = clip->id;
+    const Ticks target = ticks(length);
+    withFeatures({clip->mediaId}, false, tr("Finding the bars"), [this, id, target] {
+        const Clip* clip = findClip(id);
+        const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+        if (!media)
+            return;
+        const tve::AudioFeatures& features = m_audioFeatures.at(fingerprintOf(*media));
+        tve::MusicFitInput input;
+        input.in = clip->sourceIn;
+        input.out = clip->sourceIn + clip->duration;
+        input.target = target;
+        input.beats = tve::findBeats(features).times;
+        input.loudness = features.loudness;
+        input.hop = tve::AudioFeatures::kHop;
+        const tve::MusicFit fit = tve::planMusicFit(input);
+        Project after = m_project;
+        std::vector<Id> made;
+        if (auto error = tve::fitClipToPieces(after, id, fit, &made)) {
+            const QString message = coreText(*error);
+            reportError(message);
+            emit analysisFinished(false, message);
+            return;
+        }
+        m_project.setNextId(after.nextId());
+        if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Fit Music to Length")))) {
+            emit analysisFinished(false, {});
+            return;
+        }
+        setSelectedClip(double(made.front()));
+        emit musicFitted(double(made.front()), seconds(fit.length), fit.barsChanged, fit.speed);
         emit analysisFinished(true, {});
     });
     return true;

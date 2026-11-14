@@ -14,6 +14,7 @@ add_library(tve_core STATIC
     model/Masks.h
     model/People.h
     model/ContentSearch.h
+    model/MusicFit.h
     model/Motion.h
     model/Cursor.h
     model/Cursor.cpp
@@ -35,6 +36,7 @@ add_library(tve_core STATIC
     model/Motion.cpp
     model/People.cpp
     model/ContentSearch.cpp
+    model/MusicFit.cpp
     model/Masks.cpp
     model/TextAnimation.h
     model/TextAnimation.cpp

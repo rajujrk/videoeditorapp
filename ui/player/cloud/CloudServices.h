@@ -36,8 +36,8 @@ class CloudServices : public QObject {
     Q_PROPERTY(QString claudeModel READ claudeModel WRITE setClaudeModel NOTIFY settingsChanged)
     Q_PROPERTY(QVariantList elevenLabsModels READ elevenLabsModels CONSTANT)
     Q_PROPERTY(QString elevenLabsModel READ elevenLabsModel WRITE setElevenLabsModel NOTIFY settingsChanged)
-    // The job running: "" (none), "write", "translate", "speak", "image", "sticker", "video",
-    // "music" or "sfx"; its text so far; what it is
+    // The job running: "" (none), "write", "translate", "proofread", "describe", "speak",
+    // "image", "sticker", "video", "transition", "idea", "music" or "sfx"; its text so far; what it is
     // doing in words; how far (0..1, translations).
     Q_PROPERTY(QString job READ job NOTIFY jobChanged)
     Q_PROPERTY(QString draft READ draft NOTIFY draftChanged)

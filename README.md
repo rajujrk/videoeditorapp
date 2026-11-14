@@ -94,6 +94,7 @@ The following improvements were completed after Phase 5:
 - Slice 30a: A beauty filter for faces (smoothing and brightening skin, whitening teeth) and protecting skin tones from a grade, on the Mac.
 - Slice 30b: Background blur behind people, a blurred or removed camera background in the recorder, and stickers that follow faces.
 - Slice 30c: Smart search across what media shows, says and has on screen; Claude proofreading titles and captions, and writing a prompt from a picture.
+- Slice 30d: Music fitted to a length on the Mac, AI transitions made from the frames either side of a cut, and a video from an idea.
 
 All previously identified feature gaps have been closed.
 
@@ -143,6 +144,7 @@ All previously identified feature gaps have been closed.
 - Apply a selected transition to every cut simultaneously.
 - Randomly assign transitions across cuts.
 - Support constant-power audio crossfades.
+- Bridge a cut with an AI transition: a shot made from the last frame before it and the first after it (your Google key).
 
 ### 2.6 Titles and Text
 
@@ -171,6 +173,7 @@ All previously identified feature gaps have been closed.
 - Display audio waveforms.
 - Adjust clip volume and audio fades.
 - Change, set or normalize the volume of many selected clips at once.
+- Fit music to a length (such as the video's end), whole bars taken out or played again, on the Mac.
 - Detach audio from video clips.
 - Mute, hide and lock individual tracks.
 - Display audio level meters.
@@ -488,6 +491,22 @@ after, each ticked to apply: **Apply** changes the chosen ones as one undo step 
 keep their timing), and nothing changes before. **Describe the frame** (Generate tab) sends the frame
 at the playhead to Claude, which writes a prompt to make a picture, a sticker or a video like it,
 into the prompt box. Labels are Vision's English names whatever the app's language.
+
+**Music fitted to a length, AI transitions, a video from an idea.** For music on an audio track,
+the Audio tab's **Fit to length** (seconds, or **To the video's end**) measures the music on this Mac
+and fits it the way an editor would. It takes whole bars out of the middle, or plays a run of bars
+again, where the music sounds alike either side of the join, keeping the start and the end. A last
+small difference is made up by playing it up to 4 % faster or slower (the pitch kept), or else by
+trimming and fading the end. The clip becomes its pieces, grouped, as one undo step, and the
+section says how many bars went or came again. Without a steady beat the music is cut in
+two-second blocks, and under four bars the start is simply trimmed and faded. With a Google key,
+the Generate tab's Video › **Between two clips** bridges the cut nearest the playhead: Google makes
+a shot from the last frame before the cut to the first after it (that track's pictures alone, with
+any words on how it should move), and it goes between the two clips, everything after the cut
+moving later, as one undo step. **From an idea** (Claude and Google keys) has Claude plan a short
+video in 2 to 6 shots, each with a prompt and a caption you can change; **Make the video** has Google
+make each shot in turn and puts them after the main track's last clip with their captions, as one
+undo step. If a shot fails, those already made stay in the media bin.
 
 **AI writing, translation and voices (your own keys).** The speech bubble at the top opens **AI
 settings**: paste a Claude API key (for writing and translation) and an ElevenLabs key (for cloud

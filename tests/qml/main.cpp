@@ -197,6 +197,8 @@ private:
 //                        the MOV adds grey pictures (so it goes on a video track)
 //   beat.wav             8 s of noise clicks at 120 BPM from 0.25 s
 //   hum.wav              7 s of a quiet 220 Hz tone (music to duck)
+//   song.wav             32 s at 120 BPM: a click on every beat from 0.5 s (the bar's first
+//                        louder) over a quiet 220 Hz tone (music to fit to a length)
 //   scenes.mov           three one-second shots at 30 fps, each moving
 //   long.mov             40 s in four 10 s shots, a disc moving across; loud from 22 to 30 s
 //   noise.mov            2 s of 640 × 360 noise, the talk under it
@@ -226,6 +228,12 @@ void writeAnalysisMedia(const QString& dir)
         return t >= 0.25 && into < 0.02 ? 0.6f * noise(random) * float(1.0 - into / 0.02) : 0.0f;
     });
     writeSound(QStringLiteral("hum.wav"), 7.0, [](double t) { return 0.1f * float(std::sin(2.0 * std::numbers::pi * 220.0 * t)); });
+    writeSound(QStringLiteral("song.wav"), 32.0, [&](double t) {
+        const double into = std::fmod(t - 0.5, 0.5);
+        const bool downbeat = std::fmod(t - 0.5, 2.0) < 0.02;
+        const float click = t >= 0.5 && into < 0.02 ? (downbeat ? 0.7f : 0.4f) * noise(random) * float(1.0 - into / 0.02) : 0.0f;
+        return click + 0.05f * float(std::sin(2.0 * std::numbers::pi * 220.0 * t));
+    });
 
     const auto writeMovie = [&](const QString& name, int frames, const std::function<float(double)>& soundAt,
                                 const std::function<void(int, std::vector<std::uint8_t>&)>& draw) {

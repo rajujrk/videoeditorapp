@@ -187,6 +187,57 @@ TextRequest imagePromptRequest(const QByteArray& image, const QString& mediaType
     return request;
 }
 
+TextRequest ideaRequest(const QString& idea, int shots, const QString& style, const QString& aspect, const QString& model)
+{
+    const QJsonObject string{{QStringLiteral("type"), QStringLiteral("string")}};
+    const QJsonObject shot{{QStringLiteral("type"), QStringLiteral("object")},
+                           {QStringLiteral("properties"), QJsonObject{{QStringLiteral("prompt"), string}, {QStringLiteral("caption"), string}}},
+                           {QStringLiteral("required"), QJsonArray{QStringLiteral("prompt"), QStringLiteral("caption")}},
+                           {QStringLiteral("additionalProperties"), false}};
+    TextRequest request;
+    request.system = QStringLiteral(
+        "You plan short videos made of generated shots. Each shot is made on its own by a video generator that sees only "
+        "its prompt, so every prompt must stand alone: describe the subject, the setting, the light, the style and one "
+        "simple camera movement, and repeat what has to look the same from shot to shot (the main character's look, the "
+        "place, the colours). No real people, brands, logos or text in the picture.");
+    request.prompt = QStringLiteral(
+        "Plan a short video of %1 shots from this idea. Each shot is one continuous take of about five seconds, in %2 "
+        "format. Give the video a short title, and each shot a prompt (under 70 words) and a caption to show over it "
+        "(under 12 words, in the language of the idea). Together the shots should tell the idea from beginning to end.%3"
+        "\n\n<idea>%4</idea>")
+                         .arg(shots)
+                         .arg(aspect == QLatin1String("9:16") ? QStringLiteral("tall 9:16") : QStringLiteral("wide 16:9"))
+                         .arg(style.trimmed().isEmpty() ? QString() : QStringLiteral(" The look: %1.").arg(style.trimmed()))
+                         .arg(idea.trimmed());
+    request.model = model;
+    request.effort = QStringLiteral("medium");
+    request.schema = {{QStringLiteral("type"), QStringLiteral("object")},
+                      {QStringLiteral("properties"),
+                       QJsonObject{{QStringLiteral("title"), string},
+                                   {QStringLiteral("shots"), QJsonObject{{QStringLiteral("type"), QStringLiteral("array")},
+                                                                         {QStringLiteral("items"), shot}}}}},
+                      {QStringLiteral("required"), QJsonArray{QStringLiteral("title"), QStringLiteral("shots")}},
+                      {QStringLiteral("additionalProperties"), false}};
+    return request;
+}
+
+std::optional<IdeaPlan> readIdea(const QString& answer, int most)
+{
+    const QJsonObject object = QJsonDocument::fromJson(answer.toUtf8()).object();
+    IdeaPlan plan;
+    plan.title = object.value(QStringLiteral("title")).toString().trimmed();
+    for (const QJsonValue& value : object.value(QStringLiteral("shots")).toArray()) {
+        const QJsonObject shot = value.toObject();
+        const QString prompt = shot.value(QStringLiteral("prompt")).toString().trimmed();
+        if (prompt.isEmpty())
+            return std::nullopt;
+        plan.shots.push_back({prompt, shot.value(QStringLiteral("caption")).toString().trimmed()});
+    }
+    if (plan.title.isEmpty() || plan.shots.isEmpty() || plan.shots.size() > most)
+        return std::nullopt;
+    return plan;
+}
+
 TextRequest rankRequest(const QList<RankItem>& items, const QString& purpose, const QString& model)
 {
     QJsonArray list;

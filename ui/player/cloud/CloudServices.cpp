@@ -82,9 +82,16 @@ void CloudServices::setImageModel(const QString& model)
 bool CloudServices::generateMedia(const QString& job, const QString& status, MediaStart start,
                                   std::function<void(const MediaResult&)> done)
 {
-    if (busy())
+    // A job making several things (an idea's shots) asks for each in turn: the next once the
+    // last has finished.
+    if (busy() && (m_job != job || (m_mediaTask && !m_mediaTask->done()) || (m_textTask && !m_textTask->done())))
         return false;
-    beginJob(job, status);
+    if (!busy()) {
+        beginJob(job, status);
+    } else {
+        m_status = status;
+        emit jobChanged();
+    }
     MediaTask* task = start(m_network, this);
     m_mediaTask = task;
     connect(task, &MediaTask::finished, this, [this, task, job, done = std::move(done)](const MediaResult& result) {
@@ -93,7 +100,7 @@ bool CloudServices::generateMedia(const QString& job, const QString& status, Med
             if (job == QLatin1String("image") || job == QLatin1String("sticker")) {
                 ++m_images;
                 m_imageTokens += result.tokens;
-            } else if (job == QLatin1String("video")) {
+            } else if (job == QLatin1String("video") || job == QLatin1String("transition") || job == QLatin1String("idea")) {
                 ++m_videos;
             } else {
                 m_soundSeconds += result.seconds;

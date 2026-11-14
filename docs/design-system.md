@@ -564,6 +564,21 @@ the Generate tab, a `ghost` button under the prompt box, which Claude's prompt f
 ![A prompt from the frame, dark](images/image-prompt-dark.png)
 ![A prompt from the frame, light](images/image-prompt-light.png)
 
+Fit to length in the Audio tab: its explanation in caption type, a seconds field, To the video's
+end as a `ghost` button beside Fit (`secondary`), and what the fit did underneath in `textSecondary`;
+on the timeline the music's pieces, grouped, the last faded out. The Generate tab's Between two
+clips, its words on how the transition should move and a caption naming the cut it bridges above
+the `primary` Make the transition. And From an idea's plan: the title in `heading` type, each shot a
+`surfaceRaised` card with its prompt and caption in `surfaceSunken` boxes, Start over as `ghost`.
+Dark and light:
+
+![Fit to length, dark](images/fit-music-dark.png)
+![Fit to length, light](images/fit-music-light.png)
+![An AI transition, dark](images/ai-transition-dark.png)
+![An AI transition, light](images/ai-transition-light.png)
+![A video from an idea, dark](images/idea-video-dark.png)
+![A video from an idea, light](images/idea-video-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.
