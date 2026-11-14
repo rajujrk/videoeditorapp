@@ -120,6 +120,9 @@ struct ClipTransform {
     // where it is.
     double anchorX = 0.0;
     double anchorY = 0.0;
+    // Mirrored left to right, and upside down, in the picture's own frame (before the turn).
+    bool flipH = false;
+    bool flipV = false;
 
     friend bool operator==(const ClipTransform&, const ClipTransform&) = default;
 };
@@ -553,6 +556,8 @@ struct Clip {
     // Motion blur where keyframes move it (position, size, rotation, corner pin): how long the
     // shutter is open, as a share of a frame (0: off; 0.5 is a film camera's 180°).
     double motionBlur = 0.0;
+    // Turned off: it stays on the timeline (and in every edit) but is neither seen nor heard.
+    bool enabled = true;
 
     // A clip with no media to play: a title, a drawing or an adjustment layer.
     bool generated() const { return text.has_value() || drawing.has_value() || adjustment; }

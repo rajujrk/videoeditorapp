@@ -202,6 +202,7 @@ Rectangle {
                 project: editor.project
                 onTeleprompterRequested: editor.openTeleprompter()
                 onDrawingRequested: (area) => editor.openLiveDrawing(area)
+                onMatchFrameRequested: (clipId) => editor.matchFrame(clipId)
             }
         }
     }
@@ -266,6 +267,20 @@ Rectangle {
         onAccepted: editor.project.save(selectedFile)
     }
 
+    // Match frame: the media under the playhead opened in the source monitor at that frame.
+    function matchFrame(clipId) {
+        const found = editor.project.matchFrame(clipId === undefined ? -1 : clipId)
+        if (found.mediaId === undefined)
+            return false
+        const media = editor.project.media.find((m) => m.id === found.mediaId)
+        if (!media)
+            return false
+        playerPanel.openSource(media)
+        if (playerPanel.source.controller)
+            playerPanel.source.controller.seek(found.seconds)
+        return true
+    }
+
     // Keyboard shortcuts. Single-key ones are off while a text field has focus.
     readonly property bool typing: Window.activeFocusItem !== null
                                    && Window.activeFocusItem.hasOwnProperty("cursorPosition")
@@ -317,6 +332,17 @@ Rectangle {
         enabled: editor.visible && !editor.typing && editor.project.needsRender && !editor.project.rendering
         onActivated: editor.project.renderHeavy()
     }
+    // Timeline handling (31a).
+    Shortcut { objectName: "shortcut:previousEdit"; sequences: editor.keys.previousEdit; enabled: editor.visible && !editor.typing; onActivated: editor.project.seekEdit(-1) }
+    Shortcut { objectName: "shortcut:nextEdit"; sequences: editor.keys.nextEdit; enabled: editor.visible && !editor.typing; onActivated: editor.project.seekEdit(1) }
+    Shortcut { objectName: "shortcut:extendEdit"; sequences: editor.keys.extendEdit; enabled: editor.visible && !editor.typing; onActivated: editor.project.extendEdit() }
+    Shortcut { objectName: "shortcut:selectForward"; sequences: editor.keys.selectForward; enabled: editor.visible && !editor.typing; onActivated: editor.project.selectFromPlayhead(1) }
+    Shortcut { objectName: "shortcut:selectBackward"; sequences: editor.keys.selectBackward; enabled: editor.visible && !editor.typing; onActivated: editor.project.selectFromPlayhead(-1) }
+    Shortcut { objectName: "shortcut:matchFrame"; sequences: editor.keys.matchFrame; enabled: editor.visible && !editor.typing; onActivated: editor.matchFrame() }
+    Shortcut { objectName: "shortcut:toggleClip"; sequences: editor.keys.toggleClip; enabled: editor.visible && !editor.typing && editor.project.selectedClip > 0; onActivated: editor.project.toggleClipEnabled() }
+    Shortcut { objectName: "shortcut:defaultTransition"; sequences: editor.keys.defaultTransition; enabled: editor.visible && !editor.typing; onActivated: editor.project.addDefaultTransition() }
+    Shortcut { objectName: "shortcut:loop"; sequences: editor.keys.loop; enabled: editor.visible && !editor.typing; onActivated: EditingPreferences.loopPlayback = !EditingPreferences.loopPlayback }
+    Shortcut { objectName: "shortcut:skimming"; sequences: editor.keys.skimming; enabled: editor.visible && !editor.typing; onActivated: EditingPreferences.skimming = !EditingPreferences.skimming }
     Shortcut { sequences: editor.keys.addMarker; enabled: editor.visible && !editor.typing; onActivated: editor.project.addMarker() }
     Shortcut { sequences: editor.keys.nextMarker; enabled: editor.visible && !editor.typing; onActivated: editor.project.seekMarker(1) }
     Shortcut { sequences: editor.keys.previousMarker; enabled: editor.visible && !editor.typing; onActivated: editor.project.seekMarker(-1) }

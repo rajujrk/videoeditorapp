@@ -707,6 +707,7 @@ int main(int argc, char** argv)
     QTemporaryDir appSettings; // favourites and workspaces in scratch files (the app's own aren't touched)
     qputenv("TVE_FAVOURITES_FILE", (appSettings.path() + QStringLiteral("/favourites.json")).toLocal8Bit());
     qputenv("TVE_WORKSPACES_FILE", (appSettings.path() + QStringLiteral("/workspaces.json")).toLocal8Bit());
+    qputenv("TVE_EDITING_FILE", (appSettings.path() + QStringLiteral("/editing.json")).toLocal8Bit());
     qputenv("TVE_PREVIEW_WINDOWED", "1"); // the full-screen preview as a plain window
     QTemporaryDir livePhotoLibrary; // Live Photos "added to Photos" land here, not in the library
     qputenv("TVE_LIVE_PHOTO_LIBRARY", QDir(livePhotoLibrary.path()).canonicalPath().toLocal8Bit());

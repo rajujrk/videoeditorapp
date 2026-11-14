@@ -88,6 +88,8 @@ class ProjectController : public QObject {
     Q_PROPERTY(QString redoText READ redoText NOTIFY projectChanged)
 
     Q_PROPERTY(double playhead READ playhead NOTIFY playheadChanged)
+    // The time the player shows while skimming (-1: none, it shows the playhead's).
+    Q_PROPERTY(double skimTime READ skimTime NOTIFY skimChanged)
     Q_PROPERTY(bool playing READ playing NOTIFY playingChanged)
     // Shuttle (J, K, L): the rate the playhead moves at (0 still, 1 playing, ±2/4/8 shuttling
     // silently through frames; negative is backwards).
@@ -757,6 +759,48 @@ public:
     Q_INVOKABLE bool rippleDeleteClip(double clipId);
     // Selects every clip (on one track, or on all of them).
     Q_INVOKABLE int selectAllClips(double trackId = -1);
+
+    // --- Timeline handling (31a) ---
+    // Other media in a clip's place, its place, length and settings kept (a shorter piece of
+    // media shortens it). One undo step.
+    Q_INVOKABLE bool replaceClipMedia(double clipId, double mediaId);
+    // Clips turned off (not seen or heard, still there) or on: the clip, or the selection it
+    // belongs to. toggleClipEnabled flips the selected clip (and the rest of the selection).
+    Q_INVOKABLE bool setClipEnabled(double clipId, bool enabled);
+    Q_INVOKABLE bool toggleClipEnabled();
+    // A placeholder at the playhead (the main track when free there, else a picture track
+    // with room): a stand-in picture of `seconds` (default 5) to replace later. Its clip id.
+    Q_INVOKABLE double addPlaceholder(double seconds = 5);
+    // The nearest edge of the selected clip (else of the clip with an edge nearest the
+    // playhead) moved to the playhead, rolling the cut when a clip touches it.
+    Q_INVOKABLE bool extendEdit(double clipId = -1);
+    // Selects the clips from the playhead on (direction > 0) or before it, on one track or
+    // every unlocked one; how many.
+    Q_INVOKABLE int selectFromPlayhead(int direction, double trackId = -1);
+    // The playhead to the next (direction > 0) or previous cut or clip edge.
+    Q_INVOKABLE bool seekEdit(int direction);
+    // The media frame under the playhead in a clip (the selected one, else the topmost
+    // there): {mediaId, seconds, clipId}; empty when there is none.
+    Q_INVOKABLE QVariantMap matchFrame(double clipId = -1);
+    // A track one place up or down among its kind; every track locked or unlocked.
+    Q_INVOKABLE bool moveTrack(double trackId, int direction);
+    Q_INVOKABLE int lockAllTracks(bool locked);
+    // Every transition, or every marker, taken off; how many (one undo step).
+    Q_INVOKABLE int removeAllTransitions();
+    Q_INVOKABLE int removeAllMarkers();
+    // The default transition (EditingPreferences) at the cut nearest the playhead, or into
+    // `clipId`, at the default length.
+    Q_INVOKABLE bool addDefaultTransition(double clipId = -1);
+    // A picture turned by `degrees` more (90 or -90), or flipped (horizontal or upside down).
+    Q_INVOKABLE bool rotateClip(double clipId, double degrees);
+    Q_INVOKABLE bool flipClip(double clipId, bool horizontal);
+    // Skimming: the player shows the frame under the pointer (while not playing) without
+    // moving the playhead; endSkim goes back to the playhead's frame.
+    Q_INVOKABLE void skim(double seconds);
+    Q_INVOKABLE void endSkim();
+    double skimTime() const { return m_skimTime; }
+    // The trackpad's light tap (a picture meeting the canvas's edge while dragged).
+    Q_INVOKABLE void alignmentFeedback();
     // Media: how many clips use it; taken out of the project with them; shown in Finder.
     Q_INVOKABLE int clipsUsingMedia(double mediaId) const;
     Q_INVOKABLE bool removeMedia(double mediaId);
@@ -1231,6 +1275,7 @@ signals:
     void audioPluginsChanged();
     void stickersChanged();
     void playheadChanged();
+    void skimChanged();
     void playingChanged();
     void selectionChanged();
     void clipboardChanged();
@@ -1367,8 +1412,11 @@ private:
     qint64 m_shuttleLast = 0; // when the shuttle last moved the playhead (ms)
     void selectClips(std::vector<tve::Id> ids);
     std::vector<tve::Id> clipsToCopy() const;
+    // addTransition, at the default length even over another one (defaultLength).
+    bool putTransition(const QString& transitionId, double clipId, bool defaultLength);
     tve::Id m_selectedTransition = tve::kNoId;
     double m_playhead = 0;
+    double m_skimTime = -1; // skimming: the time shown instead of the playhead's
     bool m_canvasChosen = false; // false: the first video clip sets the canvas
     bool m_wasPlaying = false;
     QTimer m_playheadTimer;

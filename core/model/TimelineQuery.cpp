@@ -21,7 +21,7 @@ std::optional<TransitionWindow> transitionInto(const Track& track, const Clip& c
     if (it == track.clips.end() || it == track.clips.begin())
         return std::nullopt;
     const Clip& previous = *std::prev(it);
-    if (previous.end() != clip.start)
+    if (previous.end() != clip.start || !previous.enabled || !clip.enabled) // a clip turned off is not there
         return std::nullopt;
 
     const ClipTransition& spec = *clip.transitionIn;
@@ -77,7 +77,7 @@ std::optional<VisibleClip> trackLayerAt(const Project& project, const Track& tra
     if (it == track.clips.begin())
         return std::nullopt;
     --it; // last clip starting at or before `time`
-    if (time >= it->end())
+    if (time >= it->end() || !it->enabled)
         return std::nullopt;
     const Clip& clip = *it;
 
@@ -106,7 +106,7 @@ std::optional<VisibleClip> visibleVideoAt(const Project& project, Ticks time)
         if (clip == track->clips.begin())
             continue;
         --clip; // last clip starting at or before `time`
-        if (time < clip->end())
+        if (time < clip->end() && clip->enabled)
             return VisibleClip{&*track, &*clip, clip->sourceTimeAt(time)};
     }
     return std::nullopt;

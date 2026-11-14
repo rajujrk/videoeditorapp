@@ -591,6 +591,36 @@ light:
 ![Depth of field, dark](images/depth-of-field-dark.png)
 ![Depth of field, light](images/depth-of-field-light.png)
 
+Timeline handling: a clip turned off is drawn at 40 % with "Off ·" first in its label; a
+placeholder is a grey card with a dashed edge and a play mark, "Placeholder ·" in its label. The
+skim line is 1 px in `warning` under the playhead. The clip menu groups the new entries after the
+trims (Extend; Turn off, Replace with, Match frame, Rotate and flip), their keys right-aligned as
+elsewhere. Auto ripple (the magnet) and skimming are checkable `IconButton`s on the timeline's
+toolbar; loop sits with the transport. Dark and light:
+
+![Timeline handling, dark](images/timeline-handling-dark.png)
+![Timeline handling, light](images/timeline-handling-light.png)
+
+The frame border is a 1 px line in white at 35 % round the canvas, over the picture. The edge a
+picture reaches turns `accent` and 2 px, shaking ±2.5 px over 160 ms; the selection frame keeps its
+own look. Dark and light, a picture moved onto the left edge:
+
+![Frame border, dark](images/frame-border-dark.png)
+![Frame border, light](images/frame-border-light.png)
+
+The recorder's Entire screen / A window / An area are three `TextButton`s sharing a row, the chosen
+one `primary`, each with its icon (`display`, `window`, `region`); an area shows its size and a
+`secondary` Change… button. The area picker dims the display with black at 50 % but for the area,
+drawn with a 2 px `accent` edge and eight white handles; its size sits over the top left in
+`mono` on black at 70 %, and its bar (`surfaceRaised`, `radius.l`) under the area holds the quick
+shapes as `ghost` buttons, Cancel `secondary` and Use this area `primary`. While recording, the frame
+is 3 px of `danger` pulsing between 55 % and 100 % every 1.8 s. Dark and light:
+
+![The recorder choosing an area, dark](images/record-panel-dark.png)
+![The recorder choosing an area, light](images/record-panel-light.png)
+![The area picker, dark](images/record-area-dark.png)
+![The area picker, light](images/record-area-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.
@@ -770,7 +800,7 @@ The app in Tamil: the Home screen with the Language menu at the foot of the rail
 
 ### Icons
 
-72 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+79 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.

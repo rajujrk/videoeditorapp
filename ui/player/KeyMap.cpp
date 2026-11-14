@@ -92,6 +92,11 @@ KeyMap::KeyMap(QObject* parent) : QObject(parent)
     add("markIn", QT_TRANSLATE_NOOP("KeyMap", "Mark In"), "Playback", {QStringLiteral("I")});
     add("markOut", QT_TRANSLATE_NOOP("KeyMap", "Mark Out"), "Playback", {QStringLiteral("O")});
     add("clearMarks", QT_TRANSLATE_NOOP("KeyMap", "Clear In and Out"), "Playback", {QStringLiteral("Alt+X")});
+    add("previousEdit", QT_TRANSLATE_NOOP("KeyMap", "Previous edit"), "Playback", {QStringLiteral("Up")});
+    add("nextEdit", QT_TRANSLATE_NOOP("KeyMap", "Next edit"), "Playback", {QStringLiteral("Down")});
+    add("loop", QT_TRANSLATE_NOOP("KeyMap", "Loop playback"), "Playback", {QStringLiteral("Ctrl+L")});
+    add("skimming", QT_TRANSLATE_NOOP("KeyMap", "Skimming"), "Playback", {QStringLiteral("Shift+S")});
+    add("matchFrame", QT_TRANSLATE_NOOP("KeyMap", "Match frame"), "Playback", {QStringLiteral("Shift+F")});
     add("split", QT_TRANSLATE_NOOP("KeyMap", "Split at the playhead"), "Editing", {QStringLiteral("S")});
     add("blade", QT_TRANSLATE_NOOP("KeyMap", "Blade tool (click clips to cut them)"), "Editing", {QStringLiteral("B")});
     add("selectTool", QT_TRANSLATE_NOOP("KeyMap", "Select tool"), "Editing", {QStringLiteral("V")});
@@ -104,6 +109,11 @@ KeyMap::KeyMap(QObject* parent) : QObject(parent)
     add("duplicate", QT_TRANSLATE_NOOP("KeyMap", "Duplicate"), "Editing", {QStringLiteral("Ctrl+D")});
     add("pasteAttributes", QT_TRANSLATE_NOOP("KeyMap", "Paste attributes"), "Editing", {QStringLiteral("Ctrl+Shift+V")});
     add("selectAll", QT_TRANSLATE_NOOP("KeyMap", "Select every clip"), "Editing", {QStringLiteral("Ctrl+A")});
+    add("selectForward", QT_TRANSLATE_NOOP("KeyMap", "Select from the playhead on"), "Editing", {QStringLiteral("Alt+Shift+Right")});
+    add("selectBackward", QT_TRANSLATE_NOOP("KeyMap", "Select up to the playhead"), "Editing", {QStringLiteral("Alt+Shift+Left")});
+    add("extendEdit", QT_TRANSLATE_NOOP("KeyMap", "Extend the edit to the playhead"), "Editing", {QStringLiteral("Shift+X")});
+    add("toggleClip", QT_TRANSLATE_NOOP("KeyMap", "Turn the clip off or on"), "Editing", {QStringLiteral("Shift+E")});
+    add("defaultTransition", QT_TRANSLATE_NOOP("KeyMap", "Add the default transition"), "Editing", {QStringLiteral("Ctrl+T")});
     add("undo", QT_TRANSLATE_NOOP("KeyMap", "Undo"), "Editing", {QStringLiteral("Ctrl+Z")});
     add("redo", QT_TRANSLATE_NOOP("KeyMap", "Redo"), "Editing", {QStringLiteral("Ctrl+Shift+Z")});
     add("addMarker", QT_TRANSLATE_NOOP("KeyMap", "Add a marker"), "Structure", {QStringLiteral("M")});

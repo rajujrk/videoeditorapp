@@ -90,7 +90,7 @@ bool carriesSound(const Track& track)
 
 bool isAudible(const Project& project, const Track& track, const Clip& clip)
 {
-    if (track.muted || !carriesSound(track))
+    if (track.muted || !carriesSound(track) || !clip.enabled)
         return false;
     if (track.kind == TrackKind::Video && !clip.audioEnabled)
         return false;

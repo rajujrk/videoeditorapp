@@ -89,12 +89,13 @@ Item {
             compare(layer.height, 720)
             verify(layer.drawing)
             compare(layer.flags & Qt.WindowTransparentForInput, 0)
-            // Its controls are left out of the recording; the drawing is not.
+            // Its controls are left out of the recording, as is the frame marking what is
+            // recorded; the drawing is not.
             const bar = layer.controls
             tryVerify(() => bar.visible)
             const out = p.recordingExclusions()
-            compare(out.length, 1)
-            verify(out[0] > 0)
+            compare(out.length, 2)
+            verify(out.every((n) => n > 0))
 
             // A red stroke, there where it was drawn; gone a few seconds later.
             stroke(layer, 100, 100, 300, 200)

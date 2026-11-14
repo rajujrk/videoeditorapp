@@ -4628,6 +4628,26 @@ Third, 4</source>
         <translation>தொடக்க, முடிவுக் குறிகளை அழி</translation>
     </message>
     <message>
+        <source>Previous edit</source>
+        <translation>முந்தைய வெட்டு</translation>
+    </message>
+    <message>
+        <source>Next edit</source>
+        <translation>அடுத்த வெட்டு</translation>
+    </message>
+    <message>
+        <source>Loop playback</source>
+        <translation>சுழற்சியாக இயக்கு</translation>
+    </message>
+    <message>
+        <source>Skimming</source>
+        <translation>மேலோட்டமாகப் பார்த்தல்</translation>
+    </message>
+    <message>
+        <source>Match frame</source>
+        <translation>அதே சட்டகம்</translation>
+    </message>
+    <message>
         <source>Split at the playhead</source>
         <translation>இயக்கக்குறியில் பிரி</translation>
     </message>
@@ -4670,6 +4690,26 @@ Third, 4</source>
     <message>
         <source>Select every clip</source>
         <translation>எல்லாக் கிளிப்புகளையும் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Select from the playhead on</source>
+        <translation>இயக்கக்குறியிலிருந்து தொடர்வதைத் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Select up to the playhead</source>
+        <translation>இயக்கக்குறி வரை உள்ளதைத் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Extend the edit to the playhead</source>
+        <translation>வெட்டை இயக்கக்குறி வரை நீட்டு</translation>
+    </message>
+    <message>
+        <source>Turn the clip off or on</source>
+        <translation>கிளிப்பை அணை அல்லது இயக்கு</translation>
+    </message>
+    <message>
+        <source>Add the default transition</source>
+        <translation>இயல்பு மாற்றத்தைச் சேர்</translation>
     </message>
     <message>
         <source>Undo</source>
@@ -5016,6 +5056,18 @@ Third, 4</source>
         <translation>கிளிப்புகளுக்கு இடையிலான ஒவ்வொரு வெட்டிலும் வெவ்வேறு சீரற்ற மாற்றத்தை வை</translation>
     </message>
     <message>
+        <source>New ones last</source>
+        <translation>புதியவற்றின் நீளம்</translation>
+    </message>
+    <message>
+        <source>Seconds, from 0.1 to 10</source>
+        <translation>விநாடிகள், 0.1 முதல் 10 வரை</translation>
+    </message>
+    <message>
+        <source>s</source>
+        <translation>வி</translation>
+    </message>
+    <message>
         <source>%1 — click to add at the playhead</source>
         <translation>%1 — இயக்கக்குறியில் சேர்க்க கிளிக் செய்யவும்</translation>
     </message>
@@ -5052,12 +5104,20 @@ Third, 4</source>
         <translation>இயக்கக்குறியில் சேர்க்க கிளிக் செய்யவும், அல்லது ஒரு டிராக்குக்கு இழுக்கவும்</translation>
     </message>
     <message>
-        <source>Click to lay it over the cut nearest the playhead, on a track above</source>
-        <translation>இயக்கக்குறிக்கு அருகிலுள்ள வெட்டின் மேல், மேலே ஒரு டிராக்கில் வைக்க கிளிக் செய்யவும்</translation>
+        <source>Default</source>
+        <translation>இயல்பு</translation>
     </message>
     <message>
-        <source>Click to add at the cut nearest the playhead, or drag onto a cut</source>
-        <translation>இயக்கக்குறிக்கு அருகிலுள்ள வெட்டில் சேர்க்க கிளிக் செய்யவும், அல்லது ஒரு வெட்டுக்கு இழுக்கவும்</translation>
+        <source>Make it the default</source>
+        <translation>இதை இயல்பாக்கு</translation>
+    </message>
+    <message>
+        <source>Put it on every cut</source>
+        <translation>ஒவ்வொரு வெட்டிலும் இடு</translation>
+    </message>
+    <message>
+        <source>Click to lay it over the cut nearest the playhead, on a track above</source>
+        <translation>இயக்கக்குறிக்கு அருகிலுள்ள வெட்டின் மேல், மேலே ஒரு டிராக்கில் வைக்க கிளிக் செய்யவும்</translation>
     </message>
     <message>
         <source>Missing</source>
@@ -5198,6 +5258,10 @@ Third, 4</source>
     <message>
         <source>AI</source>
         <translation>AI</translation>
+    </message>
+    <message>
+        <source>Click to add at the cut nearest the playhead, or drag onto a cut; right-click to make it the default</source>
+        <translation>இயக்கக்குறிக்கு அருகிலுள்ள வெட்டில் சேர்க்கச் சொடுக்கவும், அல்லது ஒரு வெட்டின் மீது இழுக்கவும்; இயல்பாக்க வலது சொடுக்கு செய்யவும்</translation>
     </message>
     <message>
         <source>Double-click to add to the timeline (⌥: open in the source monitor), drag onto a track or the player, or right-click for more</source>
@@ -5685,6 +5749,10 @@ Third, 4</source>
         <translation>முடிவுக்குறி இடு</translation>
     </message>
     <message>
+        <source>Loop: play round again from the start (of In to Out, when marked)</source>
+        <translation>சுழற்சி: தொடக்கத்திலிருந்து மீண்டும் இயக்கு (குறிக்கப்பட்டிருந்தால் In முதல் Out வரை)</translation>
+    </message>
+    <message>
         <source>Snapshot: the frame at the playhead as a picture, into the media library</source>
         <translation>ஸ்னாப்ஷாட்: இயக்கக்குறியில் உள்ள ஃப்ரேம் ஒரு படமாக, மீடியா நூலகத்துக்குள்</translation>
     </message>
@@ -5733,8 +5801,8 @@ Third, 4</source>
         <translation>இயக்கப் புள்ளிவிவரங்கள்</translation>
     </message>
     <message>
-        <source>Guides: thirds, centre lines, safe areas and rulers (shown here only, never exported)</source>
-        <translation>வழிகாட்டிகள்: மூன்றில் ஒரு பங்குக் கோடுகள், மையக் கோடுகள், பாதுகாப்புப் பகுதிகள், அளவுகோல்கள் (இங்கே மட்டும் காட்டப்படும், ஏற்றுமதியில் இல்லை)</translation>
+        <source>Guides: thirds, centre lines, safe areas, rulers and the frame border (shown here only, never exported)</source>
+        <translation>வழிகாட்டிகள்: மூன்றில் ஒரு பங்குகள், நடுக்கோடுகள், பாதுகாப்புப் பகுதிகள், அளவுகோல்கள் மற்றும் சட்டக எல்லை (இங்கு மட்டும் காட்டப்படும், ஏற்றுமதியாகாது)</translation>
     </message>
     <message>
         <source>Rule of thirds</source>
@@ -5751,6 +5819,14 @@ Third, 4</source>
     <message>
         <source>Rulers</source>
         <translation>அளவுகோல்கள்</translation>
+    </message>
+    <message>
+        <source>Frame border</source>
+        <translation>சட்டக எல்லை</translation>
+    </message>
+    <message>
+        <source>Snap pictures to the border</source>
+        <translation>படங்களை எல்லையில் ஒட்டவை</translation>
     </message>
     <message>
         <source>Fit</source>
@@ -6623,6 +6699,34 @@ Third, 4</source>
         <translation>இயல்பான வேகத்தில் இயங்கும் கிளிப்புகளில் மட்டுமே பகுப்பாய்வு செயல்படும்</translation>
     </message>
     <message>
+        <source>The new media is shorter, so the clip is shorter too</source>
+        <translation>புதிய ஊடகம் சிறியது, அதனால் கிளிப்பும் சிறியதாகிறது</translation>
+    </message>
+    <message>
+        <source>Placeholder</source>
+        <translation>இடம்பிடிப்பு</translation>
+    </message>
+    <message>
+        <source>The placeholder could not be drawn</source>
+        <translation>இடம்பிடிப்பை வரைய முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>There is no clip to extend</source>
+        <translation>நீட்டுவதற்கு எந்தக் கிளிப்பும் இல்லை</translation>
+    </message>
+    <message>
+        <source>Put the playhead over a clip of media</source>
+        <translation>இயக்கக்குறியை ஒரு ஊடகக் கிளிப்பின் மீது வைக்கவும்</translation>
+    </message>
+    <message>
+        <source>There are no transitions to delete</source>
+        <translation>நீக்குவதற்கு மாற்றங்கள் எதுவும் இல்லை</translation>
+    </message>
+    <message>
+        <source>There are no markers to delete</source>
+        <translation>நீக்குவதற்கு குறிப்பான்கள் எதுவும் இல்லை</translation>
+    </message>
+    <message>
         <source>Analysis failed: %1</source>
         <translation>பகுப்பாய்வு தோல்வியடைந்தது: %1</translation>
     </message>
@@ -7105,8 +7209,36 @@ Third, 4</source>
         <translation>திரை</translation>
     </message>
     <message>
+        <source>Entire screen</source>
+        <translation>முழுத் திரை</translation>
+    </message>
+    <message>
+        <source>A window</source>
+        <translation>ஒரு சாளரம்</translation>
+    </message>
+    <message>
+        <source>An area</source>
+        <translation>ஒரு பகுதி</translation>
+    </message>
+    <message>
         <source>No screen</source>
         <translation>திரை இல்லை</translation>
+    </message>
+    <message>
+        <source>%1 × %2 points of the display</source>
+        <translation>திரையின் %1 × %2 புள்ளிகள்</translation>
+    </message>
+    <message>
+        <source>No area chosen yet</source>
+        <translation>இன்னும் எந்தப் பகுதியும் தேர்ந்தெடுக்கப்படவில்லை</translation>
+    </message>
+    <message>
+        <source>Change…</source>
+        <translation>மாற்று…</translation>
+    </message>
+    <message>
+        <source>Choose…</source>
+        <translation>தேர்ந்தெடு…</translation>
     </message>
     <message>
         <source>System sound</source>
@@ -7171,6 +7303,13 @@ Third, 4</source>
     <message>
         <source>Stop</source>
         <translation>நிறுத்து</translation>
+    </message>
+</context>
+<context>
+    <name>RecordingFrame</name>
+    <message>
+        <source>Recording</source>
+        <translation>பதிவாகிறது</translation>
     </message>
 </context>
 <context>
@@ -7328,6 +7467,25 @@ Third, 4</source>
     <message>
         <source>Save template</source>
         <translation>டெம்ப்ளேட்டைச் சேமி</translation>
+    </message>
+</context>
+<context>
+    <name>ScreenAreaPicker</name>
+    <message>
+        <source>Choose the area to record</source>
+        <translation>பதிவு செய்ய வேண்டிய பகுதியைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Whole display</source>
+        <translation>முழுத் திரை</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>ரத்துசெய்</translation>
+    </message>
+    <message>
+        <source>Use this area</source>
+        <translation>இந்தப் பகுதியைப் பயன்படுத்து</translation>
     </message>
 </context>
 <context>
@@ -8016,6 +8174,50 @@ It scrolls while you record, at the speed you set. Keep your eyes on the line by
         <translation>முடிவை இயக்கக்குறி வரை வெட்டு</translation>
     </message>
     <message>
+        <source>Extend the nearer edge to the playhead</source>
+        <translation>அருகிலுள்ள விளிம்பை இயக்கக்குறி வரை நீட்டு</translation>
+    </message>
+    <message>
+        <source>Turn on</source>
+        <translation>இயக்கு</translation>
+    </message>
+    <message>
+        <source>Turn off</source>
+        <translation>அணை</translation>
+    </message>
+    <message>
+        <source>Replace with</source>
+        <translation>இதனால் மாற்று</translation>
+    </message>
+    <message>
+        <source>Match frame (open the media here)</source>
+        <translation>அதே சட்டகம் (ஊடகத்தை இங்கே திற)</translation>
+    </message>
+    <message>
+        <source>Rotate and flip</source>
+        <translation>சுழற்று மற்றும் புரட்டு</translation>
+    </message>
+    <message>
+        <source>Rotate 90° clockwise</source>
+        <translation>கடிகாரத் திசையில் 90° சுழற்று</translation>
+    </message>
+    <message>
+        <source>Rotate 90° anticlockwise</source>
+        <translation>கடிகார எதிர்த் திசையில் 90° சுழற்று</translation>
+    </message>
+    <message>
+        <source>Rotate 180°</source>
+        <translation>180° சுழற்று</translation>
+    </message>
+    <message>
+        <source>Flip left to right</source>
+        <translation>இடமிருந்து வலமாகப் புரட்டு</translation>
+    </message>
+    <message>
+        <source>Flip upside down</source>
+        <translation>தலைகீழாகப் புரட்டு</translation>
+    </message>
+    <message>
         <source>Detach audio</source>
         <translation>ஒலியைப் பிரி</translation>
     </message>
@@ -8108,12 +8310,28 @@ It scrolls while you record, at the speed you set. Keep your eyes on the line by
         <translation>மறுபெயரிடு…</translation>
     </message>
     <message>
+        <source>Move up</source>
+        <translation>மேலே நகர்த்து</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>கீழே நகர்த்து</translation>
+    </message>
+    <message>
         <source>Unlock</source>
         <translation>பூட்டைத் திற</translation>
     </message>
     <message>
         <source>Lock</source>
         <translation>பூட்டு</translation>
+    </message>
+    <message>
+        <source>Lock every track</source>
+        <translation>எல்லாத் தடங்களையும் பூட்டு</translation>
+    </message>
+    <message>
+        <source>Unlock every track</source>
+        <translation>எல்லாத் தடங்களையும் திற</translation>
     </message>
     <message>
         <source>Show</source>
@@ -8156,6 +8374,10 @@ It scrolls while you record, at the speed you set. Keep your eyes on the line by
         <translation>இங்கே ஒரு நிறக் கிளிப்பைச் சேர்</translation>
     </message>
     <message>
+        <source>Add a placeholder here</source>
+        <translation>இங்கே ஒரு இடம்பிடிப்பைச் சேர்</translation>
+    </message>
+    <message>
         <source>Close this gap</source>
         <translation>இந்த இடைவெளியை மூடு</translation>
     </message>
@@ -8178,6 +8400,46 @@ It scrolls while you record, at the speed you set. Keep your eyes on the line by
     <message>
         <source>Select every clip</source>
         <translation>எல்லாக் கிளிப்புகளையும் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Select from the playhead on</source>
+        <translation>இயக்கக்குறியிலிருந்து தொடர்வதைத் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Select up to the playhead</source>
+        <translation>இயக்கக்குறி வரை உள்ளதைத் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Delete every transition…</source>
+        <translation>எல்லா மாற்றங்களையும் நீக்கு…</translation>
+    </message>
+    <message>
+        <source>Delete every transition?</source>
+        <translation>எல்லா மாற்றங்களையும் நீக்கவா?</translation>
+    </message>
+    <message>
+        <source>Every cut becomes a straight cut. You can undo this.</source>
+        <translation>ஒவ்வொரு வெட்டும் நேரடி வெட்டாகும். இதைச் செயல்தவிர்க்கலாம்.</translation>
+    </message>
+    <message>
+        <source>Delete transitions</source>
+        <translation>மாற்றங்களை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Delete every marker…</source>
+        <translation>எல்லாக் குறிப்பான்களையும் நீக்கு…</translation>
+    </message>
+    <message>
+        <source>Delete every marker?</source>
+        <translation>எல்லாக் குறிப்பான்களையும் நீக்கவா?</translation>
+    </message>
+    <message>
+        <source>Chapters made from them go too. You can undo this.</source>
+        <translation>அவற்றிலிருந்து உருவான அத்தியாயங்களும் நீங்கும். இதைச் செயல்தவிர்க்கலாம்.</translation>
+    </message>
+    <message>
+        <source>Delete markers</source>
+        <translation>குறிப்பான்களை நீக்கு</translation>
     </message>
     <message>
         <source>Track height</source>
@@ -8267,12 +8529,24 @@ It scrolls while you record, at the speed you set. Keep your eyes on the line by
         <translation>தேர்ந்தெடுத்த மாற்றத்தை அகற்று</translation>
     </message>
     <message>
+        <source>Delete selected clip%1 — closes the gap</source>
+        <translation>தேர்ந்தெடுத்த கிளிப்பை நீக்கு%1 — இடைவெளியை மூடும்</translation>
+    </message>
+    <message>
         <source>Delete selected clip%1 — closes the gap on the main track</source>
         <translation>தேர்ந்தெடுத்த கிளிப்பை நீக்கு%1 — முதன்மை டிராக்கில் இடைவெளியை மூடும்</translation>
     </message>
     <message>
-        <source>Main track closes gaps on delete</source>
-        <translation>நீக்கும்போது முதன்மை டிராக் இடைவெளிகளை மூடும்</translation>
+        <source>Auto ripple: deleting closes the gap on every track (on)</source>
+        <translation>தானியங்கி நகர்வு: நீக்கும்போது ஒவ்வொரு தடத்திலும் இடைவெளி மூடப்படும் (இயக்கத்தில்)</translation>
+    </message>
+    <message>
+        <source>Auto ripple: deleting closes the gap on every track, not only the main one</source>
+        <translation>தானியங்கி நகர்வு: நீக்கும்போது முதன்மைத் தடத்தில் மட்டுமல்ல, ஒவ்வொரு தடத்திலும் இடைவெளி மூடப்படும்</translation>
+    </message>
+    <message>
+        <source>Skimming: the player shows the frame under the pointer as it moves over the timeline</source>
+        <translation>மேலோட்டமாகப் பார்த்தல்: சுட்டி காலவரிசையின் மீது நகரும்போது அதன் கீழுள்ள சட்டகத்தை இயக்கி காட்டும்</translation>
     </message>
     <message>
         <source>Snapping</source>
@@ -8449,6 +8723,14 @@ It scrolls while you record, at the speed you set. Keep your eyes on the line by
     <message>
         <source>Done</source>
         <translation>முடிந்தது</translation>
+    </message>
+    <message>
+        <source>Off · </source>
+        <translation>அணைப்பு · </translation>
+    </message>
+    <message>
+        <source>Placeholder · </source>
+        <translation>இடம்பிடிப்பு · </translation>
     </message>
     <message>
         <source>Missing · </source>
@@ -12231,6 +12513,62 @@ The Journey</source>
         <translation>லென்ஸ் திருத்தம்</translation>
     </message>
     <message>
+        <source>Replace Media</source>
+        <translation>ஊடகத்தை மாற்று</translation>
+    </message>
+    <message>
+        <source>Turn Clip On</source>
+        <translation>கிளிப்பை இயக்கு</translation>
+    </message>
+    <message>
+        <source>Turn Clip Off</source>
+        <translation>கிளிப்பை அணை</translation>
+    </message>
+    <message>
+        <source>Add Placeholder</source>
+        <translation>இடம்பிடிப்பைச் சேர்</translation>
+    </message>
+    <message>
+        <source>Extend Edit</source>
+        <translation>வெட்டை நீட்டு</translation>
+    </message>
+    <message>
+        <source>Move Track Up</source>
+        <translation>தடத்தை மேலே நகர்த்து</translation>
+    </message>
+    <message>
+        <source>Move Track Down</source>
+        <translation>தடத்தைக் கீழே நகர்த்து</translation>
+    </message>
+    <message>
+        <source>Lock Every Track</source>
+        <translation>எல்லாத் தடங்களையும் பூட்டு</translation>
+    </message>
+    <message>
+        <source>Unlock Every Track</source>
+        <translation>எல்லாத் தடங்களையும் திற</translation>
+    </message>
+    <message>
+        <source>Delete Every Transition</source>
+        <translation>எல்லா மாற்றங்களையும் நீக்கு</translation>
+    </message>
+    <message>
+        <source>Delete Every Marker</source>
+        <translation>எல்லாக் குறிப்பான்களையும் நீக்கு</translation>
+    </message>
+    <message>
+        <source>Rotate</source>
+        <translation>சுழற்று</translation>
+    </message>
+    <message>
+        <source>Flip Horizontally</source>
+        <translation>கிடைமட்டமாகப் புரட்டு</translation>
+    </message>
+    <message>
+        <source>Flip Vertically</source>
+        <translation>செங்குத்தாகப் புரட்டு</translation>
+    </message>
+    <message>
         <source>Ramp up</source>
         <translation>வேகமாக்கு</translation>
     </message>
@@ -12293,6 +12631,10 @@ The Journey</source>
     <message>
         <source>Cutouts, covered faces, beauty, night view, depth of field, stabilization, denoise and cursor effects</source>
         <translation>வெட்டியெடுப்புகள், மறைக்கப்பட்ட முகங்கள், அழகுபடுத்தல், இரவுக் காட்சி, புல ஆழம், நிலைப்படுத்தல், இரைச்சல் நீக்கம் மற்றும் கர்சர் விளைவுகள்</translation>
+    </message>
+    <message>
+        <source>Clips turned off (they come turned on)</source>
+        <translation>அணைக்கப்பட்ட கிளிப்புகள் (அவை இயக்கத்தில் வரும்)</translation>
     </message>
     <message>
         <source>Clip volume and fades</source>
@@ -13229,6 +13571,70 @@ The Journey</source>
     <message>
         <source>The depth model could not be loaded.</source>
         <translation>ஆழ மாதிரியை ஏற்ற முடியவில்லை.</translation>
+    </message>
+    <message>
+        <source>Select a clip</source>
+        <translation>ஒரு கிளிப்பைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>The clip&apos;s track is locked</source>
+        <translation>கிளிப்பின் தடம் பூட்டப்பட்டுள்ளது</translation>
+    </message>
+    <message>
+        <source>Only a clip of media can play other media</source>
+        <translation>ஊடகக் கிளிப் மட்டுமே வேறு ஊடகத்தை இயக்க முடியும்</translation>
+    </message>
+    <message>
+        <source>That media is not in the project</source>
+        <translation>அந்த ஊடகம் திட்டத்தில் இல்லை</translation>
+    </message>
+    <message>
+        <source>That media has no sound for an audio track</source>
+        <translation>ஒலித் தடத்திற்கு அந்த ஊடகத்தில் ஒலி இல்லை</translation>
+    </message>
+    <message>
+        <source>Sound-only media goes on an audio track</source>
+        <translation>ஒலி மட்டும் உள்ள ஊடகம் ஒலித் தடத்தில் செல்லும்</translation>
+    </message>
+    <message>
+        <source>That media is too short</source>
+        <translation>அந்த ஊடகம் மிகவும் சிறியது</translation>
+    </message>
+    <message>
+        <source>That would leave the clip empty</source>
+        <translation>அது கிளிப்பை வெறுமையாக்கிவிடும்</translation>
+    </message>
+    <message>
+        <source>That would leave the next clip empty</source>
+        <translation>அது அடுத்த கிளிப்பை வெறுமையாக்கிவிடும்</translation>
+    </message>
+    <message>
+        <source>There is no more of the media there</source>
+        <translation>அங்கே ஊடகம் மேலும் இல்லை</translation>
+    </message>
+    <message>
+        <source>There is another clip in the way</source>
+        <translation>வழியில் வேறொரு கிளிப் உள்ளது</translation>
+    </message>
+    <message>
+        <source>That track is not on the timeline</source>
+        <translation>அந்தத் தடம் காலவரிசையில் இல்லை</translation>
+    </message>
+    <message>
+        <source>The track is at the top already</source>
+        <translation>தடம் ஏற்கனவே மேலே உள்ளது</translation>
+    </message>
+    <message>
+        <source>The track is at the bottom already</source>
+        <translation>தடம் ஏற்கனவே கீழே உள்ளது</translation>
+    </message>
+    <message>
+        <source>Select a picture to turn</source>
+        <translation>சுழற்ற ஒரு படத்தைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Select a picture to flip</source>
+        <translation>புரட்ட ஒரு படத்தைத் தேர்ந்தெடுக்கவும்</translation>
     </message>
 </context>
 </TS>

@@ -62,7 +62,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(BlendMode, {
     {BlendMode::Darken, "darken"},
     {BlendMode::Lighten, "lighten"},
 })
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipTransform, x, y, scale, rotation, anchorX, anchorY)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipTransform, x, y, scale, rotation, anchorX, anchorY, flipH, flipV)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipCrop, left, top, right, bottom)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipSphereView, yaw, pitch, roll, fov)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ClipCornerPin, topLeftX, topLeftY, topRightX, topRightY, bottomRightX,
@@ -313,7 +313,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, durati
                                                 transitionIn, text, keyframes, speedRamp, color, look, adjustment,
                                                 chromaKey, masks, matte, cutout, faceMosaic, beauty, night, depthOfField,
                                                 stabilization, deflicker, denoise, motionTracks, processedVideo, cursor, audioEffects,
-                                                enhancedAudio, keepPitch, sequenceId, groupId, drawing, angles, motionBlur)
+                                                enhancedAudio, keepPitch, sequenceId, groupId, drawing, angles, motionBlur, enabled)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Track, id, kind, name, locked, hidden, muted, gainDb, pan, solo, captions,
                                                 clips, audioEffects)
 NLOHMANN_JSON_SERIALIZE_ENUM(MarkerColor, {

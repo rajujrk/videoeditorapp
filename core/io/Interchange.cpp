@@ -45,6 +45,8 @@ void noteClip(const Clip& clip, const MediaItem* media, bool videoTrack, Notes& 
             || clip.denoise > 0.0 || clip.cursor.shows() || clip.processedVideo)
             notes.add(TVE_TR("core", "Cutouts, covered faces, beauty, night view, depth of field, stabilization, denoise and cursor effects"));
     }
+    if (!clip.enabled)
+        notes.add(TVE_TR("core", "Clips turned off (they come turned on)"));
     if (clip.gainDb != 0.0f || clip.fadeIn > 0 || clip.fadeOut > 0)
         notes.add(TVE_TR("core", "Clip volume and fades"));
     if (!clip.audioEffects.empty() || clip.enhancedAudio)

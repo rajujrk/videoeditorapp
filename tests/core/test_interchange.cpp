@@ -371,3 +371,12 @@ TEST_CASE("interchange formats by extension")
     CHECK(interchange::pathFromUrl("file://localhost/a%20b/c.mov", "") == "/a b/c.mov");
     CHECK(interchange::fileUrl("/a b/ü.mov") == "file:///a%20b/%C3%BC.mov");
 }
+
+TEST_CASE("a clip turned off is noted: other editors get it turned on")
+{
+    Project p = sample();
+    p.tracks[1].clips[0].enabled = false;
+    const ExportedTimeline out = exportTimeline(p, InterchangeFormat::Otio, "Sample");
+    CHECK(mentions(out.notes, "Clips turned off (they come turned on) — 1 clip"));
+    CHECK_FALSE(mentions(exportTimeline(sample(), InterchangeFormat::Otio, "Sample").notes, "turned off"));
+}

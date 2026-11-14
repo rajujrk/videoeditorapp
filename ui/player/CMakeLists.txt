@@ -32,6 +32,8 @@ qt_add_qml_module(tve_player
         Favourites.cpp
         Workspaces.h
         Workspaces.cpp
+        EditingPreferences.h
+        EditingPreferences.cpp
         SpeechModels.h
         SpeechModels.cpp
         SoundLibrary.h

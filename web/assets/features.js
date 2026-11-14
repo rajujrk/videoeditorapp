@@ -118,6 +118,58 @@ window.TVE = {
       steps: ["Copy a clip (⌘C).", "Select the clips to change and press ⇧⌘V.", "Choose position and size, colour, effects, keying, sound or speed, and paste."],
       keys: ["⇧⌘V"]
     },
+    {
+      id: "replace-media", title: "Replace a clip's media", chapter: "edit", area: "menus", focus: [52, 20, 48, 50],
+      where: ["Right-click a clip", "Replace with"], image: "timeline-handling",
+      summary: "Swap in other media while the clip keeps its place, length, speed, look, effects, keyframes and transition.",
+      steps: ["Right-click the clip and open Replace with.", "Pick a picture (or, on a sound track, a sound) from the project.", "If the new media is shorter, the clip shortens to fit; ⌘Z undoes it."]
+    },
+    {
+      id: "clip-off", title: "Turn clips off, and placeholders", chapter: "edit", area: "timeline", focus: [0, 60, 60, 40],
+      where: ["Right-click a clip", "Turn off"], image: "timeline-handling",
+      summary: "Hide a clip without deleting it: it stays in place, faded and marked Off, but is neither seen, heard nor exported. Placeholders stand in for shots you have not got yet.",
+      steps: ["Select a clip and press ⇧E, or right-click it and choose Turn off (Turn on brings it back).", "Right-click empty timeline space and choose Add a placeholder here for a five-second grey stand-in.", "Later, right-click the placeholder and use Replace with to put the real shot in its place."],
+      keys: ["⇧E"]
+    },
+    {
+      id: "edit-navigation", title: "Extend edits, jump between them, select from the playhead", chapter: "edit", area: "timeline", focus: [0, 60, 60, 40],
+      where: ["Timeline", "Keys and right-click menus"], image: "timeline-handling",
+      summary: "Move the nearer edge of a clip to the playhead, step from cut to cut, and select everything after or before the playhead.",
+      steps: ["Select a clip, put the playhead where its edge should be and press ⇧X; when another clip touches that edge, the cut rolls.", "Press ↓ for the next edit and ↑ for the previous one.", "Press ⌥⇧→ to select every clip from the playhead on, ⌥⇧← for those before it."],
+      keys: ["⇧X", "↓", "↑", "⌥⇧→", "⌥⇧←"]
+    },
+    {
+      id: "match-frame", title: "Match frame", chapter: "edit", area: "menus", focus: [52, 20, 48, 50],
+      where: ["Right-click a clip", "Match frame"], image: "timeline-handling",
+      summary: "Open the media under the playhead in the source monitor at exactly the same frame, to take more of it.",
+      steps: ["Put the playhead over a clip.", "Press ⇧F, or right-click the clip and choose Match frame.", "The source monitor opens at that frame; mark In and Out and place it as usual."],
+      keys: ["⇧F"]
+    },
+    {
+      id: "auto-ripple", title: "Auto ripple and track handling", chapter: "edit", area: "timeline", focus: [0, 60, 60, 40],
+      where: ["Timeline", "Toolbar", "Magnet"], image: "timeline-handling",
+      summary: "Make deleting close the gap on every track, move tracks up and down, lock them all at once, and clear every transition or marker.",
+      steps: ["Click the magnet in the timeline toolbar to turn auto ripple on or off.", "Right-click a track header for Move up, Move down, Lock every track and Unlock every track.", "Right-click empty timeline space for Delete every transition… or Delete every marker… (it asks first)."]
+    },
+    {
+      id: "rotate-flip", title: "Rotate and flip", chapter: "motion", area: "menus", focus: [52, 20, 48, 50],
+      where: ["Right-click a clip", "Rotate and flip"], image: "timeline-handling",
+      summary: "Turn a picture by right angles, or mirror it left to right or upside down.",
+      steps: ["Right-click a video or picture clip and open Rotate and flip.", "Choose Rotate 90° clockwise, anticlockwise or 180°; its rotation keyframes turn with it.", "Choose Flip left to right or Flip upside down; choose it again to undo the flip."]
+    },
+    {
+      id: "frame-border", title: "Frame border and snapping", chapter: "motion", area: "player",
+      where: ["Player", "Guides", "Frame border"], image: "frame-border",
+      summary: "A thin line round what is exported. Pictures you move or scale snap to it, and the edge they reach lights up with a little shake and a tap on a Force Touch trackpad.",
+      steps: ["Select a clip and drag its picture, or a corner, in the player.", "Near an edge it snaps onto the border; that edge lights up.", "Turn the border or the snapping off in the Guides menu under the player."]
+    },
+    {
+      id: "default-transition", title: "The default transition", chapter: "effects", area: "library",
+      where: ["Library", "Transitions", "Right-click a transition"], image: "transitions",
+      summary: "Choose the transition ⌘T adds, and how long new transitions last.",
+      steps: ["Right-click a transition in the Transitions tab and choose Make it the default; it shows a Default badge.", "Set New ones last (0.1 to 10 seconds) at the top of the tab.", "Press ⌘T to put the default on the cut nearest the playhead."],
+      keys: ["⌘T"]
+    },
 
     // ---------- Placement and animation ----------
     {
@@ -411,6 +463,14 @@ window.TVE = {
       steps: ["Click the microphone in the timeline toolbar.", "Pick the microphone and check its level.", "Press the red button; after an optional count-in, recording starts.", "Press it again, or Space, to stop; the take lands where it started."]
     },
 
+    {
+      id: "loop-skim", title: "Loop and skimming", chapter: "speed", area: "player",
+      where: ["Player", "Loop", "and Timeline", "Skimming"], image: "timeline-handling", focus: [20, 0, 62, 70],
+      summary: "Play round and round, or see the frame under the pointer as it moves over the timeline without moving the playhead.",
+      steps: ["Click the loop button in the transport, or press ⌘L; with In and Out marked, it loops between them.", "Click the skimming button in the timeline toolbar, or press ⇧S.", "Move the pointer over the timeline: the player follows it, and goes back to the playhead's frame when the pointer leaves."],
+      keys: ["⌘L", "⇧S"]
+    },
+
     // ---------- Recording ----------
     {
       id: "recording", title: "Record the screen and camera", chapter: "record", area: "timeline",
@@ -430,6 +490,12 @@ window.TVE = {
       where: ["Recorder", "Draw on the screen while recording"], image: "live-drawing",
       summary: "Draw with a pen, highlighter or arrow over the display you are recording; the strokes are recorded too.",
       steps: ["Turn on Draw on the screen while recording, or press Draw during a recording.", "Pick a tool, one of five inks and a width from the small bar.", "D turns drawing on and off, C clears, Esc stops drawing."]
+    },
+    {
+      id: "record-area", title: "Record the entire screen, a window or an area", chapter: "record", area: "timeline", focus: [20, 0, 62, 66],
+      where: ["Recorder", "Entire screen · A window · An area"], image: "record-area",
+      summary: "Choose exactly what to record: a whole display, one window, or a rectangle you draw and size on the display. A red frame marks it while recording, left out of the recording.",
+      steps: ["Open the recorder from the screen button in the timeline toolbar.", "Choose Entire screen, A window (then the window), or An area.", "For an area, drag to move it, drag its edges or corners to size it, or use Whole display, 16:9, 9:16 or 1:1; click Use this area (or press Return).", "Click Record; the red frame shows what is being recorded until you stop."]
     },
 
     // ---------- On your Mac ----------
