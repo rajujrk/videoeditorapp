@@ -96,6 +96,7 @@ The following improvements were completed after Phase 5:
 - Slice 30c: Smart search across what media shows, says and has on screen; Claude proofreading titles and captions, and writing a prompt from a picture.
 - Slice 30d: Music fitted to a length on the Mac, AI transitions made from the frames either side of a cut, and a video from an idea.
 - Slice 30e: Night view for dark shots, and cinematic depth of field from a depth model on the Mac.
+- Slice 31a: Timeline handling — replacing media, clips turned off, placeholders, extend edit, match frame, loop, auto ripple, moving and locking tracks, the default transition, rotate and flip, skimming; a frame border pictures snap to; recording the entire screen, a window or an area.
 
 All previously identified feature gaps have been closed.
 
@@ -109,7 +110,11 @@ All previously identified feature gaps have been closed.
 - Import numbered image sequences as one video, SVG drawings, camera RAW photos and OpenEXR.
 - Arrange media on a multi-track timeline.
 - Move, trim, split and delete clips.
-- Support ripple deletion on the main track.
+- Support ripple deletion on the main track, or on every track with auto ripple.
+- Replace a clip's media in place, turn clips off and on, and stand in for shots with placeholders.
+- Extend an edit to the playhead, jump to the next or previous edit, and select everything after or before the playhead.
+- Move tracks up and down, lock them all, and delete every transition or marker at once.
+- Rotate pictures by right angles and flip them; see the frame's border in the player, pictures snapping to it.
 - Undo and redo editing operations.
 - Layer clips with support for position, scale, rotation, crop, opacity and blend modes.
 - Animate clip properties using keyframes, including volume.
@@ -169,6 +174,7 @@ All previously identified feature gaps have been closed.
 - Create speed ramps.
 - Play clips in reverse.
 - Insert freeze frames.
+- Loop playback, skim the timeline with the pointer, and match a frame to its media.
 
 ### 2.8 Audio Editing and Mixing
 
@@ -183,6 +189,7 @@ All previously identified feature gaps have been closed.
 - Read your script from a teleprompter while recording.
 - Blur or remove the camera's background when recording.
 - Draw on the screen while recording it.
+- Record the entire screen, one window, or an area drawn and sized on the display, marked by a frame while recording.
 
 ### 2.9 Media Management and Preview
 
@@ -493,6 +500,40 @@ after, each ticked to apply: **Apply** changes the chosen ones as one undo step 
 keep their timing), and nothing changes before. **Describe the frame** (Generate tab) sends the frame
 at the playhead to Claude, which writes a prompt to make a picture, a sticker or a video like it,
 into the prompt box. Labels are Vision's English names whatever the app's language.
+
+**Timeline handling.** A clip's right-click menu offers **Replace with** (any picture, or any
+sound on a sound track, from the project): the clip keeps its place, length, speed, look, effects,
+keyframes and transition, from the same point of the new media where it is long enough, and
+shortens when the new media is shorter. **Turn off** (⇧E) leaves a clip in place, faded on the
+timeline and marked "Off", but neither seen nor heard (nor exported) until turned on again. **Add a
+placeholder here** (the lane's menu) puts a grey stand-in picture of five seconds to replace later.
+**Extend the nearer edge to the playhead** (⇧X) moves the selected clip's nearer edge there,
+rolling the cut when a clip touches it; ↑ and ↓ go to the previous and next edit; ⌥⇧→ and ⌥⇧←
+select every clip from the playhead on, or up to it; **Match frame** (⇧F) opens the media under the
+playhead in the source monitor at the very frame. **Loop** (the player's loop button, ⌘L) plays
+round again from the start, or within In to Out when they are marked. **Auto ripple** (the magnet
+on the timeline's toolbar) makes deleting close the gap on every track, not only the main one;
+**Skimming** (beside it, ⇧S) shows the frame under the pointer as it moves over the timeline,
+leaving the playhead where it is. A track's menu moves it **up** or **down** among its kind and
+locks or unlocks **every track**; the lane's menu deletes **every transition** or **every marker**
+(asking first). Right-click a transition in the library to **make it the default**: ⌘T puts it on
+the cut nearest the playhead, and every new transition lasts as long as the Transitions tab's **New
+ones last** says (0.1–10 s). **Rotate and flip** turns a picture by right angles (its rotation
+keyframes with it) or mirrors it, left to right or upside down. These choices are kept in
+`editing.json` (`TVE_EDITING_FILE`).
+
+**The frame border.** The player draws a thin line round the canvas, what is exported. Moving or
+scaling a picture by hand pulls its edges onto the border when they come within a few points; the
+edge it reaches lights up and gives a little shake, and a Force Touch trackpad gives a light tap.
+The **Guides** menu turns the border and the snapping off.
+
+**Recording the screen, a window or an area.** The recorder chooses what of the screen to record:
+**Entire screen**, **A window** (from the list of windows), or **An area**: the display dims but for
+a rectangle you drag to move, size by its edges and corners, or draw afresh, with quick shapes (the
+whole display, 16:9, 9:16, 1:1) and its size in points; **Use this area** (Return) keeps it,
+**Change…** picks it again. While recording, a red frame round what is recorded (the area, the
+window where it was, or the display's edges) pulses gently; it takes no clicks and is left out of
+the recording.
 
 **Night view, depth of field.** The Analyze tab's **Night view** lifts a dark shot the way a camera's
 night mode does. It first smooths the grain the lift would show (an edge-keeping blur, colour noise

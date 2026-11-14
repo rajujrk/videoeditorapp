@@ -11,6 +11,9 @@ Item {
     required property var project
     property var timeline: null // (its track height and blade)
 
+    // Match frame: the editor opens the clip's media in the source monitor at the frame.
+    signal matchFrameRequested(double clipId)
+
     // A clip's menu acts on the selection when the clip is part of it (else on the clip).
     function openClipMenu(clip, track, item, x, y) {
         if (project.selectedClips.indexOf(clip.id) < 0)
@@ -53,6 +56,13 @@ Item {
                                              : qsTr("Its %1 clips go with it. You can undo this.").arg(Fmt.num(track.clips.length)),
                     qsTr("Delete track"), () => project.removeTrack(track.id))
     }
+
+    // Media that can take a clip's place: pictures on a picture track, sound on a sound track.
+    readonly property var replacements: clipMenu.forClip === null || clipMenu.track === null
+                                        || clipMenu.forClip.mediaId <= 0 || clipMenu.forClip.isCompound === true ? []
+        : project.media.filter((m) => m.id !== clipMenu.forClip.mediaId && !m.missing && !m.sticker
+                                      && (clipMenu.track.kind === "audio" ? m.hasAudio : m.hasVideo)).slice(0, 40)
+    readonly property bool pictureClip: clipMenu.forClip !== null && clipMenu.track !== null && clipMenu.track.kind !== "audio"
 
     readonly property bool playheadInClip: clipMenu.forClip !== null
                                            && project.playhead > clipMenu.forClip.start
@@ -110,6 +120,65 @@ Item {
             text: qsTr("Trim the end to the playhead")
             enabled: menus.playheadInClip
             onTriggered: menus.project.trimClip(clipMenu.forClip.id, false, menus.project.playhead)
+        }
+        AppMenuItem {
+            objectName: "clipMenu:extendEdit"
+            text: qsTr("Extend the nearer edge to the playhead"); shortcut: KeyMap.text("extendEdit")
+            onTriggered: menus.project.extendEdit(clipMenu.forClip.id)
+        }
+        AppMenuSeparator {}
+        AppMenuItem {
+            objectName: "clipMenu:enabled"
+            text: clipMenu.forClip !== null && clipMenu.forClip.enabled === false ? qsTr("Turn on") : qsTr("Turn off")
+            shortcut: KeyMap.text("toggleClip")
+            onTriggered: menus.project.setClipEnabled(clipMenu.forClip.id, clipMenu.forClip.enabled === false)
+        }
+        AppMenu {
+            id: replaceMenu
+            objectName: "clipMenu:replace"
+            title: qsTr("Replace with")
+            enabled: menus.replacements.length > 0
+            Instantiator {
+                model: menus.replacements
+                delegate: AppMenuItem {
+                    required property var modelData
+                    objectName: "clipMenu:replace:" + modelData.id
+                    text: modelData.name
+                    onTriggered: menus.project.replaceClipMedia(clipMenu.forClip.id, modelData.id)
+                }
+                onObjectAdded: (index, object) => replaceMenu.insertItem(index, object)
+                onObjectRemoved: (index, object) => replaceMenu.removeItem(object)
+            }
+        }
+        AppMenuItem {
+            objectName: "clipMenu:matchFrame"
+            text: qsTr("Match frame (open the media here)"); shortcut: KeyMap.text("matchFrame")
+            visible: clipMenu.forClip !== null && clipMenu.forClip.mediaId > 0 && clipMenu.forClip.isCompound !== true
+            enabled: menus.playheadInClip || (clipMenu.forClip !== null && Math.abs(menus.project.playhead - clipMenu.forClip.start) < 0.001)
+            onTriggered: menus.matchFrameRequested(clipMenu.forClip.id)
+        }
+        AppMenu {
+            objectName: "clipMenu:rotate"
+            title: qsTr("Rotate and flip")
+            enabled: menus.pictureClip
+            AppMenuItem { objectName: "clipMenu:rotateRight"; text: qsTr("Rotate 90° clockwise"); onTriggered: menus.project.rotateClip(clipMenu.forClip.id, 90) }
+            AppMenuItem { objectName: "clipMenu:rotateLeft"; text: qsTr("Rotate 90° anticlockwise"); onTriggered: menus.project.rotateClip(clipMenu.forClip.id, -90) }
+            AppMenuItem { objectName: "clipMenu:rotate180"; text: qsTr("Rotate 180°"); onTriggered: menus.project.rotateClip(clipMenu.forClip.id, 180) }
+            AppMenuSeparator {}
+            AppMenuItem {
+                objectName: "clipMenu:flipH"
+                text: qsTr("Flip left to right")
+                checkable: true
+                checked: clipMenu.forClip !== null && clipMenu.forClip.flipH === true
+                onTriggered: menus.project.flipClip(clipMenu.forClip.id, true)
+            }
+            AppMenuItem {
+                objectName: "clipMenu:flipV"
+                text: qsTr("Flip upside down")
+                checkable: true
+                checked: clipMenu.forClip !== null && clipMenu.forClip.flipV === true
+                onTriggered: menus.project.flipClip(clipMenu.forClip.id, false)
+            }
         }
         AppMenuSeparator {}
         AppMenuItem {
@@ -266,9 +335,31 @@ Item {
             }
         }
         AppMenuItem {
+            objectName: "trackMenu:moveUp"
+            text: qsTr("Move up")
+            onTriggered: menus.project.moveTrack(trackMenu.track.id, 1)
+        }
+        AppMenuItem {
+            objectName: "trackMenu:moveDown"
+            text: qsTr("Move down")
+            onTriggered: menus.project.moveTrack(trackMenu.track.id, -1)
+        }
+        AppMenuItem {
             objectName: "trackMenu:lock"
             text: trackMenu.track !== null && trackMenu.track.locked ? qsTr("Unlock") : qsTr("Lock")
             onTriggered: menus.project.setTrackFlag(trackMenu.track.id, "locked", !trackMenu.track.locked)
+        }
+        AppMenuItem {
+            objectName: "trackMenu:lockAll"
+            text: qsTr("Lock every track")
+            enabled: menus.project.tracks.some((t) => !t.locked)
+            onTriggered: menus.project.lockAllTracks(true)
+        }
+        AppMenuItem {
+            objectName: "trackMenu:unlockAll"
+            text: qsTr("Unlock every track")
+            enabled: menus.project.tracks.some((t) => t.locked)
+            onTriggered: menus.project.lockAllTracks(false)
         }
         AppMenuItem {
             objectName: "trackMenu:hide"
@@ -331,6 +422,14 @@ Item {
             }
         }
         AppMenuItem {
+            objectName: "laneMenu:placeholder"
+            text: qsTr("Add a placeholder here")
+            onTriggered: {
+                menus.project.seek(laneMenu.seconds)
+                menus.project.addPlaceholder()
+            }
+        }
+        AppMenuItem {
             objectName: "laneMenu:closeGap"
             text: qsTr("Close this gap")
             enabled: laneMenu.track !== null
@@ -366,6 +465,30 @@ Item {
             objectName: "laneMenu:selectAll"
             text: qsTr("Select every clip"); shortcut: KeyMap.text("selectAll")
             onTriggered: menus.project.selectAllClips()
+        }
+        AppMenuItem {
+            objectName: "laneMenu:selectForward"
+            text: qsTr("Select from the playhead on"); shortcut: KeyMap.text("selectForward")
+            onTriggered: menus.project.selectFromPlayhead(1)
+        }
+        AppMenuItem {
+            objectName: "laneMenu:selectBackward"
+            text: qsTr("Select up to the playhead"); shortcut: KeyMap.text("selectBackward")
+            onTriggered: menus.project.selectFromPlayhead(-1)
+        }
+        AppMenuSeparator {}
+        AppMenuItem {
+            objectName: "laneMenu:deleteTransitions"
+            text: qsTr("Delete every transition…")
+            onTriggered: confirm.ask(qsTr("Delete every transition?"), qsTr("Every cut becomes a straight cut. You can undo this."),
+                                     qsTr("Delete transitions"), () => menus.project.removeAllTransitions())
+        }
+        AppMenuItem {
+            objectName: "laneMenu:deleteMarkers"
+            text: qsTr("Delete every marker…")
+            enabled: menus.project.markers.length > 0
+            onTriggered: confirm.ask(qsTr("Delete every marker?"), qsTr("Chapters made from them go too. You can undo this."),
+                                     qsTr("Delete markers"), () => menus.project.removeAllMarkers())
         }
         AppMenuSeparator {}
         AppMenuItem { objectName: "laneMenu:addVideo"; text: qsTr("Add a video track"); onTriggered: menus.addTrack("video", laneMenu.track) }

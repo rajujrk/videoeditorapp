@@ -274,3 +274,39 @@ TEST_CASE("accumulated draws average (motion blur's samples)")
     const Canvas c = compose({{solid(32, 18, Qt::red), red}, {solid(32, 18, Qt::blue), blue}}, true);
     checkColor(c.at(20, 18), Rgb{0.5f, 0.0f, 0.5f});
 }
+
+TEST_CASE("A flipped picture is mirrored inside its frame", "[compositor]")
+{
+    ClipVisual v;
+    // 16:9 on a 16:9 canvas: the picture's left edge is at the canvas's left…
+    auto plain = placeLayer(v, 1920, 1080, 1920, 1080);
+    auto at = plain.toCanvas(0.0, 0.25);
+    CHECK(at[0] == Catch::Approx(0.0).margin(1e-9));
+    CHECK(at[1] == Catch::Approx(0.25));
+    // …and flipped left to right, at its right; upside down, its top at the bottom.
+    v.transform.flipH = true;
+    at = placeLayer(v, 1920, 1080, 1920, 1080).toCanvas(0.0, 0.25);
+    CHECK(at[0] == Catch::Approx(1.0));
+    CHECK(at[1] == Catch::Approx(0.25));
+    v.transform.flipH = false;
+    v.transform.flipV = true;
+    at = placeLayer(v, 1920, 1080, 1920, 1080).toCanvas(0.0, 0.25);
+    CHECK(at[0] == Catch::Approx(0.0).margin(1e-9));
+    CHECK(at[1] == Catch::Approx(0.75));
+    // Moved and turned, the frame stays where it was: the centre lands in the same place.
+    v.transform.x = 0.1;
+    v.transform.rotation = 30;
+    ClipVisual unflipped = v;
+    unflipped.transform.flipV = false;
+    const auto c1 = placeLayer(v, 1920, 1080, 1920, 1080).toCanvas(0.5, 0.5);
+    const auto c2 = placeLayer(unflipped, 1920, 1080, 1920, 1080).toCanvas(0.5, 0.5);
+    CHECK(c1[0] == Catch::Approx(c2[0]));
+    CHECK(c1[1] == Catch::Approx(c2[1]));
+    // A corner pin follows the frame's corner it is on, not the picture's.
+    v = {};
+    v.transform.flipH = true;
+    v.pin.topRightX = 0.1; // the frame's top right…
+    at = placeLayer(v, 1920, 1080, 1920, 1080).toCanvas(0.0, 0.0); // …is the picture's top left when flipped
+    CHECK(at[0] == Catch::Approx(1.1));
+    CHECK(at[1] == Catch::Approx(0.0).margin(1e-9));
+}

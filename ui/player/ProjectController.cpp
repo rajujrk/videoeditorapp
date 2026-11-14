@@ -37,6 +37,8 @@
 #include "analysis/ContentVision.h"
 #include "analysis/DepthVision.h"
 #include "commands/SequenceEdits.h"
+#include "commands/TimelineEdits.h"
+#include "EditingPreferences.h"
 #include "model/MusicFit.h"
 #include "analysis/MotionAnalysis.h"
 #include "analysis/Tracking.h"
@@ -272,6 +274,8 @@ QVariantMap visualMap(const ClipVisual& v)
         {QStringLiteral("fov"), v.sphere.fov},
         {QStringLiteral("anchorX"), v.transform.anchorX},
         {QStringLiteral("anchorY"), v.transform.anchorY},
+        {QStringLiteral("flipH"), v.transform.flipH},
+        {QStringLiteral("flipV"), v.transform.flipV},
         {QStringLiteral("pinTopLeftX"), v.pin.topLeftX},
         {QStringLiteral("pinTopLeftY"), v.pin.topLeftY},
         {QStringLiteral("pinTopRightX"), v.pin.topRightX},
@@ -1178,6 +1182,10 @@ QVariantList ProjectController::tracks() const
                              : QString()},
                 {QStringLiteral("hasAudio"), sequenceSound || (media && media->hasAudio)},
                 {QStringLiteral("audioEnabled"), clip.audioEnabled},
+                {QStringLiteral("enabled"), clip.enabled},
+                {QStringLiteral("placeholder"), media && media->placeholder},
+                {QStringLiteral("flipH"), clip.visual.transform.flipH},
+                {QStringLiteral("flipV"), clip.visual.transform.flipV},
                 {QStringLiteral("gainDb"), double(clip.gainDb)},
                 {QStringLiteral("fadeIn"), seconds(clip.fadeIn)},
                 {QStringLiteral("fadeOut"), seconds(clip.fadeOut)},
@@ -1882,7 +1890,9 @@ bool ProjectController::deleteClip(double clipId)
         reportError(tr("Select a clip to delete"));
         return false;
     }
-    const bool ripple = location->track->id == mainTrackId();
+    // The main track closes its gaps; with auto ripple, every track does.
+    const bool autoRipple = EditingPreferences::instance()->autoRipple();
+    const bool ripple = autoRipple || location->track->id == mainTrackId();
     const std::vector<Id> members = groupMembers(project, location->clip->groupId);
     if (members.size() > 1) {
         // The whole group, latest first so closing gaps on the main track moves none still to go.
@@ -1892,7 +1902,7 @@ bool ProjectController::deleteClip(double clipId)
         std::ranges::sort(order, std::greater{});
         std::vector<std::unique_ptr<Command>> commands;
         for (const auto& [start, member] : order) {
-            const bool onMain = project.locateClip(member)->track->id == mainTrackId();
+            const bool onMain = autoRipple || project.locateClip(member)->track->id == mainTrackId();
             commands.push_back(std::make_unique<DeleteClipCommand>(member, onMain));
         }
         if (!apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Delete Group"))))
@@ -2520,6 +2530,7 @@ QVariantMap ProjectController::selectedClipInfo() const
             {QStringLiteral("duration"), seconds(clip->duration)},
             {QStringLiteral("hasAudio"), sequence || (media && media->hasAudio)},
             {QStringLiteral("audioEnabled"), clip->audioEnabled},
+            {QStringLiteral("enabled"), clip->enabled},
             {QStringLiteral("gainDb"), double(clip->gainDbAt(now))},
             {QStringLiteral("fadeIn"), seconds(clip->fadeIn)},
             {QStringLiteral("fadeOut"), seconds(clip->fadeOut)},
@@ -2672,6 +2683,10 @@ std::optional<ClipVisual> ProjectController::visualFrom(Id clipId, const QVarian
     take("pinBottomRightY", v.pin.bottomRightY);
     take("pinBottomLeftX", v.pin.bottomLeftX);
     take("pinBottomLeftY", v.pin.bottomLeftY);
+    if (const auto it = values.constFind(QStringLiteral("flipH")); it != values.constEnd())
+        v.transform.flipH = it->toBool();
+    if (const auto it = values.constFind(QStringLiteral("flipV")); it != values.constEnd())
+        v.transform.flipV = it->toBool();
     if (const auto it = values.constFind(QStringLiteral("blend")); it != values.constEnd()) {
         const QString name = it->toString();
         for (int i = 0; i < int(std::size(kBlendNames)); ++i) {
@@ -2708,6 +2723,8 @@ bool ProjectController::setClipVisual(double clipId, const QVariantMap& visual)
         }
     }
     after.visual.blend = next.blend;
+    after.visual.transform.flipH = next.transform.flipH;
+    after.visual.transform.flipV = next.transform.flipV;
     const bool ok = after.keyframes == clip->keyframes
                         ? apply(std::make_unique<SetClipVisualCommand>(clip->id, after.visual))
                         : commitAnimation(*clip, after, TVE_TR("core", "Change Picture"));
@@ -4278,6 +4295,11 @@ std::optional<Id> ProjectController::cutNear(const Track& track, Ticks time, Tic
 
 bool ProjectController::addTransition(const QString& transitionId, double clipId)
 {
+    return putTransition(transitionId, clipId, false);
+}
+
+bool ProjectController::putTransition(const QString& transitionId, double clipId, bool defaultLength)
+{
     if (!EffectLibrary::builtIn().findTransition(transitionId.toStdString())) {
         reportError(tr("Unknown transition %1").arg(transitionId));
         return false;
@@ -4302,9 +4324,12 @@ bool ProjectController::addTransition(const QString& transitionId, double clipId
         reportError(tr("Drop the transition on a cut between two clips"));
         return false;
     }
+    // A new one at the default length (EditingPreferences); one replacing another keeps its.
     ClipTransition transition{transitionId.toStdString()};
+    transition.duration = ticks(EditingPreferences::instance()->defaultTransitionLength());
     if (clip->transitionIn) {
-        transition.duration = clip->transitionIn->duration;
+        if (!defaultLength)
+            transition.duration = clip->transitionIn->duration;
         transition.alignment = clip->transitionIn->alignment;
     }
     if (!apply(std::make_unique<SetClipTransitionCommand>(target, std::move(transition))))
@@ -5055,6 +5080,7 @@ void ProjectController::play()
         m_shuttleTimer.stop();
     }
     m_playUntil = -1;
+    endSkim();
     if (m_project.duration() == 0)
         return;
     if (m_playback->clock().now() >= m_project.duration())
@@ -5088,6 +5114,10 @@ void ProjectController::seek(double seconds)
 {
     if (recording())
         return; // the take is tied to the time it started at
+    if (m_skimTime >= 0) {
+        m_skimTime = -1;
+        emit skimChanged();
+    }
     const Ticks clamped = std::clamp<Ticks>(ticks(seconds), 0, m_project.duration());
     m_playback->seek(clamped);
     updatePlayhead();
@@ -5106,6 +5136,15 @@ void ProjectController::updatePlayhead()
 {
     Ticks now = m_playback->clock().now();
     const Ticks end = m_project.duration();
+    // Looping: round again from the start of what is playing (the marked range, or all).
+    if (EditingPreferences::instance()->loopPlayback() && m_playback->clock().playing() && !recording() && m_shuttleRate == 0) {
+        const Ticks until = m_playUntil >= 0 ? ticks(m_playUntil) : end;
+        const Ticks from = m_playUntil >= 0 && m_markIn >= 0 ? ticks(m_markIn) : 0;
+        if (now >= until && until > from) {
+            m_playback->seek(from);
+            now = from;
+        }
+    }
     if (m_playback->clock().playing() && now >= end && !recording()) { // takes run past the end
         m_playback->pause();
         m_playback->seek(end);
@@ -5118,7 +5157,7 @@ void ProjectController::updatePlayhead()
         now = ticks(m_playUntil);
         m_playUntil = -1;
     }
-    const double value = seconds(now);
+    const double value = m_skimTime >= 0 ? m_playhead : seconds(now); // skimming leaves the playhead
     if (value != m_playhead) {
         m_playhead = value;
         emit playheadChanged();
@@ -7284,7 +7323,12 @@ QVariantList ProjectController::listScreenTargets()
     if (testScreen()) {
         list << QVariantMap{{QStringLiteral("kind"), QStringLiteral("display")}, {QStringLiteral("id"), 1},
                             {QStringLiteral("title"), QStringLiteral("Test display (1280 × 720)")},
+                            {QStringLiteral("x"), 0}, {QStringLiteral("y"), 0},
                             {QStringLiteral("width"), 1280}, {QStringLiteral("height"), 720}};
+        list << QVariantMap{{QStringLiteral("kind"), QStringLiteral("window")}, {QStringLiteral("id"), 2},
+                            {QStringLiteral("title"), QStringLiteral("Test app — Test window")},
+                            {QStringLiteral("x"), 120}, {QStringLiteral("y"), 90},
+                            {QStringLiteral("width"), 800}, {QStringLiteral("height"), 500}};
         return list;
     }
     if (tve::screenAccess() != CaptureAccess::Granted)
@@ -8409,6 +8453,8 @@ int ProjectController::applyTransitions(const std::function<std::string(std::siz
             transition.duration = ticks(duration);
         else if (clip.transitionIn)
             transition.duration = clip.transitionIn->duration;
+        else
+            transition.duration = ticks(EditingPreferences::instance()->defaultTransitionLength());
         steps.push_back(std::make_unique<SetClipTransitionCommand>(clip.id, std::move(transition)));
     }
     if (!apply(std::make_unique<CompositeCommand>(std::move(steps), label)))
@@ -12314,4 +12360,317 @@ bool ProjectController::correctLens(double clipId, const QString& presetId)
     else
         effects.insert(effects.begin(), lens); // first: straightened before other effects
     return apply(std::make_unique<SetClipEffectsCommand>(location->clip->id, std::move(effects), TVE_TR("core", "Lens Correction")));
+}
+
+// --- Timeline handling (31a) ---
+
+namespace {
+
+// A placeholder's picture: a grey card the canvas's shape with "Placeholder" on it, drawn
+// once per size.
+QString placeholderPicture(int width, int height, const QString& label)
+{
+    const QString path = QStringLiteral("%1/Placeholder %2x%3.png").arg(colourFolder()).arg(width).arg(height);
+    if (QFileInfo::exists(path))
+        return path;
+    const double scale = 640.0 / std::max(width, height);
+    const int w = std::max(16, int(width * scale)), h = std::max(16, int(height * scale));
+    QImage image(w, h, QImage::Format_RGB32);
+    QPainter painter(&image);
+    painter.setRenderHint(QPainter::Antialiasing);
+    QLinearGradient fill(0, 0, 0, h);
+    fill.setColorAt(0, QColor(0x4A, 0x4F, 0x58));
+    fill.setColorAt(1, QColor(0x2E, 0x32, 0x39));
+    painter.fillRect(image.rect(), fill);
+    const double unit = std::min(w, h);
+    QPen dash(QColor(255, 255, 255, 90), std::max(1.0, unit * 0.008), Qt::DashLine);
+    painter.setPen(dash);
+    painter.drawRoundedRect(QRectF(unit * 0.06, unit * 0.06, w - unit * 0.12, h - unit * 0.12), unit * 0.03, unit * 0.03);
+    // A film frame's outline in the middle, the word under it.
+    painter.setPen(QPen(QColor(255, 255, 255, 150), std::max(1.5, unit * 0.012)));
+    const QRectF frame(w / 2.0 - unit * 0.12, h / 2.0 - unit * 0.16, unit * 0.24, unit * 0.17);
+    painter.drawRoundedRect(frame, unit * 0.02, unit * 0.02);
+    QPolygonF play;
+    play << QPointF(frame.center().x() - unit * 0.03, frame.center().y() - unit * 0.04)
+         << QPointF(frame.center().x() + unit * 0.045, frame.center().y())
+         << QPointF(frame.center().x() - unit * 0.03, frame.center().y() + unit * 0.04);
+    painter.setBrush(QColor(255, 255, 255, 150));
+    painter.drawPolygon(play);
+    QFont font;
+    font.setPixelSize(int(unit * 0.075));
+    font.setBold(true);
+    painter.setFont(font);
+    painter.setPen(QColor(255, 255, 255, 200));
+    painter.drawText(QRectF(0, h / 2.0 + unit * 0.06, w, unit * 0.12), Qt::AlignCenter, label);
+    painter.end();
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    if (!image.save(path, "PNG"))
+        return {};
+    return path;
+}
+
+} // namespace
+
+bool ProjectController::replaceClipMedia(double clipId, double mediaId)
+{
+    Project after = m_project;
+    bool shortened = false;
+    if (auto error = tve::replaceClipMedia(after, toId(clipId), toId(mediaId), &shortened)) {
+        reportError(coreText(*error));
+        return false;
+    }
+    if (after == m_project)
+        return true;
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Replace Media"))))
+        return false;
+    if (shortened)
+        reportError(tr("The new media is shorter, so the clip is shorter too"));
+    return true;
+}
+
+bool ProjectController::setClipEnabled(double clipId, bool enabled)
+{
+    const Id id = toId(clipId);
+    std::vector<Id> ids = clipsToCopy();
+    if (std::ranges::find(ids, id) == ids.end())
+        ids = {id};
+    Project after = m_project;
+    if (auto error = tve::setClipsEnabled(after, ids, enabled)) {
+        reportError(coreText(*error));
+        return false;
+    }
+    if (after == m_project)
+        return true;
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after),
+                                                     enabled ? TVE_TR("core", "Turn Clip On") : TVE_TR("core", "Turn Clip Off")));
+}
+
+bool ProjectController::toggleClipEnabled()
+{
+    const Clip* clip = findClip(m_selectedClip);
+    if (!clip) {
+        reportError(tr("Select a clip"));
+        return false;
+    }
+    return setClipEnabled(double(clip->id), !clip->enabled);
+}
+
+double ProjectController::addPlaceholder(double length)
+{
+    const Ticks duration = ticks(std::clamp(length > 0 ? length : 5.0, 0.1, 3600.0));
+    const QString path = placeholderPicture(m_project.settings.width, m_project.settings.height, tr("Placeholder"));
+    if (path.isEmpty()) {
+        reportError(tr("The placeholder could not be drawn"));
+        return 0;
+    }
+    Project after = m_project;
+    Id mediaId = kNoId;
+    if (const auto same = std::ranges::find(after.media, path.toStdString(), &MediaItem::path); same != after.media.end()) {
+        mediaId = same->id;
+    } else {
+        QString error;
+        std::optional<MediaItem> item = describeMedia(path.toStdString(), &error);
+        if (!item) {
+            reportError(error);
+            return 0;
+        }
+        item->placeholder = true;
+        ImportMediaCommand import(std::move(*item));
+        if (auto failed = import.redo(after)) {
+            reportError(coreText(*failed));
+            return 0;
+        }
+        mediaId = import.mediaId();
+    }
+    const Ticks at = ticks(m_playhead);
+    // The main track when free there, else the lowest picture track with room, else a new one.
+    Id target = kNoId;
+    if (const Track* main = after.findTrack(mainTrackId()); main && !main->locked && !main->overlaps(at, duration))
+        target = main->id;
+    for (const Track& track : after.tracks)
+        if (target == kNoId && track.kind == TrackKind::Video && !track.locked && !track.overlaps(at, duration))
+            target = track.id;
+    if (target == kNoId) {
+        InsertTrackCommand track(TrackKind::Video,
+                                 "Video " + std::to_string(std::ranges::count(after.tracks, TrackKind::Video, &Track::kind) + 1),
+                                 after.tracks.size());
+        if (auto failed = track.redo(after)) {
+            reportError(coreText(*failed));
+            return 0;
+        }
+        target = track.trackId();
+    }
+    AddClipCommand add(target, mediaId, at, duration, 0);
+    if (auto failed = add.redo(after)) {
+        reportError(coreText(*failed));
+        return 0;
+    }
+    const Id clipId = add.clipId();
+    m_project.setNextId(after.nextId());
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Add Placeholder"))))
+        return 0;
+    setSelectedClip(double(clipId));
+    return double(clipId);
+}
+
+bool ProjectController::extendEdit(double clipId)
+{
+    const Ticks at = ticks(m_playhead);
+    Id id = clipId >= 0 ? toId(clipId) : (findClip(m_selectedClip) ? m_selectedClip : tve::nearestEdit(m_project, at));
+    if (id == kNoId) {
+        reportError(tr("There is no clip to extend"));
+        return false;
+    }
+    Project after = m_project;
+    if (auto error = tve::extendEdit(after, id, at)) {
+        reportError(coreText(*error));
+        return false;
+    }
+    if (after == m_project)
+        return true;
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Extend Edit")));
+}
+
+int ProjectController::selectFromPlayhead(int direction, double trackId)
+{
+    selectClips(tve::clipsFrom(m_project, ticks(m_playhead), direction, trackId >= 0 ? toId(trackId) : kNoId));
+    return int(m_selectedClips.size());
+}
+
+bool ProjectController::seekEdit(int direction)
+{
+    const auto to = tve::nextEdit(m_project, ticks(m_playhead), direction);
+    if (!to)
+        return false;
+    pause();
+    seek(::seconds(*to));
+    return true;
+}
+
+QVariantMap ProjectController::matchFrame(double clipId)
+{
+    const Ticks at = ticks(m_playhead);
+    const Clip* clip = clipId >= 0 ? findClip(toId(clipId)) : nullptr;
+    if (!clip) {
+        if (const Clip* selected = findClip(m_selectedClip); selected && at >= selected->start && at < selected->end())
+            clip = selected;
+    }
+    if (!clip) {
+        const auto layers = tve::visibleVideoLayersAt(m_project, at);
+        for (auto layer = layers.rbegin(); layer != layers.rend() && !clip; ++layer)
+            if (m_project.findMedia(layer->clip->mediaId))
+                clip = layer->clip;
+    }
+    const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+    if (!media || clip->generated() || clip->compound()) {
+        reportError(tr("Put the playhead over a clip of media"));
+        return {};
+    }
+    const Ticks inside = std::clamp(at, clip->start, clip->end() - 1);
+    const Ticks source = media->still ? 0 : std::clamp<Ticks>(clip->sourceTimeAt(inside), 0, media->duration);
+    return {{QStringLiteral("mediaId"), double(media->id)},
+            {QStringLiteral("seconds"), ::seconds(source)},
+            {QStringLiteral("clipId"), double(clip->id)}};
+}
+
+bool ProjectController::moveTrack(double trackId, int direction)
+{
+    Project after = m_project;
+    if (auto error = tve::moveTrack(after, toId(trackId), direction)) {
+        reportError(coreText(*error));
+        return false;
+    }
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after),
+                                                     direction > 0 ? TVE_TR("core", "Move Track Up") : TVE_TR("core", "Move Track Down")));
+}
+
+int ProjectController::lockAllTracks(bool locked)
+{
+    Project after = m_project;
+    const int changed = tve::setAllTracksLocked(after, locked);
+    if (changed == 0)
+        return 0;
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after),
+                                                   locked ? TVE_TR("core", "Lock Every Track") : TVE_TR("core", "Unlock Every Track"))))
+        return 0;
+    return changed;
+}
+
+int ProjectController::removeAllTransitions()
+{
+    Project after = m_project;
+    const int removed = tve::removeAllTransitions(after);
+    if (removed == 0) {
+        reportError(tr("There are no transitions to delete"));
+        return 0;
+    }
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Delete Every Transition"))))
+        return 0;
+    setSelectedTransition(0);
+    return removed;
+}
+
+int ProjectController::removeAllMarkers()
+{
+    Project after = m_project;
+    const int removed = tve::removeAllMarkers(after);
+    if (removed == 0) {
+        reportError(tr("There are no markers to delete"));
+        return 0;
+    }
+    if (!apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Delete Every Marker"))))
+        return 0;
+    return removed;
+}
+
+bool ProjectController::addDefaultTransition(double clipId)
+{
+    return putTransition(EditingPreferences::instance()->defaultTransition(), clipId, true);
+}
+
+bool ProjectController::rotateClip(double clipId, double degrees)
+{
+    Project after = m_project;
+    if (auto error = tve::rotateClip(after, toId(clipId), degrees)) {
+        reportError(coreText(*error));
+        return false;
+    }
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after), TVE_TR("core", "Rotate")));
+}
+
+bool ProjectController::flipClip(double clipId, bool horizontal)
+{
+    Project after = m_project;
+    if (auto error = tve::flipClip(after, toId(clipId), horizontal)) {
+        reportError(coreText(*error));
+        return false;
+    }
+    return apply(std::make_unique<ApplyEditsCommand>(m_project, std::move(after),
+                                                     horizontal ? TVE_TR("core", "Flip Horizontally") : TVE_TR("core", "Flip Vertically")));
+}
+
+void ProjectController::skim(double seconds)
+{
+    if (playing() || recording() || screenRecording())
+        return;
+    const Ticks at = std::clamp<Ticks>(ticks(seconds), 0, m_project.duration());
+    if (m_skimTime == ::seconds(at))
+        return;
+    m_skimTime = ::seconds(at);
+    m_playback->seek(at);
+    emit skimChanged();
+}
+
+void ProjectController::endSkim()
+{
+    if (m_skimTime < 0)
+        return;
+    m_skimTime = -1;
+    m_playback->seek(ticks(m_playhead));
+    emit skimChanged();
+}
+
+void ProjectController::alignmentFeedback()
+{
+    performAlignmentFeedback();
 }

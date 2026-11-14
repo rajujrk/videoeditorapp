@@ -37,6 +37,7 @@ add_executable(tve_core_tests
     core/test_image_sequence.cpp
     core/test_content_search.cpp
     core/test_music_fit.cpp
+    core/test_timeline_edits.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)

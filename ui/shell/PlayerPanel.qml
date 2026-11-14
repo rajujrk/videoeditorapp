@@ -358,6 +358,15 @@ Rectangle {
                 }
                 IconButton { iconName: "skip-forward"; tip: qsTr("Next frame") + KeyMap.hints["frameForward"]; enabled: panel.transport.duration > 0; onClicked: panel.transport.stepFrames(1) }
                 IconButton { objectName: "markOutButton"; iconName: "mark-out"; tip: qsTr("Mark Out") + KeyMap.hints["markOut"]; enabled: panel.transport.duration > 0; onClicked: panel.transport.setMarkOut() }
+                IconButton {
+                    objectName: "loopButton"
+                    iconName: "loop"
+                    visible: !panel.showingSource
+                    tip: qsTr("Loop: play round again from the start (of In to Out, when marked)") + KeyMap.hints["loop"]
+                    checkable: true
+                    checked: EditingPreferences.loopPlayback
+                    onClicked: EditingPreferences.loopPlayback = !EditingPreferences.loopPlayback
+                }
                 // Shuttling (J, L): its speed and direction.
                 Text {
                     objectName: "shuttleBadge"
@@ -460,7 +469,7 @@ Rectangle {
                 IconButton {
                     objectName: "guidesButton"
                     iconName: "guides"
-                    tip: qsTr("Guides: thirds, centre lines, safe areas and rulers (shown here only, never exported)")
+                    tip: qsTr("Guides: thirds, centre lines, safe areas, rulers and the frame border (shown here only, never exported)")
                     checkable: true
                     checked: guidesOverlay.any
                     onClicked: guidesMenu.popup(this, 0, -guidesMenu.implicitHeight)
@@ -471,6 +480,21 @@ Rectangle {
                         AppMenuItem { objectName: "guides:centre"; text: qsTr("Centre lines"); checkable: true; checked: guidesOverlay.centre; onTriggered: guidesOverlay.centre = !guidesOverlay.centre }
                         AppMenuItem { objectName: "guides:safe"; text: qsTr("Safe areas (action 90 %, titles 80 %)"); checkable: true; checked: guidesOverlay.safeAreas; onTriggered: guidesOverlay.safeAreas = !guidesOverlay.safeAreas }
                         AppMenuItem { objectName: "guides:rulers"; text: qsTr("Rulers"); checkable: true; checked: guidesOverlay.rulers; onTriggered: guidesOverlay.rulers = !guidesOverlay.rulers }
+                        AppMenuSeparator {}
+                        AppMenuItem {
+                            objectName: "guides:border"
+                            text: qsTr("Frame border")
+                            checkable: true
+                            checked: EditingPreferences.canvasBorder
+                            onTriggered: EditingPreferences.canvasBorder = !EditingPreferences.canvasBorder
+                        }
+                        AppMenuItem {
+                            objectName: "guides:snapBorder"
+                            text: qsTr("Snap pictures to the border")
+                            checkable: true
+                            checked: EditingPreferences.snapToBorder
+                            onTriggered: EditingPreferences.snapToBorder = !EditingPreferences.snapToBorder
+                        }
                     }
                 }
                 ComboBox {

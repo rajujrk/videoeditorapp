@@ -1,8 +1,10 @@
 import QtQuick
 import TechieVideoEditor.Theme
+import TechieVideoEditor.Player
 
 // Drawn over the player: the selected clip's frame on the canvas, to place it by hand. Drag
-// inside the frame to move it (it snaps to the canvas's centre lines), a corner to scale it,
+// inside the frame to move it (it snaps to the canvas's centre lines and its border's edges), a
+// corner to scale it (snapping where an edge meets the border),
 // the knob above it to rotate it (⇧: in 15° steps), the cross (the anchor point) with ⌥ to
 // choose what it scales and turns about. With corner pinning on (project.pinningCorners), the corners move
 // one by one, stretching the picture in perspective. Previewed while dragging, one undo step on
@@ -44,22 +46,22 @@ Item {
     // The frame's corners, centre and anchor point as item points, placed as the compositor
     // places the picture (engine/gpu/LayerPlacement.h): its visible part fitted to the canvas,
     // scaled and rotated clockwise about the anchor point, moved, its corners then pinned.
-    readonly property var frame: {
-        if (!showsFrame)
-            return null
+    readonly property var frame: showsFrame ? frameFor(shown) : null
+    // The frame for a placement (shown, or one being tried while dragging).
+    function frameFor(st) {
         const W = project.canvasWidth, H = project.canvasHeight
         const cropW = 1 - (committed.cropLeft || 0) - (committed.cropRight || 0)
         const cropH = 1 - (committed.cropTop || 0) - (committed.cropBottom || 0)
         const visibleW = placement.width * cropW, visibleH = placement.height * cropH
         const fit = Math.min(W / visibleW, H / visibleH)
-        const fitW = visibleW * fit, fitH = visibleH * fit, k = shown.scale
-        const cx = W * (0.5 + shown.x), cy = H * (0.5 + shown.y)
-        const ax = shown.anchorX * fitW, ay = shown.anchorY * fitH
-        const a = shown.rotation * Math.PI / 180, c = Math.cos(a), s = Math.sin(a)
+        const fitW = visibleW * fit, fitH = visibleH * fit, k = st.scale
+        const cx = W * (0.5 + st.x), cy = H * (0.5 + st.y)
+        const ax = st.anchorX * fitW, ay = st.anchorY * fitH
+        const a = st.rotation * Math.PI / 180, c = Math.cos(a), s = Math.sin(a)
         const toItem = (px, py) => Qt.point(canvasRect.x + px / W * canvasRect.width, canvasRect.y + py / H * canvasRect.height)
         // A point of the fitted picture (pixels from its centre) on the canvas.
         const place = (qx, qy) => [cx + ax + k * (c * (qx - ax) - s * (qy - ay)), cy + ay + k * (s * (qx - ax) + c * (qy - ay))]
-        const pin = shown.pin
+        const pin = st.pin
         const corner = (u, v, i) => {
             const p = place((u - 0.5) * fitW, (v - 0.5) * fitH)
             return toItem(p[0] + pin[2 * i] * W, p[1] + pin[2 * i + 1] * H)
@@ -75,6 +77,65 @@ Item {
         return { corners: [corner(0, 0, 0), corner(1, 0, 1), corner(1, 1, 2), corner(0, 1, 3)],
                  centre: toItem(middle[0], middle[1]), pivot: toItem(cx + ax, cy + ay), knob: knob,
                  top: toItem(top[0], top[1]), fitW: fitW, fitH: fitH }
+    }
+    // The frame's extent (item points): left, top, right, bottom.
+    function boundsOf(f) {
+        const xs = f.corners.map((p) => p.x), ys = f.corners.map((p) => p.y)
+        return { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) }
+    }
+
+    // The canvas's border: pictures snap to it while moved or scaled, and each edge a picture
+    // reaches flashes and shakes with a tap on the trackpad.
+    readonly property bool snapsToBorder: EditingPreferences.snapToBorder
+    readonly property real snapDistance: 6 // item points
+    property var touching: ({ left: false, top: false, right: false, bottom: false })
+    property int bumps: 0 // edges reached while dragging (for tests)
+    signal edgeReached(string edge)
+    // The border's edges a frame lies on.
+    function edgesOf(f) {
+        const b = boundsOf(f), r = canvasRect, near = 0.75
+        return { left: Math.abs(b.left - r.x) < near, top: Math.abs(b.top - r.y) < near,
+                 right: Math.abs(b.right - (r.x + r.width)) < near, bottom: Math.abs(b.bottom - (r.y + r.height)) < near }
+    }
+    function feelEdges(f) {
+        const now = edgesOf(f)
+        const reached = ["left", "top", "right", "bottom"].filter((e) => now[e] && !touching[e])
+        touching = now
+        if (reached.length > 0) {
+            bumps += reached.length
+            project.alignmentFeedback()
+            reached.forEach((e) => edgeReached(e))
+        }
+    }
+    // A move pulled onto the border's edges (within a few points): the x, y to use.
+    function snapMove(x, y) {
+        if (!snapsToBorder)
+            return [x, y]
+        const b = boundsOf(frameFor(Object.assign({}, shown, draft || {}, { x: x, y: y }))), r = canvasRect
+        const pull = (lo, hi, min, max) => Math.abs(lo - min) < snapDistance ? min - lo
+                                         : Math.abs(hi - max) < snapDistance ? max - hi : 0
+        return [x + pull(b.left, b.right, r.x, r.x + r.width) / r.width,
+                y + pull(b.top, b.bottom, r.y, r.y + r.height) / r.height]
+    }
+    // A scale pulled to where an edge meets the border (scaling goes about the anchor point,
+    // so each edge moves in proportion): the scale to use. Not for pinned corners.
+    function snapScale(k) {
+        if (!snapsToBorder || shown.pin.some((v) => v !== 0))
+            return k
+        const f = frameFor(Object.assign({}, shown, { scale: 1 })), b = boundsOf(f), p = f.pivot, r = canvasRect
+        let best = k, gap = snapDistance
+        for (const [edge, pivot, border] of [[b.left, p.x, r.x], [b.right, p.x, r.x + r.width],
+                                             [b.top, p.y, r.y], [b.bottom, p.y, r.y + r.height]]) {
+            const d = edge - pivot
+            if (Math.abs(d) < 1e-6)
+                continue
+            const at = (border - pivot) / d
+            if (at > 0 && Math.abs(at - k) * Math.abs(d) < gap) {
+                gap = Math.abs(at - k) * Math.abs(d)
+                best = at
+            }
+        }
+        return best
     }
     onFrameChanged: outline.requestPaint()
 
@@ -96,7 +157,11 @@ Item {
         return true
     }
     function preview(changes) {
+        // (An edge the picture lay on as the drag began is not reached again.)
+        if (draft === null && frame !== null)
+            touching = edgesOf(frame)
         draft = Object.assign({}, shown, changes)
+        feelEdges(frameFor(draft))
         const values = Object.assign({}, changes)
         if (changes.pin !== undefined) {
             delete values.pin
@@ -110,9 +175,51 @@ Item {
         const d = draft
         draft = null
         snappedX = snappedY = false
+        touching = { left: false, top: false, right: false, bottom: false }
         const values = { x: d.x, y: d.y, scale: d.scale, rotation: d.rotation, anchorX: d.anchorX, anchorY: d.anchorY }
         pinKeys.forEach((key, i) => values[key] = d.pin[i])
         project.setClipVisual(clipInfo.id, values)
+    }
+
+    // The canvas's border: a thin line round what is exported, its edges lighting up and
+    // shaking as a picture reaches them.
+    Item {
+        id: frameBorder
+        objectName: "canvasBorder"
+        visible: EditingPreferences.canvasBorder && overlay.project.canvasWidth > 0 && overlay.width > 0
+        x: overlay.canvasRect.x
+        y: overlay.canvasRect.y
+        width: overlay.canvasRect.width
+        height: overlay.canvasRect.height
+        Repeater {
+            model: ["left", "top", "right", "bottom"]
+            delegate: Rectangle {
+                id: edge
+                required property string modelData
+                objectName: "canvasBorder:" + modelData
+                readonly property bool across: modelData === "top" || modelData === "bottom"
+                readonly property bool lit: overlay.touching[modelData] === true
+                readonly property real thickness: lit ? 2 : 1
+                property real shake: 0
+                x: (modelData === "right" ? frameBorder.width - thickness / 2 : across ? 0 : -thickness / 2) + (across ? 0 : shake)
+                y: (modelData === "bottom" ? frameBorder.height - thickness / 2 : across ? -thickness / 2 : 0) + (across ? shake : 0)
+                width: across ? frameBorder.width : thickness
+                height: across ? thickness : frameBorder.height
+                color: lit ? Theme.color.accent : Qt.alpha("#FFFFFF", 0.35)
+                Behavior on color { ColorAnimation { duration: 120 } }
+                SequentialAnimation {
+                    id: shaking
+                    NumberAnimation { target: edge; property: "shake"; to: 2.5; duration: 30 }
+                    NumberAnimation { target: edge; property: "shake"; to: -2.5; duration: 50 }
+                    NumberAnimation { target: edge; property: "shake"; to: 1.5; duration: 40 }
+                    NumberAnimation { target: edge; property: "shake"; to: 0; duration: 40 }
+                }
+                Connections {
+                    target: overlay
+                    function onEdgeReached(which) { if (which === edge.modelData) shaking.restart() }
+                }
+            }
+        }
     }
 
     Canvas {
@@ -195,6 +302,10 @@ Item {
             overlay.snappedY = Math.abs(y) < nearY
             if (overlay.snappedX) x = 0
             if (overlay.snappedY) y = 0
+            // Else to the border's edges.
+            const pulled = overlay.snapMove(x, y)
+            if (!overlay.snappedX) x = pulled[0]
+            if (!overlay.snappedY) y = pulled[1]
             overlay.preview({ x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) })
         }
         onReleased: {
@@ -253,7 +364,7 @@ Item {
                     }
                     const c = overlay.frame.pivot
                     const scale = startScale * Math.hypot(p.x - c.x, p.y - c.y) / startDistance
-                    overlay.preview({ scale: Math.max(0.05, Math.min(4, scale)) })
+                    overlay.preview({ scale: Math.max(0.05, Math.min(4, overlay.snapScale(scale))) })
                 }
                 onReleased: (mouse) => { follow(mouse); overlay.commit() }
                 onCanceled: overlay.draft = null

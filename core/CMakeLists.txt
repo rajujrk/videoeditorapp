@@ -60,6 +60,8 @@ add_library(tve_core STATIC
     commands/SequenceEdits.cpp
     commands/TemplateCommands.h
     commands/TemplateCommands.cpp
+    commands/TimelineEdits.h
+    commands/TimelineEdits.cpp
     commands/DrawingCommands.h
     commands/DrawingCommands.cpp
     io/ProjectSerializer.h

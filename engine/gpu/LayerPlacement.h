@@ -107,24 +107,29 @@ inline LayerPlacement placeLayer(const ClipVisual& visual, double canvasWidth, d
 
     // Layer (u, v) → canvas pixels: q = ((u - left) / cropW - 0.5)·fitW, likewise y;
     // canvas = centre + a + scale·R·(q - a).
+    // Flipped, q is mirrored about the picture's centre (inside its frame, which stays put).
     const double k = t.scale;
-    const double qx0 = (-crop.left / cropW - 0.5) * fitW, qy0 = (-crop.top / cropH - 0.5) * fitH; // q at u = v = 0
-    const double qxu = fitW / cropW, qyv = fitH / cropH;                                         // dq/du, dq/dv
+    const double fx = t.flipH ? -1.0 : 1.0, fy = t.flipV ? -1.0 : 1.0;
+    const double qx0 = fx * (-crop.left / cropW - 0.5) * fitW, qy0 = fy * (-crop.top / cropH - 0.5) * fitH; // q at u = v = 0
+    const double qxu = fx * fitW / cropW, qyv = fy * fitH / cropH;                                         // dq/du, dq/dv
     const double ox = centerX + ax + k * (c * (qx0 - ax) - s * (qy0 - ay));
     const double oy = centerY + ay + k * (s * (qx0 - ax) + c * (qy0 - ay));
     Matrix forward{k * c * qxu, -k * s * qyv, ox, k * s * qxu, k * c * qyv, oy, 0, 0, 1};
 
     if (visual.pin.active()) {
-        // The visible picture's corners where the transform puts them, each moved by its pin.
+        // The visible picture's corners where the transform puts them, each moved by the pin of
+        // the frame corner it lands on (a flipped picture's left edge is on the frame's right).
         const ClipCornerPin& pin = visual.pin;
         const double l = crop.left, r = 1.0 - crop.right, top = crop.top, b = 1.0 - crop.bottom;
-        const auto at = [&](double u, double v, double dx, double dy) {
+        const auto at = [&](double u, double v, bool left, bool upper) {
+            const bool frameLeft = left != t.flipH, frameTop = upper != t.flipV;
+            const double dx = frameTop ? (frameLeft ? pin.topLeftX : pin.topRightX) : (frameLeft ? pin.bottomLeftX : pin.bottomRightX);
+            const double dy = frameTop ? (frameLeft ? pin.topLeftY : pin.topRightY) : (frameLeft ? pin.bottomLeftY : pin.bottomRightY);
             const auto p = LayerPlacement::map(forward, u, v);
             return std::array<double, 2>{p[0] + dx * canvasWidth, p[1] + dy * canvasHeight};
         };
-        const Matrix quad = squareToQuad({at(l, top, pin.topLeftX, pin.topLeftY), at(r, top, pin.topRightX, pin.topRightY),
-                                          at(r, b, pin.bottomRightX, pin.bottomRightY),
-                                          at(l, b, pin.bottomLeftX, pin.bottomLeftY)});
+        const Matrix quad = squareToQuad({at(l, top, true, true), at(r, top, false, true), at(r, b, false, false),
+                                          at(l, b, true, false)});
         // Layer → unit square over the visible part, then onto the quad.
         const Matrix toSquare{1.0 / (r - l), 0, -l / (r - l), 0, 1.0 / (b - top), -top / (b - top), 0, 0, 1};
         forward = multiply(quad, toSquare);

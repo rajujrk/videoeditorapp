@@ -327,6 +327,39 @@ Rectangle {
                     tip: qsTr("Put a different random transition on each cut between clips")
                     onClicked: library.project.applyRandomTransitions()
                 }
+                // How long a new transition lasts (the default one, ⌘T, and those dropped on a cut).
+                RowLayout {
+                    spacing: Theme.space.xs
+                    height: 24
+                    Text { text: qsTr("New ones last"); font: Theme.type.caption; color: Theme.color.textSecondary }
+                    TextField {
+                        id: defaultLengthField
+                        objectName: "defaultTransitionLength"
+                        implicitWidth: 52
+                        implicitHeight: 24
+                        horizontalAlignment: Text.AlignRight
+                        font: Theme.type.caption
+                        color: Theme.color.textPrimary
+                        selectByMouse: true
+                        validator: DoubleValidator { bottom: 0.1; top: 10; decimals: 2; notation: DoubleValidator.StandardNotation }
+                        text: Fmt.brief(EditingPreferences.defaultTransitionLength, 2)
+                        background: Rectangle {
+                            radius: Theme.radius.s
+                            color: Theme.color.surfaceSunken
+                            border.color: defaultLengthField.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
+                        }
+                        onEditingFinished: {
+                            const value = Number.fromLocaleString(Qt.locale(), text)
+                            if (!isNaN(value))
+                                EditingPreferences.defaultTransitionLength = value
+                            text = Fmt.brief(EditingPreferences.defaultTransitionLength, 2)
+                        }
+                        ToolTip.visible: hovered
+                        ToolTip.delay: 600
+                        ToolTip.text: qsTr("Seconds, from 0.1 to 10")
+                    }
+                    Text { text: qsTr("s"); font: Theme.type.caption; color: Theme.color.textSecondary }
+                }
             }
 
             // Stickers tab: category chips over the stickers.
@@ -1061,6 +1094,7 @@ Rectangle {
                     height: transitionsGrid.cellHeight
                     readonly property bool overlay: modelData.overlay === true
                     readonly property bool active: !overlay && library.project.selectedTransitionInfo.transitionId === modelData.id
+                    readonly property bool isDefault: !overlay && EditingPreferences.defaultTransition === modelData.id
 
                     FavouriteBadge {
                         z: 10
@@ -1121,14 +1155,26 @@ Rectangle {
                                     }
                                 }
                             }
-                            Text {
+                            RowLayout {
                                 Layout.leftMargin: Theme.space.s
+                                Layout.rightMargin: Theme.space.s
                                 Layout.bottomMargin: Theme.space.s
-                                text: transitionTile.modelData.title
-                                font: Theme.type.label
-                                color: Theme.color.textPrimary
-                                elide: Text.ElideRight
-                                Layout.maximumWidth: transitionTile.width - Theme.space.xl
+                                spacing: Theme.space.xs
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: transitionTile.modelData.title
+                                    font: Theme.type.label
+                                    color: Theme.color.textPrimary
+                                    elide: Text.ElideRight
+                                }
+                                // The one ⌘T adds.
+                                Text {
+                                    objectName: "defaultTransitionBadge"
+                                    visible: transitionTile.isDefault
+                                    text: qsTr("Default")
+                                    font: Theme.type.caption
+                                    color: Theme.color.accentText
+                                }
                             }
                         }
                     }
@@ -1140,9 +1186,34 @@ Rectangle {
                         anchors.rightMargin: Theme.space.m
                         anchors.bottomMargin: Theme.space.m
                         hoverEnabled: true
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
                         drag.target: transitionTile.overlay ? null : transitionDragProxy
-                        onClicked: transitionTile.overlay ? library.project.addOverlayTransition(transitionTile.modelData.id)
-                                                          : library.project.addTransition(transitionTile.modelData.id)
+                        onClicked: (mouse) => {
+                            if (mouse.button === Qt.RightButton) {
+                                if (!transitionTile.overlay)
+                                    transitionMenu.popup()
+                                return
+                            }
+                            transitionTile.overlay ? library.project.addOverlayTransition(transitionTile.modelData.id)
+                                                   : library.project.addTransition(transitionTile.modelData.id)
+                        }
+                    }
+                    AppMenu {
+                        id: transitionMenu
+                        objectName: "transitionTileMenu:" + transitionTile.modelData.id
+                        AppMenuItem {
+                            objectName: "makeDefaultTransition"
+                            text: qsTr("Make it the default")
+                            shortcut: KeyMap.text("defaultTransition")
+                            checkable: true
+                            checked: transitionTile.isDefault
+                            onTriggered: EditingPreferences.defaultTransition = transitionTile.modelData.id
+                        }
+                        AppMenuItem {
+                            objectName: "applyTransitionToAll"
+                            text: qsTr("Put it on every cut")
+                            onTriggered: library.project.applyTransitionToAll(transitionTile.modelData.id)
+                        }
                     }
                     Item { id: transitionDragProxy }
 
@@ -1150,7 +1221,7 @@ Rectangle {
                         visible: transitionMouse.containsMouse && !transitionMouse.drag.active
                         delay: 800
                         text: transitionTile.overlay ? qsTr("Click to lay it over the cut nearest the playhead, on a track above")
-                                                     : qsTr("Click to add at the cut nearest the playhead, or drag onto a cut")
+                                                     : qsTr("Click to add at the cut nearest the playhead, or drag onto a cut; right-click to make it the default")
                     }
                 }
             }

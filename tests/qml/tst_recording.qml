@@ -77,7 +77,7 @@ Item {
             const panel = findChild(f.editor, "recordPanel")
             tryVerify(() => panel.opened)
             compare(p.screenAccess, "granted")
-            compare(panel.screens.length, 1)
+            compare(panel.screens.length, 2) // the test display and a test window
             compare(panel.screens[0].title, "Test display (1280 × 720)")
             compare(findChild(panel.contentItem, "screenChoice").currentText, "Test display (1280 × 720)")
             // The test camera too (picture in picture).

@@ -12,6 +12,7 @@ Rectangle {
     required property var project
     signal teleprompterRequested() // from the voice-over and recording panels
     signal drawingRequested(var area) // draw on the screen being recorded
+    signal matchFrameRequested(double clipId) // open the clip's media at the frame in the source monitor
 
     property real pixelsPerSecond: 60
     readonly property real snapPixels: 8
@@ -23,7 +24,13 @@ Rectangle {
     color: Theme.color.surface
 
     // Right-click menus: clips, track headers, empty lane space.
-    TimelineMenus { id: menus; objectName: "timelineMenus"; project: timeline.project; timeline: timeline }
+    TimelineMenus {
+        id: menus
+        objectName: "timelineMenus"
+        project: timeline.project
+        timeline: timeline
+        onMatchFrameRequested: (clipId) => timeline.matchFrameRequested(clipId)
+    }
 
     // The blade tool (B): clicking a clip cuts it there. V goes back to selecting.
     property bool bladeMode: false
@@ -98,14 +105,32 @@ Rectangle {
                 objectName: "deleteButton"
                 iconName: "delete"
                 tip: timeline.project.selectedTransition > 0 ? qsTr("Remove selected transition") + KeyMap.hints["delete"]
-                                                             : qsTr("Delete selected clip%1 — closes the gap on the main track").arg(KeyMap.hints["delete"])
+                     : EditingPreferences.autoRipple ? qsTr("Delete selected clip%1 — closes the gap").arg(KeyMap.hints["delete"])
+                                                     : qsTr("Delete selected clip%1 — closes the gap on the main track").arg(KeyMap.hints["delete"])
                 enabled: timeline.project.selectedClip > 0 || timeline.project.selectedTransition > 0
                 onClicked: timeline.project.selectedTransition > 0
                            ? timeline.project.removeTransition(timeline.project.selectedTransition)
                            : timeline.project.deleteClip(timeline.project.selectedClip)
             }
             Divider { implicitWidth: 1; implicitHeight: 18; Layout.leftMargin: Theme.space.xs; Layout.rightMargin: Theme.space.xs }
-            IconButton { iconName: "magnet"; tip: qsTr("Main track closes gaps on delete"); checkable: true; checked: true; enabled: false }
+            // The main track always closes the gap a delete leaves; auto ripple: every track does.
+            IconButton {
+                objectName: "autoRippleButton"
+                iconName: "magnet"
+                tip: EditingPreferences.autoRipple ? qsTr("Auto ripple: deleting closes the gap on every track (on)")
+                                                   : qsTr("Auto ripple: deleting closes the gap on every track, not only the main one")
+                checkable: true
+                checked: EditingPreferences.autoRipple
+                onClicked: EditingPreferences.autoRipple = !EditingPreferences.autoRipple
+            }
+            IconButton {
+                objectName: "skimmingButton"
+                iconName: "skim"
+                tip: qsTr("Skimming: the player shows the frame under the pointer as it moves over the timeline")
+                checkable: true
+                checked: EditingPreferences.skimming
+                onClicked: EditingPreferences.skimming = !EditingPreferences.skimming
+            }
             IconButton { id: snapToggle; iconName: "snap"; tip: qsTr("Snapping"); checkable: true; checked: true }
             IconButton {
                 objectName: "keyframeToolButton"
@@ -632,6 +657,16 @@ Rectangle {
                             }
                         }
 
+                        // Skimming: the frame under the pointer in the player, the playhead left where it is.
+                        HoverHandler {
+                            id: skimHover
+                            objectName: "skimHover"
+                            enabled: EditingPreferences.skimming && !timeline.project.playing
+                            onPointChanged: if (hovered) timeline.project.skim(Math.max(0, point.position.x / timeline.pixelsPerSecond))
+                            onHoveredChanged: if (!hovered) timeline.project.endSkim()
+                            onEnabledChanged: if (!enabled) timeline.project.endSkim()
+                        }
+
                         Column {
                             id: laneColumn
                             width: parent.width
@@ -837,6 +872,16 @@ Rectangle {
                         }
                     }
 
+                    // The skimmed frame's time (thin, under the playhead).
+                    Rectangle {
+                        objectName: "skimLine"
+                        visible: timeline.project.skimTime >= 0
+                        x: timeline.project.skimTime * timeline.pixelsPerSecond - 0.5
+                        width: 1
+                        height: parent.height
+                        z: 9
+                        color: Theme.color.warning
+                    }
                     // Playhead
                     Item {
                         x: timeline.project.playhead * timeline.pixelsPerSecond
@@ -1117,12 +1162,15 @@ Rectangle {
 
         Rectangle {
             id: body
+            objectName: "clipBody:" + item.clip.id
             anchors.fill: parent
             radius: Theme.radius.s
             readonly property color kindColor: item.clip.isTitle || item.clip.isDrawing ? Theme.color.trackTitle
                                              : item.clip.isAdjustment ? Theme.color.trackEffect
                                              : timeline.trackColor(item.track.kind)
             color: item.clip.missing ? Qt.alpha(Theme.color.danger, 0.35) : Qt.alpha(kindColor, Theme.dark ? 0.55 : 0.45)
+            // Turned off: faded back (it stays in place, unseen and unheard).
+            opacity: item.clip.enabled === false ? 0.4 : 1
             border.width: item.selected ? 2 : 1
             border.color: item.selected ? Theme.color.selection : kindColor
             clip: true
@@ -1226,7 +1274,9 @@ Rectangle {
                     x: Theme.space.s - 3
                     width: parent.width - Theme.space.s
                     // Badges first so a short clip still shows them.
-                    text: (item.clip.missing ? qsTr("Missing · ") : "")
+                    text: (item.clip.enabled === false ? qsTr("Off · ") : "")
+                          + (item.clip.placeholder ? qsTr("Placeholder · ") : "")
+                          + (item.clip.missing ? qsTr("Missing · ") : "")
                           + (item.clip.isTitle && !item.track.captions ? qsTr("Title · ") : "")
                           + (item.clip.lookTitle ? item.clip.lookTitle + " · " : "")
                           + (item.clip.freeze ? qsTr("Still · ") : "")
