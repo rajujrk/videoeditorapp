@@ -24,9 +24,9 @@ Rectangle {
     readonly property var guides: guidesOverlay
     readonly property var source: sourceMonitor
     readonly property var transport: showingSource && sourceMonitor.controller ? sourceMonitor.controller : project
-    function openSource(media) {
+    function openSource(media, from, to) {
         panel.project.pause()
-        sourceMonitor.load(media)
+        sourceMonitor.load(media, from, to)
         showingSource = true
     }
     onShowingSourceChanged: {

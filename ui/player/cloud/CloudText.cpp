@@ -104,7 +104,7 @@ public:
                          {QStringLiteral("fallbacks"), QStringLiteral("default")},
                          {QStringLiteral("messages"),
                           QJsonArray{QJsonObject{{QStringLiteral("role"), QStringLiteral("user")},
-                                                 {QStringLiteral("content"), m_request.prompt}}}}};
+                                                 {QStringLiteral("content"), content()}}}}};
         if (!m_request.system.isEmpty())
             body.insert(QStringLiteral("system"), m_request.system);
         QJsonObject output{{QStringLiteral("effort"), m_request.effort}};
@@ -113,6 +113,22 @@ public:
                                                                 {QStringLiteral("schema"), m_request.schema}});
         body.insert(QStringLiteral("output_config"), output);
         return body;
+    }
+
+    // The prompt, after any pictures.
+    QJsonValue content() const
+    {
+        if (m_request.images.isEmpty())
+            return m_request.prompt;
+        QJsonArray blocks;
+        for (const TextRequest::Image& image : m_request.images)
+            blocks.append(QJsonObject{{QStringLiteral("type"), QStringLiteral("image")},
+                                      {QStringLiteral("source"),
+                                       QJsonObject{{QStringLiteral("type"), QStringLiteral("base64")},
+                                                   {QStringLiteral("media_type"), image.mediaType},
+                                                   {QStringLiteral("data"), QString::fromLatin1(image.data.toBase64())}}}});
+        blocks.append(QJsonObject{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), m_request.prompt}});
+        return blocks;
     }
 
     // A conversation's turn: its fixed system prompt and tools, the history, adaptive

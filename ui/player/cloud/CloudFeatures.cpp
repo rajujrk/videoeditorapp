@@ -45,6 +45,23 @@ QJsonObject translationSchema()
             {QStringLiteral("additionalProperties"), false}};
 }
 
+QJsonObject correctionSchema()
+{
+    const QJsonObject text{{QStringLiteral("type"), QStringLiteral("object")},
+                           {QStringLiteral("properties"),
+                            QJsonObject{{QStringLiteral("index"), QJsonObject{{QStringLiteral("type"), QStringLiteral("integer")}}},
+                                        {QStringLiteral("text"), QJsonObject{{QStringLiteral("type"), QStringLiteral("string")}}},
+                                        {QStringLiteral("note"), QJsonObject{{QStringLiteral("type"), QStringLiteral("string")}}}}},
+                           {QStringLiteral("required"), QJsonArray{QStringLiteral("index"), QStringLiteral("text"), QStringLiteral("note")}},
+                           {QStringLiteral("additionalProperties"), false}};
+    return {{QStringLiteral("type"), QStringLiteral("object")},
+            {QStringLiteral("properties"),
+             QJsonObject{{QStringLiteral("corrections"), QJsonObject{{QStringLiteral("type"), QStringLiteral("array")},
+                                                                     {QStringLiteral("items"), text}}}}},
+            {QStringLiteral("required"), QJsonArray{QStringLiteral("corrections")}},
+            {QStringLiteral("additionalProperties"), false}};
+}
+
 } // namespace
 
 TextRequest copyRequest(const QString& kind, const QString& transcript, const QString& tone, const QString& notes,
@@ -97,6 +114,77 @@ std::optional<QMap<int, QString>> readTranslation(const QString& answer, const Q
         if (!texts.contains(index))
             return std::nullopt;
     return texts;
+}
+
+TextRequest correctionRequest(const QList<QPair<int, QString>>& texts, const QString& model)
+{
+    QJsonArray list;
+    for (const auto& [index, text] : texts)
+        list.append(QJsonObject{{QStringLiteral("index"), index}, {QStringLiteral("text"), text}});
+    TextRequest request;
+    request.system = QStringLiteral("You proofread the on-screen text of videos: titles and subtitles.");
+    request.prompt = QStringLiteral(
+        "Check these texts for mistakes in spelling, grammar, punctuation and capitalisation, each in the language it is "
+        "written in. Fix only what is wrong: keep the wording, the meaning, the tone and the length; never translate, "
+        "rephrase for style or add words that are not needed. Subtitles of speech may be casual: leave casual speech "
+        "alone and fix only real mistakes. Keep names, brand names and numbers as they are unless they are clearly "
+        "misspelt, and keep line breaks (\\n) where they are. Neighbouring texts are context.\n\n"
+        "Return only the texts you changed, each with its index, the whole corrected text, and a note of a few words in "
+        "English saying what you fixed. If nothing needs fixing, return no corrections.\n\n<texts>%1</texts>")
+                         .arg(QString::fromUtf8(QJsonDocument(list).toJson(QJsonDocument::Compact)));
+    request.model = model;
+    request.effort = QStringLiteral("medium");
+    request.schema = correctionSchema();
+    return request;
+}
+
+std::optional<QMap<int, Correction>> readCorrections(const QString& answer, const QMap<int, QString>& asked)
+{
+    QJsonParseError error;
+    const QJsonDocument document = QJsonDocument::fromJson(answer.toUtf8(), &error);
+    if (error.error != QJsonParseError::NoError || !document.object().value(QStringLiteral("corrections")).isArray())
+        return std::nullopt;
+    QMap<int, Correction> corrections;
+    for (const QJsonValue& value : document.object().value(QStringLiteral("corrections")).toArray()) {
+        const QJsonObject item = value.toObject();
+        const int index = item.value(QStringLiteral("index")).toInt(-1);
+        const QString text = item.value(QStringLiteral("text")).toString().trimmed();
+        if (!asked.contains(index) || text.isEmpty() || text == asked.value(index).trimmed())
+            continue;
+        corrections.insert(index, {text, item.value(QStringLiteral("note")).toString().trimmed()});
+    }
+    return corrections;
+}
+
+TextRequest imagePromptRequest(const QByteArray& image, const QString& mediaType, const QString& purpose,
+                               const QString& model)
+{
+    QString task;
+    if (purpose == QLatin1String("video"))
+        task = QStringLiteral(
+            "Write a prompt for a video generator to make a short shot like this picture: the subject and what it is "
+            "doing, the setting, the framing, the light and colours, the style, and a simple camera movement and action "
+            "that would suit it.");
+    else if (purpose == QLatin1String("sticker"))
+        task = QStringLiteral(
+            "Write a prompt for an image generator to make a sticker of the main subject of this picture: the one "
+            "object or character on its own, its look, colours and style, on a plain background.");
+    else
+        task = QStringLiteral(
+            "Write a prompt for an image generator to make a picture like this one: the subject, the setting, the "
+            "composition and framing, the light, the colours, the style or medium, and the lens or point of view.");
+    TextRequest request;
+    request.system = QStringLiteral(
+        "You describe pictures as prompts for image and video generators. Describe people by how they look, never by "
+        "who they might be; leave out logos, brand names and any text in the picture.");
+    request.prompt = task + QStringLiteral(
+        " One paragraph of plain text, under 80 words, in English. Reply with the prompt only: no preamble, no quotation "
+        "marks, no Markdown.");
+    request.model = model;
+    request.effort = QStringLiteral("low");
+    request.maxTokens = 4000;
+    request.images.push_back({mediaType, image});
+    return request;
 }
 
 TextRequest rankRequest(const QList<RankItem>& items, const QString& purpose, const QString& model)

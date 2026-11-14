@@ -34,6 +34,7 @@
 #include "playback/TimelinePlayback.h"
 #include "speech/SpeechEnhancer.h"
 #include "analysis/PeopleVision.h"
+#include "analysis/ContentVision.h"
 #include "analysis/MotionAnalysis.h"
 #include "analysis/Tracking.h"
 #include "encode/VideoProcessing.h"
@@ -48,10 +49,12 @@
 #include <nlohmann/json.hpp>
 
 #include <filesystem>
+#include <QBuffer>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
+#include <QImageReader>
 #include <QProcess>
 #include <QJsonDocument>
 #include <QGuiApplication>
@@ -904,6 +907,9 @@ ProjectController::ProjectController(QObject* parent)
         emit stickersChanged();
         emit m_soundLibrary->changed();
     });
+    // What search can reach follows the media bin and the transcripts.
+    connect(this, &ProjectController::projectChanged, this, &ProjectController::searchIndexChanged);
+    connect(this, &ProjectController::transcriptChanged, this, &ProjectController::searchIndexChanged);
     // Plug-ins being looked at follow the project (undo, removal).
     connect(this, &ProjectController::projectChanged, this,
             [this] { m_pluginHost->sync([this](const QString& key) { return audioEffectAt(key); }); });
@@ -5959,6 +5965,397 @@ bool ProjectController::hasTranscript(double mediaId) const
 {
     const MediaItem* media = m_project.findMedia(toId(mediaId));
     return media && !mediaWords(*media).empty();
+}
+
+// --- Smart search ---
+
+bool ProjectController::lookable(const MediaItem& media) const
+{
+    return media.hasVideo && !media.lottie && !media.placeholder && !media.colourFill && !media.sequence
+        && QFileInfo::exists(QString::fromStdString(media.path));
+}
+
+const tve::ContentIndex* ProjectController::contentOf(const MediaItem& media)
+{
+    const std::string key = fingerprintOf(media);
+    auto found = m_content.find(key);
+    if (found == m_content.end()) {
+        // (An empty index: not looked at yet; not read from disk again.)
+        auto kept = tve::loadContent(tve::AnalysisCache(analysisDirectory().toStdString()), key);
+        found = m_content.emplace(key, kept ? std::move(*kept) : tve::ContentIndex{}).first;
+    }
+    return found->second.frames.empty() ? nullptr : &found->second;
+}
+
+const std::vector<TimedWord>& ProjectController::searchWords(const MediaItem& media)
+{
+    const std::string key = fingerprintOf(media);
+    std::vector<TimedWord> words = mediaWords(media);
+    if (!words.empty())
+        return m_searchWords.insert_or_assign(key, std::move(words)).first->second;
+    auto found = m_searchWords.find(key);
+    if (found == m_searchWords.end()) {
+        std::vector<TimedWord> kept;
+        if (media.hasAudio)
+            if (auto transcript = tve::loadAnyTranscript(tve::AnalysisCache(analysisDirectory().toStdString()), key))
+                for (const tve::TranscriptWord& word : transcript->words)
+                    kept.push_back({word.start, word.end, word.text});
+        found = m_searchWords.emplace(key, std::move(kept)).first;
+    }
+    return found->second;
+}
+
+QVariantMap ProjectController::searchStatus() const
+{
+    auto* self = const_cast<ProjectController*>(this); // (reads the caches in)
+    int lookableCount = 0, looked = 0, transcribed = 0;
+    for (const MediaItem& media : m_project.media) {
+        if (self->lookable(media)) {
+            ++lookableCount;
+            if (self->contentOf(media))
+                ++looked;
+        }
+        if (media.hasAudio && !self->searchWords(media).empty())
+            ++transcribed;
+    }
+    return {{QStringLiteral("lookable"), lookableCount}, {QStringLiteral("looked"), looked},
+            {QStringLiteral("transcribed"), transcribed}};
+}
+
+bool ProjectController::analyzeForSearch(const QVariantList& mediaIds)
+{
+    if (analyzing()) {
+        reportError(tr("An analysis is already running"));
+        return false;
+    }
+    std::vector<const MediaItem*> chosen;
+    if (mediaIds.isEmpty()) {
+        for (const MediaItem& media : m_project.media)
+            chosen.push_back(&media);
+    } else {
+        for (const QVariant& id : mediaIds)
+            if (const MediaItem* media = m_project.findMedia(toId(id.toDouble())))
+                chosen.push_back(media);
+    }
+    struct Job {
+        std::string path;
+        bool still = false;
+        std::string key;
+    };
+    std::vector<Job> jobs;
+    for (const MediaItem* media : chosen) {
+        if (!lookable(*media) || contentOf(*media))
+            continue;
+        const std::string key = fingerprintOf(*media);
+        if (std::ranges::none_of(jobs, [&](const Job& j) { return j.key == key; }))
+            jobs.push_back({media->path, media->still, key});
+    }
+    if (jobs.empty()) {
+        if (chosen.empty() || std::ranges::none_of(chosen, [this](const MediaItem* m) { return lookable(*m); })) {
+            reportError(tr("There are no pictures or videos to look at"));
+            return false;
+        }
+        emit searchIndexChanged();
+        emit analysisFinished(true, {});
+        return true;
+    }
+    auto found = std::make_shared<std::vector<std::pair<std::string, tve::ContentIndex>>>();
+    runInBackground(tr("Looking at the media for search"),
+                    [jobs, found, directory = analysisDirectory().toStdString()](const tve::AnalysisProgress& progress) -> std::string {
+                        const tve::AnalysisCache cache(directory);
+                        const double n = double(jobs.size());
+                        for (std::size_t i = 0; i < jobs.size(); ++i) {
+                            std::string error;
+                            auto index = tve::analyzeContent(jobs[i].path, jobs[i].still,
+                                                             [&](double done) { return progress((double(i) + done) / n); }, &error);
+                            if (!index) {
+                                if (error.empty())
+                                    return "cancelled";
+                                continue; // (this one cannot be read; the others still can)
+                            }
+                            tve::saveContent(cache, jobs[i].key, *index);
+                            found->emplace_back(jobs[i].key, std::move(*index));
+                            if (!progress(double(i + 1) / n))
+                                return "cancelled";
+                        }
+                        return {};
+                    },
+                    [this, found] {
+                        for (auto& [key, index] : *found)
+                            m_content.insert_or_assign(key, std::move(index));
+                        emit searchIndexChanged();
+                        emit analysisFinished(true, {});
+                    });
+    return true;
+}
+
+QVariantList ProjectController::searchMedia(const QString& query, int limit)
+{
+    std::vector<tve::SearchableMedia> searchable;
+    for (const MediaItem& media : m_project.media) {
+        const tve::ContentIndex* content = lookable(media) ? contentOf(media) : nullptr;
+        const std::vector<TimedWord>* words = media.hasAudio ? &searchWords(media) : nullptr;
+        searchable.push_back({media.id, media.duration, media.still, content, words});
+    }
+    QVariantList hits;
+    for (const tve::SearchHit& hit : tve::searchMedia(query.toStdString(), searchable, std::size_t(std::max(1, limit)))) {
+        const MediaItem* media = m_project.findMedia(hit.mediaId);
+        hits << QVariantMap{{QStringLiteral("mediaId"), double(hit.mediaId)},
+                            {QStringLiteral("name"), mediaName(*media)},
+                            {QStringLiteral("path"), QString::fromStdString(media->path)},
+                            {QStringLiteral("still"), media->still},
+                            {QStringLiteral("start"), seconds(hit.start)},
+                            {QStringLiteral("end"), seconds(hit.end)},
+                            {QStringLiteral("seen"), bool(hit.found & tve::kFoundSeen)},
+                            {QStringLiteral("said"), bool(hit.found & tve::kFoundSaid)},
+                            {QStringLiteral("shown"), bool(hit.found & tve::kFoundShown)},
+                            {QStringLiteral("snippet"), QString::fromStdString(hit.snippet)}};
+    }
+    return hits;
+}
+
+QVariantList ProjectController::mediaLabels(double mediaId, int count)
+{
+    QVariantList labels;
+    const MediaItem* media = m_project.findMedia(toId(mediaId));
+    const tve::ContentIndex* content = media && lookable(*media) ? contentOf(*media) : nullptr;
+    if (!content)
+        return labels;
+    for (const tve::LabelShare& label : tve::topLabels(*content, std::size_t(std::max(1, count))))
+        labels << QVariantMap{{QStringLiteral("label"), QString::fromStdString(tve::labelText(label.name))},
+                              {QStringLiteral("share"), label.share}};
+    return labels;
+}
+
+// --- Proofreading and prompts (Claude) ---
+
+namespace {
+
+// The name of the model that answered, as offered (a fallback may have answered).
+QString answeredBy(CloudServices* cloud, const QString& model)
+{
+    for (const QVariant& offered : cloud->claudeModels())
+        if (offered.toMap().value(QStringLiteral("id")).toString() == model)
+            return offered.toMap().value(QStringLiteral("label")).toString();
+    return model;
+}
+
+} // namespace
+
+bool ProjectController::checkText()
+{
+    struct Item {
+        Id clipId = kNoId;
+        bool caption = false;
+        QString text;
+    };
+    // The captions in order, then the other titles by time.
+    std::vector<Item> items;
+    std::vector<std::pair<Ticks, Item>> titles;
+    for (const Track& track : m_project.tracks)
+        for (const Clip& clip : track.clips) {
+            if (!clip.text || QString::fromStdString(clip.text->text).trimmed().isEmpty())
+                continue;
+            Item item{clip.id, track.captions, QString::fromStdString(clip.text->text)};
+            if (track.captions)
+                items.push_back(std::move(item));
+            else
+                titles.emplace_back(clip.start, std::move(item));
+        }
+    std::ranges::stable_sort(titles, {}, &std::pair<Ticks, Item>::first);
+    for (auto& [start, item] : titles)
+        items.push_back(std::move(item));
+    if (items.empty()) {
+        reportError(tr("There are no titles or captions to check"));
+        return false;
+    }
+    if (m_cloud->busy()) {
+        reportError(tr("Another AI job is running"));
+        return false;
+    }
+    m_textFixes.clear();
+    emit textFixesChanged();
+
+    // Batches, one after another; the fixes are offered when all are in.
+    struct Check {
+        std::vector<Item> items;
+        QMap<int, cloudfeatures::Correction> fixes;
+        int next = 0;
+        QString model;
+    };
+    auto state = std::make_shared<Check>(Check{std::move(items), {}, 0, {}});
+    QPointer<ProjectController> self(this);
+    auto step = std::make_shared<std::function<void()>>();
+    *step = [self, state, step] {
+        if (!self)
+            return;
+        CloudServices* cloud = self->m_cloud;
+        const int total = int(state->items.size());
+        const int from = state->next;
+        const int to = std::min(total, from + cloudfeatures::kTextsPerRequest);
+        QList<QPair<int, QString>> batch;
+        QMap<int, QString> asked;
+        for (int i = from; i < to; ++i) {
+            batch.push_back({i, state->items[std::size_t(i)].text});
+            asked.insert(i, state->items[std::size_t(i)].text);
+        }
+        cloud->setProgress(double(from) / total, total > cloudfeatures::kTextsPerRequest
+                                                     ? tr("Checking texts %1–%2 of %3…").arg(from + 1).arg(to).arg(total)
+                                                     : tr("Checking the text…"));
+        const auto done = [self, state, step, asked, to, total](const TextResult& result) {
+            if (!self)
+                return;
+            CloudServices* cloud = self->m_cloud;
+            const auto fail = [&](const QString& error) {
+                cloud->endJob(error);
+                emit cloud->jobFinished(QStringLiteral("proofread"), false, error);
+                if (!error.isEmpty())
+                    self->reportError(error);
+                *step = nullptr; // (breaks the cycle)
+            };
+            if (!result.ok) {
+                fail(result.cancelled ? QString() : result.error);
+                return;
+            }
+            const auto fixes = cloudfeatures::readCorrections(result.text, asked);
+            if (!fixes) {
+                fail(tr("The check came back unreadable; try again"));
+                return;
+            }
+            state->fixes.insert(*fixes);
+            state->model = result.usage.model;
+            state->next = to;
+            if (to < total) {
+                (*step)();
+                return;
+            }
+            QVariantList list;
+            for (auto it = state->fixes.cbegin(); it != state->fixes.cend(); ++it) {
+                const Item& item = state->items[std::size_t(it.key())];
+                list << QVariantMap{{QStringLiteral("index"), list.size()},
+                                    {QStringLiteral("clipId"), double(item.clipId)},
+                                    {QStringLiteral("kind"), item.caption ? QStringLiteral("caption") : QStringLiteral("title")},
+                                    {QStringLiteral("before"), item.text},
+                                    {QStringLiteral("after"), it.value().text},
+                                    {QStringLiteral("note"), it.value().note}};
+            }
+            self->m_textFixes = list;
+            emit self->textFixesChanged();
+            const QString by = answeredBy(cloud, state->model);
+            cloud->endJob(list.isEmpty() ? tr("Nothing to fix (checked by %1)").arg(by)
+                         : list.size() == 1 ? tr("1 thing to fix (checked by %1)").arg(by)
+                                            : tr("%1 things to fix (checked by %2)").arg(list.size()).arg(by));
+            emit cloud->jobFinished(QStringLiteral("proofread"), true, QString());
+            *step = nullptr;
+        };
+        if (!cloud->generate(QStringLiteral("proofread"), cloudfeatures::correctionRequest(batch, cloud->claudeModel()), done)) {
+            cloud->endJob(QString());
+            *step = nullptr;
+        }
+    };
+    (*step)();
+    return true;
+}
+
+bool ProjectController::applyTextFixes(const QVariantList& indices)
+{
+    std::set<int> chosen;
+    for (const QVariant& index : indices)
+        chosen.insert(index.toInt());
+    std::vector<std::unique_ptr<Command>> commands;
+    QVariantList left;
+    for (const QVariant& value : m_textFixes) {
+        const QVariantMap fix = value.toMap();
+        if (!chosen.contains(fix.value(QStringLiteral("index")).toInt())) {
+            left << fix;
+            continue;
+        }
+        const Clip* clip = findClip(toId(fix.value(QStringLiteral("clipId")).toDouble()));
+        if (!clip || !clip->text || QString::fromStdString(clip->text->text) != fix.value(QStringLiteral("before")).toString())
+            continue; // changed since: dropped
+        ClipText text = *clip->text;
+        text.text = fix.value(QStringLiteral("after")).toString().toStdString();
+        text.words = tve::retimeWords(text.words, text.text);
+        commands.push_back(std::make_unique<SetClipTextCommand>(clip->id, std::move(text)));
+    }
+    if (commands.empty()) {
+        m_textFixes = left;
+        emit textFixesChanged();
+        reportError(tr("The text has changed since it was checked; check it again"));
+        return false;
+    }
+    if (!apply(std::make_unique<CompositeCommand>(std::move(commands), TVE_TR("core", "Correct Text"))))
+        return false;
+    m_textFixes = left;
+    emit textFixesChanged();
+    return true;
+}
+
+void ProjectController::dismissTextFixes()
+{
+    if (m_textFixes.isEmpty())
+        return;
+    m_textFixes.clear();
+    emit textFixesChanged();
+}
+
+bool ProjectController::promptFromPicture(const QString& purpose, double mediaId)
+{
+    if (purpose != QLatin1String("picture") && purpose != QLatin1String("sticker") && purpose != QLatin1String("video")) {
+        reportError(tr("Unknown kind of prompt"));
+        return false;
+    }
+    if (m_cloud->busy()) {
+        reportError(tr("Another AI job is running"));
+        return false;
+    }
+    QImage image;
+    if (mediaId >= 0) {
+        const MediaItem* media = m_project.findMedia(toId(mediaId));
+        if (!media || !media->still || media->lottie) {
+            reportError(tr("Choose a picture to describe"));
+            return false;
+        }
+        QImageReader reader(QString::fromStdString(media->path));
+        reader.setAutoTransform(true);
+        image = reader.read();
+    } else {
+        if (duration() <= 0) {
+            reportError(tr("There is nothing at the playhead to describe"));
+            return false;
+        }
+        StillRenderer renderer;
+        if (renderer.isValid())
+            image = renderer.render(std::make_shared<const Project>(m_project), ticks(m_playhead),
+                                    QSize(m_project.settings.width, m_project.settings.height));
+    }
+    if (image.isNull()) {
+        reportError(tr("Could not read the picture to describe"));
+        return false;
+    }
+    // Claude reads pictures up to about 1568 pixels on the long side; larger only costs more.
+    constexpr int kLongSide = 1568;
+    if (std::max(image.width(), image.height()) > kLongSide)
+        image = image.scaled(kLongSide, kLongSide, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    QByteArray jpeg;
+    QBuffer buffer(&jpeg);
+    buffer.open(QIODevice::WriteOnly);
+    image.convertToFormat(QImage::Format_RGB888).save(&buffer, "JPEG", 85);
+
+    QPointer<ProjectController> self(this);
+    const TextRequest request = cloudfeatures::imagePromptRequest(jpeg, QStringLiteral("image/jpeg"), purpose, m_cloud->claudeModel());
+    const bool started = m_cloud->generate(QStringLiteral("describe"), request, [self](const TextResult& result) {
+        if (!self)
+            return;
+        CloudServices* cloud = self->m_cloud;
+        cloud->endJob(result.ok ? tr("Written by %1").arg(answeredBy(cloud, result.usage.model)) : result.error);
+        emit cloud->jobFinished(QStringLiteral("describe"), result.ok, result.cancelled ? QString() : result.error);
+        if (!result.ok && !result.cancelled)
+            self->reportError(result.error);
+    });
+    if (!started)
+        reportError(tr("Another AI job is running"));
+    return started;
 }
 
 void ProjectController::withAllFeatures(const std::vector<Id>& mediaIds, const QString& task, std::function<void()> then)

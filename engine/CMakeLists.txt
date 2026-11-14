@@ -69,6 +69,9 @@ add_library(tve_engine STATIC
     analysis/Tracking.h
     analysis/Tracking.mm
     analysis/PeopleVision.mm
+    analysis/VisionSupport.h
+    analysis/ContentVision.h
+    analysis/ContentVision.mm
     speech/Transcriber.h
     speech/Transcriber.cpp
     speech/SpeechEnhancer.h

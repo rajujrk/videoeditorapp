@@ -542,6 +542,28 @@ crown on the astronaut's head, and the recorder's Background choice for the came
 ![The recorder's camera background, dark](images/recorder-background-dark.png)
 ![The recorder's camera background, light](images/recorder-background-light.png)
 
+Smart search in the Media tab. Under the search field, while searching, how far it reaches (a caption line in
+`textSecondary`, with Look at media as a `secondary` button until everything is looked at), then the
+moments found as rows on `surfaceRaised`: a thumbnail at the moment, the media's name in `label`
+type with the time on the right, how it was found as small `accentSubtle` chips (Seen, Said, On
+screen) and the matching words in `textSecondary`. The media tiles narrow to those found. A search
+for the sign's words, and one for a label of the astronaut, dark and light:
+
+![Smart search, on screen, dark](images/smart-search-dark.png)
+![Smart search, on screen, light](images/smart-search-light.png)
+![Smart search, labels, dark](images/smart-search-labels-dark.png)
+![Smart search, labels, light](images/smart-search-labels-light.png)
+
+Claude's proofreading in the Captions tab: each fix a `surfaceRaised` card with a tick box, what it
+is and Claude's note in caption type, the text before struck through in `textSecondary` and after in
+`textPrimary`; Apply as the one `primary` button with Dismiss as `ghost`. And Describe the frame in
+the Generate tab, a `ghost` button under the prompt box, which Claude's prompt fills. Dark and light:
+
+![Proofreading, dark](images/proofread-dark.png)
+![Proofreading, light](images/proofread-light.png)
+![A prompt from the frame, dark](images/image-prompt-dark.png)
+![A prompt from the frame, light](images/image-prompt-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.

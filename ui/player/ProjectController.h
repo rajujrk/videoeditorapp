@@ -20,6 +20,7 @@
 #include "VideoView.h"
 #include "analysis/MediaAnalysis.h"
 #include "model/Captions.h"
+#include "model/ContentSearch.h"
 #include "speech/Transcriber.h"
 #include "model/Motion.h"
 #include "capture/CaptureRecorder.h"
@@ -217,6 +218,12 @@ class ProjectController : public QObject {
     // The words said in the clips on the timeline (once transcribed), in timeline order:
     // {index, text, start, end, clipId, filler}.
     Q_PROPERTY(QVariantList transcript READ transcript NOTIFY transcriptChanged)
+    // Smart search (Media tab): how much of the media bin it can search — {lookable (media
+    // with pictures), looked (of those, looked at for labels and text on screen), transcribed}.
+    Q_PROPERTY(QVariantMap searchStatus READ searchStatus NOTIFY searchIndexChanged)
+    // Claude's proofreading of the titles and captions: [{index, clipId, kind ("caption" /
+    // "title"), before, after, note}], until applied or dismissed.
+    Q_PROPERTY(QVariantList textFixes READ textFixes NOTIFY textFixesChanged)
 
     // Export: the render queue. Jobs run one at a time, in order; `exporting` while one is
     // running (or paused), with its progress (0–1).
@@ -400,6 +407,8 @@ public:
     int captionCount() const;
     QString captionMotion() const;
     QVariantList transcript() const;
+    QVariantMap searchStatus() const;
+    QVariantList textFixes() const { return m_textFixes; }
     QVariantList exportJobs() const;
     QVariantList exportPresets() const;
     QVariantList exportFormats() const;
@@ -841,6 +850,27 @@ public:
     Q_INVOKABLE bool makeShorts(const QVariantMap& options);
     // Whether a media has a transcript (for captions and ranking).
     Q_INVOKABLE bool hasTranscript(double mediaId) const;
+    // Smart search. Looks at the pictures of these media (all with pictures not looked at
+    // yet, without ids) for labels and text on screen, on this Mac, in the background
+    // (analysisFinished reports; kept per file).
+    Q_INVOKABLE bool analyzeForSearch(const QVariantList& mediaIds = {});
+    // The moments of the media bin matching a search — in labels, what is said (media with a
+    // transcript) and the text on screen — best first: [{mediaId, name, path, still, start,
+    // end (media seconds), seen, said, shown (how it was found), snippet}].
+    Q_INVOKABLE QVariantList searchMedia(const QString& query, int limit = 50);
+    // What a media shows most (once looked at): [{label, share (0..1)}].
+    Q_INVOKABLE QVariantList mediaLabels(double mediaId, int count = 6);
+    // Claude proofreads the titles and captions on the timeline (job "proofread"); what it
+    // would change goes in textFixes, nothing changing until applied.
+    Q_INVOKABLE bool checkText();
+    // Applies these textFixes (by index), each title's or caption's words keeping their
+    // timing; one undo step. Fixes whose text has changed since are left out.
+    Q_INVOKABLE bool applyTextFixes(const QVariantList& indices);
+    Q_INVOKABLE void dismissTextFixes();
+    // Claude writes a prompt for a "picture", "sticker" or "video" like a picture: the
+    // frame at the playhead, or a still media's (job "describe"; the prompt streams into
+    // cloud.draft and cloud.jobFinished says how it ended).
+    Q_INVOKABLE bool promptFromPicture(const QString& purpose, double mediaId = -1);
     Q_INVOKABLE bool generateImage(const QString& prompt, const QVariantMap& options = {});
     Q_INVOKABLE bool generateVideo(const QString& prompt, const QVariantMap& options = {});
     Q_INVOKABLE bool generateSound(const QString& prompt, const QVariantMap& options = {});
@@ -1197,6 +1227,8 @@ signals:
     void upscaleModelChanged();
     void modelDownloadFinished(const QString& modelId, bool ok, const QString& error);
     void transcriptChanged();
+    void searchIndexChanged();
+    void textFixesChanged();
     // An analysis finished (ok) or failed or was cancelled (message, empty when cancelled).
     void analysisFinished(bool ok, const QString& message);
     // An auto edit ("instant", "montage", "shorts") ended: ok, and what to tell (why not, or
@@ -1441,6 +1473,14 @@ private:
     std::pair<std::optional<tve::ClipText>, std::optional<tve::ClipVisual>> captionLook() const;
     // Cuts ranges out of tracks, remaking the captions to match; one undo step.
     bool cutRanges(const std::map<tve::Id, std::vector<std::pair<tve::Ticks, tve::Ticks>>>& byTrack, const char* label);
+    // Smart search: what media show (by fingerprint; loaded from the cache when first needed).
+    std::map<std::string, tve::ContentIndex> m_content;
+    const tve::ContentIndex* contentOf(const tve::MediaItem& media);
+    // What is said in a media, for search: its transcript here, else one kept on disk.
+    const std::vector<tve::TimedWord>& searchWords(const tve::MediaItem& media);
+    std::map<std::string, std::vector<tve::TimedWord>> m_searchWords; // by fingerprint
+    bool lookable(const tve::MediaItem& media) const;
+    QVariantList m_textFixes;
     std::string m_transcriptVariant; // the model and language of the transcript shown
     SpeechModels m_speechModels;
     std::map<std::string, tve::Transcript> m_transcripts; // by fingerprint + model + language

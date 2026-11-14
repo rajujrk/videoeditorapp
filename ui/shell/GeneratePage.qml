@@ -185,6 +185,29 @@ ScrollView {
             background: Rectangle { radius: Theme.radius.m; color: Theme.color.surfaceSunken; border.color: Theme.color.borderSubtle }
         }
 
+        // The prompt written by Claude from the frame at the playhead (pictures, stickers, video).
+        RowLayout {
+            visible: page.kind === "picture" || page.kind === "sticker" || page.kind === "video"
+            Layout.fillWidth: true
+            spacing: Theme.space.s
+            TextButton {
+                objectName: "promptFromFrame"
+                text: page.cloud.job === "describe" ? qsTr("Describing…") : qsTr("Describe the frame")
+                iconName: "snapshot"
+                variant: "ghost"
+                enabled: page.cloud.hasClaudeKey && page.cloud.job === "" && page.project.duration > 0
+                tip: !page.cloud.hasClaudeKey ? qsTr("Add your Claude API key in AI settings to write a prompt from a picture")
+                                              : qsTr("Claude writes a prompt from the frame at the playhead, to make something like it")
+                onClicked: page.project.promptFromPicture(page.kind)
+            }
+            Item { Layout.fillWidth: true }
+        }
+        Connections {
+            target: page.cloud
+            function onDraftChanged() { if (page.cloud.job === "describe") prompt.text = page.cloud.draft }
+            function onJobFinished(job, ok) { if (job === "describe" && ok) prompt.text = page.cloud.draft }
+        }
+
         // Pictures and stickers: shape and quality
         Flow {
             visible: page.kind === "picture" || page.kind === "sticker"

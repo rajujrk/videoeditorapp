@@ -13,6 +13,7 @@ add_library(tve_core STATIC
     model/ColorGrade.cpp
     model/Masks.h
     model/People.h
+    model/ContentSearch.h
     model/Motion.h
     model/Cursor.h
     model/Cursor.cpp
@@ -33,6 +34,7 @@ add_library(tve_core STATIC
     io/InterchangeEdl.cpp
     model/Motion.cpp
     model/People.cpp
+    model/ContentSearch.cpp
     model/Masks.cpp
     model/TextAnimation.h
     model/TextAnimation.cpp

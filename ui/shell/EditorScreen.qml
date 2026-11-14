@@ -177,6 +177,7 @@ Rectangle {
                     onImportRequested: editor.importMedia()
                     onImportFromRequested: (source) => importPanel.show(source)
                     onSourceRequested: (media) => playerPanel.openSource(media)
+                    onMomentRequested: (media, start, end) => playerPanel.openSource(media, start, end)
                     onCloudSettingsRequested: cloudSettings.open()
                 }
                 PlayerPanel {

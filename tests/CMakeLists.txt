@@ -35,6 +35,7 @@ add_executable(tve_core_tests
     core/test_clip_animation.cpp
     core/test_colour_match.cpp
     core/test_image_sequence.cpp
+    core/test_content_search.cpp
 )
 target_link_libraries(tve_core_tests PRIVATE tve::core Catch2::Catch2WithMain)
 catch_discover_tests(tve_core_tests)
@@ -66,6 +67,7 @@ add_executable(tve_engine_tests
     engine/test_transcriber.cpp
     engine/test_speech_enhancer.cpp
     engine/test_people_vision.cpp
+    engine/test_content_vision.mm
     engine/test_motion_analysis.cpp
     engine/test_multicam.cpp
     engine/test_video_processing.cpp

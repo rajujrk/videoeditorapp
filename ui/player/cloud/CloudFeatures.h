@@ -35,6 +35,24 @@ TextRequest rankRequest(const QList<RankItem>& items, const QString& purpose, co
 // The indices best first with their titles; nullopt unless every index asked for is there once.
 std::optional<QList<QPair<int, QString>>> readRanking(const QString& answer, const QList<int>& indices);
 
+// Texts (index → text: captions and titles) checked for spelling, grammar and punctuation,
+// each in its own language, the meaning, wording and line breaks kept.
+TextRequest correctionRequest(const QList<QPair<int, QString>>& texts, const QString& model);
+struct Correction {
+    QString text; // the corrected text
+    QString note; // what was fixed, in a few words
+};
+// The texts Claude changed, by index (unknown indices and texts that came back the same
+// left out); nullopt when the answer cannot be read.
+std::optional<QMap<int, Correction>> readCorrections(const QString& answer, const QMap<int, QString>& asked);
+// How many texts go in one request.
+constexpr int kTextsPerRequest = 120;
+
+// A prompt for making a picture ("picture"), a sticker ("sticker") or a video ("video")
+// like the one given (encoded, e.g. "image/jpeg").
+TextRequest imagePromptRequest(const QByteArray& image, const QString& mediaType, const QString& purpose,
+                               const QString& model);
+
 // The languages offered for translation (English names).
 QStringList languages();
 

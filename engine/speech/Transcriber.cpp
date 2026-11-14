@@ -283,9 +283,11 @@ std::optional<Transcript> transcribe(const std::string& mediaPath, const std::st
     return transcript;
 }
 
-std::optional<Transcript> loadTranscript(const AnalysisCache& cache, const std::string& fingerprint, const std::string& variant)
+namespace {
+
+std::optional<Transcript> readTranscript(const std::string& path)
 {
-    std::ifstream in(transcriptPath(cache, fingerprint, variant));
+    std::ifstream in(path);
     if (!in)
         return std::nullopt;
     try {
@@ -300,6 +302,37 @@ std::optional<Transcript> loadTranscript(const AnalysisCache& cache, const std::
     } catch (const std::exception&) {
         return std::nullopt;
     }
+}
+
+} // namespace
+
+std::optional<Transcript> loadTranscript(const AnalysisCache& cache, const std::string& fingerprint, const std::string& variant)
+{
+    return readTranscript(transcriptPath(cache, fingerprint, variant));
+}
+
+std::optional<Transcript> loadAnyTranscript(const AnalysisCache& cache, const std::string& fingerprint)
+{
+    // The file names start with the fingerprint (as transcriptPath writes it) and a dot.
+    std::string prefix = transcriptPath(cache, fingerprint, "x");
+    prefix = std::filesystem::path(prefix).filename().string();
+    prefix = prefix.substr(0, prefix.size() - std::string("x.transcript.json").size());
+    std::error_code ec;
+    std::filesystem::path newest;
+    std::filesystem::file_time_type newestTime{};
+    for (const auto& entry : std::filesystem::directory_iterator(cache.directory(), ec)) {
+        const std::string name = entry.path().filename().string();
+        if (!name.starts_with(prefix) || !name.ends_with(".transcript.json"))
+            continue;
+        const auto time = entry.last_write_time(ec);
+        if (newest.empty() || time > newestTime) {
+            newest = entry.path();
+            newestTime = time;
+        }
+    }
+    if (newest.empty())
+        return std::nullopt;
+    return readTranscript(newest.string());
 }
 
 bool saveTranscript(const AnalysisCache& cache, const std::string& fingerprint, const std::string& variant,

@@ -114,6 +114,10 @@ TEST_CASE("speech becomes words with their times")
     REQUIRE(saveTranscript(cache, "v1:1:ab", "base.en-q5_1.en", *transcript));
     CHECK(loadTranscript(cache, "v1:1:ab", "base.en-q5_1.en") == transcript);
     CHECK_FALSE(loadTranscript(cache, "v1:1:ab", "small.en"));
+    // Whichever is kept, for a media; not another media's whose fingerprint starts the same.
+    CHECK(loadAnyTranscript(cache, "v1:1:ab") == transcript);
+    CHECK_FALSE(loadAnyTranscript(cache, "v1:1:a"));
+    CHECK_FALSE(loadAnyTranscript(cache, "v1:1:abc"));
     fs::remove_all(dir);
 }
 
