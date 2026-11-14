@@ -57,7 +57,13 @@ Item {
             return item
         }
         function rightClick(parent, name) {
-            const item = settled(parent, name)
+            let item = settled(parent, name)
+            // A track's header scrolled into view first, as you would (the timeline is short here).
+            if (name.startsWith("trackHeader:")) {
+                findChild(parent, "timelinePanel").showTrack(item.track.id)
+                waitForRendering(parent)
+                item = settled(parent, name)
+            }
             mouseClick(item, item.width / 2, item.height / 2, Qt.RightButton)
         }
         // A menu entry by name, in a menu or one of its submenus (their items are made by

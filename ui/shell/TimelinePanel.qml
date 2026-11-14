@@ -36,6 +36,42 @@ Rectangle {
     property bool bladeMode: false
     // Track height: 0.7 small, 1 normal, 1.5 large.
     property real trackScale: 1.0
+    // The tracks scroll up and down together (headers and lanes) when there are more than fit;
+    // the ruler, playhead and markers stay where they are.
+    readonly property real tracksHeight: {
+        let h = 0
+        for (const t of tracks)
+            h += trackHeight(t.kind)
+        return h
+    }
+    readonly property real trackScrollMax: Math.max(0, tracksHeight - laneArea.height)
+    property real trackScroll: 0
+    onTrackScrollMaxChanged: trackScroll = Math.min(trackScroll, trackScrollMax)
+    function scrollTracks(dy) {
+        trackScroll = Math.max(0, Math.min(trackScrollMax, trackScroll + dy))
+    }
+    // Scrolls just enough to show a track whole.
+    function showTrack(trackId) {
+        let top = 0
+        for (const t of tracks) {
+            const h = trackHeight(t.kind)
+            if (t.id === trackId) {
+                if (top < trackScroll)
+                    trackScroll = top
+                else if (top + h > trackScroll + laneArea.height)
+                    trackScroll = Math.min(trackScrollMax, top + h - laneArea.height)
+                return
+            }
+            top += h
+        }
+    }
+    // A wheel or trackpad scroll's vertical distance in points.
+    function wheelDistance(event, axis) {
+        const pixels = axis === "x" ? event.pixelDelta.x : event.pixelDelta.y
+        if (pixels !== 0)
+            return pixels
+        return (axis === "x" ? event.angleDelta.x : event.angleDelta.y) / 2
+    }
     function pasteAttributes() { menus.openPasteAttributes() }
 
     function openRecorder() { recordPanel.open() }
@@ -413,77 +449,92 @@ Rectangle {
 
                 Item { Layout.preferredHeight: Theme.size.ruler; Layout.fillWidth: true }
 
-                Repeater {
-                    model: timeline.project.trackModel
-                    delegate: Rectangle {
-                        id: header
-                        required property var track
-                        objectName: "trackHeader:" + track.name
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: timeline.trackHeight(track.kind)
-                        color: Theme.color.surface
+                // The headers, scrolled with the lanes.
+                Item {
+                    objectName: "trackHeaders"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    WheelHandler {
+                        acceptedDevices: PointerDevice.TouchPad | PointerDevice.Mouse
+                        onWheel: (event) => timeline.scrollTracks(-timeline.wheelDistance(event, "y"))
+                    }
+                    Column {
+                        id: headerColumn
+                        y: -timeline.trackScroll
+                        width: parent.width
+                        Repeater {
+                            model: timeline.project.trackModel
+                            delegate: Rectangle {
+                                id: header
+                                required property var track
+                                objectName: "trackHeader:" + track.name
+                                width: headerColumn.width
+                                height: timeline.trackHeight(track.kind)
+                                color: Theme.color.surface
 
-                        // Right-click: the track's menu (add, rename, lock, delete…).
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.RightButton
-                            onPressed: (mouse) => menus.openTrackMenu(header.track, this, mouse.x, mouse.y)
+                                // Right-click: the track's menu (add, rename, lock, delete…).
+                                MouseArea {
+                                    anchors.fill: parent
+                                    acceptedButtons: Qt.RightButton
+                                    onPressed: (mouse) => menus.openTrackMenu(header.track, this, mouse.x, mouse.y)
+                                }
+
+                                Rectangle { width: 3; height: parent.height - 8; anchors.verticalCenter: parent.verticalCenter; radius: 2; color: timeline.trackColor(track.kind) }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Theme.space.m
+                                    anchors.rightMargin: Theme.space.xs
+                                    spacing: 0
+
+                                    Icon {
+                                        name: track.kind === "audio" ? "audio" : track.kind === "title" ? "titles" : "media"
+                                        size: Theme.size.iconSmall
+                                    }
+                                    Text {
+                                        Layout.leftMargin: Theme.space.s
+                                        text: track.name
+                                        font: Theme.type.label
+                                        color: Theme.color.textPrimary
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                    }
+                                    Icon { visible: track.main; name: "magnet"; size: 14; color: Theme.color.accentText; Layout.rightMargin: Theme.space.xs }
+                                    IconButton {
+                                        objectName: "lock:" + track.name
+                                        iconName: "lock"
+                                        tip: track.locked ? qsTr("Unlock track") : qsTr("Lock track")
+                                        buttonSize: 22
+                                        checkable: true
+                                        checked: track.locked
+                                        onClicked: timeline.project.setTrackFlag(track.id, "locked", !track.locked)
+                                    }
+                                    IconButton {
+                                        visible: track.kind === "video"
+                                        objectName: "hide:" + track.name
+                                        iconName: "eye"
+                                        tip: track.hidden ? qsTr("Show track") : qsTr("Hide track")
+                                        buttonSize: 22
+                                        checkable: true
+                                        checked: track.hidden
+                                        onClicked: timeline.project.setTrackFlag(track.id, "hidden", !track.hidden)
+                                    }
+                                    IconButton {
+                                        objectName: "mute:" + track.name
+                                        iconName: "volume"
+                                        tip: track.muted ? qsTr("Unmute track") : qsTr("Mute track")
+                                        buttonSize: 22
+                                        checkable: true
+                                        checked: track.muted
+                                        onClicked: timeline.project.setTrackFlag(track.id, "muted", !track.muted)
+                                    }
+                                }
+                                Divider { anchors.bottom: parent.bottom; width: parent.width }
+                            }
                         }
-
-                        Rectangle { width: 3; height: parent.height - 8; anchors.verticalCenter: parent.verticalCenter; radius: 2; color: timeline.trackColor(track.kind) }
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: Theme.space.m
-                            anchors.rightMargin: Theme.space.xs
-                            spacing: 0
-
-                            Icon {
-                                name: track.kind === "audio" ? "audio" : track.kind === "title" ? "titles" : "media"
-                                size: Theme.size.iconSmall
-                            }
-                            Text {
-                                Layout.leftMargin: Theme.space.s
-                                text: track.name
-                                font: Theme.type.label
-                                color: Theme.color.textPrimary
-                                Layout.fillWidth: true
-                                elide: Text.ElideRight
-                            }
-                            Icon { visible: track.main; name: "magnet"; size: 14; color: Theme.color.accentText; Layout.rightMargin: Theme.space.xs }
-                            IconButton {
-                                objectName: "lock:" + track.name
-                                iconName: "lock"
-                                tip: track.locked ? qsTr("Unlock track") : qsTr("Lock track")
-                                buttonSize: 22
-                                checkable: true
-                                checked: track.locked
-                                onClicked: timeline.project.setTrackFlag(track.id, "locked", !track.locked)
-                            }
-                            IconButton {
-                                visible: track.kind === "video"
-                                objectName: "hide:" + track.name
-                                iconName: "eye"
-                                tip: track.hidden ? qsTr("Show track") : qsTr("Hide track")
-                                buttonSize: 22
-                                checkable: true
-                                checked: track.hidden
-                                onClicked: timeline.project.setTrackFlag(track.id, "hidden", !track.hidden)
-                            }
-                            IconButton {
-                                objectName: "mute:" + track.name
-                                iconName: "volume"
-                                tip: track.muted ? qsTr("Unmute track") : qsTr("Mute track")
-                                buttonSize: 22
-                                checkable: true
-                                checked: track.muted
-                                onClicked: timeline.project.setTrackFlag(track.id, "muted", !track.muted)
-                            }
-                        }
-                        Divider { anchors.bottom: parent.bottom; width: parent.width }
                     }
                 }
-                Item { Layout.fillHeight: true }
             }
 
             Divider { Layout.fillHeight: true; implicitWidth: 1 }
@@ -491,6 +542,7 @@ Rectangle {
             // Ruler + lanes, scrolling horizontally together
             Flickable {
                 id: lanes
+                objectName: "timelineLanes"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 contentWidth: Math.max(width, (Math.max(timeline.project.duration, timeline.project.playhead) + 20) * timeline.pixelsPerSecond)
@@ -500,10 +552,33 @@ Rectangle {
                 interactive: false // drags belong to clips and the ruler; scroll with the bar or trackpad
                 clip: true
                 ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
+                // Up and down through the tracks, beside the lanes (not scrolled with the time).
+                ScrollBar {
+                    id: trackBar
+                    objectName: "trackScrollBar"
+                    parent: lanes
+                    orientation: Qt.Vertical
+                    anchors.right: parent.right
+                    y: Theme.size.ruler
+                    height: lanes.height - Theme.size.ruler
+                    z: 30
+                    visible: timeline.trackScrollMax > 0
+                    policy: ScrollBar.AlwaysOn
+                    size: timeline.tracksHeight > 0 ? Math.min(1, laneArea.height / timeline.tracksHeight) : 1
+                    position: timeline.tracksHeight > 0 ? timeline.trackScroll / timeline.tracksHeight : 0
+                    onPositionChanged: if (pressed || active) timeline.trackScroll = Math.max(0, Math.min(timeline.trackScrollMax, position * timeline.tracksHeight))
+                }
 
                 WheelHandler {
                     acceptedDevices: PointerDevice.TouchPad | PointerDevice.Mouse
                     onWheel: (event) => {
+                        // Up and down scrolls the tracks when there are more than fit (Shift: along
+                        // the time instead); sideways, or with nothing to scroll, along the time.
+                        const sideways = Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y)
+                        if (!sideways && !(event.modifiers & Qt.ShiftModifier) && timeline.trackScrollMax > 0) {
+                            timeline.scrollTracks(-timeline.wheelDistance(event, "y"))
+                            return
+                        }
                         const dx = event.angleDelta.x !== 0 ? event.angleDelta.x : event.angleDelta.y
                         lanes.contentX = Math.max(0, Math.min(lanes.contentWidth - lanes.width, lanes.contentX - dx))
                     }
@@ -641,155 +716,166 @@ Rectangle {
                         width: parent.width
                         height: parent.height - Theme.size.ruler
 
-                        // Clicking empty lane space clears the selection; right-clicking it opens
-                        // the lane's menu (paste here, a marker, tracks).
-                        MouseArea {
-                            objectName: "laneSpace"
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            onPressed: (mouse) => {
-                                if (mouse.button === Qt.RightButton) {
-                                    menus.openLaneMenu(timeline.trackAtY(mouse.y), mouse.x / timeline.pixelsPerSecond, this, mouse.x, mouse.y)
-                                    return
-                                }
-                                timeline.project.selectedClip = 0
-                                timeline.project.selectedTransition = 0
-                            }
-                        }
-
-                        // Skimming: the frame under the pointer in the player, the playhead left where it is.
-                        HoverHandler {
-                            id: skimHover
-                            objectName: "skimHover"
-                            enabled: EditingPreferences.skimming && !timeline.project.playing
-                            onPointChanged: if (hovered) timeline.project.skim(Math.max(0, point.position.x / timeline.pixelsPerSecond))
-                            onHoveredChanged: if (!hovered) timeline.project.endSkim()
-                            onEnabledChanged: if (!enabled) timeline.project.endSkim()
-                        }
-
-                        Column {
-                            id: laneColumn
+                        clip: true
+                        // The tracks, moved up and down by the scroll: positions in here are the
+                        // tracks' own (trackAtY), whatever is scrolled.
+                        Item {
+                            id: trackSpace
+                            objectName: "trackSpace"
+                            y: -timeline.trackScroll
                             width: parent.width
+                            height: Math.max(laneArea.height, timeline.tracksHeight)
 
-                            Repeater {
-                                model: timeline.project.trackModel
-                                delegate: Item {
-                                    id: lane
-                                    required property var track
-                                    width: laneColumn.width
-                                    height: timeline.trackHeight(track.kind)
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        color: lane.track.main ? Theme.color.surface : "transparent"
-                                        opacity: 0.4
+                            // Clicking empty lane space clears the selection; right-clicking it opens
+                            // the lane's menu (paste here, a marker, tracks).
+                            MouseArea {
+                                objectName: "laneSpace"
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                onPressed: (mouse) => {
+                                    if (mouse.button === Qt.RightButton) {
+                                        menus.openLaneMenu(timeline.trackAtY(mouse.y), mouse.x / timeline.pixelsPerSecond, this, mouse.x, mouse.y)
+                                        return
                                     }
-                                    // Hidden or muted lanes fade back; locked lanes take no edits.
-                                    opacity: lane.track.hidden || lane.track.muted ? 0.45 : 1.0
-                                    enabled: !lane.track.locked
-                                    Divider { anchors.bottom: parent.bottom; width: parent.width }
+                                    timeline.project.selectedClip = 0
+                                    timeline.project.selectedTransition = 0
+                                }
+                            }
 
-                                    Repeater {
-                                        model: lane.track.clips
-                                        delegate: ClipItem {
-                                            required property var modelData
-                                            clip: modelData
-                                            track: lane.track
+                            // Skimming: the frame under the pointer in the player, the playhead left where it is.
+                            HoverHandler {
+                                id: skimHover
+                                objectName: "skimHover"
+                                enabled: EditingPreferences.skimming && !timeline.project.playing
+                                onPointChanged: if (hovered) timeline.project.skim(Math.max(0, point.position.x / timeline.pixelsPerSecond))
+                                onHoveredChanged: if (!hovered) timeline.project.endSkim()
+                                onEnabledChanged: if (!enabled) timeline.project.endSkim()
+                            }
+
+                            Column {
+                                id: laneColumn
+                                width: parent.width
+
+                                Repeater {
+                                    model: timeline.project.trackModel
+                                    delegate: Item {
+                                        id: lane
+                                        required property var track
+                                        width: laneColumn.width
+                                        height: timeline.trackHeight(track.kind)
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            color: lane.track.main ? Theme.color.surface : "transparent"
+                                            opacity: 0.4
                                         }
-                                    }
-                                    // Transitions sit over the cuts they span.
-                                    Repeater {
-                                        model: lane.track.clips.filter((c) => c.transition && c.transition.clipId !== undefined)
-                                        delegate: TransitionMarker {
-                                            required property var modelData
-                                            transition: modelData.transition
+                                        // Hidden or muted lanes fade back; locked lanes take no edits.
+                                        opacity: lane.track.hidden || lane.track.muted ? 0.45 : 1.0
+                                        enabled: !lane.track.locked
+                                        Divider { anchors.bottom: parent.bottom; width: parent.width }
+
+                                        Repeater {
+                                            model: lane.track.clips
+                                            delegate: ClipItem {
+                                                required property var modelData
+                                                clip: modelData
+                                                track: lane.track
+                                            }
+                                        }
+                                        // Transitions sit over the cuts they span.
+                                        Repeater {
+                                            model: lane.track.clips.filter((c) => c.transition && c.transition.clipId !== undefined)
+                                            delegate: TransitionMarker {
+                                                required property var modelData
+                                                transition: modelData.transition
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        // Media and transitions dragged from the library
-                        DropArea {
-                            id: laneDrop
-                            objectName: "laneDrop"
-                            anchors.fill: parent
-                            keys: ["application/x-tve-media", "application/x-tve-transition", "application/x-tve-title", "text/uri-list"]
-                            // Where a drop would land (drawn while dragging): the track and time.
-                            property var dropTrack: null
-                            property real dropTime: 0
-                            onPositionChanged: (drag) => {
-                                dropTrack = timeline.trackAtY(drag.y)
-                                dropTime = Math.max(0, drag.x / timeline.pixelsPerSecond)
-                            }
-                            onExited: dropTrack = null
-                            onDropped: (drop) => {
-                                dropTrack = null
-                                const track = timeline.trackAtY(drop.y)
-                                if (drop.keys.indexOf("text/uri-list") >= 0 && drop.keys.indexOf("application/x-tve-media") < 0) {
-                                    // Files from Finder: imported, then placed here one after another.
-                                    timeline.project.dropFilesAt(drop.urls, track ? track.id : -1, Math.max(0, drop.x / timeline.pixelsPerSecond))
-                                    drop.accept()
-                                    return
+                            // Media and transitions dragged from the library
+                            DropArea {
+                                id: laneDrop
+                                objectName: "laneDrop"
+                                anchors.fill: parent
+                                keys: ["application/x-tve-media", "application/x-tve-transition", "application/x-tve-title", "text/uri-list"]
+                                // Where a drop would land (drawn while dragging): the track and time.
+                                property var dropTrack: null
+                                property real dropTime: 0
+                                onPositionChanged: (drag) => {
+                                    dropTrack = timeline.trackAtY(drag.y)
+                                    dropTime = Math.max(0, drag.x / timeline.pixelsPerSecond)
                                 }
-                                if (!track)
-                                    return
-                                if (drop.keys.indexOf("application/x-tve-title") >= 0) {
-                                    const style = drop.source && drop.source.titleStyle !== undefined
-                                                ? drop.source.titleStyle
-                                                : JSON.parse(drop.getDataAsString("application/x-tve-title"))
-                                    let at = Math.max(0, drop.x / timeline.pixelsPerSecond)
+                                onExited: dropTrack = null
+                                onDropped: (drop) => {
+                                    dropTrack = null
+                                    const track = timeline.trackAtY(drop.y)
+                                    if (drop.keys.indexOf("text/uri-list") >= 0 && drop.keys.indexOf("application/x-tve-media") < 0) {
+                                        // Files from Finder: imported, then placed here one after another.
+                                        timeline.project.dropFilesAt(drop.urls, track ? track.id : -1, Math.max(0, drop.x / timeline.pixelsPerSecond))
+                                        drop.accept()
+                                        return
+                                    }
+                                    if (!track)
+                                        return
+                                    if (drop.keys.indexOf("application/x-tve-title") >= 0) {
+                                        const style = drop.source && drop.source.titleStyle !== undefined
+                                                    ? drop.source.titleStyle
+                                                    : JSON.parse(drop.getDataAsString("application/x-tve-title"))
+                                        let at = Math.max(0, drop.x / timeline.pixelsPerSecond)
+                                        if (snapToggle.checked)
+                                            at = timeline.project.snap(at, timeline.snapPixels / timeline.pixelsPerSecond)
+                                        // Onto that track if it takes pictures, else wherever there is room.
+                                        timeline.project.addTitle(style, track.kind === "audio" ? -1 : track.id, at)
+                                        drop.accept()
+                                        return
+                                    }
+                                    if (drop.keys.indexOf("application/x-tve-transition") >= 0) {
+                                        // Onto the nearest cut within a few clip-edge widths.
+                                        const id = drop.source && drop.source.transitionId !== undefined
+                                                 ? drop.source.transitionId
+                                                 : drop.getDataAsString("application/x-tve-transition")
+                                        timeline.project.addTransitionAt(id, track.id, drop.x / timeline.pixelsPerSecond,
+                                                                         40 / timeline.pixelsPerSecond)
+                                        drop.accept()
+                                        return
+                                    }
+                                    let start = Math.max(0, drop.x / timeline.pixelsPerSecond)
                                     if (snapToggle.checked)
-                                        at = timeline.project.snap(at, timeline.snapPixels / timeline.pixelsPerSecond)
-                                    // Onto that track if it takes pictures, else wherever there is room.
-                                    timeline.project.addTitle(style, track.kind === "audio" ? -1 : track.id, at)
+                                        start = timeline.project.snap(start, timeline.snapPixels / timeline.pixelsPerSecond)
+                                    const mediaId = drop.source && drop.source.mediaId !== undefined
+                                                  ? drop.source.mediaId
+                                                  : Number(drop.getDataAsString("application/x-tve-media"))
+                                    // On that track if it fits there; else on a track with room.
+                                    timeline.project.dropMediaAt(mediaId, track.id, start)
                                     drop.accept()
-                                    return
                                 }
-                                if (drop.keys.indexOf("application/x-tve-transition") >= 0) {
-                                    // Onto the nearest cut within a few clip-edge widths.
-                                    const id = drop.source && drop.source.transitionId !== undefined
-                                             ? drop.source.transitionId
-                                             : drop.getDataAsString("application/x-tve-transition")
-                                    timeline.project.addTransitionAt(id, track.id, drop.x / timeline.pixelsPerSecond,
-                                                                     40 / timeline.pixelsPerSecond)
-                                    drop.accept()
-                                    return
-                                }
-                                let start = Math.max(0, drop.x / timeline.pixelsPerSecond)
-                                if (snapToggle.checked)
-                                    start = timeline.project.snap(start, timeline.snapPixels / timeline.pixelsPerSecond)
-                                const mediaId = drop.source && drop.source.mediaId !== undefined
-                                              ? drop.source.mediaId
-                                              : Number(drop.getDataAsString("application/x-tve-media"))
-                                // On that track if it fits there; else on a track with room.
-                                timeline.project.dropMediaAt(mediaId, track.id, start)
-                                drop.accept()
                             }
-                        }
-                        // The drop's place: the track under the pointer, and a line at the time.
-                        Rectangle {
-                            objectName: "dropIndicator"
-                            visible: laneDrop.containsDrag && laneDrop.dropTrack !== null
-                            x: laneDrop.dropTime * timeline.pixelsPerSecond
-                            y: {
-                                let top = 0
-                                for (const t of timeline.tracks) {
-                                    if (laneDrop.dropTrack && t.id === laneDrop.dropTrack.id)
-                                        return top
-                                    top += timeline.trackHeight(t.kind)
-                                }
-                                return 0
-                            }
-                            width: 2
-                            height: laneDrop.dropTrack ? timeline.trackHeight(laneDrop.dropTrack.kind) : 0
-                            color: Theme.color.accent
-                            z: 20
+                            // The drop's place: the track under the pointer, and a line at the time.
                             Rectangle {
-                                x: 2
-                                width: laneArea.width - parent.x
-                                height: parent.height
-                                color: Qt.alpha(Theme.color.accent, 0.10)
+                                objectName: "dropIndicator"
+                                visible: laneDrop.containsDrag && laneDrop.dropTrack !== null
+                                x: laneDrop.dropTime * timeline.pixelsPerSecond
+                                y: {
+                                    let top = 0
+                                    for (const t of timeline.tracks) {
+                                        if (laneDrop.dropTrack && t.id === laneDrop.dropTrack.id)
+                                            return top
+                                        top += timeline.trackHeight(t.kind)
+                                    }
+                                    return 0
+                                }
+                                width: 2
+                                height: laneDrop.dropTrack ? timeline.trackHeight(laneDrop.dropTrack.kind) : 0
+                                color: Theme.color.accent
+                                z: 20
+                                Rectangle {
+                                    x: 2
+                                    width: trackSpace.width - parent.x
+                                    height: parent.height
+                                    color: Qt.alpha(Theme.color.accent, 0.10)
+                                }
                             }
                         }
                     }
@@ -1398,7 +1484,7 @@ Rectangle {
             }
             onReleased: (mouse) => {
                 if (moved && !toggling && !rightPress) {
-                    const p = mapToItem(laneArea, mouse.x, mouse.y)
+                    const p = mapToItem(trackSpace, mouse.x, mouse.y)
                     const target = timeline.trackAtY(p.y) || item.track
                     const start = item.previewStart
                     item.previewYOffset = 0

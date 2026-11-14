@@ -39,12 +39,18 @@ Item {
     // A new track of a kind: pictures above the given track (or on top), sound below the
     // given sound track (or at the very bottom).
     function addTrack(kind, beside) {
+        let id = 0
         if (kind === "audio") {
             const tracks = project.tracks // top to bottom
             const below = beside && beside.kind === "audio" ? beside : tracks[tracks.length - 1]
-            return project.addTrack("audio", below ? below.id : -1, false)
+            id = project.addTrack("audio", below ? below.id : -1, false)
+        } else {
+            id = project.addTrack(kind, beside && beside.kind !== "audio" ? beside.id : -1, true)
         }
-        return project.addTrack(kind, beside && beside.kind !== "audio" ? beside.id : -1, true)
+        // The new track scrolled into view (once the lanes have it).
+        if (id > 0)
+            Qt.callLater(() => menus.timeline.showTrack(id))
+        return id
     }
     function deleteTrack(track) {
         if (track.clips.length === 0) {

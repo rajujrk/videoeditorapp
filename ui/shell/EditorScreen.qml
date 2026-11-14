@@ -198,6 +198,7 @@ Rectangle {
 
             TimelinePanel {
                 id: timelinePanel
+                objectName: "timelinePanel"
                 SplitView.preferredHeight: Theme.size.timelineHeight
                 SplitView.minimumHeight: Theme.size.timelineMinHeight
                 project: editor.project
