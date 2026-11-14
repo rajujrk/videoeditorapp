@@ -161,7 +161,7 @@ void AudioRecorder::push(const float* samples, int frames)
     // stop() waits for m_callbackIdle after clearing m_recording, so a take never gets
     // samples once stop() has drained it. (Both are sequentially consistent.)
     m_callbackIdle = false;
-    if (m_recording) {
+    if (m_recording && !m_paused) {
         const std::uint32_t take = m_take;
         if (take != m_callbackTake) {
             m_callbackTake = take;
@@ -209,6 +209,7 @@ bool AudioRecorder::start(const std::string& path, std::string* error)
     ma_pcm_rb_reset(&m_device->ring); // the callback is not writing: no take is running
     m_takeFrames = 0;
     m_dropped = 0;
+    m_paused = false;
     ++m_take;
     m_recording = true;
     return true;

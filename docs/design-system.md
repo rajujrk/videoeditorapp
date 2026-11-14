@@ -646,6 +646,39 @@ Dark and light:
 ![Sound channels, dark](images/sound-channels-dark.png)
 ![Sound channels, light](images/sound-channels-light.png)
 
+Before and after: the divider is a 1 px white line on a 3 px `#66000000` edge, so it shows on any
+picture, with a 28 px round handle (white, `accent` while dragged, ‹ › in near-black) at its middle;
+"Before" and "After" sit at the top of each side in `caption` white on `overlay`, hidden when that
+side is too narrow. The button is an `IconButton` with the `compare` icon, checked while comparing.
+The transparency grid is two greys (80 % and 62 %) in 8-point cells, drawn by the present shader in
+display pixels, so it stays the same size at every zoom. Dark and light:
+
+![Before and after a grade, dark](images/grade-compare-dark.png)
+![Before and after a grade, light](images/grade-compare-light.png)
+![The transparency grid, dark](images/transparency-grid-dark.png)
+![The transparency grid, light](images/transparency-grid-light.png)
+
+Social app safe areas draw on the guides' canvas: each covered zone is `#73000000` with white hairline
+hatching at 10 px and its name in 11 px semibold white, centred, when it fits; the clear area is a
+`success` dashed outline on the guides' dark under-stroke. Dark (a short-video feed on a 1080 × 1920
+canvas) and light:
+
+![Social app safe areas, dark](images/social-safe-areas-dark.png)
+![Social app safe areas, light](images/social-safe-areas-light.png)
+
+The recorder's Countdown is a row of four `TextButton`s (the chosen one `primary`) beside the
+`countdown` icon and its `label`. The countdown itself is a 220 px disc of `#B3000000` with the number
+in 110 px demibold white, popping from 125 % as each second lands, and a 6 px `danger` ring running out
+round the edge. While recording, the time sits on its own line above the buttons in `mono`: `danger`
+with ● while live, `warning` with ❚❚ and "Paused" while paused, when the frame round the screen turns
+`warning` and stops pulsing. Pause and Resume is a `secondary` `TextButton` (`pause`, then `record`).
+Dark and light:
+
+![The countdown, dark](images/record-countdown-dark.png)
+![The countdown, light](images/record-countdown-light.png)
+![A paused recording, dark](images/record-paused-dark.png)
+![A paused recording, light](images/record-paused-light.png)
+
 Controls Qt draws itself (combo boxes and their lists, the zoom slider) take their colours
 from Qt's palette, which follows the colour scheme. `Theme.qml` sets that scheme from
 `Theme.dark`, so they match the app's light or dark choice whatever the Mac's appearance.
@@ -825,7 +858,7 @@ The app in Tamil: the Home screen with the Language menu at the foot of the rail
 
 ### Icons
 
-79 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
+82 original icons in `ui/theme/icons/`: 24 × 24 grid, 2 px round-capped white strokes
 (filled shapes only for play/pause/skip and record). They are drawn white and tinted at
 runtime, so one file serves every state and theme. New icons follow the same grid, stroke
 and naming (`kebab-case.svg`); no third-party icon sets.

@@ -155,6 +155,39 @@ TEST_CASE("a recorder writes each take to its own file", "[recorder]")
     std::filesystem::remove(second);
 }
 
+TEST_CASE("a paused take keeps nothing it hears until resumed", "[recorder]")
+{
+    AudioRecorder recorder(AudioRecorder::Backend::None);
+    recorder.pause(); // (no take: nothing to pause)
+    CHECK_FALSE(recorder.paused());
+    const std::string path = tempPath("tve_take_paused.wav");
+    REQUIRE(recorder.start(path));
+    for (int block = 0; block < 50; ++block) // half a second
+        recorder.push(toneBlock(block * 480, 480).data(), 480);
+    recorder.pause();
+    CHECK(recorder.paused());
+    for (int block = 0; block < 50; ++block) // heard while paused: not kept
+        recorder.push(std::vector<float>(480, 0.9f).data(), 480);
+    CHECK(recorder.recordedDuration() == kSec / 2);
+    recorder.resume();
+    for (int block = 50; block < 100; ++block)
+        recorder.push(toneBlock(block * 480, 480).data(), 480);
+    auto take = recorder.stop();
+    REQUIRE(take);
+    CHECK(take->duration == kSec);
+    // The tone runs on unbroken where the pause was.
+    const std::vector<float> stereo = decodeAll(path);
+    REQUIRE(stereo.size() == 48000 * 2);
+    for (std::int64_t i : {23999, 24000, 24001, 47999})
+        CHECK(stereo[std::size_t(i) * 2] == Catch::Approx(tone(i)).margin(1e-4));
+    // A new take starts unpaused.
+    recorder.pause();
+    REQUIRE(recorder.start(path));
+    CHECK_FALSE(recorder.paused());
+    recorder.stop();
+    std::filesystem::remove(path);
+}
+
 TEST_CASE("a take with nothing in it leaves no file", "[recorder]")
 {
     AudioRecorder recorder(AudioRecorder::Backend::None);

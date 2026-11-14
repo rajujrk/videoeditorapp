@@ -176,7 +176,7 @@ Item {
         }
 
         function test_the_keymap_changes_keys_and_keeps_them() {
-            compare(KeyMap.actions.length, 54)
+            compare(KeyMap.actions.length, 55)
             compare(KeyMap.sequences.split, ["S"])
             compare(KeyMap.sequences["delete"], ["Del", "Backspace"])
             compare(KeyMap.text("group"), "⌘G")

@@ -15,6 +15,8 @@ namespace {
 const QStringList kSorts{QStringLiteral("imported"), QStringLiteral("name"), QStringLiteral("length"), QStringLiteral("kind")};
 const QStringList kViews{QStringLiteral("grid"), QStringLiteral("list")};
 const QStringList kSizes{QStringLiteral("small"), QStringLiteral("medium"), QStringLiteral("large")};
+constexpr int kCountdowns[] = {0, 3, 5, 10};
+bool isCountdown(int seconds) { return std::ranges::find(kCountdowns, seconds) != std::end(kCountdowns); }
 } // namespace
 
 EditingPreferences* EditingPreferences::instance()
@@ -66,6 +68,9 @@ void EditingPreferences::load()
     pick("mediaSize", m_mediaSize, kSizes);
     m_mediaDescending = o.value(QStringLiteral("mediaDescending")).toBool(m_mediaDescending);
     m_mediaGroups = o.value(QStringLiteral("mediaGroups")).toBool(m_mediaGroups);
+    m_transparencyGrid = o.value(QStringLiteral("transparencyGrid")).toBool(m_transparencyGrid);
+    if (const int seconds = o.value(QStringLiteral("recordCountdown")).toInt(m_recordCountdown); isCountdown(seconds))
+        m_recordCountdown = seconds;
 }
 
 void EditingPreferences::save() const
@@ -86,7 +91,9 @@ void EditingPreferences::save() const
                         {QStringLiteral("mediaDescending"), m_mediaDescending},
                         {QStringLiteral("mediaGroups"), m_mediaGroups},
                         {QStringLiteral("mediaView"), m_mediaView},
-                        {QStringLiteral("mediaSize"), m_mediaSize}};
+                        {QStringLiteral("mediaSize"), m_mediaSize},
+                        {QStringLiteral("transparencyGrid"), m_transparencyGrid},
+                        {QStringLiteral("recordCountdown"), m_recordCountdown}};
     file.write(QJsonDocument(o).toJson());
     file.commit();
 }
@@ -136,6 +143,13 @@ void EditingPreferences::setMediaSize(const QString& size)
         set(m_mediaSize, size);
 }
 
+void EditingPreferences::setTransparencyGrid(bool on) { set(m_transparencyGrid, on); }
+void EditingPreferences::setRecordCountdown(int seconds)
+{
+    if (isCountdown(seconds))
+        set(m_recordCountdown, seconds);
+}
+
 void EditingPreferences::reset()
 {
     m_defaultTransition = QStringLiteral("tve.transition.dissolve");
@@ -146,6 +160,8 @@ void EditingPreferences::reset()
     m_mediaDescending = m_mediaGroups = false;
     m_mediaView = QStringLiteral("grid");
     m_mediaSize = QStringLiteral("medium");
+    m_transparencyGrid = false;
+    m_recordCountdown = 0;
     save();
     emit changed();
 }

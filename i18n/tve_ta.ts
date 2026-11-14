@@ -1557,6 +1557,17 @@
     </message>
 </context>
 <context>
+    <name>CompareOverlay</name>
+    <message>
+        <source>Before</source>
+        <translation>முன்</translation>
+    </message>
+    <message>
+        <source>After</source>
+        <translation>பின்</translation>
+    </message>
+</context>
+<context>
     <name>ConfirmDialog</name>
     <message>
         <source>Cancel</source>
@@ -2516,6 +2527,53 @@
     <message>
         <source>Add to the end of the main track</source>
         <translation>முதன்மை டிராக்கின் இறுதியில் சேர்</translation>
+    </message>
+</context>
+<context>
+    <name>GuidesOverlay</name>
+    <message>
+        <source>Short-video feed</source>
+        <translation>குறும்பட ஊட்டம்</translation>
+    </message>
+    <message>
+        <source>Top bar</source>
+        <translation>மேல் பட்டை</translation>
+    </message>
+    <message>
+        <source>Caption, name and sound</source>
+        <translation>தலைப்புரை, பெயர் மற்றும் ஒலி</translation>
+    </message>
+    <message>
+        <source>Buttons</source>
+        <translation>பொத்தான்கள்</translation>
+    </message>
+    <message>
+        <source>Stories</source>
+        <translation>ஸ்டோரிகள்</translation>
+    </message>
+    <message>
+        <source>Progress and name</source>
+        <translation>முன்னேற்றமும் பெயரும்</translation>
+    </message>
+    <message>
+        <source>Reply bar</source>
+        <translation>பதில் பட்டை</translation>
+    </message>
+    <message>
+        <source>Live stream</source>
+        <translation>நேரலை</translation>
+    </message>
+    <message>
+        <source>Name and viewers</source>
+        <translation>பெயரும் பார்வையாளர்களும்</translation>
+    </message>
+    <message>
+        <source>Comments</source>
+        <translation>கருத்துகள்</translation>
+    </message>
+    <message>
+        <source>Gifts and likes</source>
+        <translation>பரிசுகளும் விருப்பங்களும்</translation>
     </message>
 </context>
 <context>
@@ -4708,6 +4766,10 @@ Third, 4</source>
         <translation>அதே சட்டகம்</translation>
     </message>
     <message>
+        <source>Before and after the grade</source>
+        <translation>நிறத் திருத்தத்திற்கு முன்னும் பின்னும்</translation>
+    </message>
+    <message>
         <source>Split at the playhead</source>
         <translation>இயக்கக்குறியில் பிரி</translation>
     </message>
@@ -6069,8 +6131,16 @@ Third, 4</source>
         <translation>இயக்கப் புள்ளிவிவரங்கள்</translation>
     </message>
     <message>
-        <source>Guides: thirds, centre lines, safe areas, rulers and the frame border (shown here only, never exported)</source>
-        <translation>வழிகாட்டிகள்: மூன்றில் ஒரு பங்குகள், நடுக்கோடுகள், பாதுகாப்புப் பகுதிகள், அளவுகோல்கள் மற்றும் சட்டக எல்லை (இங்கு மட்டும் காட்டப்படும், ஏற்றுமதியாகாது)</translation>
+        <source>Before and after: the picture without its colour grades on the left of the divider, graded on the right (drag it)</source>
+        <translation>முன்னும் பின்னும்: பிரிகோட்டின் இடப்பக்கம் நிறத் திருத்தமில்லாத படம், வலப்பக்கம் திருத்திய படம் (அதை இழுக்கவும்)</translation>
+    </message>
+    <message>
+        <source>Transparency grid: a checkerboard where nothing covers the canvas (here only; exports are unchanged)</source>
+        <translation>ஒளிபுகு கட்டம்: கேன்வாஸை எதுவும் மறைக்காத இடத்தில் சதுரங்கக் கட்டம் (இங்கு மட்டும்; ஏற்றுமதிகள் மாறாது)</translation>
+    </message>
+    <message>
+        <source>Guides: thirds, centre lines, safe areas, social app layouts, rulers and the frame border (shown here only, never exported)</source>
+        <translation>வழிகாட்டிகள்: மூன்றில் பங்குகள், மையக் கோடுகள், பாதுகாப்புப் பகுதிகள், சமூக செயலி அமைப்புகள், அளவுகோல்கள் மற்றும் சட்ட எல்லை (இங்கு மட்டும் காட்டப்படும், ஏற்றுமதியாகாது)</translation>
     </message>
     <message>
         <source>Rule of thirds</source>
@@ -6087,6 +6157,18 @@ Third, 4</source>
     <message>
         <source>Rulers</source>
         <translation>அளவுகோல்கள்</translation>
+    </message>
+    <message>
+        <source>Social app safe areas (9:16)</source>
+        <translation>சமூக செயலி பாதுகாப்புப் பகுதிகள் (9:16)</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>எதுவுமில்லை</translation>
+    </message>
+    <message>
+        <source>Make the canvas vertical (1080 × 1920)</source>
+        <translation>கேன்வாஸைச் செங்குத்தாக்கு (1080 × 1920)</translation>
     </message>
     <message>
         <source>Frame border</source>
@@ -7670,6 +7752,13 @@ Third, 4</source>
     </message>
 </context>
 <context>
+    <name>RecordCountdown</name>
+    <message>
+        <source>Recording starts</source>
+        <translation>பதிவு தொடங்குகிறது</translation>
+    </message>
+</context>
+<context>
     <name>RecordPanel</name>
     <message>
         <source>Record screen and camera</source>
@@ -7772,8 +7861,48 @@ Third, 4</source>
         <translation>மைக்ரோஃபோன்</translation>
     </message>
     <message>
+        <source>Countdown</source>
+        <translation>கவுண்ட்டவுன்</translation>
+    </message>
+    <message>
+        <source>Off</source>
+        <translation>அணை</translation>
+    </message>
+    <message>
+        <source>%1 s</source>
+        <translation>%1 வி</translation>
+    </message>
+    <message>
+        <source>Recording in %1…</source>
+        <translation>%1 இல் பதிவு…</translation>
+    </message>
+    <message>
+        <source>%1 · Paused</source>
+        <translation>%1 · இடைநிறுத்தப்பட்டது</translation>
+    </message>
+    <message>
         <source>Record</source>
         <translation>பதிவுசெய்</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>ரத்துசெய்</translation>
+    </message>
+    <message>
+        <source>Resume</source>
+        <translation>தொடர்</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>இடைநிறுத்து</translation>
+    </message>
+    <message>
+        <source>Carry on recording in the same takes</source>
+        <translation>அதே பதிவுகளில் தொடர்ந்து பதிவுசெய்</translation>
+    </message>
+    <message>
+        <source>Pause: nothing is recorded until you resume; the takes leave the pause out</source>
+        <translation>இடைநிறுத்தம்: நீங்கள் தொடரும் வரை எதுவும் பதிவாகாது; பதிவுகளில் இடைநிறுத்தம் சேராது</translation>
     </message>
     <message>
         <source>Draw</source>

@@ -528,7 +528,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
     if (!isValid())
         return nullptr;
     m_canvasSize = canvas;
-    m_compositor->begin(cb, m_canvasSize);
+    m_compositor->begin(cb, m_canvasSize, m_transparentCanvas);
     m_transitions->begin();
     m_grader->begin();
     m_colour->begin();
@@ -674,7 +674,7 @@ QRhiTexture* FrameCompositor::render(QRhiCommandBuffer* cb, tve::CompositeFrame&
         });
         if (canvasBelow)
             colourMasks.clear(), effectMasks.clear(); // (an adjustment layer covers the canvas)
-        if (!text) { // colour first (the look, then the grade), then the key and masks, then effects
+        if (!text && !m_ungraded) { // colour first (the look, then the grade), then the key and masks, then effects
             QRhiTexture* uncoloured = picture;
             picture = m_grader->apply(cb, picture, look);
             picture = m_grader->apply(cb, picture, grade);

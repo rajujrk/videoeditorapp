@@ -2,7 +2,8 @@ import QtQuick
 import TechieVideoEditor.Theme
 
 // Drawn over the player (never exported): thirds, centre lines, the title- and action-safe
-// areas, and rulers in canvas pixels along the top and left edges. Clicks pass through.
+// areas, where a vertical social app's own buttons and captions cover the picture, and rulers
+// in canvas pixels along the top and left edges. Clicks pass through.
 Item {
     id: guides
     required property var project
@@ -10,8 +11,33 @@ Item {
     property bool centre: false
     property bool safeAreas: false
     property bool rulers: false
-    readonly property bool any: thirds || centre || safeAreas || rulers
+    // A vertical social app's layout ("" none, or a profiles id): what its own top bar,
+    // captions and buttons cover is shaded, and what stays clear outlined.
+    property string social: ""
+    readonly property bool any: thirds || centre || safeAreas || rulers || social !== ""
     visible: any
+
+    // Where each kind of vertical (9:16) app puts its own things over the picture, as fractions
+    // of the canvas: {x, y, width, height, label}. Typical layouts, not any one app's.
+    readonly property var profiles: [
+        { id: "feed", title: qsTr("Short-video feed"),
+          zones: [{ x: 0, y: 0, width: 1, height: 0.1, label: qsTr("Top bar") },
+                  { x: 0, y: 0.78, width: 1, height: 0.22, label: qsTr("Caption, name and sound") },
+                  { x: 0.84, y: 0.4, width: 0.16, height: 0.38, label: qsTr("Buttons") }],
+          clear: { x: 0.04, y: 0.1, width: 0.78, height: 0.68 } },
+        { id: "stories", title: qsTr("Stories"),
+          zones: [{ x: 0, y: 0, width: 1, height: 0.14, label: qsTr("Progress and name") },
+                  { x: 0, y: 0.82, width: 1, height: 0.18, label: qsTr("Reply bar") }],
+          clear: { x: 0.04, y: 0.14, width: 0.92, height: 0.68 } },
+        { id: "live", title: qsTr("Live stream"),
+          zones: [{ x: 0, y: 0, width: 1, height: 0.12, label: qsTr("Name and viewers") },
+                  { x: 0, y: 0.62, width: 0.72, height: 0.38, label: qsTr("Comments") },
+                  { x: 0.72, y: 0.82, width: 0.28, height: 0.18, label: qsTr("Gifts and likes") }],
+          clear: { x: 0.04, y: 0.12, width: 0.92, height: 0.5 } }
+    ]
+    readonly property var socialProfile: profiles.find((p) => p.id === social) || null
+    // Where titles and faces stay clear of all of it (canvas fractions; null without a profile).
+    readonly property var socialClear: socialProfile ? socialProfile.clear : null
 
     // The canvas inside the item, fitted keeping its aspect ratio.
     readonly property real canvasScale: Math.min(width / project.canvasWidth, height / project.canvasHeight)
@@ -31,6 +57,7 @@ Item {
     onCentreChanged: paper.requestPaint()
     onSafeAreasChanged: paper.requestPaint()
     onRulersChanged: paper.requestPaint()
+    onSocialChanged: paper.requestPaint()
 
     Canvas {
         id: paper
@@ -70,6 +97,33 @@ Item {
                     stroke(() => ctx.strokeRect(r.x + (r.width - w) / 2, r.y + (r.height - h) / 2, w, h),
                            String(Theme.color.accentText), area.dash)
                 }
+            }
+            if (guides.socialProfile) {
+                // What the app covers, shaded and named; what stays clear, outlined.
+                ctx.font = "600 11px sans-serif"
+                for (const z of guides.socialProfile.zones) {
+                    const zx = r.x + z.x * r.width, zy = r.y + z.y * r.height
+                    const zw = z.width * r.width, zh = z.height * r.height
+                    ctx.fillStyle = "#73000000"
+                    ctx.fillRect(zx, zy, zw, zh)
+                    ctx.save()
+                    ctx.beginPath()
+                    ctx.rect(zx, zy, zw, zh)
+                    ctx.clip()
+                    ctx.strokeStyle = "#33FFFFFF"
+                    ctx.lineWidth = 1
+                    for (let d = -zh; d < zw; d += 10)
+                        line(zx + d, zy + zh, zx + d + zh, zy)
+                    ctx.restore()
+                    ctx.fillStyle = "#F2FFFFFF"
+                    const label = z.label
+                    const tw = ctx.measureText(label).width
+                    if (tw + 8 <= zw && zh >= 16)
+                        ctx.fillText(label, zx + (zw - tw) / 2, zy + zh / 2 + 4)
+                }
+                const c = guides.socialClear
+                stroke(() => ctx.strokeRect(r.x + c.x * r.width, r.y + c.y * r.height, c.width * r.width, c.height * r.height),
+                       String(Theme.color.success), [6, 3])
             }
             if (guides.rulers) {
                 const band = 18

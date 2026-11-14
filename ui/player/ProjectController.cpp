@@ -7609,6 +7609,7 @@ bool ProjectController::startScreenRecording(const QVariantMap& options)
     }
     m_screenRecordingStart = ticks(m_playhead);
     m_screenRecordingTime = 0;
+    m_screenRecordingPaused = false;
     if (!m_screenRecordingClock) {
         m_screenRecordingClock = new QTimer(this);
         m_screenRecordingClock->setInterval(100);
@@ -7629,6 +7630,7 @@ bool ProjectController::stopScreenRecording()
         return false;
     if (m_screenRecordingClock)
         m_screenRecordingClock->stop();
+    m_screenRecordingPaused = false; // (stopped while paused: the takes end where the pause began)
     std::vector<RecordedTake> takes;
     QStringList problems;
     const auto takeOf = [&](const std::string& path, TrackKind kind, const char* name) -> std::optional<RecordedTake> {
@@ -7700,6 +7702,38 @@ bool ProjectController::stopScreenRecording()
     if (!apply(std::move(command)))
         return false;
     setSelectedClip(double(raw->clipIds().front()));
+    return true;
+}
+
+bool ProjectController::pauseScreenRecording()
+{
+    if (!screenRecording() || m_screenRecordingPaused)
+        return false;
+    for (CaptureRecorder* recorder : {m_screenRecorder.get(), m_cameraRecorder.get()})
+        if (recorder)
+            recorder->pause();
+    if (m_screenMicrophone)
+        m_screenMicrophone->pause();
+    if (m_cursorLog)
+        m_cursorLog->pause();
+    m_screenRecordingPaused = true;
+    emit screenRecordingChanged();
+    return true;
+}
+
+bool ProjectController::resumeScreenRecording()
+{
+    if (!screenRecording() || !m_screenRecordingPaused)
+        return false;
+    for (CaptureRecorder* recorder : {m_screenRecorder.get(), m_cameraRecorder.get()})
+        if (recorder)
+            recorder->resume();
+    if (m_screenMicrophone)
+        m_screenMicrophone->resume();
+    if (m_cursorLog)
+        m_cursorLog->resume();
+    m_screenRecordingPaused = false;
+    emit screenRecordingChanged();
     return true;
 }
 

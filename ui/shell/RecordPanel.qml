@@ -2,11 +2,14 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
+import TechieVideoEditor.Player
 
 // Record the screen and/or a camera (and the microphone): pick what to record — the entire
 // screen, a window, or an area drawn and sized on the display — then record from the playhead,
-// a red frame marking what is recorded (left out of the recording). Stopping puts each
-// recording on a track of its own there — the camera small over the screen — as one undo step.
+// a red frame marking what is recorded (left out of the recording), after a countdown when one
+// is chosen; pause and resume as often as needed (the takes leave the pauses out). Stopping
+// puts each recording on a track of its own there — the camera small over the screen — as one
+// undo step.
 Popup {
     id: panel
     required property var project
@@ -34,9 +37,14 @@ Popup {
     // The area being recorded (global points), for the drawing layer.
     property var recordedArea: null
 
+    // The countdown before recording: seconds left (0: not counting).
+    property int countdownLeft: 0
+    readonly property bool counting: countdownLeft > 0
+
     width: 380
     padding: Theme.space.l
-    closePolicy: project.screenRecording ? Popup.NoAutoClose : Popup.CloseOnEscape
+    margins: Theme.space.s // (kept inside the window when it is short)
+    closePolicy: project.screenRecording || counting ? Popup.NoAutoClose : Popup.CloseOnEscape
 
     function refresh() {
         screens = project.listScreenTargets()
@@ -78,6 +86,59 @@ Popup {
             return area
         return { x: screen.x || 0, y: screen.y || 0, width: screen.width, height: screen.height }
     }
+    // Record, after the countdown chosen (if any): the seconds counted down over what will be
+    // recorded (or the editor, for a camera alone), gone before the first frame.
+    function begin() {
+        const seconds = EditingPreferences.recordCountdown
+        if (seconds <= 0) {
+            record()
+            return
+        }
+        countdownLoader.area = chosen ? areaOf(chosen) : windowArea()
+        countdownLoader.active = true
+        countdownLeft = seconds
+        countdownLoader.item.total = seconds
+        countdownTimer.restart()
+    }
+    function cancelCountdown() {
+        countdownTimer.stop()
+        countdownLeft = 0
+        countdownLoader.active = false
+    }
+    function windowArea() {
+        const w = panel.Window.window
+        return w ? { x: w.x, y: w.y, width: w.width, height: w.height } : { x: 0, y: 0, width: 1280, height: 720 }
+    }
+    Timer {
+        id: countdownTimer
+        objectName: "countdownTimer"
+        interval: 1000
+        repeat: true
+        onTriggered: {
+            panel.countdownLeft -= 1
+            if (panel.countdownLeft > 0)
+                return
+            stop()
+            // The countdown taken down first: it must not be in the recording.
+            if (countdownLoader.item)
+                countdownLoader.item.visible = false
+            countdownLoader.active = false
+            panel.record()
+        }
+    }
+    Loader {
+        id: countdownLoader
+        property var area: ({})
+        active: false
+        sourceComponent: RecordCountdown { area: countdownLoader.area; remaining: panel.countdownLeft }
+    }
+    readonly property var countdownWindow: countdownLoader.item
+    Shortcut {
+        sequence: "Esc"
+        enabled: panel.counting
+        onActivated: panel.cancelCountdown()
+    }
+
     function record() {
         const options = { systemSound: panel.systemSound, microphone: panel.microphone }
         if (chosen) {
@@ -135,7 +196,7 @@ Popup {
         id: frameLoader
         property var area: ({})
         active: false
-        sourceComponent: RecordingFrame { area: frameLoader.area }
+        sourceComponent: RecordingFrame { area: frameLoader.area; paused: panel.project.screenRecordingPaused }
     }
     readonly property var recordingFrame: frameLoader.item
 
@@ -302,25 +363,78 @@ Popup {
             onToggled: panel.microphone = checked
         }
 
+        // Seconds counted down before recording starts.
         RowLayout {
             Layout.fillWidth: true
+            spacing: Theme.space.xs
+            Icon { name: "countdown"; size: Theme.size.iconSmall; color: Theme.color.textSecondary }
+            Text { text: qsTr("Countdown"); font: Theme.type.label; color: Theme.color.textSecondary }
+            Item { Layout.fillWidth: true }
+            Repeater {
+                model: [0, 3, 5, 10]
+                delegate: TextButton {
+                    required property int modelData
+                    objectName: "countdown:" + modelData
+                    text: modelData === 0 ? qsTr("Off") : qsTr("%1 s").arg(modelData)
+                    variant: EditingPreferences.recordCountdown === modelData ? "primary" : "secondary"
+                    enabled: !panel.project.screenRecording && !panel.counting
+                    onClicked: EditingPreferences.recordCountdown = modelData
+                }
+            }
+        }
+
+        // How long it has recorded (or the countdown), on a line of its own above the buttons.
+        RowLayout {
+            Layout.fillWidth: true
+            visible: panel.counting || panel.project.screenRecording
+            Text {
+                objectName: "countdownText"
+                Layout.fillWidth: true
+                visible: panel.counting
+                text: qsTr("Recording in %1…").arg(panel.countdownLeft)
+                font: Theme.type.mono
+                color: Theme.color.danger
+            }
             Text {
                 objectName: "screenRecordingTime"
                 Layout.fillWidth: true
                 visible: panel.project.screenRecording
-                text: "● " + Math.floor(panel.project.screenRecordingTime / 60) + ":"
-                      + String(Math.floor(panel.project.screenRecordingTime % 60)).padStart(2, "0")
+                readonly property string clock: Math.floor(panel.project.screenRecordingTime / 60) + ":"
+                                                + String(Math.floor(panel.project.screenRecordingTime % 60)).padStart(2, "0")
+                text: panel.project.screenRecordingPaused ? "❚❚ " + qsTr("%1 · Paused").arg(clock) : "● " + clock
                 font: Theme.type.mono
-                color: Theme.color.danger
+                color: panel.project.screenRecordingPaused ? Theme.color.warning : Theme.color.danger
             }
-            Item { Layout.fillWidth: true; visible: !panel.project.screenRecording }
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            Item { Layout.fillWidth: true }
+
             TextButton {
                 objectName: "startScreenRecording"
-                visible: !panel.project.screenRecording
+                visible: !panel.project.screenRecording && !panel.counting
                 text: qsTr("Record")
                 variant: "primary"
                 enabled: (panel.screenIndex >= 0 && (panel.mode !== "area" || panel.area !== null)) || (panel.screenIndex < 0 && panel.cameraIndex >= 0)
-                onClicked: panel.record()
+                onClicked: panel.begin()
+            }
+            TextButton {
+                objectName: "cancelCountdown"
+                visible: panel.counting
+                text: qsTr("Cancel")
+                variant: "secondary"
+                onClicked: panel.cancelCountdown()
+            }
+            TextButton {
+                objectName: "pauseScreenRecording"
+                visible: panel.project.screenRecording
+                text: panel.project.screenRecordingPaused ? qsTr("Resume") : qsTr("Pause")
+                iconName: panel.project.screenRecordingPaused ? "record" : "pause"
+                variant: "secondary"
+                tip: panel.project.screenRecordingPaused ? qsTr("Carry on recording in the same takes")
+                                                         : qsTr("Pause: nothing is recorded until you resume; the takes leave the pause out")
+                onClicked: panel.project.screenRecordingPaused ? panel.project.resumeScreenRecording()
+                                                               : panel.project.pauseScreenRecording()
             }
             TextButton {
                 objectName: "drawDuringRecording"

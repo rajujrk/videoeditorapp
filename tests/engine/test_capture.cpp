@@ -84,3 +84,52 @@ TEST_CASE("the cursor log follows the mouse and its clicks")
     CHECK(cursor.sinceClick(kTicksPerSecond + kTicksPerSecond / 5, 0.45).value() == Approx(0.2).margin(0.05));
     CHECK_FALSE(cursor.sinceClick(kTicksPerSecond / 2, 0.45));
 }
+
+TEST_CASE("a paused capture writes nothing until resumed, in the same file")
+{
+    const std::string path = (fs::temp_directory_path() / ("tve_capture_paused_" + std::to_string(::getpid()) + ".mov")).string();
+    CaptureRecorder recorder(makeTestSource(320, 180, 30, true), 30);
+    std::string error;
+    recorder.pause(); // (not recording: nothing to pause)
+    CHECK_FALSE(recorder.paused());
+    REQUIRE(recorder.start(path, &error));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    recorder.pause();
+    CHECK(recorder.paused());
+    const double atPause = toSeconds(recorder.elapsed());
+    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+    // The time stands still while paused.
+    CHECK(toSeconds(recorder.elapsed()) == Approx(atPause).margin(0.01));
+    recorder.resume();
+    CHECK_FALSE(recorder.paused());
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    CHECK(toSeconds(recorder.elapsed()) == Approx(2.0).margin(0.2));
+    const auto take = recorder.stop(&error);
+    REQUIRE(take);
+    // Two seconds recorded, not the three and more that went by.
+    CHECK(toSeconds(take->duration) == Approx(2.0).margin(0.2));
+    auto video = VideoDecoder::open(path);
+    REQUIRE(video);
+    CHECK(toSeconds(video->info().duration) == Approx(2.0).margin(0.2));
+    auto sound = AudioDecoder::open(path);
+    REQUIRE(sound);
+    CHECK(toSeconds(sound->info().duration) == Approx(toSeconds(take->duration)).margin(0.25));
+    fs::remove(path);
+}
+
+TEST_CASE("a paused cursor log leaves the paused time out")
+{
+    CursorLog log({0, 0, 1280, 720}, true);
+    log.start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    log.pause();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    log.resume();
+    std::this_thread::sleep_for(std::chrono::milliseconds(800));
+    const CursorEffects cursor = log.stop();
+    REQUIRE(cursor.hasLog());
+    // About 2.3 s logged: clicks at 1 and 2 of its own time, none from the second paused.
+    REQUIRE(cursor.clicks.size() == 2);
+    CHECK(toSeconds(cursor.clicks[1]) == Approx(2.0).margin(0.06));
+    CHECK(toSeconds(cursor.path.back().time) == Approx(2.3).margin(0.15));
+}

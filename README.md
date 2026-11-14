@@ -98,6 +98,7 @@ The following improvements were completed after Phase 5:
 - Slice 30e: Night view for dark shots, and cinematic depth of field from a depth model on the Mac.
 - Slice 31a: Timeline handling — replacing media, clips turned off, placeholders, extend edit, match frame, loop, auto ripple, moving and locking tracks, the default transition, rotate and flip, skimming; a frame border pictures snap to; recording the entire screen, a window or an area.
 - Slice 31b: Media and project — library folders, sorting, grouping, list and thumbnail sizes, colour labels, removing unused media, importing a folder, archiving a project with its media, changing the canvas and frame rate, export presets of your own, and mono or one-sided sound for a clip.
+- Slice 31c: Player and recorder — before and after a grade with a divider to drag, a transparency grid, safe areas for vertical social apps, and pausing, resuming and a countdown in the screen recorder.
 
 All previously identified feature gaps have been closed.
 
@@ -124,6 +125,7 @@ All previously identified feature gaps have been closed.
 ### 2.2 Colour Grading and Visual Adjustments
 
 - Apply individual colour grading to each clip.
+- Compare a grade with the picture before it, side by side on a divider you drag.
 - Support basic colour corrections, colour wheels, curves, HSL adjustments and hue curves.
 - Apply LUTs (Look-Up Tables).
 - Display colour scopes for accurate grading.
@@ -191,6 +193,7 @@ All previously identified feature gaps have been closed.
 - Record voice-overs directly from a microphone at the current playhead position.
 - Read your script from a teleprompter while recording.
 - Blur or remove the camera's background when recording.
+- Count down before a screen recording starts, and pause and resume it as often as needed.
 - Draw on the screen while recording it.
 - Record the entire screen, one window, or an area drawn and sized on the display, marked by a frame while recording.
 
@@ -201,6 +204,7 @@ All previously identified feature gaps have been closed.
 - Remove media nobody uses, and archive a project with every file it needs into one folder.
 - Search the media bin for what is in the pictures, what is said and the text on screen, and open the moment found.
 - Play and scrub through video content.
+- See a checkerboard where the canvas is transparent, and where vertical social apps' bars, captions and buttons will cover the picture.
 - Watch a full-screen preview on a second display.
 - Keep favourite effects, transitions, titles, stickers and looks, with tags.
 - Switch workspaces (panel layouts) and save your own.
@@ -532,6 +536,28 @@ presets follow the built-in ones, described in your language, and **Delete** rem
 kept in `export-presets.json` (`TVE_EXPORT_PRESETS_FILE`). The Audio tab's **Channels** plays a clip
 as recorded, in **Mono**, with the **Left only** or **Right only** channel on both sides (a microphone
 on one channel) or **Swapped**; the export mixes it the same way.
+
+**Before and after, transparency and social layouts.** The player's **Before and after** button
+(⇧B) splits the picture: left of the divider every clip as it was before its colour grade and look,
+right of it as graded, each side named at the top. Drag the divider (or its round handle) to either
+side; a double click puts it back in the middle. Effects, keys and masks stay on both sides, so only
+the grade differs, and nothing is changed or exported. The **Transparency grid** button shows a grey
+checkerboard wherever nothing covers the canvas (a picture made smaller, a sticker or a picture with
+transparency on its own) instead of black; exports are as they were. The **Guides** menu's **Social
+app safe areas (9:16)** shades what a vertical app draws over the picture — a **Short-video feed**
+(the top bar, the caption, name and sound along the bottom, the buttons up the right side),
+**Stories** (progress and name, the reply bar) or a **Live stream** (name and viewers, comments,
+gifts and likes) — and outlines in green where titles and faces stay clear of all of it. **Make the
+canvas vertical (1080 × 1920)** in the same menu changes the project's shape in one step. These are
+typical layouts, not any one app's.
+
+**Pausing the recorder, and a countdown.** The recorder's **Countdown** (Off, 3, 5 or 10 seconds,
+remembered) counts down large in the middle of what will be recorded before the first frame, with a
+ring running out each second; **Cancel** or Esc stops it. While recording, **Pause** stops the
+screen, camera, microphone and cursor together — the clock stands still, the red frame round the
+screen turns amber and stops pulsing — and **Resume** carries on in the same takes. The clips that
+land on the timeline leave every pause out, and stopping while paused ends them where the pause
+began.
 
 **Timeline handling.** A clip's right-click menu offers **Replace with** (any picture, or any
 sound on a sound track, from the project): the clip keeps its place, length, speed, look, effects,

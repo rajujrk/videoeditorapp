@@ -107,6 +107,9 @@ Rectangle {
                         objectName: "player"
                         anchors.fill: parent
                         anchors.margins: Theme.space.s
+                        transparencyGrid: EditingPreferences.transparencyGrid
+                        // (Looking around a 360° picture shows a view of it: nothing to compare.)
+                        onLookAroundChanged: if (lookAround) compareGrade = false
                     }
 
                     // Move, scale and rotate the selected clip by hand (beneath the editing overlays).
@@ -152,6 +155,14 @@ Rectangle {
                         objectName: "guidesOverlay"
                         anchors.fill: video
                         project: panel.project
+                    }
+
+                    // Before | after a grade, over everything (only its divider takes drags).
+                    CompareOverlay {
+                        objectName: "compareOverlay"
+                        anchors.fill: video
+                        project: panel.project
+                        player: video
                     }
                 }
             }
@@ -467,9 +478,27 @@ Rectangle {
                     onToggled: panel.showStats = checked
                 }
                 IconButton {
+                    objectName: "compareButton"
+                    iconName: "compare"
+                    visible: !panel.showingSource
+                    tip: qsTr("Before and after: the picture without its colour grades on the left of the divider, graded on the right (drag it)") + KeyMap.hints["compareGrade"]
+                    enabled: panel.project.duration > 0 && !video.lookAround
+                    checkable: true
+                    checked: video.compareGrade
+                    onClicked: video.compareGrade = !video.compareGrade
+                }
+                IconButton {
+                    objectName: "transparencyGridButton"
+                    iconName: "checker"
+                    tip: qsTr("Transparency grid: a checkerboard where nothing covers the canvas (here only; exports are unchanged)")
+                    checkable: true
+                    checked: EditingPreferences.transparencyGrid
+                    onClicked: EditingPreferences.transparencyGrid = !EditingPreferences.transparencyGrid
+                }
+                IconButton {
                     objectName: "guidesButton"
                     iconName: "guides"
-                    tip: qsTr("Guides: thirds, centre lines, safe areas, rulers and the frame border (shown here only, never exported)")
+                    tip: qsTr("Guides: thirds, centre lines, safe areas, social app layouts, rulers and the frame border (shown here only, never exported)")
                     checkable: true
                     checked: guidesOverlay.any
                     onClicked: guidesMenu.popup(this, 0, -guidesMenu.implicitHeight)
@@ -480,6 +509,39 @@ Rectangle {
                         AppMenuItem { objectName: "guides:centre"; text: qsTr("Centre lines"); checkable: true; checked: guidesOverlay.centre; onTriggered: guidesOverlay.centre = !guidesOverlay.centre }
                         AppMenuItem { objectName: "guides:safe"; text: qsTr("Safe areas (action 90 %, titles 80 %)"); checkable: true; checked: guidesOverlay.safeAreas; onTriggered: guidesOverlay.safeAreas = !guidesOverlay.safeAreas }
                         AppMenuItem { objectName: "guides:rulers"; text: qsTr("Rulers"); checkable: true; checked: guidesOverlay.rulers; onTriggered: guidesOverlay.rulers = !guidesOverlay.rulers }
+                        // What a vertical app's own bars, captions and buttons cover.
+                        AppMenu {
+                            id: socialMenu
+                            objectName: "guides:social"
+                            title: qsTr("Social app safe areas (9:16)")
+                            AppMenuItem {
+                                objectName: "guides:social:none"
+                                text: qsTr("None")
+                                checkable: true
+                                checked: guidesOverlay.social === ""
+                                onTriggered: guidesOverlay.social = ""
+                            }
+                            Instantiator {
+                                model: guidesOverlay.profiles
+                                delegate: AppMenuItem {
+                                    required property var modelData
+                                    objectName: "guides:social:" + modelData.id
+                                    text: modelData.title
+                                    checkable: true
+                                    checked: guidesOverlay.social === modelData.id
+                                    onTriggered: guidesOverlay.social = modelData.id
+                                }
+                                onObjectAdded: (index, object) => socialMenu.insertItem(index + 1, object)
+                                onObjectRemoved: (index, object) => socialMenu.removeItem(object)
+                            }
+                            AppMenuSeparator {}
+                            AppMenuItem {
+                                objectName: "guides:social:canvas"
+                                text: qsTr("Make the canvas vertical (1080 × 1920)")
+                                enabled: panel.project.canvasWidth !== 1080 || panel.project.canvasHeight !== 1920
+                                onTriggered: panel.project.setCanvas(1080, 1920, panel.project.frameRate)
+                            }
+                        }
                         AppMenuSeparator {}
                         AppMenuItem {
                             objectName: "guides:border"

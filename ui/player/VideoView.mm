@@ -71,7 +71,7 @@ private:
     };
 
     static void release(FrameResources& resources);
-    bool bindPresentInput(QRhiTexture* image);
+    bool bindPresentInput(QRhiTexture* image, QRhiTexture* before);
     // The size the frame is composited at: the canvas, or half of it (even, at least 16).
     QSize canvasFor(tve::FrameSource::Size canvas) const
     {
@@ -88,6 +88,15 @@ private:
     std::unique_ptr<FrameCompositor> m_frameCompositor;
     std::unique_ptr<tve::EffectChain> m_outputChain;
     std::unique_ptr<tve::ColourPass> m_display;
+    // Before and after: the same frame drawn again without grades, through its own passes.
+    bool m_compare = false;
+    float m_compareSplit = 0.5f;
+    bool m_grid = false;
+    float m_devicePixelRatio = 1.0f;
+    std::unique_ptr<FrameCompositor> m_beforeCompositor;
+    std::unique_ptr<tve::EffectChain> m_beforeChain;
+    std::unique_ptr<tve::ColourPass> m_beforeDisplay;
+    QRhiTexture* m_before = nullptr; // for the display, while comparing
     std::unique_ptr<tve::SpherePass> m_lookPass;
     bool m_lookAround = false;
     bool m_halfResolution = false;
@@ -97,6 +106,8 @@ private:
     bool m_hdrActive = false;
     double m_headroom = 1.0;
     quint64 m_effectsRevision = 0;
+    quint64 m_beforeEffectsRevision = 0;
+    std::vector<tve::EffectInstance> m_outputInstances;
     std::shared_ptr<PreviewOverrides> m_overrides;
     quint64 m_overridesRevision = 0;
 
@@ -104,6 +115,7 @@ private:
     std::unique_ptr<QRhiShaderResourceBindings> m_presentBindings;
     std::unique_ptr<QRhiGraphicsPipeline> m_presentPipeline;
     QRhiTexture* m_presentInput = nullptr;
+    QRhiTexture* m_presentBefore = nullptr;
     QRhiTexture* m_processed = nullptr; // in the working colour
     QRhiTexture* m_shown = nullptr;     // for the display
 
@@ -154,7 +166,7 @@ void VideoRenderer::initialize(QRhiCommandBuffer*)
     m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear, QRhiSampler::None,
                                       QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
     m_sampler->create();
-    m_presentUniforms.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, 80));
+    m_presentUniforms.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, 96));
     m_presentUniforms->create();
     m_outputChain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
     m_display = std::make_unique<tve::ColourPass>(m_rhi);
@@ -163,7 +175,7 @@ void VideoRenderer::initialize(QRhiCommandBuffer*)
     // A placeholder input gives the present pipeline its binding layout.
     m_placeholder.reset(m_rhi->newTexture(QRhiTexture::RGBA8, QSize(1, 1)));
     m_placeholder->create();
-    if (!bindPresentInput(m_placeholder.get()))
+    if (!bindPresentInput(m_placeholder.get(), m_placeholder.get()))
         return;
     m_presentPipeline.reset(m_rhi->newGraphicsPipeline());
     m_presentPipeline->setTopology(QRhiGraphicsPipeline::TriangleStrip);
@@ -178,9 +190,9 @@ void VideoRenderer::initialize(QRhiCommandBuffer*)
     }
 }
 
-bool VideoRenderer::bindPresentInput(QRhiTexture* image)
+bool VideoRenderer::bindPresentInput(QRhiTexture* image, QRhiTexture* before)
 {
-    if (m_presentBindings && m_presentInput == image)
+    if (m_presentBindings && m_presentInput == image && m_presentBefore == before)
         return true;
     if (!m_presentBindings)
         m_presentBindings.reset(m_rhi->newShaderResourceBindings());
@@ -189,8 +201,10 @@ bool VideoRenderer::bindPresentInput(QRhiTexture* image)
             0, QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage,
             m_presentUniforms.get()),
         QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, image, m_sampler.get()),
+        QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, before, m_sampler.get()),
     });
     m_presentInput = image;
+    m_presentBefore = before;
     return m_presentBindings->create();
 }
 
@@ -205,6 +219,7 @@ void VideoRenderer::synchronize(QQuickRhiItem* item)
             m_frameCompositor->reset();
     }
     if (m_outputChain && view->effectsRevision() != m_effectsRevision) {
+        m_outputInstances = view->effects();
         m_outputChain->setInstances(view->effects());
         m_effectsRevision = view->effectsRevision();
         m_needsProcessing = true;
@@ -226,6 +241,14 @@ void VideoRenderer::synchronize(QQuickRhiItem* item)
             m_needsProcessing = true;
         }
     }
+    if (view->compareGrade() != m_compare || view->transparencyGrid() != m_grid) {
+        m_compare = view->compareGrade();
+        m_grid = view->transparencyGrid();
+        m_needsProcessing = true;
+    }
+    m_compareSplit = float(std::clamp(view->compareSplit(), 0.0, 1.0));
+    if (QQuickWindow* window = view->window())
+        m_devicePixelRatio = float(window->effectiveDevicePixelRatio());
     if (view->lookAround() != m_lookAround || view->look() != m_look) {
         m_lookAround = view->lookAround();
         m_look = view->look();
@@ -262,6 +285,7 @@ void VideoRenderer::synchronize(QQuickRhiItem* item)
 void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
 {
     FrameResources& resources = m_frames[m_currentFrame];
+    m_frameCompositor->setTransparentCanvas(m_grid);
     QRhiTexture* canvas =
         m_frameCompositor->render(cb, *resources.frame, m_canvasSize, seconds, m_overrides.get(), resources.textures);
     m_processed = canvas ? m_outputChain->process(cb, canvas, seconds) : nullptr;
@@ -276,8 +300,35 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, float seconds)
     // The display transform (nothing for an SDR project on an SDR display).
     m_display->begin();
     const tve::ColourSpace display{tve::Primaries::Rec709, m_hdrActive ? tve::Transfer::Linear : tve::Transfer::Sdr};
-    m_shown = m_display->apply(cb, picture, tve::conversion(tve::workingSpace(resources.frame->colour), display,
-                                                               m_headroom));
+    const auto toDisplay = tve::conversion(tve::workingSpace(resources.frame->colour), display, m_headroom);
+    m_shown = m_display->apply(cb, picture, toDisplay);
+    // Before the grade: drawn again, every clip's grade and look left out (not while looking
+    // around a 360° picture: that view is the item's own).
+    m_before = nullptr;
+    if (m_compare && m_shown && m_lookSize.isEmpty()) {
+        if (!m_beforeCompositor) {
+            m_beforeCompositor = std::make_unique<FrameCompositor>(m_rhi);
+            m_beforeCompositor->setUngraded(true);
+            m_beforeChain = std::make_unique<tve::EffectChain>(m_rhi, tve::EffectLibrary::builtIn());
+            m_beforeDisplay = std::make_unique<tve::ColourPass>(m_rhi);
+            m_beforeEffectsRevision = 0;
+        }
+        if (m_beforeEffectsRevision != m_effectsRevision) {
+            m_beforeChain->setInstances(m_outputInstances);
+            m_beforeEffectsRevision = m_effectsRevision;
+        }
+        m_beforeCompositor->setTransparentCanvas(m_grid);
+        if (QRhiTexture* ungraded = m_beforeCompositor->render(cb, *resources.frame, m_canvasSize, seconds,
+                                                               m_overrides.get(), resources.textures)) {
+            QRhiTexture* processed = m_beforeChain->process(cb, ungraded, seconds);
+            m_beforeDisplay->begin();
+            m_before = m_beforeDisplay->apply(cb, processed, toDisplay);
+        }
+    } else if (!m_compare && m_beforeCompositor) {
+        m_beforeCompositor.reset(); // (its textures and Vision state, until compared again)
+        m_beforeChain.reset();
+        m_beforeDisplay.reset();
+    }
 }
 
 void VideoRenderer::captureScope(QRhiCommandBuffer* cb)
@@ -366,7 +417,8 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
 
     // Aspect-fit the canvas into the item.
     const QSize outputSize = renderTarget()->pixelSize();
-    const bool canPresent = m_hasFrame && m_shown && m_presentPipeline && bindPresentInput(m_shown);
+    QRhiTexture* before = m_before && m_shown && m_before->pixelSize() == m_shown->pixelSize() ? m_before : nullptr;
+    const bool canPresent = m_hasFrame && m_shown && m_presentPipeline && bindPresentInput(m_shown, before ? before : m_shown);
     QRhiResourceUpdateBatch* updates = m_rhi->nextResourceUpdateBatch();
     if (canPresent) {
         float scale[4] = {1.0f, 1.0f, m_rhi->isYUpInNDC() ? 1.0f : 0.0f, 0.0f};
@@ -378,6 +430,10 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
         else
             scale[0] = canvasAspect / viewAspect;
         updates->updateDynamicBuffer(m_presentUniforms.get(), 64, 16, scale);
+        // A grid cell of 8 points.
+        const float cell = 8.0f * m_devicePixelRatio;
+        float options[4] = {before ? m_compareSplit : -1.0f, m_grid ? 1.0f : 0.0f, cell, 0.0f};
+        updates->updateDynamicBuffer(m_presentUniforms.get(), 80, 16, options);
     }
     cb->beginPass(renderTarget(), QColor(Qt::black), {1.0f, 0}, updates);
     if (canPresent) {
@@ -584,6 +640,36 @@ void VideoView::setHalfResolution(bool on)
         return;
     m_halfResolution = on;
     emit halfResolutionChanged();
+    update();
+}
+
+void VideoView::setCompareGrade(bool on)
+{
+    if (on == m_compareGrade)
+        return;
+    m_compareGrade = on;
+    emit compareChanged();
+    update();
+}
+
+void VideoView::setCompareSplit(double split)
+{
+    if (!std::isfinite(split))
+        return;
+    split = std::clamp(split, 0.0, 1.0);
+    if (split == m_compareSplit)
+        return;
+    m_compareSplit = split;
+    emit compareChanged();
+    update();
+}
+
+void VideoView::setTransparencyGrid(bool on)
+{
+    if (on == m_transparencyGrid)
+        return;
+    m_transparencyGrid = on;
+    emit transparencyGridChanged();
     update();
 }
 

@@ -286,6 +286,9 @@ class ProjectController : public QObject {
     // permissions ("granted", "denied", "undetermined").
     Q_PROPERTY(bool screenRecording READ screenRecording NOTIFY screenRecordingChanged)
     Q_PROPERTY(double screenRecordingTime READ screenRecordingTime NOTIFY screenRecordingTimeChanged)
+    // A recording paused: nothing is recorded (screen, camera, microphone, cursor) until it
+    // resumes; the takes leave the pause out.
+    Q_PROPERTY(bool screenRecordingPaused READ screenRecordingPaused NOTIFY screenRecordingChanged)
     Q_PROPERTY(QString screenAccess READ screenAccessName NOTIFY screenRecordingChanged)
     Q_PROPERTY(QString cameraAccess READ cameraAccessName NOTIFY screenRecordingChanged)
     // The Audio tab's music, sound effects, packs and My music.
@@ -446,6 +449,7 @@ public:
     QString recordingsDirectory() const;
     bool screenRecording() const { return m_screenRecorder != nullptr || m_cameraRecorder != nullptr; }
     double screenRecordingTime() const { return m_screenRecordingTime; }
+    bool screenRecordingPaused() const { return m_screenRecordingPaused; }
     QString screenAccessName() const;
     SoundLibrary* soundLibrary() const { return m_soundLibrary; }
     MediaImports* imports() const { return m_imports; }
@@ -881,6 +885,8 @@ public:
     Q_INVOKABLE void keepOutOfRecordings(QObject* window, bool keep = true);
     Q_INVOKABLE QVariantList recordingExclusions() const;
     Q_INVOKABLE bool stopScreenRecording();
+    Q_INVOKABLE bool pauseScreenRecording();
+    Q_INVOKABLE bool resumeScreenRecording();
     // A screen recording's cursor effects: rings, highlight, spotlight, size.
     Q_INVOKABLE bool setCursorEffects(double clipId, const QVariantMap& effects);
     // Zooms in on each click (zoom 1.2..3, hold seconds) as keyframes; one undo step.
@@ -1528,6 +1534,7 @@ private:
     tve::Ticks m_screenRecordingStart = 0;
     QString m_cameraBackground; // "blur", "remove" or empty: as it is
     double m_screenRecordingTime = 0;
+    bool m_screenRecordingPaused = false;
     QTimer* m_screenRecordingClock = nullptr;
     bool m_requestingAccess = false;
     SoundLibrary* m_soundLibrary = nullptr;

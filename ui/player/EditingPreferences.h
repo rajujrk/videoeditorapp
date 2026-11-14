@@ -30,6 +30,10 @@ class EditingPreferences : public QObject {
     Q_PROPERTY(bool mediaGroups READ mediaGroups WRITE setMediaGroups NOTIFY changed)
     Q_PROPERTY(QString mediaView READ mediaView WRITE setMediaView NOTIFY changed)
     Q_PROPERTY(QString mediaSize READ mediaSize WRITE setMediaSize NOTIFY changed)
+    // The player's transparency grid (a checkerboard where the canvas is transparent).
+    Q_PROPERTY(bool transparencyGrid READ transparencyGrid WRITE setTransparencyGrid NOTIFY changed)
+    // Seconds counted down before a screen or camera recording starts: 0 (none), 3, 5 or 10.
+    Q_PROPERTY(int recordCountdown READ recordCountdown WRITE setRecordCountdown NOTIFY changed)
 
 public:
     static EditingPreferences* instance();
@@ -63,6 +67,10 @@ public:
     void setMediaView(const QString& view);
     QString mediaSize() const { return m_mediaSize; }
     void setMediaSize(const QString& size);
+    bool transparencyGrid() const { return m_transparencyGrid; }
+    void setTransparencyGrid(bool on);
+    int recordCountdown() const { return m_recordCountdown; }
+    void setRecordCountdown(int seconds);
 
     // Everything back as it comes (for tests).
     Q_INVOKABLE void reset();
@@ -90,4 +98,6 @@ private:
     bool m_mediaGroups = false;
     QString m_mediaView = QStringLiteral("grid");
     QString m_mediaSize = QStringLiteral("medium");
+    bool m_transparencyGrid = false;
+    int m_recordCountdown = 0;
 };
