@@ -18,6 +18,14 @@ ScrollView {
     readonly property var download: project.modelDownload
     readonly property bool fromSelection: project.selectedClips.length > 0
 
+    // Fixes left unticked (their indices), and whether a check has finished.
+    property var skipped: []
+    property bool checkDone: false
+    Connections {
+        target: page.project.cloud
+        function onJobFinished(job, ok) { if (job === "proofread") { page.checkDone = ok; page.skipped = [] } }
+    }
+
     contentWidth: availableWidth
     clip: true
 
@@ -246,6 +254,123 @@ ScrollView {
             font: Theme.type.caption
             color: Theme.color.textSecondary
             wrapMode: Text.WordWrap
+        }
+
+        // Proofreading: Claude checks the titles and captions; nothing changes until a fix is applied.
+        Text { text: qsTr("Check spelling and grammar"); font: Theme.type.label; color: Theme.color.textSecondary }
+        Text {
+            Layout.fillWidth: true
+            text: qsTr("Claude checks every title and caption on the timeline, each in its own language. Nothing changes until you apply a fix.")
+            font: Theme.type.caption
+            color: Theme.color.textSecondary
+            wrapMode: Text.WordWrap
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.space.s
+            TextButton {
+                objectName: "checkText"
+                text: qsTr("Check the text")
+                variant: "secondary"
+                visible: page.project.cloud.job !== "proofread"
+                enabled: page.project.cloud.hasClaudeKey && page.project.cloud.job === ""
+                onClicked: page.project.checkText()
+            }
+            TextButton {
+                objectName: "cancelCheck"
+                visible: page.project.cloud.job === "proofread"
+                text: qsTr("Stop")
+                variant: "ghost"
+                onClicked: page.project.cloud.cancel()
+            }
+            Item { Layout.fillWidth: true }
+        }
+        Text {
+            objectName: "checkStatus"
+            visible: text !== ""
+            Layout.fillWidth: true
+            text: !page.project.cloud.hasClaudeKey ? qsTr("Add your Claude API key in AI settings (the speech bubble at the top) to check the text.")
+                : page.project.cloud.job === "proofread" ? page.project.cloud.status
+                : page.checkDone ? page.project.cloud.status : ""
+            font: Theme.type.caption
+            color: Theme.color.textSecondary
+            wrapMode: Text.WordWrap
+        }
+        // The fixes offered: each ticked to start with.
+        Repeater {
+            model: page.project.textFixes
+            delegate: Rectangle {
+                id: fix
+                required property var modelData
+                readonly property bool chosen: page.skipped.indexOf(modelData.index) < 0
+                objectName: "textFix:" + modelData.index
+                Layout.fillWidth: true
+                implicitHeight: fixColumn.implicitHeight + Theme.space.s * 2
+                radius: Theme.radius.m
+                color: Theme.color.surfaceRaised
+                border.color: Theme.color.borderSubtle
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: Theme.space.s
+                    spacing: Theme.space.s
+                    CheckBox {
+                        objectName: "textFixChosen:" + fix.modelData.index
+                        Layout.alignment: Qt.AlignTop
+                        checked: fix.chosen
+                        onToggled: page.skipped = checked ? page.skipped.filter((i) => i !== fix.modelData.index)
+                                                          : page.skipped.concat([fix.modelData.index])
+                    }
+                    ColumnLayout {
+                        id: fixColumn
+                        Layout.fillWidth: true
+                        spacing: 2
+                        Text {
+                            Layout.fillWidth: true
+                            text: (fix.modelData.kind === "caption" ? qsTr("Caption") : qsTr("Title"))
+                                  + (fix.modelData.note !== "" ? " · " + fix.modelData.note : "")
+                            font: Theme.type.caption
+                            color: Theme.color.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: fix.modelData.before
+                            font.family: Theme.type.body.family
+                            font.pixelSize: Theme.type.body.pixelSize
+                            font.strikeout: true
+                            color: Theme.color.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+                        Text {
+                            objectName: "textFixAfter:" + fix.modelData.index
+                            Layout.fillWidth: true
+                            text: fix.modelData.after
+                            font: Theme.type.body
+                            color: Theme.color.textPrimary
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+            }
+        }
+        RowLayout {
+            visible: page.project.textFixes.length > 0
+            Layout.fillWidth: true
+            spacing: Theme.space.s
+            TextButton {
+                objectName: "applyTextFixes"
+                readonly property var chosen: page.project.textFixes.map((f) => f.index).filter((i) => page.skipped.indexOf(i) < 0)
+                text: chosen.length === 1 ? qsTr("Apply 1 fix") : qsTr("Apply %1 fixes").arg(chosen.length)
+                variant: "primary"
+                enabled: chosen.length > 0
+                onClicked: { page.project.applyTextFixes(chosen); page.skipped = [] }
+            }
+            TextButton {
+                objectName: "dismissTextFixes"
+                text: qsTr("Dismiss")
+                variant: "ghost"
+                onClicked: { page.project.dismissTextFixes(); page.skipped = [] }
+            }
         }
 
         Text { text: qsTr("Subtitle files"); font: Theme.type.label; color: Theme.color.textSecondary }

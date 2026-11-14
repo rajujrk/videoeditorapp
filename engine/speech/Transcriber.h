@@ -46,6 +46,8 @@ std::optional<std::vector<float>> speechSamples(const std::string& mediaPath, co
 
 // Kept beside the other analysis (AnalysisCache's folder), per media and per model + language.
 std::optional<Transcript> loadTranscript(const AnalysisCache& cache, const std::string& fingerprint, const std::string& variant);
+// Whichever transcript of a media is kept (the newest, if there are several).
+std::optional<Transcript> loadAnyTranscript(const AnalysisCache& cache, const std::string& fingerprint);
 bool saveTranscript(const AnalysisCache& cache, const std::string& fingerprint, const std::string& variant,
                     const Transcript& transcript);
 

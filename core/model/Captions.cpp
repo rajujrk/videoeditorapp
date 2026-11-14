@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdio>
 #include <regex>
 #include <sstream>
@@ -113,6 +114,46 @@ std::vector<CaptionBlock> layoutCaptions(const std::vector<TimedWord>& words, co
             captions[i].end = std::min(captions[i].start + minimum, std::max(limit, captions[i].end));
     }
     return captions;
+}
+
+std::vector<CaptionWord> retimeWords(const std::vector<CaptionWord>& words, const std::string& text)
+{
+    if (words.empty())
+        return {};
+    std::vector<std::string> next;
+    std::string word;
+    for (char c : text) {
+        if (std::isspace(static_cast<unsigned char>(c))) {
+            if (!word.empty())
+                next.push_back(std::move(word));
+            word.clear();
+        } else {
+            word += c;
+        }
+    }
+    if (!word.empty())
+        next.push_back(std::move(word));
+    std::vector<CaptionWord> out;
+    if (next.size() == words.size()) {
+        for (std::size_t i = 0; i < next.size(); ++i)
+            out.push_back({words[i].start, words[i].end, next[i]});
+        return out;
+    }
+    if (next.empty())
+        return {};
+    const Ticks from = words.front().start;
+    const Ticks to = std::max(from + 1, words.back().end);
+    double total = 0;
+    for (const std::string& w : next)
+        total += double(w.size() + 1);
+    double along = 0;
+    for (const std::string& w : next) {
+        const Ticks start = from + Ticks(std::llround(double(to - from) * along / total));
+        along += double(w.size() + 1);
+        const Ticks end = from + Ticks(std::llround(double(to - from) * along / total));
+        out.push_back({start, end, w});
+    }
+    return out;
 }
 
 bool isFillerWord(const std::string& word)

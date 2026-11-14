@@ -17,14 +17,21 @@ Rectangle {
     readonly property bool ready: media !== null && controller !== null && controller.duration > 0
 
     // Opens a media item (a new player each time: its canvas and frame rate are the media's).
-    function load(item) {
+    // `from` and `to` (seconds, optional): In and Out, the playhead at In.
+    function load(item, from, to) {
         if (controller)
             controller.pause()
         media = item
         holder.active = false
         holder.active = true
         controller.importAndAppend("file://" + item.path)
-        controller.seek(0)
+        if (from !== undefined && to !== undefined && to > from) {
+            controller.seek(from)
+            controller.setMarkIn(from)
+            controller.setMarkOut(to)
+        } else {
+            controller.seek(0)
+        }
     }
     // The part from In to Out (all of it without marks) onto the timeline.
     function place(mode) {

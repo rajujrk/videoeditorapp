@@ -19,6 +19,7 @@ Rectangle {
     // "photos", "music" or "devices"
     signal importFromRequested(string source)
     signal sourceRequested(var media) // open it in the player's source monitor
+    signal momentRequested(var media, real start, real end) // the same, In and Out around a moment
     signal cloudSettingsRequested()
     onCurrentTabChanged: {
         searchField.text = ""
@@ -1154,7 +1155,19 @@ Rectangle {
                 }
             }
 
-            // Media tab: the project's media bin
+            // Media tab: smart search over the media bin (its moments), then the bin itself
+            // (while searching, the media named so or with a moment found).
+            MediaSearch {
+                id: mediaSearch
+                objectName: "mediaSearch"
+                visible: library.currentTab === 0
+                Layout.fillWidth: true
+                Layout.fillHeight: false // (a layout fills by default: the bin below takes the room)
+                Layout.bottomMargin: Theme.space.s
+                project: library.project
+                query: library.currentTab === 0 ? searchField.text : ""
+                onMomentRequested: (media, start, end) => library.momentRequested(media, start, end)
+            }
             Item {
                 id: mediaBin
                 visible: library.currentTab === 0
@@ -1163,12 +1176,16 @@ Rectangle {
 
                 GridView {
                     id: mediaGrid
+                    objectName: "mediaGrid"
                     anchors.fill: parent
                     anchors.leftMargin: Theme.space.m
                     clip: true
                     cellWidth: Math.floor(width / 2)
                     cellHeight: 118
-                    model: library.project.media
+                    model: mediaSearch.trimmed === ""
+                           ? library.project.media
+                           : library.project.media.filter((m) => m.name.toLowerCase().indexOf(mediaSearch.trimmed.toLowerCase()) >= 0
+                                                                 || mediaSearch.hitIds.indexOf(m.id) >= 0)
 
                     delegate: Item {
                         id: mediaTile
@@ -1296,8 +1313,11 @@ Rectangle {
                         ToolTip {
                             visible: tileMouse.containsMouse && !tileMouse.drag.active
                             delay: 800
+                            // (What it shows is read only on hover.)
+                            readonly property var labels: tileMouse.containsMouse ? library.project.mediaLabels(mediaTile.modelData.id, 5) : []
                             text: (mediaTile.modelData.generated
                                    ? qsTr("Made by %1: “%2”").arg(mediaTile.modelData.generated.model).arg(mediaTile.modelData.generated.prompt) + "\n" : "")
+                                  + (labels.length > 0 ? qsTr("Shows: %1").arg(labels.map((l) => l.label).join(", ")) + "\n" : "")
                                   + qsTr("Double-click to add to the timeline (⌥: open in the source monitor), drag onto a track or the player, or right-click for more")
                         }
                         // Generated media: marked, its prompt and maker kept.

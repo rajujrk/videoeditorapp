@@ -23,6 +23,7 @@ qt_add_qml_module(tve_shell
         RelinkDialog.qml
         ShortcutsDialog.qml
         AnalyzePage.qml
+        MediaSearch.qml
         AudioPage.qml
         CaptionsPage.qml
         CloudSettingsDialog.qml

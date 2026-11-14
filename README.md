@@ -93,6 +93,7 @@ The following improvements were completed after Phase 5:
 - Slice 29c: Shortcut presets and a keyboard map, favourites with tags, workspaces, and a full-screen preview on a second display.
 - Slice 30a: A beauty filter for faces (smoothing and brightening skin, whitening teeth) and protecting skin tones from a grade, on the Mac.
 - Slice 30b: Background blur behind people, a blurred or removed camera background in the recorder, and stickers that follow faces.
+- Slice 30c: Smart search across what media shows, says and has on screen; Claude proofreading titles and captions, and writing a prompt from a picture.
 
 All previously identified feature gaps have been closed.
 
@@ -155,6 +156,7 @@ All previously identified feature gaps have been closed.
 - Choose from 51 built-in title templates, six logo reveals and presets saved from your own titles.
 - Make titles pulse, bounce, flash or shake with the music under them.
 - Draw animated bar and line charts from typed values or a CSV file.
+- Have Claude check the spelling and grammar of every title and caption, fixes applied only when you choose.
 - Add audio visualisers that move with the spectrum of the music.
 
 ### 2.7 Speed and Playback Controls
@@ -180,6 +182,7 @@ All previously identified feature gaps have been closed.
 ### 2.9 Media Management and Preview
 
 - Display thumbnails in the media bin and timeline.
+- Search the media bin for what is in the pictures, what is said and the text on screen, and open the moment found.
 - Play and scrub through video content.
 - Watch a full-screen preview on a second display.
 - Keep favourite effects, transitions, titles, stickers and looks, with tags.
@@ -469,6 +472,22 @@ it is saved; `TVE_IMPORT_DIR` moves it), named after the original and never over
 used where they are (songs in the cloud or copy-protected are not listed). macOS asks once to let
 the app read Photos and Music. `TVE_PHOTOS_SOURCE`, `TVE_MUSIC_SOURCE` and `TVE_DEVICE_SOURCE` name
 test folders to use instead (their sub-folders are the albums, playlists and devices).
+
+**Smart search, proofreading and prompts from pictures.** The Media tab's search finds more than
+names once the media has been looked at: **Look at media** (under the field as you search) labels what is in every picture and video
+(about once a second) and reads the text on screen, with Apple's Vision on this Mac. Nothing is
+uploaded or downloaded, and what it finds is kept per file beside the other analysis. A search then
+lists **moments**: each word of it found in a label (**Seen**), in what is said (**Said**, for media
+that has been transcribed) or on screen (**On screen**), within a second of the others, with the
+words around the match. Clicking a moment opens it in the source monitor with In and Out around it;
+double-clicking puts it on the timeline at the playhead. The media tiles below show only the media
+named so or with a moment found, and a tile's tooltip lists what it shows most. With a Claude key,
+**Check the text** (Captions tab) has Claude proofread every title and caption, each in its own
+language, keeping the wording. What it would change is listed, the text before struck through and
+after, each ticked to apply: **Apply** changes the chosen ones as one undo step (a caption's words
+keep their timing), and nothing changes before. **Describe the frame** (Generate tab) sends the frame
+at the playhead to Claude, which writes a prompt to make a picture, a sticker or a video like it,
+into the prompt box. Labels are Vision's English names whatever the app's language.
 
 **AI writing, translation and voices (your own keys).** The speech bubble at the top opens **AI
 settings**: paste a Claude API key (for writing and translation) and an ElevenLabs key (for cloud

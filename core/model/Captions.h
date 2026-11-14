@@ -39,6 +39,11 @@ struct CaptionLayout {
 // full, or when it would grow past its lines or its time; lines broken between words.
 std::vector<CaptionBlock> layoutCaptions(const std::vector<TimedWord>& words, const CaptionLayout& layout = {});
 
+// A caption's words after its text is changed (corrected, say): the same times word for
+// word when there are as many words; otherwise the new words spread over the time the old
+// ones took, each in proportion to its length. Empty when there were no words.
+std::vector<CaptionWord> retimeWords(const std::vector<CaptionWord>& words, const std::string& text);
+
 // A filler sound ("um", "uh", "hmm"…), whatever its case and punctuation.
 bool isFillerWord(const std::string& word);
 

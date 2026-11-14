@@ -225,8 +225,19 @@ void MockCloudServer::claude(QTcpSocket* socket, const Request& request)
         return;
     }
     const QString model = request.body.value(QStringLiteral("model")).toString();
-    const QString prompt = request.body.value(QStringLiteral("messages")).toArray().first().toObject()
-                               .value(QStringLiteral("content")).toString();
+    // The prompt: the content, or its text blocks after any pictures.
+    const QJsonValue content = request.body.value(QStringLiteral("messages")).toArray().first().toObject()
+                                   .value(QStringLiteral("content"));
+    QString prompt = content.toString();
+    bool picture = false;
+    for (const QJsonValue& block : content.toArray()) {
+        const QJsonObject b = block.toObject();
+        if (b.value(QStringLiteral("type")).toString() == QLatin1String("text"))
+            prompt += b.value(QStringLiteral("text")).toString();
+        else if (b.value(QStringLiteral("type")).toString() == QLatin1String("image")
+                 && !b.value(QStringLiteral("source")).toObject().value(QStringLiteral("data")).toString().isEmpty())
+            picture = true;
+    }
     if (prompt.contains(QLatin1String("#overload")) && m_overloads[prompt]++ == 0) {
         error(529, "overloaded_error", "Overloaded", "retry-after: 0\r\n");
         return;
@@ -246,6 +257,27 @@ void MockCloudServer::claude(QTcpSocket* socket, const Request& request)
             ranked.append(QJsonObject{{QStringLiteral("index"), index}, {QStringLiteral("title"), QStringLiteral("Moment %1").arg(index + 1)}});
         }
         answer = QString::fromUtf8(QJsonDocument(QJsonObject{{QStringLiteral("moments"), ranked}}).toJson(QJsonDocument::Compact));
+    } else if (structured && prompt.contains(QLatin1String("<texts>"))) {
+        // Proofread: the usual typos fixed, the rest left alone.
+        const QRegularExpressionMatch texts =
+            QRegularExpression(QStringLiteral("<texts>(.*)</texts>"), QRegularExpression::DotMatchesEverythingOption).match(prompt);
+        static const QList<QPair<QString, QString>> typos{{QStringLiteral("teh"), QStringLiteral("the")},
+                                                          {QStringLiteral("Teh"), QStringLiteral("The")},
+                                                          {QStringLiteral("recieve"), QStringLiteral("receive")},
+                                                          {QStringLiteral("its a"), QStringLiteral("it's a")}};
+        QJsonArray corrections;
+        for (const QJsonValue& value : QJsonDocument::fromJson(texts.captured(1).toUtf8()).array()) {
+            const QJsonObject item = value.toObject();
+            QString text = item.value(QStringLiteral("text")).toString();
+            const QString before = text;
+            for (const auto& [wrong, right] : typos)
+                text.replace(QRegularExpression(QStringLiteral("\\b%1\\b").arg(wrong)), right);
+            if (text != before)
+                corrections.append(QJsonObject{{QStringLiteral("index"), item.value(QStringLiteral("index"))},
+                                               {QStringLiteral("text"), text},
+                                               {QStringLiteral("note"), QStringLiteral("Spelling")}});
+        }
+        answer = QString::fromUtf8(QJsonDocument(QJsonObject{{QStringLiteral("corrections"), corrections}}).toJson(QJsonDocument::Compact));
     } else if (structured) {
         const QString language = QRegularExpression(QStringLiteral("Target language: ([^\\n]+)")).match(prompt).captured(1).trimmed();
         const QRegularExpressionMatch captions =
@@ -257,6 +289,9 @@ void MockCloudServer::claude(QTcpSocket* socket, const Request& request)
                                           {QStringLiteral("text"), QStringLiteral("[%1] %2").arg(language, caption.value(QStringLiteral("text")).toString())}});
         }
         answer = QString::fromUtf8(QJsonDocument(QJsonObject{{QStringLiteral("captions"), translated}}).toJson(QJsonDocument::Compact));
+    } else if (picture) {
+        answer = QStringLiteral("A mock prompt written from the picture: a quiet scene in soft morning light, a wide "
+                                "shot at eye level, natural colours, photographed on a 35 mm lens.");
     } else if (prompt.contains(QLatin1String("five titles"))) {
         answer = QStringLiteral("A Day by the Sea\nWaves, Wind and Wonder\nWhat the Tide Brought In\nSalt Air Stories\nThe Long Walk Home");
     } else {

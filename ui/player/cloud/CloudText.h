@@ -22,6 +22,12 @@ struct TextRequest {
     QString effort = QStringLiteral("medium");
     int maxTokens = 64000;
     QJsonObject schema;         // when set, the reply is JSON matching it
+    // Pictures sent before the prompt (encoded files: "image/jpeg", "image/png"…).
+    struct Image {
+        QString mediaType;
+        QByteArray data;
+    };
+    QList<Image> images;
 };
 
 struct TextUsage {

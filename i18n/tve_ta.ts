@@ -1088,6 +1088,42 @@
         <translation>மொழிபெயர்க்க, AI அமைப்புகளில் (மேலே உள்ள பேச்சுக் குமிழ்) உங்கள் Claude API சாவியைச் சேர்க்கவும்.</translation>
     </message>
     <message>
+        <source>Check spelling and grammar</source>
+        <translation>எழுத்துப்பிழை மற்றும் இலக்கணத்தைச் சரிபார்</translation>
+    </message>
+    <message>
+        <source>Claude checks every title and caption on the timeline, each in its own language. Nothing changes until you apply a fix.</source>
+        <translation>காலவரிசையில் உள்ள ஒவ்வொரு தலைப்பையும் வசனத்தையும் Claude அதனதன் மொழியிலேயே சரிபார்க்கும். நீங்கள் ஒரு திருத்தத்தைப் பயன்படுத்தும் வரை எதுவும் மாறாது.</translation>
+    </message>
+    <message>
+        <source>Check the text</source>
+        <translation>உரையைச் சரிபார்</translation>
+    </message>
+    <message>
+        <source>Add your Claude API key in AI settings (the speech bubble at the top) to check the text.</source>
+        <translation>உரையைச் சரிபார்க்க AI அமைப்புகளில் (மேலே உள்ள பேச்சுக் குமிழி) உங்கள் Claude API விசையைச் சேர்க்கவும்.</translation>
+    </message>
+    <message>
+        <source>Caption</source>
+        <translation>வசனம்</translation>
+    </message>
+    <message>
+        <source>Title</source>
+        <translation>தலைப்பு</translation>
+    </message>
+    <message>
+        <source>Apply 1 fix</source>
+        <translation>1 திருத்தத்தைப் பயன்படுத்து</translation>
+    </message>
+    <message>
+        <source>Apply %1 fixes</source>
+        <translation>%1 திருத்தங்களைப் பயன்படுத்து</translation>
+    </message>
+    <message>
+        <source>Dismiss</source>
+        <translation>விலக்கு</translation>
+    </message>
+    <message>
         <source>Subtitle files</source>
         <translation>வசனக் கோப்புகள்</translation>
     </message>
@@ -2208,6 +2244,22 @@
     <message>
         <source>Describe the picture</source>
         <translation>படத்தை விவரிக்கவும்</translation>
+    </message>
+    <message>
+        <source>Describing…</source>
+        <translation>விவரிக்கிறது…</translation>
+    </message>
+    <message>
+        <source>Describe the frame</source>
+        <translation>சட்டகத்தை விவரி</translation>
+    </message>
+    <message>
+        <source>Add your Claude API key in AI settings to write a prompt from a picture</source>
+        <translation>படத்திலிருந்து தூண்டுகோள் எழுத AI அமைப்புகளில் உங்கள் Claude API விசையைச் சேர்க்கவும்</translation>
+    </message>
+    <message>
+        <source>Claude writes a prompt from the frame at the playhead, to make something like it</source>
+        <translation>அதைப் போன்ற ஒன்றை உருவாக்க, இயக்கமுனையில் உள்ள சட்டகத்திலிருந்து Claude ஒரு தூண்டுகோளை எழுதும்</translation>
     </message>
     <message>
         <source>Square</source>
@@ -4860,6 +4912,10 @@ Third, 4</source>
         <translation>%1 உருவாக்கியது: “%2”</translation>
     </message>
     <message>
+        <source>Shows: %1</source>
+        <translation>காட்டுவது: %1</translation>
+    </message>
+    <message>
         <source>Delete this preset</source>
         <translation>இந்த முன்னமைவை நீக்கு</translation>
     </message>
@@ -5096,6 +5152,77 @@ Third, 4</source>
     <message>
         <source>All files (*)</source>
         <translation>அனைத்துக் கோப்புகளும் (*)</translation>
+    </message>
+</context>
+<context>
+    <name>MediaSearch</name>
+    <message>
+        <source>Looking at the media… %1 %</source>
+        <translation>ஊடகத்தைப் பார்க்கிறது… %1 %</translation>
+    </message>
+    <message>
+        <source>Search finds what is in %1 of %2 pictures and videos.</source>
+        <translation>%2 படங்கள் மற்றும் வீடியோக்களில் %1 இல் உள்ளதைத் தேடல் கண்டறியும்.</translation>
+    </message>
+    <message>
+        <source>Search finds what is in every picture and video.</source>
+        <translation>ஒவ்வொரு படத்திலும் வீடியோவிலும் உள்ளதைத் தேடல் கண்டறியும்.</translation>
+    </message>
+    <message>
+        <source>It hears what is said in 1 transcribed file.</source>
+        <translation>எழுத்துப்படியாக்கப்பட்ட 1 கோப்பில் சொல்லப்படுவதையும் அது கேட்கும்.</translation>
+    </message>
+    <message>
+        <source>It hears what is said in %1 transcribed files.</source>
+        <translation>எழுத்துப்படியாக்கப்பட்ட %1 கோப்புகளில் சொல்லப்படுவதையும் அது கேட்கும்.</translation>
+    </message>
+    <message>
+        <source>Transcribe clips (Transcript tab) to search what is said too.</source>
+        <translation>சொல்லப்படுவதையும் தேட, கிளிப்புகளை எழுத்துப்படியாக்குங்கள் (எழுத்துப்படி தாவல்).</translation>
+    </message>
+    <message>
+        <source>Look at media</source>
+        <translation>ஊடகத்தைப் பார்</translation>
+    </message>
+    <message>
+        <source>Labels what is in each picture and video, and reads the text on screen, on this Mac</source>
+        <translation>இந்த Mac இலேயே, ஒவ்வொரு படத்திலும் வீடியோவிலும் உள்ளவற்றுக்குக் குறிச்சொல் இட்டு, திரையில் உள்ள உரையைப் படிக்கும்</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>நிறுத்து</translation>
+    </message>
+    <message>
+        <source>Nothing found for “%1” in the names. Look at the media to search what is in them too.</source>
+        <translation>பெயர்களில் “%1” எதுவும் கிடைக்கவில்லை. அவற்றில் உள்ளதையும் தேட ஊடகத்தைப் பாருங்கள்.</translation>
+    </message>
+    <message>
+        <source>No moments found for “%1”.</source>
+        <translation>“%1” க்கு எந்தத் தருணமும் கிடைக்கவில்லை.</translation>
+    </message>
+    <message>
+        <source>1 moment</source>
+        <translation>1 தருணம்</translation>
+    </message>
+    <message>
+        <source>%1 moments</source>
+        <translation>%1 தருணங்கள்</translation>
+    </message>
+    <message>
+        <source>Seen</source>
+        <translation>காணப்பட்டது</translation>
+    </message>
+    <message>
+        <source>Said</source>
+        <translation>சொல்லப்பட்டது</translation>
+    </message>
+    <message>
+        <source>On screen</source>
+        <translation>திரையில்</translation>
+    </message>
+    <message>
+        <source>Click to open in the source monitor with In and Out around it; double-click to put it on the timeline at the playhead</source>
+        <translation>அதைச் சுற்றி தொடக்கம், முடிவு குறிகளுடன் மூலத் திரையில் திறக்கக் கிளிக் செய்யவும்; இயக்கமுனையில் காலவரிசையில் வைக்க இருமுறை கிளிக் செய்யவும்</translation>
     </message>
 </context>
 <context>
@@ -5974,6 +6101,62 @@ Third, 4</source>
     <message>
         <source>Choose something with sound</source>
         <translation>ஒலி உள்ள ஒன்றைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>There are no pictures or videos to look at</source>
+        <translation>பார்க்க எந்தப் படமும் வீடியோவும் இல்லை</translation>
+    </message>
+    <message>
+        <source>Looking at the media for search</source>
+        <translation>தேடலுக்காக ஊடகத்தைப் பார்க்கிறது</translation>
+    </message>
+    <message>
+        <source>There are no titles or captions to check</source>
+        <translation>சரிபார்க்க எந்தத் தலைப்பும் வசனமும் இல்லை</translation>
+    </message>
+    <message>
+        <source>Checking texts %1–%2 of %3…</source>
+        <translation>%3 இல் %1–%2 உரைகளைச் சரிபார்க்கிறது…</translation>
+    </message>
+    <message>
+        <source>Checking the text…</source>
+        <translation>உரையைச் சரிபார்க்கிறது…</translation>
+    </message>
+    <message>
+        <source>The check came back unreadable; try again</source>
+        <translation>சரிபார்ப்பு படிக்க முடியாதபடி வந்தது; மீண்டும் முயற்சிக்கவும்</translation>
+    </message>
+    <message>
+        <source>Nothing to fix (checked by %1)</source>
+        <translation>திருத்த எதுவும் இல்லை (%1 சரிபார்த்தது)</translation>
+    </message>
+    <message>
+        <source>1 thing to fix (checked by %1)</source>
+        <translation>திருத்த 1 உள்ளது (%1 சரிபார்த்தது)</translation>
+    </message>
+    <message>
+        <source>%1 things to fix (checked by %2)</source>
+        <translation>திருத்த %1 உள்ளன (%2 சரிபார்த்தது)</translation>
+    </message>
+    <message>
+        <source>The text has changed since it was checked; check it again</source>
+        <translation>சரிபார்த்த பிறகு உரை மாறிவிட்டது; மீண்டும் சரிபார்க்கவும்</translation>
+    </message>
+    <message>
+        <source>Unknown kind of prompt</source>
+        <translation>தெரியாத வகைத் தூண்டுகோள்</translation>
+    </message>
+    <message>
+        <source>Choose a picture to describe</source>
+        <translation>விவரிக்க ஒரு படத்தைத் தேர்ந்தெடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>There is nothing at the playhead to describe</source>
+        <translation>இயக்கமுனையில் விவரிக்க எதுவும் இல்லை</translation>
+    </message>
+    <message>
+        <source>Could not read the picture to describe</source>
+        <translation>விவரிக்க வேண்டிய படத்தைப் படிக்க முடியவில்லை</translation>
     </message>
     <message>
         <source>Following the subject</source>
@@ -11324,6 +11507,10 @@ The Journey</source>
         <translation>இசையை நகர்த்து</translation>
     </message>
     <message>
+        <source>Correct Text</source>
+        <translation>உரையைத் திருத்து</translation>
+    </message>
+    <message>
         <source>Add AI Sticker</source>
         <translation>AI ஸ்டிக்கரைச் சேர்</translation>
     </message>
@@ -12718,6 +12905,10 @@ The Journey</source>
     <message>
         <source>choose a part of the media to place (In before Out)</source>
         <translation>வைக்க மீடியாவின் ஒரு பகுதியைத் தேர்ந்தெடுக்கவும் (முடிவுக்கு முன் தொடக்கம்)</translation>
+    </message>
+    <message>
+        <source>Could not look at this picture.</source>
+        <translation>இந்தப் படத்தைப் பார்க்க முடியவில்லை.</translation>
     </message>
 </context>
 </TS>

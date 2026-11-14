@@ -468,6 +468,12 @@ window.TVE = {
       steps: ["Select a video clip and click Find faces in the Analyze tab.", "Choose the faces, a sticker and where it goes: Head, Eyes, Face or Beside.", "Click Stick it on. Make them tracks lets titles follow the faces too."]
     },
     {
+      id: "smart-search", title: "Smart search", chapter: "local", area: "library", where: ["Library", "Media", "Search"], image: "smart-search", privacy: "mac",
+      summary: "Find the moments in your media by what is in the picture, what is said and the text on screen, not just by file name.",
+      steps: ["In the Media tab, start typing in the search field and click Look at media once; your Mac labels every picture and video and reads the text on screen.", "Type in the search field: each moment shows whether it was Seen, Said or On screen.", "Click a moment to open it in the source monitor with In and Out around it, or double-click to put it on the timeline."],
+      note: "What is said is searched in media you have transcribed. Labels are in English whatever the app's language."
+    },
+    {
       id: "motion-analysis", title: "Stabilize, flicker, denoise and tracking", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Steady and clean"], image: "motion", privacy: "mac",
       summary: "Smooth shaky footage, remove flicker and grain, and track an object or a surface so titles and stickers can follow it.",
       steps: ["Click Stabilize (or Lock the camera) under Steady and clean.", "Use Remove flicker and Denoise over time as needed.", "Under Track motion, drag a box around something, then Track object or Track surface; other clips can Follow it."]
@@ -511,6 +517,17 @@ window.TVE = {
       summary: "Make a picture or sticker, a video, music or a sound effect from a description, with OpenAI, Google Gemini or ElevenLabs.",
       steps: ["Pick Picture, Sticker, Video, Music or Sound effect.", "Describe it and choose shape, quality or length.", "Click Generate; results go into the media bin or at the playhead, marked AI."],
       note: "What you may do with the results is set by each provider's terms, summarised under the Generate button."
+    },
+    {
+      id: "image-prompt", title: "A prompt from a picture", chapter: "cloud", area: "library", where: ["Library", "Generate", "Describe the frame"], image: "image-prompt", privacy: "key",
+      summary: "Claude looks at the frame at the playhead and writes a prompt to make a picture, a sticker or a video like it.",
+      steps: ["Move the playhead to the frame you like.", "In the Generate tab, pick Picture, Sticker or Video.", "Click Describe the frame; the prompt appears in the box, ready to change or generate."],
+      note: "Only that one frame is sent to Anthropic."
+    },
+    {
+      id: "proofread", title: "Check spelling and grammar", chapter: "cloud", area: "library", where: ["Library", "Captions", "Check the text"], image: "proofread", privacy: "key",
+      summary: "Claude proofreads every title and caption in its own language and lists what it would fix. Nothing changes until you apply it.",
+      steps: ["Open the Captions tab and click Check the text.", "Read each fix: the text before is struck through, the corrected text below it.", "Untick any you don't want and click Apply; it is one step you can undo."]
     },
 
     // ---------- Templates and automatic edits ----------
