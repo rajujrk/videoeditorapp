@@ -33,6 +33,13 @@ Rectangle {
             controller.seek(0)
         }
     }
+    // Closed: nothing open (another project replaced the one its media came from).
+    function unload() {
+        if (controller)
+            controller.pause()
+        holder.active = false
+        media = null
+    }
     // The part from In to Out (all of it without marks) onto the timeline.
     function place(mode) {
         if (!ready)

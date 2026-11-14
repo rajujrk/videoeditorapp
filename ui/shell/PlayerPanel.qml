@@ -29,6 +29,15 @@ Rectangle {
         sourceMonitor.load(media, from, to)
         showingSource = true
     }
+    // A new or opened project: nothing of the last one stays in the player.
+    Connections {
+        target: panel.project
+        function onProjectReplaced() {
+            panel.showingSource = false
+            sourceMonitor.unload()
+            video.compareGrade = false
+        }
+    }
     onShowingSourceChanged: {
         if (showingSource)
             panel.project.pause()

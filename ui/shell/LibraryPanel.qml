@@ -594,6 +594,14 @@ Rectangle {
 
                 delegate: Item {
                     id: stickerTile
+                    // Dragged to the timeline: placed where it is dropped.
+                    readonly property string libraryItem: modelData.id
+                    Drag.active: stickerDrag.drag.active
+                    Drag.dragType: Drag.Automatic
+                    Drag.supportedActions: Qt.CopyAction
+                    Drag.keys: ["application/x-tve-sticker"]
+                    Drag.mimeData: { "application/x-tve-sticker": modelData.id }
+                    Drag.imageSource: "image://tvesticker/" + modelData.id + "@0.400"
                     required property var modelData
                     width: stickersGrid.cellWidth
                     height: stickersGrid.cellHeight
@@ -618,9 +626,17 @@ Rectangle {
                         anchors.bottomMargin: Theme.space.s
                         hoverEnabled: true
                         onClicked: library.project.addSticker(stickerTile.modelData.id)
-                        ToolTip.visible: hovered
+                        // Dragged out to the timeline (a click is still a click).
+                        MouseArea {
+                            id: stickerDrag
+                            anchors.fill: parent
+                            drag.target: stickerDragProxy
+                            onClicked: stickerButton.clicked()
+                        }
+                        Item { id: stickerDragProxy }
+                        ToolTip.visible: hovered && !stickerDrag.drag.active
                         ToolTip.delay: 600
-                        ToolTip.text: qsTr("%1 — click to add at the playhead").arg(stickerTile.modelData.title)
+                        ToolTip.text: qsTr("%1 — click to add at the playhead, or drag it onto the timeline").arg(stickerTile.modelData.title)
                         background: Rectangle {
                             radius: Theme.radius.m
                             color: stickerButton.hovered ? Theme.color.surfaceHover : Theme.color.surfaceRaised
@@ -754,6 +770,14 @@ Rectangle {
                     required property var modelData
                     width: effectsGrid.cellWidth
                     height: effectsGrid.cellHeight
+                    // Dragged to the timeline: onto the clip it is dropped on.
+                    readonly property string libraryItem: modelData.id
+                    Drag.active: effectDrag.drag.active
+                    Drag.dragType: Drag.Automatic
+                    Drag.supportedActions: Qt.CopyAction
+                    Drag.keys: ["application/x-tve-effect"]
+                    Drag.mimeData: { "application/x-tve-effect": modelData.id }
+                    Drag.imageSource: "image://tveeffect/" + modelData.id + "@0.000"
                     // Highlighted when the selected clip uses this effect.
                     readonly property bool active: (library.project.selectedClipInfo.effects || [])
                                                    .some((e) => e.effectId === modelData.id)
@@ -779,10 +803,18 @@ Rectangle {
                         hoverEnabled: true
                         objectName: "libraryEffect:" + tile.modelData.id
                         onClicked: library.project.addClipEffect(library.project.selectedClip, tile.modelData.id)
+                        // Dragged out to the timeline (a click is still a click).
+                        MouseArea {
+                            id: effectDrag
+                            anchors.fill: parent
+                            drag.target: effectDragProxy
+                            onClicked: tileButton.clicked()
+                        }
+                        Item { id: effectDragProxy }
                         ToolTip {
-                            visible: parent.hovered
+                            visible: parent.hovered && !effectDrag.drag.active
                             delay: 600
-                            text: qsTr("Add to the selected clip")
+                            text: qsTr("Add to the selected clip, or drag it onto a clip in the timeline")
                         }
 
                         background: Rectangle {
@@ -910,6 +942,15 @@ Rectangle {
                     id: lookTile
                     required property var modelData
                     readonly property bool adjustment: modelData.id === ""
+                    // Dragged to the timeline: a look onto the clip it is dropped on; the
+                    // adjustment layer ("") placed there.
+                    readonly property string libraryItem: modelData.id
+                    Drag.active: lookDrag.drag.active
+                    Drag.dragType: Drag.Automatic
+                    Drag.supportedActions: Qt.CopyAction
+                    Drag.keys: ["application/x-tve-look"]
+                    Drag.mimeData: { "application/x-tve-look": modelData.id }
+                    Drag.imageSource: adjustment ? "" : "image://tvelook/" + modelData.id
                     readonly property bool active: !adjustment && library.project.selectedClipInfo.look !== undefined
                                                    && library.project.selectedClipInfo.look.id === modelData.id
                     width: looksGrid.cellWidth
@@ -937,11 +978,19 @@ Rectangle {
                         objectName: lookTile.adjustment ? "libraryAdjustmentLayer" : "libraryLook:" + lookTile.modelData.id
                         onClicked: lookTile.adjustment ? library.project.addAdjustmentLayer()
                                                        : library.project.applyLook(library.project.selectedClip, lookTile.modelData.id)
+                        // Dragged out to the timeline (a click is still a click).
+                        MouseArea {
+                            id: lookDrag
+                            anchors.fill: parent
+                            drag.target: lookDragProxy
+                            onClicked: lookButton.clicked()
+                        }
+                        Item { id: lookDragProxy }
                         ToolTip {
-                            visible: parent.hovered
+                            visible: parent.hovered && !lookDrag.drag.active
                             delay: 600
-                            text: lookTile.adjustment ? qsTr("Add an adjustment layer at the playhead: its look, grade and effects change everything below it")
-                                                      : qsTr("Put this look on the selected clip")
+                            text: lookTile.adjustment ? qsTr("Add an adjustment layer at the playhead (or drag it onto the timeline): its look, grade and effects change everything below it")
+                                                      : qsTr("Put this look on the selected clip, or drag it onto a clip in the timeline")
                         }
                         background: Rectangle {
                             radius: Theme.radius.m

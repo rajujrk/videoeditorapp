@@ -5230,24 +5230,8 @@ Third, 4</source>
         <translation>வி</translation>
     </message>
     <message>
-        <source>%1 — click to add at the playhead</source>
-        <translation>%1 — இயக்கக்குறியில் சேர்க்க கிளிக் செய்யவும்</translation>
-    </message>
-    <message>
-        <source>Add to the selected clip</source>
-        <translation>தேர்ந்தெடுத்த கிளிப்பில் சேர்</translation>
-    </message>
-    <message>
         <source>Adjustment layer</source>
         <translation>சரிசெய்தல் அடுக்கு</translation>
-    </message>
-    <message>
-        <source>Add an adjustment layer at the playhead: its look, grade and effects change everything below it</source>
-        <translation>இயக்கக்குறியில் ஒரு சரிசெய்தல் அடுக்கைச் சேர்: அதன் தோற்றம், நிறத் திருத்தம், விளைவுகள் அதன் கீழ் உள்ள அனைத்தையும் மாற்றும்</translation>
-    </message>
-    <message>
-        <source>Put this look on the selected clip</source>
-        <translation>இந்தத் தோற்றத்தைத் தேர்ந்தெடுத்த கிளிப்பில் வை</translation>
     </message>
     <message>
         <source>Click to choose your logo; it is revealed at the playhead</source>
@@ -5592,6 +5576,22 @@ Third, 4</source>
     <message>
         <source>Click to add at the cut nearest the playhead, or drag onto a cut; right-click to make it the default</source>
         <translation>இயக்கக்குறிக்கு அருகிலுள்ள வெட்டில் சேர்க்கச் சொடுக்கவும், அல்லது ஒரு வெட்டின் மீது இழுக்கவும்; இயல்பாக்க வலது சொடுக்கு செய்யவும்</translation>
+    </message>
+    <message>
+        <source>%1 — click to add at the playhead, or drag it onto the timeline</source>
+        <translation>%1 — இயக்கக்குறியில் சேர்க்கச் சொடுக்கவும், அல்லது காலவரிசைக்கு இழுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Add to the selected clip, or drag it onto a clip in the timeline</source>
+        <translation>தேர்ந்தெடுத்த கிளிப்பில் சேர்க்கவும், அல்லது காலவரிசையில் ஒரு கிளிப்பின் மேல் இழுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Add an adjustment layer at the playhead (or drag it onto the timeline): its look, grade and effects change everything below it</source>
+        <translation>இயக்கக்குறியில் ஒரு சரிசெய்தல் அடுக்கைச் சேர்க்கவும் (அல்லது காலவரிசைக்கு இழுக்கவும்): அதன் தோற்றம், நிறத் திருத்தம் மற்றும் விளைவுகள் அதன் கீழுள்ள அனைத்தையும் மாற்றும்</translation>
+    </message>
+    <message>
+        <source>Put this look on the selected clip, or drag it onto a clip in the timeline</source>
+        <translation>இந்தத் தோற்றத்தைத் தேர்ந்தெடுத்த கிளிப்பில் இடவும், அல்லது காலவரிசையில் ஒரு கிளிப்பின் மேல் இழுக்கவும்</translation>
     </message>
     <message>
         <source>Double-click to add to the timeline (⌥: open in the source monitor), drag onto a track or the player, or right-click for more</source>
@@ -7055,6 +7055,14 @@ Third, 4</source>
     <message>
         <source>Unknown sticker %1</source>
         <translation>தெரியாத ஸ்டிக்கர் %1</translation>
+    </message>
+    <message>
+        <source>Drop the filter on a clip</source>
+        <translation>வடிகட்டியை ஒரு கிளிப்பின் மேல் விடவும்</translation>
+    </message>
+    <message>
+        <source>Drop the effect on a clip</source>
+        <translation>விளைவை ஒரு கிளிப்பின் மேல் விடவும்</translation>
     </message>
     <message>
         <source>Markers go on the main timeline</source>
