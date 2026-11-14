@@ -224,6 +224,7 @@ class ProjectController : public QObject {
     // Claude's proofreading of the titles and captions: [{index, clipId, kind ("caption" /
     // "title"), before, after, note}], until applied or dismissed.
     Q_PROPERTY(QVariantList textFixes READ textFixes NOTIFY textFixesChanged)
+    Q_PROPERTY(QVariantMap ideaPlan READ ideaPlan NOTIFY ideaPlanChanged)
 
     // Export: the render queue. Jobs run one at a time, in order; `exporting` while one is
     // running (or paused), with its progress (0–1).
@@ -409,6 +410,7 @@ public:
     QVariantList transcript() const;
     QVariantMap searchStatus() const;
     QVariantList textFixes() const { return m_textFixes; }
+    QVariantMap ideaPlan() const { return m_ideaPlan; }
     QVariantList exportJobs() const;
     QVariantList exportPresets() const;
     QVariantList exportFormats() const;
@@ -871,6 +873,31 @@ public:
     // frame at the playhead, or a still media's (job "describe"; the prompt streams into
     // cloud.draft and cloud.jobFinished says how it ended).
     Q_INVOKABLE bool promptFromPicture(const QString& purpose, double mediaId = -1);
+    // Fits music on an audio track to a length (seconds), on this Mac: whole bars taken out
+    // of the middle or played again where the music sounds alike, a touch of speed (the pitch
+    // kept) or a faded end for the rest — the clip becoming its pieces, grouped; one undo
+    // step, after measuring the music in the background (analysisFinished; musicFitted says
+    // what changed).
+    Q_INVOKABLE bool fitMusic(double clipId, double seconds);
+    // Where the last picture on the timeline ends (seconds): music fitted to the video.
+    Q_INVOKABLE double picturesEnd() const;
+    // An AI transition (Google, job "transition"): a video made from the last frame before a
+    // cut and the first after it (that track's pictures alone), put between the two clips —
+    // everything after the cut moving later — as one undo step once made. clipId: the clip
+    // after the cut; < 0: the cut nearest the playhead on the selected clip's track (if it
+    // has one, else the main track's). `style`: how it should move (optional).
+    Q_INVOKABLE bool aiTransition(double clipId = -1, const QString& style = {});
+    // The cut aiTransition(-1) would bridge: {at (seconds), before, after (media names),
+    // clipId}, or empty.
+    Q_INVOKABLE QVariantMap aiTransitionCut() const;
+    // A video from an idea: Claude plans it (job "plan"; ideaPlan holds the plan: {title,
+    // shots: [{prompt, caption}]}; options shots 2..6, style), then — the plan as reviewed —
+    // Google makes each shot in turn (job "idea") and they go after the main track's last
+    // clip with their captions, as one undo step (shots made before a failure stay in the
+    // media bin).
+    Q_INVOKABLE bool planIdea(const QString& idea, const QVariantMap& options = {});
+    Q_INVOKABLE bool makeIdeaVideo(const QVariantMap& plan);
+    Q_INVOKABLE void clearIdeaPlan();
     Q_INVOKABLE bool generateImage(const QString& prompt, const QVariantMap& options = {});
     Q_INVOKABLE bool generateVideo(const QString& prompt, const QVariantMap& options = {});
     Q_INVOKABLE bool generateSound(const QString& prompt, const QVariantMap& options = {});
@@ -1228,7 +1255,11 @@ signals:
     void modelDownloadFinished(const QString& modelId, bool ok, const QString& error);
     void transcriptChanged();
     void searchIndexChanged();
+    // Music was fitted: its first piece, the length it now plays, bars taken out (< 0) or
+    // played again (> 0), the speed.
+    void musicFitted(double clipId, double seconds, int bars, double speed);
     void textFixesChanged();
+    void ideaPlanChanged();
     // An analysis finished (ok) or failed or was cancelled (message, empty when cancelled).
     void analysisFinished(bool ok, const QString& message);
     // An auto edit ("instant", "montage", "shorts") ended: ok, and what to tell (why not, or
@@ -1481,6 +1512,15 @@ private:
     std::map<std::string, std::vector<tve::TimedWord>> m_searchWords; // by fingerprint
     bool lookable(const tve::MediaItem& media) const;
     QVariantList m_textFixes;
+    QVariantMap m_ideaPlan;
+    // A cut between two picture clips on one track.
+    struct Cut {
+        tve::Id trackId = tve::kNoId;
+        tve::Id beforeId = tve::kNoId;
+        tve::Id afterId = tve::kNoId;
+        tve::Ticks at = 0;
+    };
+    std::optional<Cut> cutFor(double clipId) const;
     std::string m_transcriptVariant; // the model and language of the transcript shown
     SpeechModels m_speechModels;
     std::map<std::string, tve::Transcript> m_transcripts; // by fingerprint + model + language

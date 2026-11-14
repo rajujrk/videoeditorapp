@@ -53,6 +53,21 @@ constexpr int kTextsPerRequest = 120;
 TextRequest imagePromptRequest(const QByteArray& image, const QString& mediaType, const QString& purpose,
                                const QString& model);
 
+// A short video planned from an idea: a title and `shots` shots (2..6), each a prompt for
+// a video generator (one continuous shot of a few seconds, in `aspect`) and a line of
+// caption; `style` (may be empty) is how it should look.
+TextRequest ideaRequest(const QString& idea, int shots, const QString& style, const QString& aspect, const QString& model);
+struct IdeaShot {
+    QString prompt;
+    QString caption;
+};
+struct IdeaPlan {
+    QString title;
+    QList<IdeaShot> shots;
+};
+// The plan; nullopt unless it has a title and between 1 and `most` shots, each with a prompt.
+std::optional<IdeaPlan> readIdea(const QString& answer, int most);
+
 // The languages offered for translation (English names).
 QStringList languages();
 

@@ -380,4 +380,82 @@ std::optional<std::string> placeMedia(Project& project, Id trackId, Id mediaId, 
     return std::nullopt;
 }
 
+std::optional<std::string> insertTime(Project& project, Ticks at, Ticks length)
+{
+    if (length <= 0)
+        return std::nullopt;
+    Project after = project;
+    for (Track& track : after.tracks) {
+        const bool moves = std::ranges::any_of(track.clips, [&](const Clip& c) { return c.start >= at; });
+        if (!moves)
+            continue;
+        if (track.locked)
+            return TVE_TR("core", "track is locked");
+        for (Clip& clip : track.clips)
+            if (clip.start >= at)
+                clip.start += length;
+    }
+    for (Marker& marker : after.markers)
+        if (marker.time >= at)
+            marker.time += length;
+    project = std::move(after);
+    return std::nullopt;
+}
+
+std::optional<std::string> fitClipToPieces(Project& project, Id clipId, const MusicFit& fit, std::vector<Id>* made)
+{
+    constexpr Ticks kJoinFade = kTicksPerSecond / 100; // no click at a join
+    Project after = project;
+    Track* track = nullptr;
+    const Clip* found = nullptr;
+    for (Track& t : after.tracks)
+        if (const auto c = std::ranges::find(t.clips, clipId, &Clip::id); c != t.clips.end()) {
+            track = &t;
+            found = &*c;
+        }
+    if (!found)
+        return TVE_TR("core", "clip not found");
+    if (track->locked)
+        return TVE_TR("core", "track is locked");
+    if (found->speed != 1.0 || found->reversed || found->freeze || !found->speedRamp.empty())
+        return TVE_TR("core", "music can be fitted only at normal speed");
+    if (fit.pieces.empty() || fit.speed <= 0)
+        return TVE_TR("core", "nothing to fit");
+    const Clip original = *found;
+    std::vector<Clip> pieces;
+    Ticks at = original.start;
+    const Id group = original.groupId != kNoId ? original.groupId : (fit.pieces.size() > 1 ? after.allocateId() : kNoId);
+    for (std::size_t i = 0; i < fit.pieces.size(); ++i) {
+        const auto [from, to] = fit.pieces[i];
+        Clip clip = original;
+        clip.id = i == 0 ? original.id : after.allocateId();
+        clip.start = at;
+        clip.sourceIn = from;
+        clip.duration = std::max<Ticks>(1, Ticks(std::llround(double(to - from) / fit.speed)));
+        clip.speed = fit.speed;
+        clip.keepPitch = true;
+        clip.keyframes.clear();
+        clip.groupId = group;
+        const bool first = i == 0, last = i + 1 == fit.pieces.size();
+        clip.fadeIn = first ? original.fadeIn : kJoinFade;
+        clip.fadeOut = last ? std::max(original.fadeOut, fit.fadeOut) : kJoinFade;
+        if (!first)
+            clip.transitionIn.reset();
+        at += clip.duration;
+        pieces.push_back(std::move(clip));
+    }
+    std::erase_if(track->clips, [&](const Clip& c) { return c.id == clipId; });
+    for (const Clip& c : track->clips)
+        if (c.start < at && c.end() > original.start)
+            return TVE_TR("core", "there is not room for the music on its track");
+    if (made)
+        for (const Clip& c : pieces)
+            made->push_back(c.id);
+    for (Clip& c : pieces)
+        track->clips.push_back(std::move(c));
+    std::ranges::sort(track->clips, {}, &Clip::start);
+    project = std::move(after);
+    return std::nullopt;
+}
+
 } // namespace tve

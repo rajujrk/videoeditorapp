@@ -257,6 +257,17 @@ void MockCloudServer::claude(QTcpSocket* socket, const Request& request)
             ranked.append(QJsonObject{{QStringLiteral("index"), index}, {QStringLiteral("title"), QStringLiteral("Moment %1").arg(index + 1)}});
         }
         answer = QString::fromUtf8(QJsonDocument(QJsonObject{{QStringLiteral("moments"), ranked}}).toJson(QJsonDocument::Compact));
+    } else if (structured && prompt.contains(QLatin1String("<idea>"))) {
+        // A plan: the shots asked for, numbered.
+        const int shots = QRegularExpression(QStringLiteral("Plan a short video of (\\d+) shots")).match(prompt).captured(1).toInt();
+        const QString idea = QRegularExpression(QStringLiteral("<idea>(.*)</idea>"), QRegularExpression::DotMatchesEverythingOption)
+                                 .match(prompt).captured(1).trimmed();
+        QJsonArray list;
+        for (int i = 1; i <= shots; ++i)
+            list.append(QJsonObject{{QStringLiteral("prompt"), QStringLiteral("Shot %1 of %2: %3, wide, soft light, slow push in").arg(i).arg(shots).arg(idea)},
+                                    {QStringLiteral("caption"), QStringLiteral("Part %1").arg(i)}});
+        answer = QString::fromUtf8(QJsonDocument(QJsonObject{{QStringLiteral("title"), QStringLiteral("A Mock Idea")},
+                                                             {QStringLiteral("shots"), list}}).toJson(QJsonDocument::Compact));
     } else if (structured && prompt.contains(QLatin1String("<texts>"))) {
         // Proofread: the usual typos fixed, the rest left alone.
         const QRegularExpressionMatch texts =

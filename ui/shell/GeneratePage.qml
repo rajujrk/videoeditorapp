@@ -26,11 +26,24 @@ ScrollView {
     onVideoModeChanged: picked = []
 
     readonly property bool running: cloud.job === "image" || cloud.job === "sticker" || cloud.job === "video"
-                                    || cloud.job === "music" || cloud.job === "sfx"
+                                    || cloud.job === "music" || cloud.job === "sfx" || cloud.job === "transition"
+                                    || cloud.job === "idea" || cloud.job === "plan"
     readonly property string provider: kind === "picture" || kind === "sticker" ? "OpenAI"
-                                     : kind === "video" ? "Google" : "ElevenLabs"
-    readonly property bool hasKey: provider === "OpenAI" ? cloud.hasOpenAiKey
+                                     : kind === "video" || kind === "idea" ? "Google" : "ElevenLabs"
+    readonly property bool hasKey: kind === "idea" ? cloud.hasGoogleKey && cloud.hasClaudeKey
+                                 : provider === "OpenAI" ? cloud.hasOpenAiKey
                                  : provider === "Google" ? cloud.hasGoogleKey : cloud.hasElevenLabsKey
+    // The cut an AI transition would bridge (follows the playhead and the timeline).
+    readonly property var cut: (project.playhead, project.selectedClip, project.tracks, project.aiTransitionCut())
+    // A video from an idea: the plan as it is being reviewed (a copy of project.ideaPlan), and
+    // how many shots to plan.
+    property var plan: ({})
+    property int shots: 4
+    readonly property bool planned: plan.shots !== undefined && plan.shots.length > 0
+    Connections {
+        target: page.project
+        function onIdeaPlanChanged() { page.plan = JSON.parse(JSON.stringify(page.project.ideaPlan)) }
+    }
     // (Read once: each read of the media list checks every file.)
     readonly property var media: project.media
     readonly property var stills: media.filter((m) => m.still && !m.sticker && !m.missing)
@@ -40,8 +53,10 @@ ScrollView {
     readonly property int wanted: kind === "video" ? (videoMode === "image" ? 1 : videoMode === "frames" ? 2 : videoMode === "extend" ? 1 : 0)
                                                     : 0
     readonly property bool ready: hasKey && !running && cloud.job === ""
-                                  && (prompt.text.trim() !== "" || (kind === "video" && (videoMode === "extend" || videoMode === "image" || videoMode === "frames")))
-                                  && (wanted === 0 || picked.length === wanted)
+                                  && (kind === "video" && videoMode === "transition" ? cut.at !== undefined
+                                    : kind === "idea" ? (planned || prompt.text.trim() !== "")
+                                    : (prompt.text.trim() !== "" || (kind === "video" && (videoMode === "extend" || videoMode === "image" || videoMode === "frames")))
+                                      && (wanted === 0 || picked.length === wanted))
 
     function toggle(id) {
         const at = picked.indexOf(id)
@@ -56,7 +71,11 @@ ScrollView {
     }
     function generate() {
         const text = prompt.text
-        if (kind === "picture" || kind === "sticker")
+        if (kind === "idea")
+            planned ? project.makeIdeaVideo(plan) : project.planIdea(text, { shots: shots })
+        else if (kind === "video" && videoMode === "transition")
+            project.aiTransition(-1, text)
+        else if (kind === "picture" || kind === "sticker")
             project.generateImage(text, { size: shape, quality: quality, inputs: picked, sticker: kind === "sticker" })
         else if (kind === "video")
             project.generateVideo(text, videoMode === "extend" ? { mode: "extend", extend: picked[0], aspect: aspect, resolution: resolution }
@@ -114,7 +133,7 @@ ScrollView {
             spacing: Theme.space.xs
             Repeater {
                 model: [{ id: "picture", label: qsTr("Picture") }, { id: "sticker", label: qsTr("Sticker") }, { id: "video", label: qsTr("Video") },
-                        { id: "music", label: qsTr("Music") }, { id: "sfx", label: qsTr("Sound effect") }]
+                        { id: "idea", label: qsTr("From an idea") }, { id: "music", label: qsTr("Music") }, { id: "sfx", label: qsTr("Sound effect") }]
                 delegate: Chip {
                     required property var modelData
                     objectName: "generateKind:" + modelData.id
@@ -132,7 +151,8 @@ ScrollView {
             Layout.fillWidth: true
             Text {
                 Layout.fillWidth: true
-                text: (page.kind === "video" ? qsTr("Add your %1 key in AI settings to make video.")
+                text: page.kind === "idea" ? qsTr("Add your Claude and Google AI (Gemini API) keys in AI settings to make a video from an idea.")
+                     : (page.kind === "video" ? qsTr("Add your %1 key in AI settings to make video.")
                      : page.kind === "music" || page.kind === "sfx" ? qsTr("Add your %1 key in AI settings to make sound.")
                      : qsTr("Add your %1 key in AI settings to make pictures."))
                       .arg(page.provider === "Google" ? qsTr("Google AI (Gemini API)") : page.provider)
@@ -156,7 +176,8 @@ ScrollView {
             spacing: Theme.space.xs
             Repeater {
                 model: [{ id: "text", label: qsTr("From words") }, { id: "image", label: qsTr("From a picture") },
-                        { id: "frames", label: qsTr("First and last picture") }, { id: "extend", label: qsTr("Extend a video") }]
+                        { id: "frames", label: qsTr("First and last picture") }, { id: "extend", label: qsTr("Extend a video") },
+                        { id: "transition", label: qsTr("Between two clips") }]
                 delegate: Chip {
                     required property var modelData
                     objectName: "videoMode:" + modelData.id
@@ -177,7 +198,10 @@ ScrollView {
             enabled: !page.running
             font: Theme.type.body
             color: Theme.color.textPrimary
-            placeholderText: page.kind === "sticker" ? qsTr("A sticker of… (one object, it is cut out)")
+            visible: !(page.kind === "idea" && page.planned)
+            placeholderText: page.kind === "idea" ? qsTr("Your idea: what happens, for whom, and the mood")
+                           : page.kind === "video" && page.videoMode === "transition" ? qsTr("How it moves (optional): a whip pan, a morph, through a window…")
+                           : page.kind === "sticker" ? qsTr("A sticker of… (one object, it is cut out)")
                            : page.kind === "video" ? (page.videoMode === "extend" ? qsTr("What happens next (optional)") : qsTr("Describe the shot: what, where, how the camera moves"))
                            : page.kind === "music" ? qsTr("The mood, genre, instruments and tempo (no artist or song names)")
                            : page.kind === "sfx" ? qsTr("The sound: what makes it, where, how long")
@@ -185,9 +209,113 @@ ScrollView {
             background: Rectangle { radius: Theme.radius.m; color: Theme.color.surfaceSunken; border.color: Theme.color.borderSubtle }
         }
 
+        // An AI transition: the cut it bridges.
+        Text {
+            objectName: "transitionCut"
+            visible: page.kind === "video" && page.videoMode === "transition"
+            Layout.fillWidth: true
+            text: page.cut.at === undefined
+                  ? qsTr("Move the playhead near a cut between two picture clips.")
+                  : qsTr("The cut at %1, from %2 to %3. Google makes a shot from the last frame before it to the first after it, and it goes between them; what comes later moves along.")
+                        .arg(page.project.timecode(page.cut.at)).arg(page.cut.before).arg(page.cut.after)
+            font: Theme.type.caption
+            color: Theme.color.textSecondary
+            wrapMode: Text.WordWrap
+        }
+
+        // From an idea: how many shots, then the plan to review.
+        RowLayout {
+            visible: page.kind === "idea" && !page.planned
+            Layout.fillWidth: true
+            spacing: Theme.space.xs
+            Text { text: qsTr("Shots"); font: Theme.type.label; color: Theme.color.textSecondary }
+            Repeater {
+                model: [2, 3, 4, 5, 6]
+                delegate: Chip {
+                    required property int modelData
+                    objectName: "ideaShots:" + modelData
+                    label: String(modelData)
+                    checked: page.shots === modelData
+                    enabled: !page.running
+                    onClicked: page.shots = modelData
+                }
+            }
+            Item { Layout.fillWidth: true }
+        }
+        ColumnLayout {
+            objectName: "ideaPlan"
+            visible: page.kind === "idea" && page.planned
+            Layout.fillWidth: true
+            spacing: Theme.space.s
+            Text {
+                objectName: "ideaTitle"
+                Layout.fillWidth: true
+                text: page.plan.title || ""
+                font: Theme.type.heading
+                color: Theme.color.textPrimary
+                wrapMode: Text.WordWrap
+            }
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Change any shot before it is made. Each is made on its own, about five seconds long, and they go after the last clip with their captions.")
+                font: Theme.type.caption
+                color: Theme.color.textSecondary
+                wrapMode: Text.WordWrap
+            }
+            Repeater {
+                model: page.planned ? page.plan.shots.length : 0
+                delegate: Rectangle {
+                    id: shotCard
+                    required property int index
+                    objectName: "ideaShot:" + index
+                    Layout.fillWidth: true
+                    implicitHeight: shotColumn.implicitHeight + Theme.space.s * 2
+                    radius: Theme.radius.m
+                    color: Theme.color.surfaceRaised
+                    border.color: Theme.color.borderSubtle
+                    ColumnLayout {
+                        id: shotColumn
+                        anchors.fill: parent
+                        anchors.margins: Theme.space.s
+                        spacing: Theme.space.xxs
+                        Text { text: qsTr("Shot %1").arg(shotCard.index + 1); font: Theme.type.label; color: Theme.color.textSecondary }
+                        TextArea {
+                            objectName: "ideaShotPrompt:" + shotCard.index
+                            Layout.fillWidth: true
+                            wrapMode: TextEdit.Wrap
+                            enabled: !page.running
+                            font: Theme.type.body
+                            color: Theme.color.textPrimary
+                            text: page.plan.shots[shotCard.index].prompt
+                            onTextChanged: page.plan.shots[shotCard.index].prompt = text
+                            background: Rectangle { radius: Theme.radius.s; color: Theme.color.surfaceSunken; border.color: Theme.color.borderSubtle }
+                        }
+                        TextField {
+                            objectName: "ideaShotCaption:" + shotCard.index
+                            Layout.fillWidth: true
+                            enabled: !page.running
+                            placeholderText: qsTr("Caption (optional)")
+                            font: Theme.type.body
+                            color: Theme.color.textPrimary
+                            text: page.plan.shots[shotCard.index].caption
+                            onTextChanged: page.plan.shots[shotCard.index].caption = text
+                            background: Rectangle { implicitHeight: 32; radius: Theme.radius.s; color: Theme.color.surfaceSunken; border.color: Theme.color.borderSubtle }
+                        }
+                    }
+                }
+            }
+            TextButton {
+                objectName: "ideaStartOver"
+                text: qsTr("Start over")
+                variant: "ghost"
+                enabled: !page.running
+                onClicked: { page.project.clearIdeaPlan(); page.plan = ({}) }
+            }
+        }
+
         // The prompt written by Claude from the frame at the playhead (pictures, stickers, video).
         RowLayout {
-            visible: page.kind === "picture" || page.kind === "sticker" || page.kind === "video"
+            visible: page.kind === "picture" || page.kind === "sticker" || (page.kind === "video" && page.videoMode !== "transition")
             Layout.fillWidth: true
             spacing: Theme.space.s
             TextButton {
@@ -236,9 +364,9 @@ ScrollView {
             }
         }
 
-        // Video: shape
+        // Video: shape (a transition takes the canvas's)
         Flow {
-            visible: page.kind === "video"
+            visible: page.kind === "video" && page.videoMode !== "transition"
             Layout.fillWidth: true
             spacing: Theme.space.xs
             Repeater {
@@ -277,7 +405,7 @@ ScrollView {
         }
         Flow {
             id: pickFlow
-            visible: (page.kind === "picture" || page.kind === "sticker" || (page.kind === "video" && page.videoMode !== "text"))
+            visible: (page.kind === "picture" || page.kind === "sticker" || (page.kind === "video" && page.videoMode !== "text" && page.videoMode !== "transition"))
             Layout.fillWidth: true
             spacing: Theme.space.xs
             Repeater {
@@ -326,7 +454,11 @@ ScrollView {
                 objectName: "generateButton"
                 Layout.fillWidth: true
                 visible: !page.running
-                text: page.kind === "sticker" ? qsTr("Make the sticker") : page.kind === "video" && page.videoMode === "extend" ? qsTr("Extend") : qsTr("Generate")
+                text: page.kind === "sticker" ? qsTr("Make the sticker")
+                    : page.kind === "idea" ? (page.planned ? qsTr("Make the video (%1 shots)").arg(page.plan.shots.length) : qsTr("Plan it"))
+                    : page.kind === "video" && page.videoMode === "extend" ? qsTr("Extend")
+                    : page.kind === "video" && page.videoMode === "transition" ? qsTr("Make the transition")
+                    : qsTr("Generate")
                 iconName: "generate"
                 variant: "primary"
                 enabled: page.ready
@@ -354,7 +486,8 @@ ScrollView {
         Text {
             objectName: "generateTerms"
             Layout.fillWidth: true
-            text: page.provider === "OpenAI" ? qsTr("Made by OpenAI with your key; under OpenAI's terms the pictures are yours to use.")
+            text: page.kind === "idea" ? qsTr("Planned by Claude, then each shot made by Google's Gemini Omni Flash, with your keys. Videos carry Google's invisible SynthID watermark.")
+                : page.provider === "OpenAI" ? qsTr("Made by OpenAI with your key; under OpenAI's terms the pictures are yours to use.")
                 : page.provider === "Google" ? qsTr("Made by Google's Gemini Omni Flash with your key. Videos carry Google's invisible SynthID watermark.")
                 : page.kind === "music" ? qsTr("Made by ElevenLabs with your key. Paid plans allow commercial use except film, TV, radio and studio games (Enterprise Music only); don't name artists, songs or lyrics.")
                 : qsTr("Made by ElevenLabs with your key; how you may use it depends on your ElevenLabs plan.")
