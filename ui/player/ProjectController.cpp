@@ -1431,6 +1431,7 @@ void ProjectController::resetProject(Project project, const QString& filePath)
     m_playback->seek(0);
     publish();
     emit selectionChanged();
+    emit projectReplaced();
 }
 
 void ProjectController::newProject(int width, int height, const QString&)
@@ -5520,7 +5521,7 @@ bool ProjectController::stopRecording()
 
 // --- Sound library ---
 
-bool ProjectController::addSound(const QString& soundId)
+bool ProjectController::addSound(const QString& soundId, double trackId, double start)
 {
     QString error;
     const auto file = m_soundLibrary->fileFor(soundId, &error);
@@ -5539,16 +5540,20 @@ bool ProjectController::addSound(const QString& soundId)
         return false;
     }
     const bool music = file->kind == QLatin1String("music");
-    const Ticks start = ticks(m_playhead);
+    const Ticks at = start >= 0 ? ticks(start) : ticks(m_playhead);
     Id target = kNoId;
-    for (auto track = m_project.tracks.rbegin(); track != m_project.tracks.rend(); ++track) {
+    // The sound track it was dropped on, when there is room there.
+    if (const Track* asked = m_project.findTrack(trackId > 0 ? toId(trackId) : kNoId);
+        asked && asked->kind == TrackKind::Audio && !asked->locked && !asked->overlaps(at, item->duration))
+        target = asked->id;
+    for (auto track = m_project.tracks.rbegin(); track != m_project.tracks.rend() && target == kNoId; ++track) {
         if (track->kind == TrackKind::Audio && !track->locked && !track->muted
-            && !track->overlaps(start, item->duration)) {
+            && !track->overlaps(at, item->duration)) {
             target = track->id;
             break;
         }
     }
-    auto command = std::make_unique<AddVoiceOverCommand>(std::move(*item), target, start,
+    auto command = std::make_unique<AddVoiceOverCommand>(std::move(*item), target, at,
                                                          music ? TVE_TR("core", "Add Music") : TVE_TR("core", "Add Sound Effect"),
                                                          music ? "Music" : "Sound effects");
     auto* raw = command.get();
@@ -8698,21 +8703,46 @@ Id ProjectController::stickerMedia(const QString& stickerId)
     return media->id;
 }
 
-bool ProjectController::addSticker(const QString& stickerId)
+bool ProjectController::addSticker(const QString& stickerId, double trackId, double start)
 {
-    // A clip at the playhead on the lowest free picture track above the main one (a new track
-    // on top if none is free), small, in the middle.
+    // A clip at the playhead (or `start`) on the lowest free picture track above the main one
+    // (or the one asked for, when free; a new track on top if none is), small, in the middle.
     const Id media = stickerMedia(stickerId);
-    return media != kNoId && placeOverlay(media, 0.4, "Stickers", TVE_TR("core", "Add Sticker"));
+    return media != kNoId
+        && placeOverlay(media, 0.4, "Stickers", TVE_TR("core", "Add Sticker"), trackId > 0 ? toId(trackId) : kNoId, start);
 }
 
-bool ProjectController::placeOverlay(Id mediaId, double scale, const std::string& trackName, const std::string& label)
+bool ProjectController::dropOnClip(const QString& kind, const QString& itemId, double trackId, double seconds)
+{
+    const Track* track = m_project.findTrack(toId(trackId));
+    const Ticks at = ticks(std::max(0.0, seconds));
+    const Clip* clip = nullptr;
+    if (track)
+        for (const Clip& c : track->clips)
+            if (at >= c.start && at < c.start + c.duration)
+                clip = &c;
+    if (!clip) {
+        reportError(kind == QLatin1String("look") ? tr("Drop the filter on a clip") : tr("Drop the effect on a clip"));
+        return false;
+    }
+    const double id = double(clip->id);
+    const bool ok = kind == QLatin1String("look") ? applyLook(id, itemId) : addClipEffect(id, itemId);
+    if (ok)
+        setSelectedClip(id);
+    return ok;
+}
+
+bool ProjectController::placeOverlay(Id mediaId, double scale, const std::string& trackName, const std::string& label,
+                                     Id onTrack, double start)
 {
     const MediaItem* media = m_project.findMedia(mediaId);
     if (!media)
         return false;
-    const Ticks at = ticks(m_playhead);
+    const Ticks at = start >= 0 ? ticks(start) : ticks(m_playhead);
     Id track = kNoId;
+    if (const Track* asked = m_project.findTrack(onTrack); asked && asked->kind == TrackKind::Video && !asked->locked
+                                                            && !asked->overlaps(at, media->duration))
+        track = asked->id;
     const auto main = m_project.trackIndex(mainTrackId());
     for (std::size_t i = main ? *main + 1 : 0; i < m_project.tracks.size() && track == kNoId; ++i) {
         const Track& candidate = m_project.tracks[i];

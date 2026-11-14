@@ -701,8 +701,13 @@ public:
     // (the clip's position). trackId < 0: the lowest free video or title track above the
     // main track, or a new track on top; start < 0: the playhead. Lasts 5 s; selected.
     Q_INVOKABLE bool addTitle(const QVariantMap& style, double trackId = -1, double start = -1);
-    // Puts a built-in sticker at the playhead on a free picture track above the main one.
-    Q_INVOKABLE bool addSticker(const QString& stickerId);
+    // Puts a built-in sticker at `start` (default: the playhead) on `trackId` when it is a free
+    // picture track there, else on a free picture track above the main one.
+    Q_INVOKABLE bool addSticker(const QString& stickerId, double trackId = -1, double start = -1);
+    // Something from the library dropped on the timeline at a track and time that goes on a clip:
+    // kind "effect" (an effect or filter from the Effects tab) or "look" (the Filters tab's
+    // looks) on the clip there, which is selected; false (with a message) with no clip there.
+    Q_INVOKABLE bool dropOnClip(const QString& kind, const QString& itemId, double trackId, double seconds);
     // Applies the text fields in `changes` to a title clip (one undo step).
     Q_INVOKABLE bool setClipText(double clipId, const QVariantMap& changes);
     // Title presets: the title clip's look saved under `name` (replacing one of that name),
@@ -893,9 +898,10 @@ public:
     Q_INVOKABLE bool zoomOnClicks(double clipId, const QVariantMap& options = {});
     // A click sound at each click, on a new audio track.
     Q_INVOKABLE bool addClickSounds(double clipId);
-    // Puts a library sound (a soundLibrary id) at the playhead on the topmost audio track with
-    // room for it, else on a new Music or Sound effects track.
-    Q_INVOKABLE bool addSound(const QString& soundId);
+    // Puts a library sound (a soundLibrary id) at `start` (default: the playhead) on `trackId`
+    // when it is a sound track with room there, else on the topmost audio track with room for
+    // it, else on a new Music or Sound effects track.
+    Q_INVOKABLE bool addSound(const QString& soundId, double trackId = -1, double start = -1);
     // Fetches items from an imports source ("photos", "music", "devices") and imports them
     // into the media bin when they are all in (imports.fetched says how it went).
     Q_INVOKABLE bool importFrom(const QString& source, const QStringList& itemIds);
@@ -1320,6 +1326,9 @@ signals:
     void timelineOpened(const QStringList& notes, const QString& fileName);
     void viewChanged();
     void projectChanged();
+    // Another project took this one's place (new, opened, recovered): what the editor showed of
+    // the last one (the source monitor, a comparison) goes.
+    void projectReplaced();
     void audioPluginsChanged();
     void stickersChanged();
     void playheadChanged();
@@ -1576,7 +1585,8 @@ private:
     // (a new one named `trackName` on top if none is free), small and centred.
     // A library sticker's media: imported the first time (a step of its own); kNoId if unknown.
     tve::Id stickerMedia(const QString& stickerId);
-    bool placeOverlay(tve::Id mediaId, double scale, const std::string& trackName, const std::string& label);
+    bool placeOverlay(tve::Id mediaId, double scale, const std::string& trackName, const std::string& label,
+                      tve::Id onTrack = tve::kNoId, double start = -1);
     // Ends a generation job, reporting what went wrong.
     void endGeneration(const QString& job, const MediaResult& result, bool ok);
 

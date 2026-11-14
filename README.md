@@ -111,7 +111,8 @@ All previously identified feature gaps have been closed.
 - Import video, audio and image files.
 - Import numbered image sequences as one video, SVG drawings, camera RAW photos and OpenEXR.
 - Import a whole folder, its folders becoming folders in the media library.
-- Arrange media on a multi-track timeline.
+- Arrange media on a multi-track timeline, scrolling up and down through as many tracks as you add.
+- Drag media, titles, transitions, effects, filters, stickers, music and sound effects from the library onto the timeline: effects and filters onto the clip under the pointer, the rest at the track and time where you drop them.
 - Move, trim, split and delete clips.
 - Support ripple deletion on the main track, or on every track with auto ripple.
 - Replace a clip's media in place, turn clips off and on, and stand in for shots with placeholders.

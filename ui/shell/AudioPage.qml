@@ -204,6 +204,13 @@ ColumnLayout {
             required property var modelData
             readonly property bool playing: page.library.previewing === modelData.id
             objectName: "sound:" + modelData.id
+            // Dragged to the timeline: placed where it is dropped (on that sound track if free).
+            readonly property string libraryItem: modelData.id
+            Drag.active: rowMouse.drag.active
+            Drag.dragType: Drag.Automatic
+            Drag.supportedActions: Qt.CopyAction
+            Drag.keys: ["application/x-tve-sound"]
+            Drag.mimeData: { "application/x-tve-sound": modelData.id }
             width: ListView.view.width - Theme.space.m * 2
             x: Theme.space.m
             height: 48
@@ -215,8 +222,10 @@ ColumnLayout {
                 id: rowMouse
                 anchors.fill: parent
                 hoverEnabled: true
+                drag.target: soundDragProxy
                 onDoubleClicked: page.project.addSound(row.modelData.id)
             }
+            Item { id: soundDragProxy }
 
             RowLayout {
                 anchors.fill: parent

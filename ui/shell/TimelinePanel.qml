@@ -88,6 +88,43 @@ Rectangle {
         const s = Math.floor(seconds)
         return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0")
     }
+    // The clip on a track at a time, or null.
+    function clipAt(track, seconds) {
+        if (!track)
+            return null
+        return track.clips.find((c) => seconds >= c.start && seconds < c.start + c.duration) || null
+    }
+    // What the library's tiles carry when dragged here (beside media, titles, transitions):
+    // effects and filters go on the clip they are dropped on; looks too (the "" look: an
+    // adjustment layer, placed there); stickers and sounds are placed there.
+    readonly property var itemKeys: ["application/x-tve-effect", "application/x-tve-look", "application/x-tve-sticker",
+                                     "application/x-tve-sound"]
+    // Whether a key's drop goes on a clip (rather than at a time).
+    function goesOnClip(key, value) {
+        return key === "application/x-tve-effect" || (key === "application/x-tve-look" && value !== "")
+    }
+    // A library item (`key` one of itemKeys, `value` its id) dropped at (x, y) in track space.
+    function dropItem(key, value, x, y) {
+        const track = trackAtY(y)
+        let at = Math.max(0, x / pixelsPerSecond)
+        if (goesOnClip(key, value)) {
+            if (!track) {
+                project.dropOnClip(key === "application/x-tve-look" ? "look" : "effect", value, -1, at) // (says why)
+                return false
+            }
+            return project.dropOnClip(key === "application/x-tve-look" ? "look" : "effect", value, track.id, at)
+        }
+        if (snapToggle.checked)
+            at = project.snap(at, snapPixels / pixelsPerSecond)
+        if (key === "application/x-tve-look") // the adjustment layer
+            return project.addAdjustmentLayer(track && track.kind === "video" && !track.main ? track.id : -1, at)
+        if (key === "application/x-tve-sticker")
+            return project.addSticker(value, track && track.kind === "video" ? track.id : -1, at)
+        if (key === "application/x-tve-sound")
+            return project.addSound(value, track && track.kind === "audio" ? track.id : -1, at)
+        return false
+    }
+
     // Track under a y position in the lanes' coordinate space, or null.
     function trackAtY(y) {
         let top = 0
@@ -800,16 +837,37 @@ Rectangle {
                                 objectName: "laneDrop"
                                 anchors.fill: parent
                                 keys: ["application/x-tve-media", "application/x-tve-transition", "application/x-tve-title", "text/uri-list"]
-                                // Where a drop would land (drawn while dragging): the track and time.
+                                      .concat(timeline.itemKeys)
+                                // Where a drop would land (drawn while dragging): the track and time,
+                                // or the clip an effect or filter would go on.
                                 property var dropTrack: null
                                 property real dropTime: 0
+                                property var dropClip: null
+                                function itemKey(keys) { return timeline.itemKeys.find((k) => keys.indexOf(k) >= 0) || "" }
+                                // The dragged item's id: from the tile (in this app) or the drag's data.
+                                function itemValue(event, key) {
+                                    const src = event.source
+                                    if (src && src.libraryItem !== undefined)
+                                        return src.libraryItem
+                                    return event.getDataAsString ? event.getDataAsString(key) : ""
+                                }
                                 onPositionChanged: (drag) => {
                                     dropTrack = timeline.trackAtY(drag.y)
                                     dropTime = Math.max(0, drag.x / timeline.pixelsPerSecond)
+                                    const key = itemKey(drag.keys)
+                                    dropClip = key !== "" && timeline.goesOnClip(key, itemValue(drag, key))
+                                             ? timeline.clipAt(dropTrack, dropTime) : null
                                 }
-                                onExited: dropTrack = null
+                                onExited: { dropTrack = null; dropClip = null }
                                 onDropped: (drop) => {
                                     dropTrack = null
+                                    dropClip = null
+                                    const itemKey = laneDrop.itemKey(drop.keys)
+                                    if (itemKey !== "") {
+                                        timeline.dropItem(itemKey, laneDrop.itemValue(drop, itemKey), drop.x, drop.y)
+                                        drop.accept()
+                                        return
+                                    }
                                     const track = timeline.trackAtY(drop.y)
                                     if (drop.keys.indexOf("text/uri-list") >= 0 && drop.keys.indexOf("application/x-tve-media") < 0) {
                                         // Files from Finder: imported, then placed here one after another.
@@ -852,10 +910,32 @@ Rectangle {
                                     drop.accept()
                                 }
                             }
+                            // An effect or filter's clip: outlined while it is dragged over it.
+                            Rectangle {
+                                objectName: "dropClipHighlight"
+                                visible: laneDrop.containsDrag && laneDrop.dropClip !== null
+                                x: laneDrop.dropClip ? laneDrop.dropClip.start * timeline.pixelsPerSecond : 0
+                                y: {
+                                    let top = 0
+                                    for (const t of timeline.tracks) {
+                                        if (laneDrop.dropTrack && t.id === laneDrop.dropTrack.id)
+                                            return top
+                                        top += timeline.trackHeight(t.kind)
+                                    }
+                                    return 0
+                                }
+                                width: laneDrop.dropClip ? laneDrop.dropClip.duration * timeline.pixelsPerSecond : 0
+                                height: laneDrop.dropTrack ? timeline.trackHeight(laneDrop.dropTrack.kind) : 0
+                                color: Qt.alpha(Theme.color.accent, 0.18)
+                                border.color: Theme.color.accent
+                                border.width: 2
+                                radius: Theme.radius.s
+                                z: 21
+                            }
                             // The drop's place: the track under the pointer, and a line at the time.
                             Rectangle {
                                 objectName: "dropIndicator"
-                                visible: laneDrop.containsDrag && laneDrop.dropTrack !== null
+                                visible: laneDrop.containsDrag && laneDrop.dropTrack !== null && laneDrop.dropClip === null
                                 x: laneDrop.dropTime * timeline.pixelsPerSecond
                                 y: {
                                     let top = 0

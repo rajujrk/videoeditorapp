@@ -402,6 +402,14 @@ void TimelinePlayback::run(std::shared_ptr<const Project> project,
     const Ticks end = project->duration();
     const Ticks frameTicks = frameDuration(project->settings.frameRate);
     Ticks time = start;
+    // Nothing to play here — an empty timeline (a new project), or past its end (what was
+    // there deleted): one empty frame, so the picture before does not stay up. (Exactly at
+    // the end, where playing stops, the last frame stays.)
+    if (end == 0 || start > end) {
+        if (m_queue.push(CompositeFrame{time, {}, project->settings.colour, project->settings.spherical}))
+            m_finished = true;
+        return;
+    }
 
     while (!m_stop && time < end) {
         const AutoreleasePool pool; // what decoding this frame autoreleased goes with it

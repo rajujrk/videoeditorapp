@@ -965,3 +965,29 @@ TEST_CASE("a rendered stretch plays from its render file, the rest from the laye
     REQUIRE(frame->layers.size() == 1);
     CHECK(frame->layers[0].clipId == clipCmd->clipId());
 }
+
+TEST_CASE("an empty timeline, or a time past its end, shows an empty frame")
+{
+    // A new project: one empty frame (so the player stops showing the last project's picture).
+    auto project = std::make_shared<Project>();
+    project->tracks.push_back({.id = project->allocateId(), .kind = TrackKind::Video, .name = "Video 1"});
+    TimelinePlayback playback;
+    playback.setProject(project);
+    auto frames = drain(playback);
+    REQUIRE(frames.size() == 1);
+    CHECK(frames[0] == std::pair<Ticks, std::size_t>{0, 0});
+
+    // A clip from 0 to 1 s: past its end an empty frame; exactly at the end, nothing new
+    // (the last frame stays up where playing stops).
+    requireSamples();
+    const Id media = project->allocateId();
+    project->media.push_back({.id = media, .path = sample("test_1080p30_h264.mp4"), .duration = 2 * kSec});
+    project->tracks[0].insertClip({.id = project->allocateId(), .mediaId = media, .duration = kSec});
+    playback.setProject(project);
+    playback.seek(3 * kSec);
+    frames = drain(playback);
+    REQUIRE(frames.size() == 1);
+    CHECK(frames[0] == std::pair<Ticks, std::size_t>{3 * kSec, 0});
+    playback.seek(kSec);
+    CHECK(drain(playback).empty());
+}

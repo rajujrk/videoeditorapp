@@ -313,7 +313,7 @@ window.TVE = {
       id: "looks", title: "Looks", chapter: "colour", area: "library",
       where: ["Library", "Filters"], image: "filters",
       summary: "Twelve original looks: Warm Film, Teal & Orange, Bleach Bypass, Golden Hour, Cool Night, Vintage Fade, Matte Pastel, Cross Process, Sepia, Noir, Vivid and Black & White.",
-      steps: ["Select a clip and open the Filters tab.", "Click a look to apply it.", "Set its intensity, or remove it, in the Color tab's Look section."]
+      steps: ["Select a clip and open the Filters tab.", "Click a look to apply it, or drag it onto any clip in the timeline (that clip is outlined while you drag).", "Set its intensity, or remove it, in the Color tab's Look section."]
     },
     {
       id: "adjustment-layer", title: "Adjustment layers", chapter: "colour", area: "library",
@@ -346,7 +346,7 @@ window.TVE = {
       id: "effects", title: "Effects library", chapter: "effects", area: "library",
       where: ["Library", "Effects"], image: "effects-library",
       summary: "61 original effects in blur, colour, stylize, distort, glitch, light and frame categories, previewed on the GPU.",
-      steps: ["Select a clip and open the Effects tab in the library.", "Filter by category chips or search; previews animate on hover.", "Click an effect to add it; its settings appear in Inspector › Effects."]
+      steps: ["Select a clip and open the Effects tab in the library.", "Filter by category chips or search; previews animate on hover.", "Click an effect to add it, or drag it onto any clip in the timeline; its settings appear in Inspector › Effects."]
     },
     {
       id: "frame-effects", title: "Shadows, outlines and fills", chapter: "effects", area: "library",
@@ -382,7 +382,7 @@ window.TVE = {
       id: "stickers", title: "Stickers", chapter: "effects", area: "library",
       where: ["Library", "Stickers"], image: "stickers",
       summary: "100 original animated stickers: 25 designs, each pulsing, spinning, bouncing or wobbling. Your own Lottie .json files import the same way.",
-      steps: ["Open the Stickers tab; previews play on hover.", "Click one to put it at the playhead, small and in the middle, on a free track.", "Place, grade, mask and give it effects like any picture."]
+      steps: ["Open the Stickers tab; previews play on hover.", "Click one to put it at the playhead, small and in the middle, on a free track, or drag it onto a video track at the time you want.", "Place, grade, mask and give it effects like any picture."]
     },
     {
       id: "alpha-video", title: "Video with transparency", chapter: "effects", area: "library",
@@ -464,7 +464,7 @@ window.TVE = {
       id: "audio-library", title: "Music and sound effects", chapter: "audio", area: "library",
       where: ["Library", "Audio"], image: "audio",
       summary: "12 original music pieces in six moods and 15 sound effects, all made by the app's own synthesiser and free to use, plus your own music folders and sound packs.",
-      steps: ["Open the Audio tab and pick Music or Sound effects.", "Click ▶ to preview.", "Click + (or double-click) to put it at the playhead on an audio track.", "My music shows the audio files in folders you add."]
+      steps: ["Open the Audio tab and pick Music or Sound effects.", "Click ▶ to preview.", "Click + (or double-click) to put it at the playhead on an audio track, or drag it onto an audio track at the time you want.", "My music shows the audio files in folders you add."]
     },
     {
       id: "clip-audio", title: "Volume, fades and detach", chapter: "audio", area: "inspector",
