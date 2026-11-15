@@ -760,8 +760,8 @@ window.TVE = {
     // ---------- Projects and your setup ----------
     {
       id: "home", title: "Start a project", chapter: "setup", area: "home", where: ["Home"], image: "home",
-      summary: "Pick a canvas shape, open a project with Open project…, or start straight into recording or an instant video.",
-      steps: ["Click a canvas shape: 16:9, 9:16, 1:1, 4:3 or 21:9.", "Or use Record screen or Instant mode to open a new project with that tool ready.", "⌘S saves a .tve project file; double-click one in Finder to open it in the app.", "Videos, sounds and pictures open with the app too (Open With, or drop them on its Dock icon): they start a new project."],
+      summary: "Pick a canvas shape, carry on with a recent project, open one with Open project…, or start straight into recording or an instant video.",
+      steps: ["Click a canvas shape: 16:9, 9:16, 1:1, 4:3 or 21:9.", "Or use Record screen or Instant mode to open a new project with that tool ready.", "⌘S saves a .tve project file; double-click one in Finder to open it in the app.", "Projects you open or save appear under Recent projects with a frame from each: click one to open it; right-click for Show in Finder or Remove from list. One moved or deleted since is marked Missing.", "Projects in the rail lists them all, to search by name or folder and sort by date or name.", "Videos, sounds and pictures open with the app too (Open With, or drop them on its Dock icon, or on Home): they start a new project."],
       keys: ["⌘S"]
     },
     {

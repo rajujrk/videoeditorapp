@@ -2719,7 +2719,7 @@
     </message>
     <message>
         <source>On-device models…</source>
-        <translation>Modèles sur l'appareil…</translation>
+        <translation>Modèles sur l&apos;appareil…</translation>
     </message>
     <message>
         <source>Download the models for captions, speech cleanup and depth of field</source>
@@ -2798,12 +2798,52 @@
         <translation>Projets récents</translation>
     </message>
     <message>
+        <source>All projects (%1)</source>
+        <translation>Tous les projets (%1)</translation>
+    </message>
+    <message>
+        <source>Drop a video anywhere here to start a project with it</source>
+        <translation>Déposez une vidéo n'importe où ici pour démarrer un projet avec</translation>
+    </message>
+    <message>
         <source>Recent projects appear here</source>
         <translation>Les projets récents s&apos;affichent ici</translation>
     </message>
     <message>
         <source>Drop a video here to start a project with it</source>
         <translation>Déposez une vidéo ici pour démarrer un projet avec</translation>
+    </message>
+    <message>
+        <source>1 project opened or saved lately</source>
+        <translation>1 projet ouvert ou enregistré récemment</translation>
+    </message>
+    <message>
+        <source>%1 projects opened or saved lately</source>
+        <translation>%1 projets ouverts ou enregistrés récemment</translation>
+    </message>
+    <message>
+        <source>Search projects</source>
+        <translation>Rechercher des projets</translation>
+    </message>
+    <message>
+        <source>Last opened</source>
+        <translation>Dernière ouverture</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Nom</translation>
+    </message>
+    <message>
+        <source>No projects yet</source>
+        <translation>Aucun projet pour l'instant</translation>
+    </message>
+    <message>
+        <source>No projects match “%1”</source>
+        <translation>Aucun projet ne correspond à « %1 »</translation>
+    </message>
+    <message>
+        <source>Projects you open or save appear here</source>
+        <translation>Les projets que vous ouvrez ou enregistrez s'affichent ici</translation>
     </message>
 </context>
 <context>
@@ -6129,7 +6169,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The same, for speech in other languages</source>
-        <translation>La même chose, pour la parole dans d'autres langues</translation>
+        <translation>La même chose, pour la parole dans d&apos;autres langues</translation>
     </message>
     <message>
         <source>Speech cleanup</source>
@@ -6161,7 +6201,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
-        <translation>Ces fonctions s'exécutent sur ce Mac : vos médias ne le quittent jamais. Chacune a besoin d'un modèle, téléchargé une fois auprès de ses créateurs et vérifié avant d'être utilisé. Obtenez-les maintenant ou plus tard : chacun vous sera reproposé là où il est nécessaire.</translation>
+        <translation>Ces fonctions s&apos;exécutent sur ce Mac : vos médias ne le quittent jamais. Chacune a besoin d&apos;un modèle, téléchargé une fois auprès de ses créateurs et vérifié avant d&apos;être utilisé. Obtenez-les maintenant ou plus tard : chacun vous sera reproposé là où il est nécessaire.</translation>
     </message>
     <message>
         <source>On this Mac</source>
@@ -6177,7 +6217,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
-        <translation>Des modèles de parole plus précis (Small et Large, 190–574 Mo) se trouvent dans l'onglet Sous-titres.</translation>
+        <translation>Des modèles de parole plus précis (Small et Large, 190–574 Mo) se trouvent dans l&apos;onglet Sous-titres.</translation>
     </message>
     <message>
         <source>Downloading… you can close this and keep working.</source>
@@ -6633,6 +6673,10 @@ Troisième, 4</translation>
     <message>
         <source>Could not autosave: %1</source>
         <translation>Impossible d&apos;enregistrer automatiquement : %1</translation>
+    </message>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 n'est plus là où il était</translation>
     </message>
     <message>
         <source>That unsaved work is no longer there</source>
@@ -8191,6 +8235,37 @@ Troisième, 4</translation>
     <message>
         <source>A LUT is a .cube or .3dl file</source>
         <translation>Une LUT est un fichier .cube ou .3dl</translation>
+    </message>
+</context>
+<context>
+    <name>RecentProjectCard</name>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 n'est plus là où il était</translation>
+    </message>
+    <message>
+        <source>Missing</source>
+        <translation>Manquant</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · %3</source>
+        <translation>%1 × %2 · %3</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · empty</source>
+        <translation>%1 × %2 · vide</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Ouvrir</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>Afficher dans le Finder</translation>
+    </message>
+    <message>
+        <source>Remove from list</source>
+        <translation>Retirer de la liste</translation>
     </message>
 </context>
 <context>

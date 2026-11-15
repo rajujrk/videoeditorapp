@@ -2798,12 +2798,52 @@
         <translation>Letzte Projekte</translation>
     </message>
     <message>
+        <source>All projects (%1)</source>
+        <translation>Alle Projekte (%1)</translation>
+    </message>
+    <message>
+        <source>Drop a video anywhere here to start a project with it</source>
+        <translation>Lege irgendwo hier ein Video ab, um ein Projekt damit zu beginnen</translation>
+    </message>
+    <message>
         <source>Recent projects appear here</source>
         <translation>Letzte Projekte erscheinen hier</translation>
     </message>
     <message>
         <source>Drop a video here to start a project with it</source>
         <translation>Lege hier ein Video ab, um ein Projekt damit zu beginnen</translation>
+    </message>
+    <message>
+        <source>1 project opened or saved lately</source>
+        <translation>1 Projekt, zuletzt geöffnet oder gesichert</translation>
+    </message>
+    <message>
+        <source>%1 projects opened or saved lately</source>
+        <translation>%1 Projekte, zuletzt geöffnet oder gesichert</translation>
+    </message>
+    <message>
+        <source>Search projects</source>
+        <translation>Projekte durchsuchen</translation>
+    </message>
+    <message>
+        <source>Last opened</source>
+        <translation>Zuletzt geöffnet</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>No projects yet</source>
+        <translation>Noch keine Projekte</translation>
+    </message>
+    <message>
+        <source>No projects match “%1”</source>
+        <translation>Keine Projekte passen zu „%1“</translation>
+    </message>
+    <message>
+        <source>Projects you open or save appear here</source>
+        <translation>Projekte, die du öffnest oder sicherst, erscheinen hier</translation>
     </message>
 </context>
 <context>
@@ -6635,6 +6675,10 @@ Drittens, 4</translation>
         <translation>Automatisches Sichern fehlgeschlagen: %1</translation>
     </message>
     <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 ist nicht mehr dort, wo es war</translation>
+    </message>
+    <message>
         <source>That unsaved work is no longer there</source>
         <translation>Diese ungesicherte Arbeit ist nicht mehr da</translation>
     </message>
@@ -8191,6 +8235,37 @@ Drittens, 4</translation>
     <message>
         <source>A LUT is a .cube or .3dl file</source>
         <translation>Eine LUT ist eine .cube- oder .3dl-Datei</translation>
+    </message>
+</context>
+<context>
+    <name>RecentProjectCard</name>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 ist nicht mehr dort, wo es war</translation>
+    </message>
+    <message>
+        <source>Missing</source>
+        <translation>Fehlt</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · %3</source>
+        <translation>%1 × %2 · %3</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · empty</source>
+        <translation>%1 × %2 · leer</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Öffnen</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>Im Finder zeigen</translation>
+    </message>
+    <message>
+        <source>Remove from list</source>
+        <translation>Aus der Liste entfernen</translation>
     </message>
 </context>
 <context>

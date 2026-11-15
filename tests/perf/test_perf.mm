@@ -432,7 +432,7 @@ TEST_CASE("start-up: the app launched to its Home screen drawn", "[perf]")
     }
     for (const char* name : {"TVE_LANGUAGE_FILE", "TVE_KEYMAP_FILE", "TVE_CLOUD_SETTINGS_FILE", "TVE_STORE_SETTINGS_FILE",
                              "TVE_MUSIC_FOLDERS_FILE", "TVE_TEMPLATE_FAVORITES_FILE", "TVE_PLUGIN_CACHE_FILE", "TVE_TELEPROMPTER_FILE",
-                             "TVE_FAVOURITES_FILE", "TVE_WORKSPACES_FILE"})
+                             "TVE_FAVOURITES_FILE", "TVE_WORKSPACES_FILE", "TVE_RECENT_PROJECTS_FILE"})
         env.insert(QString::fromLatin1(name), root + QLatin1Char('/') + QString::fromLatin1(name) + QStringLiteral(".json"));
     env.insert(QStringLiteral("TVE_AUDIO"), QStringLiteral("null"));
     env.insert(QStringLiteral("TVE_CLOUD_MOCK"), QStringLiteral("1"));
@@ -561,6 +561,7 @@ int main(int argc, char** argv)
     qputenv("TVE_PROXY_DIR", (scratch().path() + QStringLiteral("/proxies")).toLocal8Bit());
     qputenv("TVE_PLUGIN_CACHE_FILE", (scratch().path() + QStringLiteral("/plugins.json")).toLocal8Bit());
     qputenv("TVE_LANGUAGE_FILE", (scratch().path() + QStringLiteral("/language.json")).toLocal8Bit());
+    qputenv("TVE_RECENT_PROJECTS_FILE", (scratch().path() + QStringLiteral("/recent-projects.json")).toLocal8Bit());
     qputenv("TVE_RENDER_CACHE_DIR", (scratch().path() + QStringLiteral("/render")).toLocal8Bit());
     QGuiApplication app(argc, argv);
     return Catch::Session().run(argc, argv);

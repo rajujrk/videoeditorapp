@@ -2798,12 +2798,52 @@
         <translation>Dự án gần đây</translation>
     </message>
     <message>
+        <source>All projects (%1)</source>
+        <translation>Tất cả dự án (%1)</translation>
+    </message>
+    <message>
+        <source>Drop a video anywhere here to start a project with it</source>
+        <translation>Thả một video vào bất kỳ đâu ở đây để bắt đầu dự án với nó</translation>
+    </message>
+    <message>
         <source>Recent projects appear here</source>
         <translation>Dự án gần đây hiển thị ở đây</translation>
     </message>
     <message>
         <source>Drop a video here to start a project with it</source>
         <translation>Thả một video vào đây để bắt đầu dự án với nó</translation>
+    </message>
+    <message>
+        <source>1 project opened or saved lately</source>
+        <translation>1 dự án mở hoặc lưu gần đây</translation>
+    </message>
+    <message>
+        <source>%1 projects opened or saved lately</source>
+        <translation>%1 dự án mở hoặc lưu gần đây</translation>
+    </message>
+    <message>
+        <source>Search projects</source>
+        <translation>Tìm dự án</translation>
+    </message>
+    <message>
+        <source>Last opened</source>
+        <translation>Mở lần cuối</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Tên</translation>
+    </message>
+    <message>
+        <source>No projects yet</source>
+        <translation>Chưa có dự án nào</translation>
+    </message>
+    <message>
+        <source>No projects match “%1”</source>
+        <translation>Không có dự án nào khớp với “%1”</translation>
+    </message>
+    <message>
+        <source>Projects you open or save appear here</source>
+        <translation>Dự án bạn mở hoặc lưu sẽ hiển thị ở đây</translation>
     </message>
 </context>
 <context>
@@ -6634,6 +6674,10 @@ Thứ ba, 4</translation>
         <translation>Không thể tự lưu: %1</translation>
     </message>
     <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 không còn ở chỗ cũ</translation>
+    </message>
+    <message>
         <source>That unsaved work is no longer there</source>
         <translation>Phần việc chưa lưu đó không còn nữa</translation>
     </message>
@@ -8190,6 +8234,37 @@ Thứ ba, 4</translation>
     <message>
         <source>A LUT is a .cube or .3dl file</source>
         <translation>LUT là tệp .cube hoặc .3dl</translation>
+    </message>
+</context>
+<context>
+    <name>RecentProjectCard</name>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 không còn ở chỗ cũ</translation>
+    </message>
+    <message>
+        <source>Missing</source>
+        <translation>Bị thiếu</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · %3</source>
+        <translation>%1 × %2 · %3</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · empty</source>
+        <translation>%1 × %2 · trống</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Mở</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>Hiển thị trong Finder</translation>
+    </message>
+    <message>
+        <source>Remove from list</source>
+        <translation>Xóa khỏi danh sách</translation>
     </message>
 </context>
 <context>

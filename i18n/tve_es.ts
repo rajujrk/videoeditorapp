@@ -2798,12 +2798,52 @@
         <translation>Proyectos recientes</translation>
     </message>
     <message>
+        <source>All projects (%1)</source>
+        <translation>Todos los proyectos (%1)</translation>
+    </message>
+    <message>
+        <source>Drop a video anywhere here to start a project with it</source>
+        <translation>Suelta un vídeo en cualquier parte de aquí para empezar un proyecto con él</translation>
+    </message>
+    <message>
         <source>Recent projects appear here</source>
         <translation>Aquí aparecen los proyectos recientes</translation>
     </message>
     <message>
         <source>Drop a video here to start a project with it</source>
         <translation>Suelta un vídeo aquí para empezar un proyecto con él</translation>
+    </message>
+    <message>
+        <source>1 project opened or saved lately</source>
+        <translation>1 proyecto abierto o guardado hace poco</translation>
+    </message>
+    <message>
+        <source>%1 projects opened or saved lately</source>
+        <translation>%1 proyectos abiertos o guardados hace poco</translation>
+    </message>
+    <message>
+        <source>Search projects</source>
+        <translation>Buscar proyectos</translation>
+    </message>
+    <message>
+        <source>Last opened</source>
+        <translation>Última apertura</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Nombre</translation>
+    </message>
+    <message>
+        <source>No projects yet</source>
+        <translation>Aún no hay proyectos</translation>
+    </message>
+    <message>
+        <source>No projects match “%1”</source>
+        <translation>Ningún proyecto coincide con «%1»</translation>
+    </message>
+    <message>
+        <source>Projects you open or save appear here</source>
+        <translation>Aquí aparecen los proyectos que abres o guardas</translation>
     </message>
 </context>
 <context>
@@ -6635,6 +6675,10 @@ Tercero, 4</translation>
         <translation>No se pudo autoguardar: %1</translation>
     </message>
     <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 ya no está donde estaba</translation>
+    </message>
+    <message>
         <source>That unsaved work is no longer there</source>
         <translation>Ese trabajo sin guardar ya no está</translation>
     </message>
@@ -8191,6 +8235,37 @@ Tercero, 4</translation>
     <message>
         <source>A LUT is a .cube or .3dl file</source>
         <translation>Una LUT es un archivo .cube o .3dl</translation>
+    </message>
+</context>
+<context>
+    <name>RecentProjectCard</name>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 ya no está donde estaba</translation>
+    </message>
+    <message>
+        <source>Missing</source>
+        <translation>Falta</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · %3</source>
+        <translation>%1 × %2 · %3</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · empty</source>
+        <translation>%1 × %2 · vacío</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Abrir</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>Mostrar en el Finder</translation>
+    </message>
+    <message>
+        <source>Remove from list</source>
+        <translation>Quitar de la lista</translation>
     </message>
 </context>
 <context>

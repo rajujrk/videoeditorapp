@@ -2790,12 +2790,52 @@
         <translation>உங்கள் படங்கள், கிளிப்புகளிலிருந்து உங்களுக்காக ஒரு வீடியோவை உருவாக்கும் புதிய திட்டம்</translation>
     </message>
     <message>
+        <source>1 project opened or saved lately</source>
+        <translation>சமீபத்தில் திறந்த அல்லது சேமித்த 1 திட்டம்</translation>
+    </message>
+    <message>
+        <source>%1 projects opened or saved lately</source>
+        <translation>சமீபத்தில் திறந்த அல்லது சேமித்த %1 திட்டங்கள்</translation>
+    </message>
+    <message>
+        <source>Search projects</source>
+        <translation>திட்டங்களைத் தேடு</translation>
+    </message>
+    <message>
+        <source>Last opened</source>
+        <translation>கடைசியாகத் திறந்தது</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>பெயர்</translation>
+    </message>
+    <message>
+        <source>No projects yet</source>
+        <translation>இன்னும் திட்டங்கள் இல்லை</translation>
+    </message>
+    <message>
+        <source>No projects match “%1”</source>
+        <translation>“%1” உடன் பொருந்தும் திட்டங்கள் இல்லை</translation>
+    </message>
+    <message>
+        <source>Projects you open or save appear here</source>
+        <translation>நீங்கள் திறக்கும் அல்லது சேமிக்கும் திட்டங்கள் இங்கே தோன்றும்</translation>
+    </message>
+    <message>
         <source>Instant mode</source>
         <translation>உடனடி முறை</translation>
     </message>
     <message>
         <source>Recent projects</source>
         <translation>சமீபத்திய திட்டங்கள்</translation>
+    </message>
+    <message>
+        <source>All projects (%1)</source>
+        <translation>எல்லாத் திட்டங்களும் (%1)</translation>
+    </message>
+    <message>
+        <source>Drop a video anywhere here to start a project with it</source>
+        <translation>ஒரு வீடியோவுடன் திட்டத்தைத் தொடங்க அதை இங்கே எங்கேனும் விடவும்</translation>
     </message>
     <message>
         <source>Recent projects appear here</source>
@@ -6635,6 +6675,10 @@ Third, 4</source>
         <translation>தானாகச் சேமிக்க முடியவில்லை: %1</translation>
     </message>
     <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 முன்பிருந்த இடத்தில் இல்லை</translation>
+    </message>
+    <message>
         <source>That unsaved work is no longer there</source>
         <translation>அந்தச் சேமிக்காத வேலை இப்போது இல்லை</translation>
     </message>
@@ -8191,6 +8235,37 @@ Third, 4</source>
     <message>
         <source>A LUT is a .cube or .3dl file</source>
         <translation>LUT என்பது ஒரு .cube அல்லது .3dl கோப்பு</translation>
+    </message>
+</context>
+<context>
+    <name>RecentProjectCard</name>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 முன்பிருந்த இடத்தில் இல்லை</translation>
+    </message>
+    <message>
+        <source>Missing</source>
+        <translation>காணவில்லை</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · %3</source>
+        <translation>%1 × %2 · %3</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · empty</source>
+        <translation>%1 × %2 · காலி</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>திற</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>Finder-இல் காட்டு</translation>
+    </message>
+    <message>
+        <source>Remove from list</source>
+        <translation>பட்டியலிலிருந்து அகற்று</translation>
     </message>
 </context>
 <context>

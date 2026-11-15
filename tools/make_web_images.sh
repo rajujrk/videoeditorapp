@@ -48,6 +48,7 @@ if [ -x "$app" ] && [ -f samples/4k30_h264.mp4 ]; then
   for theme in dark light; do
     TVE_AUTOSAVE_DIR="$tmp/autosave" TVE_WORKSPACES_FILE="$tmp/workspaces.json" \
       TVE_FAVOURITES_FILE="$tmp/favourites.json" TVE_KEYMAP_FILE="$tmp/keymap.json" \
+      TVE_RECENT_PROJECTS_FILE="$tmp/recent-projects.json" \
       "$app" --theme "$theme" --effects tve.stylize.vignette --screenshot "$tmp/map-$theme.png" \
       --screenshot-at 4 --quit-after 5 samples/4k30_h264.mp4
     cwebp -quiet -q 82 -resize 1800 0 "$tmp/map-$theme.png" -o "$out/map-editor-$theme.webp"

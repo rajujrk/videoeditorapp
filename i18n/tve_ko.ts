@@ -2798,12 +2798,52 @@
         <translation>최근 프로젝트</translation>
     </message>
     <message>
+        <source>All projects (%1)</source>
+        <translation>모든 프로젝트(%1)</translation>
+    </message>
+    <message>
+        <source>Drop a video anywhere here to start a project with it</source>
+        <translation>여기 아무 곳에나 동영상을 놓으면 그것으로 프로젝트를 시작합니다</translation>
+    </message>
+    <message>
         <source>Recent projects appear here</source>
         <translation>최근 프로젝트가 여기에 표시됩니다</translation>
     </message>
     <message>
         <source>Drop a video here to start a project with it</source>
         <translation>여기에 동영상을 놓으면 그것으로 프로젝트를 시작합니다</translation>
+    </message>
+    <message>
+        <source>1 project opened or saved lately</source>
+        <translation>최근에 열거나 저장한 프로젝트 1개</translation>
+    </message>
+    <message>
+        <source>%1 projects opened or saved lately</source>
+        <translation>최근에 열거나 저장한 프로젝트 %1개</translation>
+    </message>
+    <message>
+        <source>Search projects</source>
+        <translation>프로젝트 검색</translation>
+    </message>
+    <message>
+        <source>Last opened</source>
+        <translation>마지막으로 연 날짜</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <source>No projects yet</source>
+        <translation>아직 프로젝트가 없습니다</translation>
+    </message>
+    <message>
+        <source>No projects match “%1”</source>
+        <translation>“%1”과(와) 일치하는 프로젝트가 없습니다</translation>
+    </message>
+    <message>
+        <source>Projects you open or save appear here</source>
+        <translation>열거나 저장한 프로젝트가 여기에 표시됩니다</translation>
     </message>
 </context>
 <context>
@@ -6634,6 +6674,10 @@ Third, 4</source>
         <translation>자동 저장할 수 없습니다: %1</translation>
     </message>
     <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1이(가) 원래 있던 곳에 없습니다</translation>
+    </message>
+    <message>
         <source>That unsaved work is no longer there</source>
         <translation>저장하지 않은 그 작업은 더 이상 없습니다</translation>
     </message>
@@ -8190,6 +8234,37 @@ Third, 4</source>
     <message>
         <source>A LUT is a .cube or .3dl file</source>
         <translation>LUT는 .cube 또는 .3dl 파일입니다</translation>
+    </message>
+</context>
+<context>
+    <name>RecentProjectCard</name>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1이(가) 원래 있던 곳에 없습니다</translation>
+    </message>
+    <message>
+        <source>Missing</source>
+        <translation>없음</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · %3</source>
+        <translation>%1 × %2 · %3</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · empty</source>
+        <translation>%1 × %2 · 비어 있음</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>열기</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>Finder에서 보기</translation>
+    </message>
+    <message>
+        <source>Remove from list</source>
+        <translation>목록에서 제거</translation>
     </message>
 </context>
 <context>

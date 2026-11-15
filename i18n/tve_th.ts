@@ -2798,12 +2798,52 @@
         <translation>โปรเจกต์ล่าสุด</translation>
     </message>
     <message>
+        <source>All projects (%1)</source>
+        <translation>โปรเจกต์ทั้งหมด (%1)</translation>
+    </message>
+    <message>
+        <source>Drop a video anywhere here to start a project with it</source>
+        <translation>วางวิดีโอที่ใดก็ได้ตรงนี้เพื่อเริ่มโปรเจกต์ด้วยวิดีโอนั้น</translation>
+    </message>
+    <message>
         <source>Recent projects appear here</source>
         <translation>โปรเจกต์ล่าสุดจะแสดงที่นี่</translation>
     </message>
     <message>
         <source>Drop a video here to start a project with it</source>
         <translation>วางวิดีโอที่นี่เพื่อเริ่มโปรเจกต์ด้วยวิดีโอนั้น</translation>
+    </message>
+    <message>
+        <source>1 project opened or saved lately</source>
+        <translation>โปรเจกต์ที่เปิดหรือบันทึกล่าสุด 1 รายการ</translation>
+    </message>
+    <message>
+        <source>%1 projects opened or saved lately</source>
+        <translation>โปรเจกต์ที่เปิดหรือบันทึกล่าสุด %1 รายการ</translation>
+    </message>
+    <message>
+        <source>Search projects</source>
+        <translation>ค้นหาโปรเจกต์</translation>
+    </message>
+    <message>
+        <source>Last opened</source>
+        <translation>เปิดล่าสุด</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>ชื่อ</translation>
+    </message>
+    <message>
+        <source>No projects yet</source>
+        <translation>ยังไม่มีโปรเจกต์</translation>
+    </message>
+    <message>
+        <source>No projects match “%1”</source>
+        <translation>ไม่มีโปรเจกต์ที่ตรงกับ “%1”</translation>
+    </message>
+    <message>
+        <source>Projects you open or save appear here</source>
+        <translation>โปรเจกต์ที่คุณเปิดหรือบันทึกจะแสดงที่นี่</translation>
     </message>
 </context>
 <context>
@@ -6634,6 +6674,10 @@ Third, 4</source>
         <translation>บันทึกอัตโนมัติไม่ได้: %1</translation>
     </message>
     <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 ไม่ได้อยู่ที่เดิมแล้ว</translation>
+    </message>
+    <message>
         <source>That unsaved work is no longer there</source>
         <translation>งานที่ไม่ได้บันทึกนั้นไม่อยู่แล้ว</translation>
     </message>
@@ -8190,6 +8234,37 @@ Third, 4</source>
     <message>
         <source>A LUT is a .cube or .3dl file</source>
         <translation>LUT คือไฟล์ .cube หรือ .3dl</translation>
+    </message>
+</context>
+<context>
+    <name>RecentProjectCard</name>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 ไม่ได้อยู่ที่เดิมแล้ว</translation>
+    </message>
+    <message>
+        <source>Missing</source>
+        <translation>หายไป</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · %3</source>
+        <translation>%1 × %2 · %3</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · empty</source>
+        <translation>%1 × %2 · ว่าง</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>เปิด</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>แสดงใน Finder</translation>
+    </message>
+    <message>
+        <source>Remove from list</source>
+        <translation>ลบออกจากรายการ</translation>
     </message>
 </context>
 <context>

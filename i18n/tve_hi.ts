@@ -2798,12 +2798,52 @@
         <translation>हाल के प्रोजेक्ट</translation>
     </message>
     <message>
+        <source>All projects (%1)</source>
+        <translation>सभी प्रोजेक्ट (%1)</translation>
+    </message>
+    <message>
+        <source>Drop a video anywhere here to start a project with it</source>
+        <translation>इससे प्रोजेक्ट शुरू करने के लिए यहाँ कहीं भी एक वीडियो छोड़ें</translation>
+    </message>
+    <message>
         <source>Recent projects appear here</source>
         <translation>हाल के प्रोजेक्ट यहाँ दिखते हैं</translation>
     </message>
     <message>
         <source>Drop a video here to start a project with it</source>
         <translation>इससे प्रोजेक्ट शुरू करने के लिए यहाँ एक वीडियो छोड़ें</translation>
+    </message>
+    <message>
+        <source>1 project opened or saved lately</source>
+        <translation>हाल में खोला या सहेजा गया 1 प्रोजेक्ट</translation>
+    </message>
+    <message>
+        <source>%1 projects opened or saved lately</source>
+        <translation>हाल में खोले या सहेजे गए %1 प्रोजेक्ट</translation>
+    </message>
+    <message>
+        <source>Search projects</source>
+        <translation>प्रोजेक्ट खोजें</translation>
+    </message>
+    <message>
+        <source>Last opened</source>
+        <translation>आख़िरी बार खोला गया</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>नाम</translation>
+    </message>
+    <message>
+        <source>No projects yet</source>
+        <translation>अभी कोई प्रोजेक्ट नहीं</translation>
+    </message>
+    <message>
+        <source>No projects match “%1”</source>
+        <translation>“%1” से मेल खाता कोई प्रोजेक्ट नहीं</translation>
+    </message>
+    <message>
+        <source>Projects you open or save appear here</source>
+        <translation>आप जो प्रोजेक्ट खोलते या सहेजते हैं, वे यहाँ दिखते हैं</translation>
     </message>
 </context>
 <context>
@@ -6635,6 +6675,10 @@ Third, 4</source>
         <translation>ऑटोसेव नहीं हो सका: %1</translation>
     </message>
     <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 अब वहाँ नहीं है जहाँ था</translation>
+    </message>
+    <message>
         <source>That unsaved work is no longer there</source>
         <translation>वह बिना सहेजा काम अब नहीं है</translation>
     </message>
@@ -8191,6 +8235,37 @@ Third, 4</source>
     <message>
         <source>A LUT is a .cube or .3dl file</source>
         <translation>LUT एक .cube या .3dl फ़ाइल होती है</translation>
+    </message>
+</context>
+<context>
+    <name>RecentProjectCard</name>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 अब वहाँ नहीं है जहाँ था</translation>
+    </message>
+    <message>
+        <source>Missing</source>
+        <translation>गायब</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · %3</source>
+        <translation>%1 × %2 · %3</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · empty</source>
+        <translation>%1 × %2 · ख़ाली</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>खोलें</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>Finder में दिखाएँ</translation>
+    </message>
+    <message>
+        <source>Remove from list</source>
+        <translation>सूची से हटाएँ</translation>
     </message>
 </context>
 <context>

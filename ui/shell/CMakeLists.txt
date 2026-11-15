@@ -6,6 +6,7 @@ qt_add_qml_module(tve_shell
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml/TechieVideoEditor/Shell
     QML_FILES
         HomeScreen.qml
+        RecentProjectCard.qml
         EditorScreen.qml
         TopBar.qml
         LibraryPanel.qml

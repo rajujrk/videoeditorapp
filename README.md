@@ -548,8 +548,8 @@ The following improvements were completed after Phase 5:
 - Slice 31d: Eleven languages (English, Tamil, French, German, Spanish, Hindi, Japanese, Korean, Thai, Vietnamese and Chinese); planar and point tracking, holding a shot still on a track and pinning a picture onto a plane; go to start and end in the player; effects, filters and stickers of your own, with a shader editor; and smoother menus, dialogs and panels.
 
 The gaps found after Phase 5 (slices 23a–23c) are closed. A few planned items were never taken on
-by a slice and are still open — recent projects on the Home screen, roll and slip edits, an undo
-history panel, a Preferences window, crash reports and updates; see §9.10 of the
+by a slice and are still open — roll and slip edits, an undo history panel, a Preferences window,
+crash reports and updates; see §9.10 of the
 [build plan](docs/TechieVideoEditor_Build_Plan.md#910-still-open-checked-against-7-november-2026).
 
 </details>

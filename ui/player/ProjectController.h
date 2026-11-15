@@ -4,6 +4,7 @@
 #include "RenderCache.h"
 #include "model/RenderCost.h"
 #include "ProxyManager.h"
+#include "RecentProjects.h"
 #include "MediaImports.h"
 #include "AutoEdit.h"
 #include "AudioPluginHost.h"
@@ -165,6 +166,11 @@ class ProjectController : public QObject {
     Q_PROPERTY(bool autosaveEnabled READ autosaveEnabled WRITE setAutosaveEnabled NOTIFY recoveryChanged)
     Q_PROPERTY(QString autosaveDirectory READ autosaveDirectory WRITE setAutosaveDirectory NOTIFY recoveryChanged)
     Q_PROPERTY(QVariantList recoverableProjects READ recoverableProjects NOTIFY recoveryChanged)
+    // Projects opened or saved lately, for the Home screen, newest first: [{path, name,
+    // lastOpened (ms since epoch), width, height, duration (s), missing, folder, cover (a file
+    // URL, "" until rendered)}]. Kept in <app data>/recent-projects.json
+    // (TVE_RECENT_PROJECTS_FILE overrides); see RecentProjects.
+    Q_PROPERTY(QVariantList recentProjects READ recentProjects NOTIFY recentProjectsChanged)
     // When this document was last autosaved (ms since epoch; 0: not since its last change).
     Q_PROPERTY(double lastAutosave READ lastAutosave NOTIFY recoveryChanged)
 
@@ -390,6 +396,7 @@ public:
     QString autosaveDirectory() const { return m_autosaveDir; }
     void setAutosaveDirectory(const QString& directory);
     QVariantList recoverableProjects() const;
+    QVariantList recentProjects() const { return m_recents.list(); }
     double lastAutosave() const { return double(m_lastAutosave); }
     bool useProxies() const { return m_useProxies; }
     void setUseProxies(bool use);
@@ -1057,6 +1064,13 @@ public:
     // had one) and removes it from the list. discardRecovery deletes it.
     Q_INVOKABLE bool recoverProject(const QString& id);
     Q_INVOKABLE void discardRecovery(const QString& id);
+    // Recent projects: open one (false, with a message, when the file isn't there now); take
+    // it off the list (the file stays); show it in Finder; read the list again (files moved
+    // or deleted since are shown as missing).
+    Q_INVOKABLE bool openRecentProject(const QString& path);
+    Q_INVOKABLE bool removeRecentProject(const QString& path);
+    Q_INVOKABLE bool revealRecentProject(const QString& path);
+    Q_INVOKABLE void refreshRecentProjects();
 
     // Analysis. Each measures the clip's media in the background (once: results are cached
     // by the file's fingerprint), then publishes what it found; false (with lastError) if it
@@ -1392,6 +1406,7 @@ signals:
     void errorOccurred(const QString& message);
     void exportChanged();
     void recoveryChanged();
+    void recentProjectsChanged();
     void proxiesChanged();
     void voiceOverChanged();
     void screenRecordingChanged();
@@ -1691,6 +1706,7 @@ private:
     std::optional<Cut> cutFor(double clipId) const;
     std::string m_transcriptVariant; // the model and language of the transcript shown
     SpeechModels m_speechModels;
+    RecentProjects m_recents;
     std::map<std::string, tve::Transcript> m_transcripts; // by fingerprint + model + language
     std::map<std::string, tve::AudioFeatures> m_audioFeatures;
     std::map<std::string, tve::VideoFeatures> m_videoFeatures;

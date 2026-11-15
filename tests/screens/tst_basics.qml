@@ -59,13 +59,34 @@ Item {
                 EditingPreferences.reset()
                 Screens.palette(root.Window.window, Theme)
 
-                // Home, nothing to recover.
+                // Home, nothing to recover: a few projects saved lately (one moved away since).
                 const folder = tempDir + "/tve-screens-recovery-" + Date.now()
                 let c = controllerComponent.createObject(root)
                 c.autosaveDirectory = folder + "-empty"
+                const projects = scratchDir + "/screens-projects-" + (dark ? "dark" : "light")
+                verify(testFiles.write(projects + "/.made", ""))
+                for (const path of c.recentProjects.map((r) => r.path))
+                    c.removeRecentProject(path) // (the other theme's)
+                for (const made of [["Old interview", "4k30_h264.mp4", 1920, 1080, samples],
+                                    ["Weekend trip", "photo.png", 1080, 1080, media],
+                                    ["Portrait reel", "portrait-wide.mp4", 1080, 1920, media],
+                                    ["Product demo", "4k30_h264.mp4", 3840, 2160, samples],
+                                    ["Night street", "night-street.mp4", 1920, 1080, media]]) {
+                    c.newProject(made[2], made[3])
+                    verify(c.importAndAppend(made[4] + made[1]), "" + c.lastError)
+                    verify(c.save("file://" + projects + "/" + made[0] + ".tve"), "" + c.lastError)
+                }
+                tryVerify(() => c.recentProjects.slice(0, 5).every((r) => r.cover !== ""), 30000, "covers")
+                verify(testFiles.move(projects + "/Old interview.tve", projects + "/moved/Old interview.tve"))
+                c.newProject(1920, 1080)
                 let home = createTemporaryObject(homeComponent, root, { project: c })
                 waitForRendering(home)
                 shot("home", dark)
+                // Every project, on the Projects page.
+                home.page = "projects"
+                waitForRendering(home)
+                shot("projects", dark)
+                home.page = "home"
                 // The on-device models, as offered on the first start.
                 home.openModels()
                 const models = findChild(home, "modelsDialog")

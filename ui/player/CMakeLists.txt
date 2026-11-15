@@ -36,6 +36,8 @@ qt_add_qml_module(tve_player
         MyItems.cpp
         Favourites.h
         Favourites.cpp
+        RecentProjects.h
+        RecentProjects.cpp
         Workspaces.h
         Workspaces.cpp
         EditingPreferences.h

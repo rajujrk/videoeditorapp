@@ -1014,6 +1014,7 @@ ProjectController::ProjectController(QObject* parent)
                         : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/Autosave");
     m_sessionId = newSessionId();
     liveSessions().insert(m_sessionId);
+    connect(&m_recents, &RecentProjects::changed, this, &ProjectController::recentProjectsChanged);
     connect(&m_proxies, &ProxyManager::changed, this, [this](const QString&, bool ready) {
         emit proxiesChanged();
         if (ready && m_useProxies)
@@ -1471,6 +1472,7 @@ bool ProjectController::open(const QUrl& file)
     try {
         resetProject(loadProject(path.toStdString()), path);
         requestAutoProxies();
+        m_recents.note(path, m_project, false);
         return true;
     } catch (const std::exception& e) {
         reportError(tr("Could not open %1: %2").arg(QFileInfo(path).fileName(), coreText(e.what())));
@@ -1585,6 +1587,7 @@ bool ProjectController::save(const QUrl& file)
         level.stack->setUnsaved();
     }
     removeAutosave(); // the file has it all now
+    m_recents.note(path, rootProject(), true);
     emit projectChanged();
     return true;
 }
@@ -2409,6 +2412,37 @@ QVariantList ProjectController::recoverableProjects() const
     for (const Entry& entry : entries)
         list << entry.map;
     return list;
+}
+
+bool ProjectController::openRecentProject(const QString& path)
+{
+    if (!QFileInfo(path).isFile()) {
+        reportError(tr("%1 is no longer where it was").arg(QFileInfo(path).fileName()));
+        emit recentProjectsChanged(); // (shown as missing now)
+        return false;
+    }
+    return open(QUrl::fromLocalFile(path));
+}
+
+bool ProjectController::removeRecentProject(const QString& path)
+{
+    return m_recents.remove(path);
+}
+
+bool ProjectController::revealRecentProject(const QString& path)
+{
+    if (!QFileInfo::exists(path)) {
+        reportError(tr("%1 is no longer where it was").arg(QFileInfo(path).fileName()));
+        emit recentProjectsChanged();
+        return false;
+    }
+    return QProcess::startDetached(QStringLiteral("/usr/bin/open"), {QStringLiteral("-R"), path});
+}
+
+void ProjectController::refreshRecentProjects()
+{
+    m_recents.reload();
+    emit recentProjectsChanged();
 }
 
 bool ProjectController::recoverProject(const QString& id)

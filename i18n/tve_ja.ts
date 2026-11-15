@@ -2798,12 +2798,52 @@
         <translation>最近のプロジェクト</translation>
     </message>
     <message>
+        <source>All projects (%1)</source>
+        <translation>すべてのプロジェクト（%1）</translation>
+    </message>
+    <message>
+        <source>Drop a video anywhere here to start a project with it</source>
+        <translation>ここのどこかに動画をドロップするとプロジェクトを開始します</translation>
+    </message>
+    <message>
         <source>Recent projects appear here</source>
         <translation>最近のプロジェクトがここに表示されます</translation>
     </message>
     <message>
         <source>Drop a video here to start a project with it</source>
         <translation>ここに動画をドロップするとプロジェクトを開始します</translation>
+    </message>
+    <message>
+        <source>1 project opened or saved lately</source>
+        <translation>最近開いたか保存したプロジェクト 1 件</translation>
+    </message>
+    <message>
+        <source>%1 projects opened or saved lately</source>
+        <translation>最近開いたか保存したプロジェクト %1 件</translation>
+    </message>
+    <message>
+        <source>Search projects</source>
+        <translation>プロジェクトを検索</translation>
+    </message>
+    <message>
+        <source>Last opened</source>
+        <translation>最後に開いた日時</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名前</translation>
+    </message>
+    <message>
+        <source>No projects yet</source>
+        <translation>まだプロジェクトがありません</translation>
+    </message>
+    <message>
+        <source>No projects match “%1”</source>
+        <translation>「%1」に一致するプロジェクトはありません</translation>
+    </message>
+    <message>
+        <source>Projects you open or save appear here</source>
+        <translation>開いたり保存したりしたプロジェクトがここに表示されます</translation>
     </message>
 </context>
 <context>
@@ -6634,6 +6674,10 @@ Third, 4</source>
         <translation>自動保存できませんでした：%1</translation>
     </message>
     <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 は元の場所にありません</translation>
+    </message>
+    <message>
         <source>That unsaved work is no longer there</source>
         <translation>その未保存の作業はもうありません</translation>
     </message>
@@ -8190,6 +8234,37 @@ Third, 4</source>
     <message>
         <source>A LUT is a .cube or .3dl file</source>
         <translation>LUTは .cube または .3dl ファイルです</translation>
+    </message>
+</context>
+<context>
+    <name>RecentProjectCard</name>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 は元の場所にありません</translation>
+    </message>
+    <message>
+        <source>Missing</source>
+        <translation>見つかりません</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · %3</source>
+        <translation>%1 × %2 · %3</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · empty</source>
+        <translation>%1 × %2 · 空</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>開く</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>Finder に表示</translation>
+    </message>
+    <message>
+        <source>Remove from list</source>
+        <translation>リストから削除</translation>
     </message>
 </context>
 <context>

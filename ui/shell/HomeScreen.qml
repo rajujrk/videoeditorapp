@@ -15,6 +15,34 @@ Rectangle {
     signal instantRequested() // a new project with instant video open
     signal mediaDropped(url file)
     signal recoverRequested(string id)
+    signal recentRequested(string path) // a recent project's card clicked: open it
+
+    // "home" or "projects" (every recent project, to search and sort).
+    property string page: "home"
+    // The Projects page: its search text and order ("date": last opened first, "name").
+    property string projectSearch: ""
+    property string projectSort: "date"
+    readonly property var recents: project ? project.recentProjects : []
+    // How many of them the Home page shows (the Projects page has the rest).
+    readonly property int recentsShown: 8
+    readonly property var listedProjects: {
+        const text = projectSearch.trim().toLowerCase()
+        const list = recents.filter((p) => text === "" || p.name.toLowerCase().indexOf(text) >= 0
+                                            || p.path.toLowerCase().indexOf(text) >= 0)
+        if (projectSort === "name")
+            list.sort((a, b) => a.name.localeCompare(b.name, Qt.locale().name) || b.lastOpened - a.lastOpened)
+        return list
+    }
+
+    // Files moved or deleted while the app was elsewhere show as missing when it is back.
+    onVisibleChanged: if (visible && project) project.refreshRecentProjects()
+    Connections {
+        target: Qt.application
+        function onStateChanged() {
+            if (Qt.application.state === Qt.ApplicationActive && home.visible && home.project)
+                home.project.refreshRecentProjects()
+        }
+    }
 
     color: Theme.color.canvas
 
@@ -72,36 +100,45 @@ Rectangle {
                     }
                 }
 
+                // Home and Projects; Templates (the editor's library has them) and Recordings
+                // are placeholders still.
                 Repeater {
                     model: [
-                        { icon: "home", label: qsTr("Home"), ready: true },
-                        { icon: "folder", label: qsTr("Projects"), ready: false },
-                        { icon: "templates", label: qsTr("Templates"), ready: false },
-                        { icon: "record", label: qsTr("Recordings"), ready: false }
+                        { icon: "home", label: qsTr("Home"), page: "home" },
+                        { icon: "folder", label: qsTr("Projects"), page: "projects" },
+                        { icon: "templates", label: qsTr("Templates"), page: "" },
+                        { icon: "record", label: qsTr("Recordings"), page: "" }
                     ]
-                    delegate: Rectangle {
+                    delegate: AbstractButton {
+                        id: railEntry
                         required property var modelData
-                        required property int index
+                        readonly property bool current: modelData.page === home.page
+                        objectName: "homeRail:" + (modelData.page || modelData.icon)
+                        enabled: modelData.page !== ""
+                        hoverEnabled: true
                         Layout.fillWidth: true
                         implicitHeight: Theme.size.control + Theme.space.s
-                        radius: Theme.radius.m
-                        color: index === 0 ? Theme.color.accentSubtle : "transparent"
+                        onClicked: home.page = modelData.page
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: Theme.space.s
+                        background: Rectangle {
+                            radius: Theme.radius.m
+                            color: railEntry.current ? Theme.color.accentSubtle
+                                 : railEntry.hovered ? Theme.color.surfaceHover : "transparent"
+                        }
+                        contentItem: RowLayout {
                             spacing: Theme.space.s
                             Icon {
-                                name: modelData.icon
+                                Layout.leftMargin: Theme.space.s
+                                name: railEntry.modelData.icon
                                 size: Theme.size.iconSmall + 2
-                                color: index === 0 ? Theme.color.accentText
-                                     : modelData.ready ? Theme.color.textSecondary : Theme.color.textDisabled
+                                color: railEntry.current ? Theme.color.accentText
+                                     : railEntry.enabled ? Theme.color.textSecondary : Theme.color.textDisabled
                             }
                             Text {
-                                text: modelData.label
+                                text: railEntry.modelData.label
                                 font: Theme.type.body
-                                color: index === 0 ? Theme.color.textPrimary
-                                     : modelData.ready ? Theme.color.textSecondary : Theme.color.textDisabled
+                                color: railEntry.current ? Theme.color.textPrimary
+                                     : railEntry.enabled ? Theme.color.textSecondary : Theme.color.textDisabled
                                 Layout.fillWidth: true
                             }
                         }
@@ -151,12 +188,30 @@ Rectangle {
             Divider { anchors.right: parent.right; height: parent.height; width: 1 }
         }
 
-        // Content
+        // Content: the Home page, or every project
+        Item {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+
         Flickable {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            id: homePage
+            objectName: "homePage"
+            anchors.fill: parent
+            visible: home.page === "home"
             contentHeight: content.implicitHeight + Theme.space.xxl * 2
             clip: true
+            ScrollBar.vertical: ScrollBar {}
+
+            // A video dropped anywhere here starts a project with it.
+            DropArea {
+                id: drop
+                width: homePage.width
+                height: Math.max(homePage.height, homePage.contentHeight)
+                onDropped: (event) => {
+                    if (event.hasUrls)
+                        home.mediaDropped(event.urls[0])
+                }
+            }
 
             ColumnLayout {
                 id: content
@@ -319,13 +374,50 @@ Rectangle {
                                  onClicked: home.instantRequested() }
                 }
 
-                // Recent projects: an empty state with a drop target; the list itself isn't built
-                // yet (the build plan's §9.10).
+                // Recent projects: the latest few as cards (all of them on the Projects page);
+                // with none yet, a drop target.
                 ColumnLayout {
+                    objectName: "recentSection"
+                    Layout.fillWidth: true
                     spacing: Theme.space.m
-                    Text { text: qsTr("Recent projects"); font: Theme.type.title; color: Theme.color.textPrimary }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Text { text: qsTr("Recent projects"); font: Theme.type.title; color: Theme.color.textPrimary }
+                        Item { Layout.fillWidth: true }
+                        TextButton {
+                            objectName: "allProjects"
+                            visible: home.recents.length > home.recentsShown
+                            text: qsTr("All projects (%1)").arg(Fmt.num(home.recents.length))
+                            variant: "ghost"
+                            onClicked: home.page = "projects"
+                        }
+                    }
+
+                    Flow {
+                        visible: home.recents.length > 0
+                        Layout.fillWidth: true
+                        spacing: Theme.space.m
+                        Repeater {
+                            model: home.recents.slice(0, home.recentsShown)
+                            delegate: RecentProjectCard {
+                                required property var modelData
+                                entry: modelData
+                                onOpenRequested: (path) => home.recentRequested(path)
+                                onRevealRequested: (path) => home.project.revealRecentProject(path)
+                                onRemoveRequested: (path) => home.project.removeRecentProject(path)
+                            }
+                        }
+                    }
+                    Text {
+                        visible: home.recents.length > 0
+                        text: qsTr("Drop a video anywhere here to start a project with it")
+                        font: Theme.type.label
+                        color: drop.containsDrag ? Theme.color.accentText : Theme.color.textSecondary
+                    }
 
                     Rectangle {
+                        objectName: "recentEmpty"
+                        visible: home.recents.length === 0
                         Layout.fillWidth: true
                         Layout.preferredHeight: 180
                         radius: Theme.radius.l
@@ -349,18 +441,105 @@ Rectangle {
                                 color: Theme.color.textSecondary
                             }
                         }
-
-                        DropArea {
-                            id: drop
-                            anchors.fill: parent
-                            onDropped: (event) => {
-                                if (event.hasUrls)
-                                    home.mediaDropped(event.urls[0])
-                            }
-                        }
                     }
                 }
             }
+        }
+
+        // Projects: every recent project, searched by name or folder, by date or name.
+        ColumnLayout {
+            id: projectsPage
+            objectName: "projectsPage"
+            anchors.fill: parent
+            anchors.margins: Theme.space.xxl
+            anchors.bottomMargin: 0
+            visible: home.page === "projects"
+            spacing: Theme.space.l
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.space.m
+                ColumnLayout {
+                    spacing: Theme.space.xxs
+                    Text { text: qsTr("Projects"); font: Theme.type.display; color: Theme.color.textPrimary }
+                    Text {
+                        objectName: "projectsCount"
+                        text: home.recents.length === 1 ? qsTr("1 project opened or saved lately")
+                                                        : qsTr("%1 projects opened or saved lately").arg(Fmt.num(home.recents.length))
+                        font: Theme.type.label
+                        color: Theme.color.textSecondary
+                    }
+                }
+                Item { Layout.fillWidth: true }
+                SearchField {
+                    objectName: "projectSearch"
+                    Layout.preferredWidth: 260
+                    placeholderText: qsTr("Search projects")
+                    text: home.projectSearch
+                    onTextChanged: home.projectSearch = text
+                }
+                AppComboBox {
+                    objectName: "projectSort"
+                    Layout.preferredWidth: 170
+                    model: [{ id: "date", label: qsTr("Last opened") }, { id: "name", label: qsTr("Name") }]
+                    textRole: "label"
+                    valueRole: "id"
+                    currentIndex: home.projectSort === "name" ? 1 : 0
+                    onActivated: home.projectSort = currentValue
+                }
+                TextButton { text: qsTr("Open project…"); iconName: "folder"; onClicked: home.openRequested() }
+            }
+
+            Flickable {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                contentHeight: grid.implicitHeight + Theme.space.xxl
+                clip: true
+                ScrollBar.vertical: ScrollBar {}
+
+                Flow {
+                    id: grid
+                    objectName: "projectsGrid"
+                    width: parent.width
+                    spacing: Theme.space.m
+                    Repeater {
+                        model: home.listedProjects
+                        delegate: RecentProjectCard {
+                            required property var modelData
+                            objectName: "projectCard:" + modelData.path
+                            entry: modelData
+                            onOpenRequested: (path) => home.recentRequested(path)
+                            onRevealRequested: (path) => home.project.revealRecentProject(path)
+                            onRemoveRequested: (path) => home.project.removeRecentProject(path)
+                        }
+                    }
+                }
+
+                // None yet, or none matching the search.
+                Column {
+                    visible: home.listedProjects.length === 0
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: Theme.space.xxl * 2
+                    spacing: Theme.space.s
+                    Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "folder"; size: 28 }
+                    Text {
+                        objectName: "projectsEmpty"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: home.recents.length === 0 ? qsTr("No projects yet")
+                                                        : qsTr("No projects match “%1”").arg(home.projectSearch.trim())
+                        font: Theme.type.heading
+                        color: Theme.color.textPrimary
+                    }
+                    Text {
+                        visible: home.recents.length === 0
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: qsTr("Projects you open or save appear here")
+                        font: Theme.type.label
+                        color: Theme.color.textSecondary
+                    }
+                }
+            }
+        }
         }
     }
 }

@@ -2798,12 +2798,52 @@
         <translation>最近的项目</translation>
     </message>
     <message>
+        <source>All projects (%1)</source>
+        <translation>全部项目（%1）</translation>
+    </message>
+    <message>
+        <source>Drop a video anywhere here to start a project with it</source>
+        <translation>把视频拖到这里任意位置即可用它开始项目</translation>
+    </message>
+    <message>
         <source>Recent projects appear here</source>
         <translation>最近的项目会显示在这里</translation>
     </message>
     <message>
         <source>Drop a video here to start a project with it</source>
         <translation>把视频拖到这里即可用它开始项目</translation>
+    </message>
+    <message>
+        <source>1 project opened or saved lately</source>
+        <translation>最近打开或存储的 1 个项目</translation>
+    </message>
+    <message>
+        <source>%1 projects opened or saved lately</source>
+        <translation>最近打开或存储的 %1 个项目</translation>
+    </message>
+    <message>
+        <source>Search projects</source>
+        <translation>搜索项目</translation>
+    </message>
+    <message>
+        <source>Last opened</source>
+        <translation>上次打开</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>No projects yet</source>
+        <translation>还没有项目</translation>
+    </message>
+    <message>
+        <source>No projects match “%1”</source>
+        <translation>没有与“%1”匹配的项目</translation>
+    </message>
+    <message>
+        <source>Projects you open or save appear here</source>
+        <translation>你打开或存储的项目会显示在这里</translation>
     </message>
 </context>
 <context>
@@ -6634,6 +6674,10 @@ Third, 4</source>
         <translation>无法自动保存：%1</translation>
     </message>
     <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 已不在原处</translation>
+    </message>
+    <message>
         <source>That unsaved work is no longer there</source>
         <translation>那份未保存的工作已不存在</translation>
     </message>
@@ -8190,6 +8234,37 @@ Third, 4</source>
     <message>
         <source>A LUT is a .cube or .3dl file</source>
         <translation>LUT 是 .cube 或 .3dl 文件</translation>
+    </message>
+</context>
+<context>
+    <name>RecentProjectCard</name>
+    <message>
+        <source>%1 is no longer where it was</source>
+        <translation>%1 已不在原处</translation>
+    </message>
+    <message>
+        <source>Missing</source>
+        <translation>缺失</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · %3</source>
+        <translation>%1 × %2 · %3</translation>
+    </message>
+    <message>
+        <source>%1 × %2 · empty</source>
+        <translation>%1 × %2 · 空</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>在访达中显示</translation>
+    </message>
+    <message>
+        <source>Remove from list</source>
+        <translation>从列表中移除</translation>
     </message>
 </context>
 <context>

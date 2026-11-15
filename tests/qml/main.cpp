@@ -711,9 +711,10 @@ int main(int argc, char** argv)
     // The language setting in a scratch file (the app's own isn't touched).
     QTemporaryDir teleprompterSettings; // the teleprompter's script and settings
     qputenv("TVE_TELEPROMPTER_FILE", (teleprompterSettings.path() + QStringLiteral("/teleprompter.json")).toLocal8Bit());
-    QTemporaryDir appSettings; // favourites and workspaces in scratch files (the app's own aren't touched)
+    QTemporaryDir appSettings; // favourites, workspaces and recent projects in scratch files (the app's own aren't touched)
     qputenv("TVE_FAVOURITES_FILE", (appSettings.path() + QStringLiteral("/favourites.json")).toLocal8Bit());
     qputenv("TVE_WORKSPACES_FILE", (appSettings.path() + QStringLiteral("/workspaces.json")).toLocal8Bit());
+    qputenv("TVE_RECENT_PROJECTS_FILE", (appSettings.path() + QStringLiteral("/recent-projects.json")).toLocal8Bit());
     qputenv("TVE_EDITING_FILE", (appSettings.path() + QStringLiteral("/editing.json")).toLocal8Bit());
     qputenv("TVE_EXPORT_PRESETS_FILE", (appSettings.path() + QStringLiteral("/export-presets.json")).toLocal8Bit());
     // Your own effects, stacks, stickers, LUTs and colour presets in scratch folders too.

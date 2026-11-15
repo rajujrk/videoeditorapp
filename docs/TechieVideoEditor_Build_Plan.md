@@ -684,7 +684,6 @@ items that no slice took on:
 
 | Item (§7) | Pri | Where things stand |
 |---|---|---|
-| Recent projects with covers on the Home screen (7.15) | P0 | Not built: Home shows an empty "Recent projects" area, and the rail's Projects, Templates and Recordings entries are placeholders (shown, not usable). Projects open with Open project…, Finder or the command line. |
 | Roll and slip edits (7.1) | P0 | Not built: ripple, blade, trim, extend, close gap and move are; roll (moving a cut between two clips) and slip (moving a clip's content inside it) are not. |
 | Undo history panel (7.2) | P0 | Undo and redo are built (every edit is one named step); a panel listing the steps is not. |
 | Preferences (7.15: performance, GPU, cache location, autosave interval, proxy rules) | P0 | No Preferences window. Some are elsewhere — proxies (on, off, making them), render files (and deleting them), half-resolution preview, the language and theme on Home — but not the cache location, autosave interval or proxy rules. |

@@ -90,6 +90,11 @@ ApplicationWindow {
         HomeScreen {
             id: home
             project: project
+            onRecentRequested: (path) => {
+                project.pause()
+                if (project.openRecentProject(path))
+                    root.screen = "editor"
+            }
             onRecoverRequested: (id) => {
                 if (project.recoverProject(id))
                     root.screen = "editor"
