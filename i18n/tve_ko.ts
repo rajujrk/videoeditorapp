@@ -2718,6 +2718,14 @@
         <translation>녹화</translation>
     </message>
     <message>
+        <source>On-device models…</source>
+        <translation>기기 내 모델…</translation>
+    </message>
+    <message>
+        <source>Download the models for captions, speech cleanup and depth of field</source>
+        <translation>자막, 음성 정리, 피사계 심도용 모델 다운로드</translation>
+    </message>
+    <message>
         <source>Language</source>
         <translation>언어</translation>
     </message>
@@ -5705,7 +5713,7 @@ Third, 4</source>
     </message>
     <message>
         <source>Remove &quot;%1&quot;?</source>
-        <translation>"%1"을(를) 제거할까요?</translation>
+        <translation>&quot;%1&quot;을(를) 제거할까요?</translation>
     </message>
     <message>
         <source>A clip on the timeline uses it and goes with it. You can undo this.</source>
@@ -6102,6 +6110,105 @@ Third, 4</source>
     <message>
         <source>Add</source>
         <translation>추가</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsDialog</name>
+    <message>
+        <source>Speech to text · English</source>
+        <translation>음성을 텍스트로 · 영어</translation>
+    </message>
+    <message>
+        <source>Captions, the transcript, editing by words and smart search</source>
+        <translation>자막, 대본, 단어로 편집하기, 스마트 검색</translation>
+    </message>
+    <message>
+        <source>Speech to text · 99 languages</source>
+        <translation>음성을 텍스트로 · 99개 언어</translation>
+    </message>
+    <message>
+        <source>The same, for speech in other languages</source>
+        <translation>다른 언어의 음성에 대해서도 같은 기능</translation>
+    </message>
+    <message>
+        <source>Speech cleanup</source>
+        <translation>음성 정리</translation>
+    </message>
+    <message>
+        <source>Enhance speech: noise, hum and room echo taken out of voices</source>
+        <translation>음성 향상: 목소리에서 잡음, 험, 방 울림을 제거</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>깊이</translation>
+    </message>
+    <message>
+        <source>Depth of field: what is nearer or farther than the focus blurred</source>
+        <translation>피사계 심도: 초점보다 가깝거나 먼 것을 흐리게</translation>
+    </message>
+    <message>
+        <source>Upscaling</source>
+        <translation>업스케일</translation>
+    </message>
+    <message>
+        <source>Upscale: sharper pictures at 2× or 4× (from Apple, through macOS)</source>
+        <translation>업스케일: 2× 또는 4×로 더 선명한 이미지 (Apple 제공, macOS를 통해)</translation>
+    </message>
+    <message>
+        <source>Models for working on this Mac</source>
+        <translation>이 Mac에서 작업하기 위한 모델</translation>
+    </message>
+    <message>
+        <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
+        <translation>이 기능들은 이 Mac에서 실행되므로 미디어가 Mac 밖으로 나가지 않습니다. 각 기능에는 모델이 필요하며, 제작자로부터 한 번 다운로드하고 사용하기 전에 확인합니다. 지금 받거나 나중에 받으세요. 필요한 곳에서 다시 안내됩니다.</translation>
+    </message>
+    <message>
+        <source>On this Mac</source>
+        <translation>이 Mac에 있음</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>대기 중</translation>
+    </message>
+    <message>
+        <source>From macOS</source>
+        <translation>macOS에서</translation>
+    </message>
+    <message>
+        <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
+        <translation>더 정확한 음성 모델(Small, Large, 190–574 MB)은 자막 탭에 있습니다.</translation>
+    </message>
+    <message>
+        <source>Downloading… you can close this and keep working.</source>
+        <translation>다운로드 중… 이 창을 닫고 계속 작업할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>Every model is on this Mac.</source>
+        <translation>모든 모델이 이 Mac에 있습니다.</translation>
+    </message>
+    <message>
+        <source>%1 to download</source>
+        <translation>다운로드할 크기: %1</translation>
+    </message>
+    <message>
+        <source>Nothing chosen</source>
+        <translation>선택한 항목 없음</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>중지</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>닫기</translation>
+    </message>
+    <message>
+        <source>Later</source>
+        <translation>나중에</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>다운로드</translation>
     </message>
 </context>
 <context>
@@ -9152,7 +9259,7 @@ It scrolls while you record, at the speed you set. Keep your eyes on the line by
     <name>TimelineMenus</name>
     <message>
         <source>Delete &quot;%1&quot;?</source>
-        <translation>"%1"을(를) 삭제할까요?</translation>
+        <translation>&quot;%1&quot;을(를) 삭제할까요?</translation>
     </message>
     <message>
         <source>Its clip goes with it. You can undo this.</source>

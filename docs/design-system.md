@@ -322,6 +322,12 @@ Home after a crash, offering the unsaved work back, dark and light:
 ![Home with unsaved work, dark](images/home-recovery-dark.png)
 ![Home with unsaved work, light](images/home-recovery-light.png)
 
+The on-device models over Home, as offered the first time the app opens — the recommended ones
+switched on with their sizes, what each is for, and the total to download — dark and light:
+
+![On-device models, dark](images/models-dark.png)
+![On-device models, light](images/models-light.png)
+
 Export dialog (a modal `Popup` over a scrim), dark and light:
 
 ![Export, dark](images/export-dark.png)

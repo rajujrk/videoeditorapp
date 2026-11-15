@@ -9,11 +9,11 @@
     </message>
     <message>
         <source>Analysis works on clips playing at normal speed.</source>
-        <translation>L'analyse fonctionne sur les clips lus à vitesse normale.</translation>
+        <translation>L&apos;analyse fonctionne sur les clips lus à vitesse normale.</translation>
     </message>
     <message>
         <source>This clip has nothing to analyse (no sound and no moving pictures).</source>
-        <translation>Ce clip n'a rien à analyser (ni son, ni image animée).</translation>
+        <translation>Ce clip n&apos;a rien à analyser (ni son, ni image animée).</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -25,7 +25,7 @@
     </message>
     <message>
         <source>%1 clicks recorded with the screen.</source>
-        <translation>%1 clics enregistrés avec l'écran.</translation>
+        <translation>%1 clics enregistrés avec l&apos;écran.</translation>
     </message>
     <message>
         <source>Rings where it clicks</source>
@@ -57,7 +57,7 @@
     </message>
     <message>
         <source>Lines the %1 selected clips up by what they heard (cameras and a recorder at the same event). The first one selected stays; the others move on their tracks.</source>
-        <translation>Aligne les %1 clips sélectionnés d'après ce qu'ils ont entendu (caméras et enregistreur au même événement). Le premier sélectionné reste en place ; les autres se décalent sur leurs pistes.</translation>
+        <translation>Aligne les %1 clips sélectionnés d&apos;après ce qu&apos;ils ont entendu (caméras et enregistreur au même événement). Le premier sélectionné reste en place ; les autres se décalent sur leurs pistes.</translation>
     </message>
     <message>
         <source>Line up by sound</source>
@@ -77,7 +77,7 @@
     </message>
     <message>
         <source>Keeps the person — or any subject you draw a box around — and makes the background transparent, so the tracks below show through, or blurs it (Vision, on this Mac).</source>
-        <translation>Garde la personne — ou tout sujet encadré — et rend l'arrière-plan transparent pour laisser voir les pistes du dessous, ou le floute (Vision, sur ce Mac).</translation>
+        <translation>Garde la personne — ou tout sujet encadré — et rend l&apos;arrière-plan transparent pour laisser voir les pistes du dessous, ou le floute (Vision, sur ce Mac).</translation>
     </message>
     <message>
         <source>Cut out the subject</source>
@@ -145,7 +145,7 @@
     </message>
     <message>
         <source>Lifts a dark shot like a camera&apos;s night mode: the shadows brought up a lot and the highlights hardly, after smoothing the grain the lift would show.</source>
-        <translation>Éclaircit un plan sombre comme le mode nuit d'un appareil : les ombres beaucoup relevées et les hautes lumières à peine, après avoir lissé le grain que cela ferait apparaître.</translation>
+        <translation>Éclaircit un plan sombre comme le mode nuit d&apos;un appareil : les ombres beaucoup relevées et les hautes lumières à peine, après avoir lissé le grain que cela ferait apparaître.</translation>
     </message>
     <message>
         <source>Lift</source>
@@ -161,7 +161,7 @@
     </message>
     <message>
         <source>Blurs what is nearer or farther than the focus, like a lens wide open, from the depth a model finds in each frame on this Mac.</source>
-        <translation>Floute ce qui est plus proche ou plus loin que la mise au point, comme un objectif grand ouvert, d'après la profondeur qu'un modèle trouve dans chaque image sur ce Mac.</translation>
+        <translation>Floute ce qui est plus proche ou plus loin que la mise au point, comme un objectif grand ouvert, d&apos;après la profondeur qu&apos;un modèle trouve dans chaque image sur ce Mac.</translation>
     </message>
     <message>
         <source>Downloading the depth model… %1 %</source>
@@ -169,7 +169,7 @@
     </message>
     <message>
         <source>It needs the depth model (Depth Anything V2 Small, Apache-2.0, %1), downloaded once from Apple&apos;s page on Hugging Face.</source>
-        <translation>Il faut le modèle de profondeur (Depth Anything V2 Small, Apache-2.0, %1), téléchargé une fois depuis la page d'Apple sur Hugging Face.</translation>
+        <translation>Il faut le modèle de profondeur (Depth Anything V2 Small, Apache-2.0, %1), téléchargé une fois depuis la page d&apos;Apple sur Hugging Face.</translation>
     </message>
     <message>
         <source>Download the depth model</source>
@@ -233,7 +233,7 @@
     </message>
     <message>
         <source>1 face: choose whether to cover it.</source>
-        <translation>1 visage : choisissez s'il faut le masquer.</translation>
+        <translation>1 visage : choisissez s&apos;il faut le masquer.</translation>
     </message>
     <message>
         <source>%1 faces: choose the ones to cover.</source>
@@ -245,7 +245,7 @@
     </message>
     <message>
         <source>Click to leave it out; double-click to go there</source>
-        <translation>Cliquez pour l'exclure ; double-cliquez pour y aller</translation>
+        <translation>Cliquez pour l&apos;exclure ; double-cliquez pour y aller</translation>
     </message>
     <message>
         <source>Click to cover it; double-click to go there</source>
@@ -309,7 +309,7 @@
     </message>
     <message>
         <source>A sticker on each chosen face for as long as it is there, moving and growing with it</source>
-        <translation>Un autocollant sur chaque visage choisi tant qu'il est présent, qui bouge et grandit avec lui</translation>
+        <translation>Un autocollant sur chaque visage choisi tant qu&apos;il est présent, qui bouge et grandit avec lui</translation>
     </message>
     <message>
         <source>Make them tracks</source>
@@ -325,7 +325,7 @@
     </message>
     <message>
         <source>Changes the canvas shape and keeps the subject (faces, or what draws the eye) in the frame, with position keyframes.</source>
-        <translation>Change la forme du canevas et garde le sujet (visages, ou ce qui attire l'œil) dans le cadre, avec des images clés de position.</translation>
+        <translation>Change la forme du canevas et garde le sujet (visages, ou ce qui attire l&apos;œil) dans le cadre, avec des images clés de position.</translation>
     </message>
     <message>
         <source>Smoothness</source>
@@ -357,7 +357,7 @@
     </message>
     <message>
         <source>Makes a processed copy of the clip&apos;s part of its file, which the clip then plays (kept beside the app&apos;s data).</source>
-        <translation>Crée une copie traitée de la partie du fichier utilisée par le clip, que le clip lit ensuite (gardée avec les données de l'app).</translation>
+        <translation>Crée une copie traitée de la partie du fichier utilisée par le clip, que le clip lit ensuite (gardée avec les données de l&apos;app).</translation>
     </message>
     <message>
         <source>The processed copy is missing; the clip plays its own pictures.</source>
@@ -369,11 +369,11 @@
     </message>
     <message>
         <source>Original picture</source>
-        <translation>Image d'origine</translation>
+        <translation>Image d&apos;origine</translation>
     </message>
     <message>
         <source>Upscale (Apple&apos;s model, pictures up to 1080p)</source>
-        <translation>Agrandir (modèle d'Apple, images jusqu'en 1080p)</translation>
+        <translation>Agrandir (modèle d&apos;Apple, images jusqu&apos;en 1080p)</translation>
     </message>
     <message>
         <source>Download the model</source>
@@ -381,7 +381,7 @@
     </message>
     <message>
         <source>macOS downloads Apple&apos;s upscaling model once</source>
-        <translation>macOS télécharge une fois le modèle d'agrandissement d'Apple</translation>
+        <translation>macOS télécharge une fois le modèle d&apos;agrandissement d&apos;Apple</translation>
     </message>
     <message>
         <source>Downloading… %1</source>
@@ -393,7 +393,7 @@
     </message>
     <message>
         <source>Upscaling is not available on this Mac.</source>
-        <translation>L'agrandissement n'est pas disponible sur ce Mac.</translation>
+        <translation>L&apos;agrandissement n&apos;est pas disponible sur ce Mac.</translation>
     </message>
     <message>
         <source>Smooth slow motion (frames made between)</source>
@@ -413,11 +413,11 @@
     </message>
     <message>
         <source>Draw around it</source>
-        <translation>L'encadrer</translation>
+        <translation>L&apos;encadrer</translation>
     </message>
     <message>
         <source>At the playhead; it is followed to the clip&apos;s end</source>
-        <translation>À la tête de lecture ; il est suivi jusqu'à la fin du clip</translation>
+        <translation>À la tête de lecture ; il est suivi jusqu&apos;à la fin du clip</translation>
     </message>
     <message>
         <source>Remove it</source>
@@ -453,7 +453,7 @@
     </message>
     <message>
         <source>Flicker: even out changes up to</source>
-        <translation>Scintillement : atténuer les variations jusqu'à</translation>
+        <translation>Scintillement : atténuer les variations jusqu&apos;à</translation>
     </message>
     <message>
         <source>Flicker removed</source>
@@ -477,7 +477,7 @@
     </message>
     <message>
         <source>Follows something through the clip from the playhead, so titles and stickers can move with it, a picture can be pinned onto a surface, or the shot held still on it.</source>
-        <translation>Suit quelque chose dans le clip à partir de la tête de lecture, pour que titres et autocollants bougent avec, qu'une image soit épinglée sur une surface ou que le plan reste immobile dessus.</translation>
+        <translation>Suit quelque chose dans le clip à partir de la tête de lecture, pour que titres et autocollants bougent avec, qu&apos;une image soit épinglée sur une surface ou que le plan reste immobile dessus.</translation>
     </message>
     <message>
         <source>Object</source>
@@ -541,7 +541,7 @@
     </message>
     <message>
         <source>Follows it from the playhead to the end of the clip, in the background</source>
-        <translation>Le suit de la tête de lecture jusqu'à la fin du clip, en arrière-plan</translation>
+        <translation>Le suit de la tête de lecture jusqu&apos;à la fin du clip, en arrière-plan</translation>
     </message>
     <message>
         <source>plane</source>
@@ -569,7 +569,7 @@
     </message>
     <message>
         <source>Keeps what this track follows still in the picture: the clip moves the other way, as keyframes</source>
-        <translation>Garde immobile dans l'image ce que suit ce suivi : le clip bouge dans l'autre sens, en images clés</translation>
+        <translation>Garde immobile dans l&apos;image ce que suit ce suivi : le clip bouge dans l&apos;autre sens, en images clés</translation>
     </message>
     <message>
         <source>Delete</source>
@@ -601,7 +601,7 @@
     </message>
     <message>
         <source>Pins this clip&apos;s corners onto the plane&apos;s in every frame, as corner pin keyframes</source>
-        <translation>Épingle les coins de ce clip sur ceux du plan à chaque image, en images clés d'épinglage des coins</translation>
+        <translation>Épingle les coins de ce clip sur ceux du plan à chaque image, en images clés d&apos;épinglage des coins</translation>
     </message>
     <message>
         <source>Moves this clip with the track from where it is at the playhead, as keyframes</source>
@@ -725,7 +725,7 @@
     </message>
     <message>
         <source>Takes noise, hum and room echo out of voices with DeepFilterNet3, on this Mac. The clip then plays the cleaned sound.</source>
-        <translation>Retire le bruit, le ronflement et l'écho de la pièce des voix avec DeepFilterNet3, sur ce Mac. Le clip lit ensuite le son nettoyé.</translation>
+        <translation>Retire le bruit, le ronflement et l&apos;écho de la pièce des voix avec DeepFilterNet3, sur ce Mac. Le clip lit ensuite le son nettoyé.</translation>
     </message>
     <message>
         <source>Download model (%1)</source>
@@ -733,7 +733,7 @@
     </message>
     <message>
         <source>Lower noise by up to</source>
-        <translation>Réduire le bruit jusqu'à</translation>
+        <translation>Réduire le bruit jusqu&apos;à</translation>
     </message>
     <message>
         <source>The cleaned sound is missing; enhance again to make it.</source>
@@ -745,15 +745,15 @@
     </message>
     <message>
         <source>Enhanced, noise lowered by up to %1 dB.</source>
-        <translation>Amélioré, bruit réduit jusqu'à %1 dB.</translation>
+        <translation>Amélioré, bruit réduit jusqu&apos;à %1 dB.</translation>
     </message>
     <message>
         <source>Apply strength</source>
-        <translation>Appliquer l'intensité</translation>
+        <translation>Appliquer l&apos;intensité</translation>
     </message>
     <message>
         <source>Original sound</source>
-        <translation>Son d'origine</translation>
+        <translation>Son d&apos;origine</translation>
     </message>
     <message>
         <source>Lower under speech</source>
@@ -852,7 +852,7 @@
     </message>
     <message>
         <source>Show the music in a folder on this Mac</source>
-        <translation>Afficher la musique d'un dossier de ce Mac</translation>
+        <translation>Afficher la musique d&apos;un dossier de ce Mac</translation>
     </message>
     <message>
         <source>Stop</source>
@@ -884,7 +884,7 @@
     </message>
     <message>
         <source>Add a folder with a sound pack&apos;s manifest; every file is checked before use</source>
-        <translation>Ajoutez un dossier contenant le manifeste d'un pack de sons ; chaque fichier est vérifié avant usage</translation>
+        <translation>Ajoutez un dossier contenant le manifeste d&apos;un pack de sons ; chaque fichier est vérifié avant usage</translation>
     </message>
 </context>
 <context>
@@ -939,15 +939,15 @@
     </message>
     <message>
         <source>Choose some pictures or videos first.</source>
-        <translation>Choisissez d'abord des images ou des vidéos.</translation>
+        <translation>Choisissez d&apos;abord des images ou des vidéos.</translation>
     </message>
     <message>
         <source>Nothing long enough to cut to the music.</source>
-        <translation>Rien d'assez long à couper sur la musique.</translation>
+        <translation>Rien d&apos;assez long à couper sur la musique.</translation>
     </message>
     <message>
         <source>No moment was long enough for a short.</source>
-        <translation>Aucun moment n'était assez long pour un court.</translation>
+        <translation>Aucun moment n&apos;était assez long pour un court.</translation>
     </message>
     <message>
         <source>Short %1</source>
@@ -990,7 +990,7 @@
     </message>
     <message>
         <source>Pictures and the best moments of videos, cut to the beat of a style&apos;s music.</source>
-        <translation>Des images et les meilleurs moments des vidéos, coupés au rythme de la musique d'un style.</translation>
+        <translation>Des images et les meilleurs moments des vidéos, coupés au rythme de la musique d&apos;un style.</translation>
     </message>
     <message>
         <source>The best moments of your videos — loud, lively or spoken — cut to the beat.</source>
@@ -998,7 +998,7 @@
     </message>
     <message>
         <source>Tall shorts of the best moments of one long video, following the subject, each ready to export on its own.</source>
-        <translation>Des courts verticaux des meilleurs moments d'une longue vidéo, qui suivent le sujet, chacun prêt à être exporté.</translation>
+        <translation>Des courts verticaux des meilleurs moments d&apos;une longue vidéo, qui suivent le sujet, chacun prêt à être exporté.</translation>
     </message>
     <message>
         <source>The video</source>
@@ -1010,11 +1010,11 @@
     </message>
     <message>
         <source>Import some pictures or videos first.</source>
-        <translation>Importez d'abord des images ou des vidéos.</translation>
+        <translation>Importez d&apos;abord des images ou des vidéos.</translation>
     </message>
     <message>
         <source>Import some videos first.</source>
-        <translation>Importez d'abord des vidéos.</translation>
+        <translation>Importez d&apos;abord des vidéos.</translation>
     </message>
     <message>
         <source>Import media…</source>
@@ -1026,7 +1026,7 @@
     </message>
     <message>
         <source>Each about</source>
-        <translation>Chacun d'environ</translation>
+        <translation>Chacun d&apos;environ</translation>
     </message>
     <message>
         <source>About</source>
@@ -1046,7 +1046,7 @@
     </message>
     <message>
         <source>An opening title (optional)</source>
-        <translation>Un titre d'ouverture (facultatif)</translation>
+        <translation>Un titre d&apos;ouverture (facultatif)</translation>
     </message>
     <message>
         <source>Captions from its transcript</source>
@@ -1054,15 +1054,15 @@
     </message>
     <message>
         <source>Captions (transcribe the video first, in the Transcript tab)</source>
-        <translation>Sous-titres (transcrivez d'abord la vidéo, dans l'onglet Transcription)</translation>
+        <translation>Sous-titres (transcrivez d&apos;abord la vidéo, dans l&apos;onglet Transcription)</translation>
     </message>
     <message>
         <source>Let Claude choose the order and titles</source>
-        <translation>Laisser Claude choisir l'ordre et les titres</translation>
+        <translation>Laisser Claude choisir l&apos;ordre et les titres</translation>
     </message>
     <message>
         <source>Let Claude choose the order</source>
-        <translation>Laisser Claude choisir l'ordre</translation>
+        <translation>Laisser Claude choisir l&apos;ordre</translation>
     </message>
     <message>
         <source>Let Claude choose (add a Claude key in AI settings)</source>
@@ -1070,7 +1070,7 @@
     </message>
     <message>
         <source>This starts a new project in place of the current one; save that first if you want to keep it.</source>
-        <translation>Ceci démarre un nouveau projet à la place de l'actuel ; enregistrez-le d'abord si vous voulez le garder.</translation>
+        <translation>Ceci démarre un nouveau projet à la place de l&apos;actuel ; enregistrez-le d&apos;abord si vous voulez le garder.</translation>
     </message>
     <message>
         <source>Working…</source>
@@ -1117,7 +1117,7 @@
     </message>
     <message>
         <source>Captions from the speech in your clips, made on this Mac: nothing is uploaded.</source>
-        <translation>Sous-titres tirés de la parole de vos clips, créés sur ce Mac : rien n'est envoyé.</translation>
+        <translation>Sous-titres tirés de la parole de vos clips, créés sur ce Mac : rien n&apos;est envoyé.</translation>
     </message>
     <message>
         <source>Speech model</source>
@@ -1157,7 +1157,7 @@
     </message>
     <message>
         <source>Download the speech model first</source>
-        <translation>Téléchargez d'abord le modèle vocal</translation>
+        <translation>Téléchargez d&apos;abord le modèle vocal</translation>
     </message>
     <message>
         <source>From the selected clips</source>
@@ -1173,11 +1173,11 @@
     </message>
     <message>
         <source>1 caption on the Captions track. Select one to change its words or look.</source>
-        <translation>1 sous-titre sur la piste Sous-titres. Sélectionnez-le pour en changer le texte ou l'apparence.</translation>
+        <translation>1 sous-titre sur la piste Sous-titres. Sélectionnez-le pour en changer le texte ou l&apos;apparence.</translation>
     </message>
     <message>
         <source>%1 captions on the Captions track. Select one to change its words or look.</source>
-        <translation>%1 sous-titres sur la piste Sous-titres. Sélectionnez-en un pour en changer le texte ou l'apparence.</translation>
+        <translation>%1 sous-titres sur la piste Sous-titres. Sélectionnez-en un pour en changer le texte ou l&apos;apparence.</translation>
     </message>
     <message>
         <source>Style</source>
@@ -1217,15 +1217,15 @@
     </message>
     <message>
         <source>Add your Claude API key in AI settings (the speech bubble at the top) to translate.</source>
-        <translation>Ajoutez votre clé d'API Claude dans les réglages IA (la bulle en haut) pour traduire.</translation>
+        <translation>Ajoutez votre clé d&apos;API Claude dans les réglages IA (la bulle en haut) pour traduire.</translation>
     </message>
     <message>
         <source>Check spelling and grammar</source>
-        <translation>Vérifier l'orthographe et la grammaire</translation>
+        <translation>Vérifier l&apos;orthographe et la grammaire</translation>
     </message>
     <message>
         <source>Claude checks every title and caption on the timeline, each in its own language. Nothing changes until you apply a fix.</source>
-        <translation>Claude vérifie chaque titre et sous-titre de la timeline, chacun dans sa langue. Rien ne change tant que vous n'appliquez pas une correction.</translation>
+        <translation>Claude vérifie chaque titre et sous-titre de la timeline, chacun dans sa langue. Rien ne change tant que vous n&apos;appliquez pas une correction.</translation>
     </message>
     <message>
         <source>Check the text</source>
@@ -1233,7 +1233,7 @@
     </message>
     <message>
         <source>Add your Claude API key in AI settings (the speech bubble at the top) to check the text.</source>
-        <translation>Ajoutez votre clé d'API Claude dans les réglages IA (la bulle en haut) pour vérifier le texte.</translation>
+        <translation>Ajoutez votre clé d&apos;API Claude dans les réglages IA (la bulle en haut) pour vérifier le texte.</translation>
     </message>
     <message>
         <source>Caption</source>
@@ -1276,11 +1276,11 @@
     <name>ClaudeTask</name>
     <message>
         <source>Add your Claude API key in AI settings first.</source>
-        <translation>Ajoutez d'abord votre clé d'API Claude dans les réglages IA.</translation>
+        <translation>Ajoutez d&apos;abord votre clé d&apos;API Claude dans les réglages IA.</translation>
     </message>
     <message>
         <source>Could not reach the Claude API: %1</source>
-        <translation>Impossible de joindre l'API Claude : %1</translation>
+        <translation>Impossible de joindre l&apos;API Claude : %1</translation>
     </message>
     <message>
         <source>Claude declined this request.</source>
@@ -1303,15 +1303,15 @@
     </message>
     <message>
         <source>Remove effect</source>
-        <translation>Retirer l'effet</translation>
+        <translation>Retirer l&apos;effet</translation>
     </message>
     <message>
         <source>A plug-in: it works on the clip&apos;s own picture, before its colour and our effects.</source>
-        <translation>Un module : il agit sur l'image même du clip, avant sa couleur et nos effets.</translation>
+        <translation>Un module : il agit sur l&apos;image même du clip, avant sa couleur et nos effets.</translation>
     </message>
     <message>
         <source>Not available on this Mac: it&apos;s passed over until it&apos;s installed.</source>
-        <translation>Non disponible sur ce Mac : il est ignoré tant qu'il n'est pas installé.</translation>
+        <translation>Non disponible sur ce Mac : il est ignoré tant qu&apos;il n&apos;est pas installé.</translation>
     </message>
 </context>
 <context>
@@ -1333,11 +1333,11 @@
     </message>
     <message>
         <source>The %1 API key was not accepted. Check it in AI settings.</source>
-        <translation>La clé d'API %1 n'a pas été acceptée. Vérifiez-la dans les réglages IA.</translation>
+        <translation>La clé d&apos;API %1 n&apos;a pas été acceptée. Vérifiez-la dans les réglages IA.</translation>
     </message>
     <message>
         <source>Add your OpenAI API key in AI settings first.</source>
-        <translation>Ajoutez d'abord votre clé d'API OpenAI dans les réglages IA.</translation>
+        <translation>Ajoutez d&apos;abord votre clé d&apos;API OpenAI dans les réglages IA.</translation>
     </message>
     <message>
         <source>Could not read %1</source>
@@ -1345,11 +1345,11 @@
     </message>
     <message>
         <source>OpenAI sent no picture.</source>
-        <translation>OpenAI n'a renvoyé aucune image.</translation>
+        <translation>OpenAI n&apos;a renvoyé aucune image.</translation>
     </message>
     <message>
         <source>Add your Google AI (Gemini API) key in AI settings first.</source>
-        <translation>Ajoutez d'abord votre clé Google AI (API Gemini) dans les réglages IA.</translation>
+        <translation>Ajoutez d&apos;abord votre clé Google AI (API Gemini) dans les réglages IA.</translation>
     </message>
     <message>
         <source>Only videos made here can be extended.</source>
@@ -1357,19 +1357,19 @@
     </message>
     <message>
         <source>Google did not finish the video (%1).</source>
-        <translation>Google n'a pas terminé la vidéo (%1).</translation>
+        <translation>Google n&apos;a pas terminé la vidéo (%1).</translation>
     </message>
     <message>
         <source>Google sent no video (it may have been blocked by its safety filters).</source>
-        <translation>Google n'a renvoyé aucune vidéo (elle a peut-être été bloquée par ses filtres de sécurité).</translation>
+        <translation>Google n&apos;a renvoyé aucune vidéo (elle a peut-être été bloquée par ses filtres de sécurité).</translation>
     </message>
     <message>
         <source>Add your ElevenLabs API key in AI settings first.</source>
-        <translation>Ajoutez d'abord votre clé d'API ElevenLabs dans les réglages IA.</translation>
+        <translation>Ajoutez d&apos;abord votre clé d&apos;API ElevenLabs dans les réglages IA.</translation>
     </message>
     <message>
         <source>ElevenLabs sent no sound.</source>
-        <translation>ElevenLabs n'a renvoyé aucun son.</translation>
+        <translation>ElevenLabs n&apos;a renvoyé aucun son.</translation>
     </message>
 </context>
 <context>
@@ -1380,7 +1380,7 @@
     </message>
     <message>
         <source>Best writing and translation · $4 / $20 per million tokens</source>
-        <translation>Meilleur pour l'écriture et la traduction · 4 $ / 20 $ par million de jetons</translation>
+        <translation>Meilleur pour l&apos;écriture et la traduction · 4 $ / 20 $ par million de jetons</translation>
     </message>
     <message>
         <source>Faster, half the price · $2 / $10 per million tokens</source>
@@ -1443,7 +1443,7 @@
     </message>
     <message>
         <source>Paste your %1 API key</source>
-        <translation>Collez votre clé d'API %1</translation>
+        <translation>Collez votre clé d&apos;API %1</translation>
     </message>
     <message>
         <source>Save</source>
@@ -1467,7 +1467,7 @@
     </message>
     <message>
         <source>These features use your own accounts. Your keys stay in your Mac&apos;s Keychain; what you use them on is sent to that company, and their charges are yours.</source>
-        <translation>Ces fonctions utilisent vos propres comptes. Vos clés restent dans le trousseau de votre Mac ; ce que vous traitez avec est envoyé à l'entreprise concernée, et ses frais sont à votre charge.</translation>
+        <translation>Ces fonctions utilisent vos propres comptes. Vos clés restent dans le trousseau de votre Mac ; ce que vous traitez avec est envoyé à l&apos;entreprise concernée, et ses frais sont à votre charge.</translation>
     </message>
     <message>
         <source>(Mock services: nothing leaves this Mac.)</source>
@@ -1491,7 +1491,7 @@
     </message>
     <message>
         <source>How you may use ElevenLabs audio depends on your ElevenLabs plan (music: not for film, TV, radio or studio games below Enterprise Music).</source>
-        <translation>L'usage de l'audio ElevenLabs dépend de votre offre ElevenLabs (musique : pas pour le cinéma, la TV, la radio ou les jeux de studio en dessous d'Enterprise Music).</translation>
+        <translation>L&apos;usage de l&apos;audio ElevenLabs dépend de votre offre ElevenLabs (musique : pas pour le cinéma, la TV, la radio ou les jeux de studio en dessous d&apos;Enterprise Music).</translation>
     </message>
     <message>
         <source>OpenAI · pictures and stickers</source>
@@ -1511,7 +1511,7 @@
     </message>
     <message>
         <source>Gemini Omni Flash makes the video with your Gemini API key (only paid use is allowed in the EEA, Switzerland and the UK).</source>
-        <translation>Gemini Omni Flash crée la vidéo avec votre clé d'API Gemini (seul l'usage payant est autorisé dans l'EEE, en Suisse et au Royaume-Uni).</translation>
+        <translation>Gemini Omni Flash crée la vidéo avec votre clé d&apos;API Gemini (seul l&apos;usage payant est autorisé dans l&apos;EEE, en Suisse et au Royaume-Uni).</translation>
     </message>
     <message>
         <source>%1 tokens in, %2 out (%3)</source>
@@ -1551,7 +1551,7 @@
     </message>
     <message>
         <source>nothing used yet</source>
-        <translation>rien d'utilisé pour l'instant</translation>
+        <translation>rien d&apos;utilisé pour l&apos;instant</translation>
     </message>
     <message>
         <source>Reset</source>
@@ -1562,15 +1562,15 @@
     <name>CloudText</name>
     <message>
         <source>The Claude API key was not accepted. Check it in AI settings.</source>
-        <translation>La clé d'API Claude n'a pas été acceptée. Vérifiez-la dans les réglages IA.</translation>
+        <translation>La clé d&apos;API Claude n&apos;a pas été acceptée. Vérifiez-la dans les réglages IA.</translation>
     </message>
     <message>
         <source>Claude API billing needs attention in your Anthropic Console.</source>
-        <translation>La facturation de l'API Claude demande votre attention dans la console Anthropic.</translation>
+        <translation>La facturation de l&apos;API Claude demande votre attention dans la console Anthropic.</translation>
     </message>
     <message>
         <source>This Claude API key is not allowed to do that.</source>
-        <translation>Cette clé d'API Claude n'est pas autorisée à faire cela.</translation>
+        <translation>Cette clé d&apos;API Claude n&apos;est pas autorisée à faire cela.</translation>
     </message>
     <message>
         <source>Claude&apos;s rate limit was reached; try again shortly.</source>
@@ -1590,22 +1590,22 @@
     </message>
     <message>
         <source>Claude API error %1</source>
-        <translation>Erreur %1 de l'API Claude</translation>
+        <translation>Erreur %1 de l&apos;API Claude</translation>
     </message>
     <message>
         <source>Could not reach the Claude API.</source>
-        <translation>Impossible de joindre l'API Claude.</translation>
+        <translation>Impossible de joindre l&apos;API Claude.</translation>
     </message>
 </context>
 <context>
     <name>CloudVoices</name>
     <message>
         <source>Add your ElevenLabs API key in AI settings first.</source>
-        <translation>Ajoutez d'abord votre clé d'API ElevenLabs dans les réglages IA.</translation>
+        <translation>Ajoutez d&apos;abord votre clé d&apos;API ElevenLabs dans les réglages IA.</translation>
     </message>
     <message>
         <source>The ElevenLabs API key was not accepted.</source>
-        <translation>La clé d'API ElevenLabs n'a pas été acceptée.</translation>
+        <translation>La clé d&apos;API ElevenLabs n&apos;a pas été acceptée.</translation>
     </message>
     <message>
         <source>Could not list ElevenLabs voices (%1).</source>
@@ -1625,7 +1625,7 @@
     </message>
     <message>
         <source>The recording can&apos;t be read.</source>
-        <translation>L'enregistrement est illisible.</translation>
+        <translation>L&apos;enregistrement est illisible.</translation>
     </message>
 </context>
 <context>
@@ -1710,7 +1710,7 @@
     </message>
     <message>
         <source>That took more steps than I can take at once; here is what I did so far.</source>
-        <translation>Cela demandait plus d'étapes que je ne peux en faire d'un coup ; voici ce que j'ai fait jusqu'ici.</translation>
+        <translation>Cela demandait plus d&apos;étapes que je ne peux en faire d&apos;un coup ; voici ce que j&apos;ai fait jusqu&apos;ici.</translation>
     </message>
     <message>
         <source>Copilot: %1</source>
@@ -1722,7 +1722,7 @@
     </message>
     <message>
         <source>The project changed since these were made: ask again to have them made for it as it is now.</source>
-        <translation>Le projet a changé depuis ; redemandez pour qu'elles soient refaites sur le projet actuel.</translation>
+        <translation>Le projet a changé depuis ; redemandez pour qu&apos;elles soient refaites sur le projet actuel.</translation>
     </message>
 </context>
 <context>
@@ -1891,7 +1891,7 @@
     </message>
     <message>
         <source>The panels as they are now, in the Workspace menu. The same name replaces it.</source>
-        <translation>Les panneaux tels qu'ils sont, dans le menu Espace de travail. Le même nom la remplace.</translation>
+        <translation>Les panneaux tels qu&apos;ils sont, dans le menu Espace de travail. Le même nom la remplace.</translation>
     </message>
     <message>
         <source>Name</source>
@@ -1910,11 +1910,11 @@
     <name>ElevenLabsTask</name>
     <message>
         <source>Add your ElevenLabs API key in AI settings first.</source>
-        <translation>Ajoutez d'abord votre clé d'API ElevenLabs dans les réglages IA.</translation>
+        <translation>Ajoutez d&apos;abord votre clé d&apos;API ElevenLabs dans les réglages IA.</translation>
     </message>
     <message>
         <source>The ElevenLabs API key was not accepted. Check it in AI settings.</source>
-        <translation>La clé d'API ElevenLabs n'a pas été acceptée. Vérifiez-la dans les réglages IA.</translation>
+        <translation>La clé d&apos;API ElevenLabs n&apos;a pas été acceptée. Vérifiez-la dans les réglages IA.</translation>
     </message>
     <message>
         <source>ElevenLabs is busy or your quota is used up; try again later.</source>
@@ -1930,11 +1930,11 @@
     </message>
     <message>
         <source>ElevenLabs sent no sound.</source>
-        <translation>ElevenLabs n'a renvoyé aucun son.</translation>
+        <translation>ElevenLabs n&apos;a renvoyé aucun son.</translation>
     </message>
     <message>
         <source>The voice could not be saved.</source>
-        <translation>La voix n'a pas pu être enregistrée.</translation>
+        <translation>La voix n&apos;a pas pu être enregistrée.</translation>
     </message>
 </context>
 <context>
@@ -2029,7 +2029,7 @@
     </message>
     <message>
         <source>Export failed</source>
-        <translation>Échec de l'export</translation>
+        <translation>Échec de l&apos;export</translation>
     </message>
     <message>
         <source>Waiting in the queue…</source>
@@ -2093,7 +2093,7 @@
     </message>
     <message>
         <source>Frame rate</source>
-        <translation>Fréquence d'images</translation>
+        <translation>Fréquence d&apos;images</translation>
     </message>
     <message>
         <source>Quality</source>
@@ -2129,7 +2129,7 @@
     </message>
     <message>
         <source>SDR Rec.709: the HDR picture is tone-mapped (HDR goes out as HEVC)</source>
-        <translation>SDR Rec.709 : l'image HDR est convertie (le HDR sort en HEVC)</translation>
+        <translation>SDR Rec.709 : l&apos;image HDR est convertie (le HDR sort en HEVC)</translation>
     </message>
     <message>
         <source>HDR: 10-bit HEVC, Rec.2020 PQ, with its mastering display</source>
@@ -2141,7 +2141,7 @@
     </message>
     <message>
         <source>SDR Rec.709: the HDR picture is tone-mapped</source>
-        <translation>SDR Rec.709 : l'image HDR est convertie</translation>
+        <translation>SDR Rec.709 : l&apos;image HDR est convertie</translation>
     </message>
     <message>
         <source>360° video: equirectangular, marked so (spherical metadata) for 360° players and sites</source>
@@ -2149,7 +2149,7 @@
     </message>
     <message>
         <source>The equirectangular picture, not marked as 360° (only MP4 is)</source>
-        <translation>L'image équirectangulaire, non marquée 360° (seul le MP4 l'est)</translation>
+        <translation>L&apos;image équirectangulaire, non marquée 360° (seul le MP4 l&apos;est)</translation>
     </message>
     <message>
         <source>Sound</source>
@@ -2257,7 +2257,7 @@
     </message>
     <message>
         <source>Close this; the export goes on (the render queue in the top bar shows it)</source>
-        <translation>Ferme ceci ; l'export continue (la file de rendu dans la barre du haut l'affiche)</translation>
+        <translation>Ferme ceci ; l&apos;export continue (la file de rendu dans la barre du haut l&apos;affiche)</translation>
     </message>
     <message>
         <source>Show in Finder</source>
@@ -2265,7 +2265,7 @@
     </message>
     <message>
         <source>Cancel export</source>
-        <translation>Annuler l'export</translation>
+        <translation>Annuler l&apos;export</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -2338,7 +2338,7 @@
     </message>
     <message>
         <source>From an idea</source>
-        <translation>À partir d'une idée</translation>
+        <translation>À partir d&apos;une idée</translation>
     </message>
     <message>
         <source>Music</source>
@@ -2350,7 +2350,7 @@
     </message>
     <message>
         <source>Add your Claude and Google AI (Gemini API) keys in AI settings to make a video from an idea.</source>
-        <translation>Ajoutez vos clés Claude et Google AI (API Gemini) dans les réglages IA pour créer une vidéo à partir d'une idée.</translation>
+        <translation>Ajoutez vos clés Claude et Google AI (API Gemini) dans les réglages IA pour créer une vidéo à partir d&apos;une idée.</translation>
     </message>
     <message>
         <source>Add your %1 key in AI settings to make video.</source>
@@ -2378,7 +2378,7 @@
     </message>
     <message>
         <source>From a picture</source>
-        <translation>À partir d'une image</translation>
+        <translation>À partir d&apos;une image</translation>
     </message>
     <message>
         <source>First and last picture</source>
@@ -2394,7 +2394,7 @@
     </message>
     <message>
         <source>Your idea: what happens, for whom, and the mood</source>
-        <translation>Votre idée : ce qui se passe, pour qui, et l'ambiance</translation>
+        <translation>Votre idée : ce qui se passe, pour qui, et l&apos;ambiance</translation>
     </message>
     <message>
         <source>How it moves (optional): a whip pan, a morph, through a window…</source>
@@ -2414,7 +2414,7 @@
     </message>
     <message>
         <source>The mood, genre, instruments and tempo (no artist or song names)</source>
-        <translation>L'ambiance, le genre, les instruments et le tempo (sans noms d'artistes ni de morceaux)</translation>
+        <translation>L&apos;ambiance, le genre, les instruments et le tempo (sans noms d&apos;artistes ni de morceaux)</translation>
     </message>
     <message>
         <source>The sound: what makes it, where, how long</source>
@@ -2422,15 +2422,15 @@
     </message>
     <message>
         <source>Describe the picture</source>
-        <translation>Décrivez l'image</translation>
+        <translation>Décrivez l&apos;image</translation>
     </message>
     <message>
         <source>Move the playhead near a cut between two picture clips.</source>
-        <translation>Placez la tête de lecture près d'une coupe entre deux clips image.</translation>
+        <translation>Placez la tête de lecture près d&apos;une coupe entre deux clips image.</translation>
     </message>
     <message>
         <source>The cut at %1, from %2 to %3. Google makes a shot from the last frame before it to the first after it, and it goes between them; what comes later moves along.</source>
-        <translation>La coupe à %1, de %2 à %3. Google crée un plan de la dernière image avant à la première après, qui s'insère entre les deux ; la suite est décalée.</translation>
+        <translation>La coupe à %1, de %2 à %3. Google crée un plan de la dernière image avant à la première après, qui s&apos;insère entre les deux ; la suite est décalée.</translation>
     </message>
     <message>
         <source>Shots</source>
@@ -2438,7 +2438,7 @@
     </message>
     <message>
         <source>Change any shot before it is made. Each is made on its own, about five seconds long, and they go after the last clip with their captions.</source>
-        <translation>Modifiez chaque plan avant sa création. Chacun est créé séparément, d'environ cinq secondes, et ils se placent après le dernier clip avec leurs sous-titres.</translation>
+        <translation>Modifiez chaque plan avant sa création. Chacun est créé séparément, d&apos;environ cinq secondes, et ils se placent après le dernier clip avec leurs sous-titres.</translation>
     </message>
     <message>
         <source>Shot %1</source>
@@ -2458,15 +2458,15 @@
     </message>
     <message>
         <source>Describe the frame</source>
-        <translation>Décrire l'image</translation>
+        <translation>Décrire l&apos;image</translation>
     </message>
     <message>
         <source>Add your Claude API key in AI settings to write a prompt from a picture</source>
-        <translation>Ajoutez votre clé d'API Claude dans les réglages IA pour écrire une consigne à partir d'une image</translation>
+        <translation>Ajoutez votre clé d&apos;API Claude dans les réglages IA pour écrire une consigne à partir d&apos;une image</translation>
     </message>
     <message>
         <source>Claude writes a prompt from the frame at the playhead, to make something like it</source>
-        <translation>Claude écrit une consigne à partir de l'image à la tête de lecture, pour créer quelque chose de similaire</translation>
+        <translation>Claude écrit une consigne à partir de l&apos;image à la tête de lecture, pour créer quelque chose de similaire</translation>
     </message>
     <message>
         <source>Square</source>
@@ -2510,15 +2510,15 @@
     </message>
     <message>
         <source>The picture to start from</source>
-        <translation>L'image de départ</translation>
+        <translation>L&apos;image de départ</translation>
     </message>
     <message>
         <source>Work from pictures in the media bin (optional)</source>
-        <translation>Partir d'images de la médiathèque (facultatif)</translation>
+        <translation>Partir d&apos;images de la médiathèque (facultatif)</translation>
     </message>
     <message>
         <source>No videos made here yet.</source>
-        <translation>Aucune vidéo créée ici pour l'instant.</translation>
+        <translation>Aucune vidéo créée ici pour l&apos;instant.</translation>
     </message>
     <message>
         <source>No pictures in the media bin.</source>
@@ -2538,7 +2538,7 @@
     </message>
     <message>
         <source>Make the sticker</source>
-        <translation>Créer l'autocollant</translation>
+        <translation>Créer l&apos;autocollant</translation>
     </message>
     <message>
         <source>Make the video (%1 shots)</source>
@@ -2570,7 +2570,7 @@
     </message>
     <message>
         <source>Made by OpenAI with your key; under OpenAI&apos;s terms the pictures are yours to use.</source>
-        <translation>Créée par OpenAI avec votre clé ; selon les conditions d'OpenAI, les images vous appartiennent.</translation>
+        <translation>Créée par OpenAI avec votre clé ; selon les conditions d&apos;OpenAI, les images vous appartiennent.</translation>
     </message>
     <message>
         <source>Made by Google&apos;s Gemini Omni Flash with your key. Videos carry Google&apos;s invisible SynthID watermark.</source>
@@ -2645,7 +2645,7 @@
     </message>
     <message>
         <source>Gifts and likes</source>
-        <translation>Cadeaux et j'aime</translation>
+        <translation>Cadeaux et j&apos;aime</translation>
     </message>
 </context>
 <context>
@@ -2660,7 +2660,7 @@
     </message>
     <message>
         <source>%1 — this display shows up to %2× SDR white now; brighter highlights are rolled off</source>
-        <translation>%1 — cet écran affiche actuellement jusqu'à %2× le blanc SDR ; les hautes lumières plus claires sont adoucies</translation>
+        <translation>%1 — cet écran affiche actuellement jusqu&apos;à %2× le blanc SDR ; les hautes lumières plus claires sont adoucies</translation>
     </message>
     <message>
         <source>HDR · PQ</source>
@@ -2672,7 +2672,7 @@
     </message>
     <message>
         <source>This display shows SDR: the picture is tone-mapped. Move the window to an HDR (XDR) display.</source>
-        <translation>Cet écran affiche du SDR : l'image est convertie. Déplacez la fenêtre sur un écran HDR (XDR).</translation>
+        <translation>Cet écran affiche du SDR : l&apos;image est convertie. Déplacez la fenêtre sur un écran HDR (XDR).</translation>
     </message>
 </context>
 <context>
@@ -2716,6 +2716,14 @@
     <message>
         <source>Recordings</source>
         <translation>Enregistrements</translation>
+    </message>
+    <message>
+        <source>On-device models…</source>
+        <translation>Modèles sur l'appareil…</translation>
+    </message>
+    <message>
+        <source>Download the models for captions, speech cleanup and depth of field</source>
+        <translation>Télécharger les modèles pour les sous-titres, le nettoyage de la voix et la profondeur de champ</translation>
     </message>
     <message>
         <source>Language</source>
@@ -2767,15 +2775,15 @@
     </message>
     <message>
         <source>A project, or a timeline from another editor (OpenTimelineIO, Final Cut Pro XML)</source>
-        <translation>Un projet, ou une timeline d'un autre logiciel de montage (OpenTimelineIO, Final Cut Pro XML)</translation>
+        <translation>Un projet, ou une timeline d&apos;un autre logiciel de montage (OpenTimelineIO, Final Cut Pro XML)</translation>
     </message>
     <message>
         <source>Record screen</source>
-        <translation>Enregistrer l'écran</translation>
+        <translation>Enregistrer l&apos;écran</translation>
     </message>
     <message>
         <source>A new project with the screen and camera recorder open</source>
-        <translation>Un nouveau projet avec l'enregistreur d'écran et de caméra ouvert</translation>
+        <translation>Un nouveau projet avec l&apos;enregistreur d&apos;écran et de caméra ouvert</translation>
     </message>
     <message>
         <source>Instant mode</source>
@@ -2791,7 +2799,7 @@
     </message>
     <message>
         <source>Recent projects appear here</source>
-        <translation>Les projets récents s'affichent ici</translation>
+        <translation>Les projets récents s&apos;affichent ici</translation>
     </message>
     <message>
         <source>Drop a video here to start a project with it</source>
@@ -2802,7 +2810,7 @@
     <name>ImageSequenceDialog</name>
     <message>
         <source>Import an image sequence</source>
-        <translation>Importer une séquence d'images</translation>
+        <translation>Importer une séquence d&apos;images</translation>
     </message>
     <message>
         <source>Close (Esc)</source>
@@ -2834,7 +2842,7 @@
     </message>
     <message>
         <source>Frame rate</source>
-        <translation>Fréquence d'images</translation>
+        <translation>Fréquence d&apos;images</translation>
     </message>
     <message>
         <source>%1 long</source>
@@ -2842,11 +2850,11 @@
     </message>
     <message>
         <source>1 number has no picture; the frame before it is shown there.</source>
-        <translation>1 numéro n'a pas d'image ; l'image précédente y est affichée.</translation>
+        <translation>1 numéro n&apos;a pas d&apos;image ; l&apos;image précédente y est affichée.</translation>
     </message>
     <message>
         <source>%1 numbers have no picture; the frame before each is shown there.</source>
-        <translation>%1 numéros n'ont pas d'image ; l'image précédente y est affichée à chaque fois.</translation>
+        <translation>%1 numéros n&apos;ont pas d&apos;image ; l&apos;image précédente y est affichée à chaque fois.</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -2881,11 +2889,11 @@
     </message>
     <message>
         <source>TechieVideoEditor isn&apos;t allowed to read your Music library. Allow it in System Settings › Privacy &amp; Security.</source>
-        <translation>TechieVideoEditor n'est pas autorisé à lire votre bibliothèque Musique. Autorisez-le dans Réglages Système › Confidentialité et sécurité.</translation>
+        <translation>TechieVideoEditor n&apos;est pas autorisé à lire votre bibliothèque Musique. Autorisez-le dans Réglages Système › Confidentialité et sécurité.</translation>
     </message>
     <message>
         <source>TechieVideoEditor isn&apos;t allowed to read your Photos library. Allow it in System Settings › Privacy &amp; Security.</source>
-        <translation>TechieVideoEditor n'est pas autorisé à lire votre photothèque. Autorisez-le dans Réglages Système › Confidentialité et sécurité.</translation>
+        <translation>TechieVideoEditor n&apos;est pas autorisé à lire votre photothèque. Autorisez-le dans Réglages Système › Confidentialité et sécurité.</translation>
     </message>
     <message>
         <source>To import from your Music library, allow TechieVideoEditor to read it. Only what you choose is imported.</source>
@@ -2901,7 +2909,7 @@
     </message>
     <message>
         <source>Allow access</source>
-        <translation>Autoriser l'accès</translation>
+        <translation>Autoriser l&apos;accès</translation>
     </message>
     <message>
         <source>Connect an iPhone, a camera or a memory card</source>
@@ -2909,7 +2917,7 @@
     </message>
     <message>
         <source>Nothing here yet</source>
-        <translation>Rien ici pour l'instant</translation>
+        <translation>Rien ici pour l&apos;instant</translation>
     </message>
     <message>
         <source>No photos, videos or songs here</source>
@@ -3032,7 +3040,7 @@
     </message>
     <message>
         <source>Audio clips have no picture.</source>
-        <translation>Les clips audio n'ont pas d'image.</translation>
+        <translation>Les clips audio n&apos;ont pas d&apos;image.</translation>
     </message>
     <message>
         <source>Reset</source>
@@ -3056,7 +3064,7 @@
     </message>
     <message>
         <source>Keep position, scale, rotation and opacity as they are at the playhead</source>
-        <translation>Garder la position, l'échelle, la rotation et l'opacité telles qu'à la tête de lecture</translation>
+        <translation>Garder la position, l&apos;échelle, la rotation et l&apos;opacité telles qu&apos;à la tête de lecture</translation>
     </message>
     <message>
         <source>Next keyframe</source>
@@ -3104,7 +3112,7 @@
     </message>
     <message>
         <source>Add a keyframe, move the playhead and change a value: the clip animates between them. ◆ beside a value animates just that one.</source>
-        <translation>Ajoutez une image clé, déplacez la tête de lecture et changez une valeur : le clip s'anime entre les deux. ◆ à côté d'une valeur n'anime que celle-ci.</translation>
+        <translation>Ajoutez une image clé, déplacez la tête de lecture et changez une valeur : le clip s&apos;anime entre les deux. ◆ à côté d&apos;une valeur n&apos;anime que celle-ci.</translation>
     </message>
     <message>
         <source>1 keyframe. Changing an animated value sets its keyframe at the playhead.</source>
@@ -3120,7 +3128,7 @@
     </message>
     <message>
         <source>Stop animating: every property keeps its value at the playhead</source>
-        <translation>Arrêter l'animation : chaque propriété garde sa valeur à la tête de lecture</translation>
+        <translation>Arrêter l&apos;animation : chaque propriété garde sa valeur à la tête de lecture</translation>
     </message>
     <message>
         <source>Drawing</source>
@@ -3136,7 +3144,7 @@
     </message>
     <message>
         <source>One path after another</source>
-        <translation>Un tracé après l'autre</translation>
+        <translation>Un tracé après l&apos;autre</translation>
     </message>
     <message>
         <source>Paths</source>
@@ -3284,7 +3292,7 @@
     </message>
     <message>
         <source>Tilt back</source>
-        <translation>Incliner vers l'arrière</translation>
+        <translation>Incliner vers l&apos;arrière</translation>
     </message>
     <message>
         <source>Turn</source>
@@ -3324,7 +3332,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Values from a file…</source>
-        <translation>Valeurs d'un fichier…</translation>
+        <translation>Valeurs d&apos;un fichier…</translation>
     </message>
     <message>
         <source>Values to chart (a label and a number on each line)</source>
@@ -3344,7 +3352,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>At once</source>
-        <translation>D'un coup</translation>
+        <translation>D&apos;un coup</translation>
     </message>
     <message>
         <source>%1 s</source>
@@ -3440,7 +3448,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>No presets yet</source>
-        <translation>Aucun préréglage pour l'instant</translation>
+        <translation>Aucun préréglage pour l&apos;instant</translation>
     </message>
     <message>
         <source>Apply</source>
@@ -3584,7 +3592,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>An adjustment layer changes everything below it while it lasts. Give it a look (Filters), a grade (Color) or effects (Effects); its opacity sets how strongly.</source>
-        <translation>Un calque de réglage modifie tout ce qui est en dessous tant qu'il dure. Donnez-lui un look (Filtres), un étalonnage (Couleur) ou des effets (Effets) ; son opacité règle l'intensité.</translation>
+        <translation>Un calque de réglage modifie tout ce qui est en dessous tant qu&apos;il dure. Donnez-lui un look (Filtres), un étalonnage (Couleur) ou des effets (Effets) ; son opacité règle l&apos;intensité.</translation>
     </message>
     <message>
         <source>Multicam</source>
@@ -3668,7 +3676,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Drag each corner in the player to stretch the picture in perspective — onto a screen or a sign in the shot. Keyframe them to follow it.</source>
-        <translation>Faites glisser chaque coin dans le lecteur pour étirer l'image en perspective — sur un écran ou un panneau du plan. Posez des images clés pour le suivre.</translation>
+        <translation>Faites glisser chaque coin dans le lecteur pour étirer l&apos;image en perspective — sur un écran ou un panneau du plan. Posez des images clés pour le suivre.</translation>
     </message>
     <message>
         <source>Drag the corners in the player</source>
@@ -3680,7 +3688,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Lens correction</source>
-        <translation>Correction d'objectif</translation>
+        <translation>Correction d&apos;objectif</translation>
     </message>
     <message>
         <source>Camera</source>
@@ -3692,7 +3700,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>A starting point: fine-tune Lens Distortion&apos;s amount under Effects until straight lines are straight.</source>
-        <translation>Un point de départ : affinez la quantité de Distorsion d'objectif sous Effets jusqu'à ce que les droites soient droites.</translation>
+        <translation>Un point de départ : affinez la quantité de Distorsion d&apos;objectif sous Effets jusqu&apos;à ce que les droites soient droites.</translation>
     </message>
     <message>
         <source>Remove the correction</source>
@@ -3700,7 +3708,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Choose how the clip arrives, leaves or moves; it is written as keyframes you can change.</source>
-        <translation>Choisissez comment le clip arrive, part ou bouge ; c'est écrit en images clés modifiables.</translation>
+        <translation>Choisissez comment le clip arrive, part ou bouge ; c&apos;est écrit en images clés modifiables.</translation>
     </message>
     <message>
         <source>Combo</source>
@@ -3724,7 +3732,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Remove the animation</source>
-        <translation>Retirer l'animation</translation>
+        <translation>Retirer l&apos;animation</translation>
     </message>
     <message>
         <source>Takes off the position, size, rotation and opacity keyframes</source>
@@ -3821,7 +3829,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Add a shape to show only part of the picture. Pen masks take any outline: click on the player to add points.</source>
-        <translation>Ajoutez une forme pour ne montrer qu'une partie de l'image. Les masques à la plume prennent n'importe quel contour : cliquez dans le lecteur pour ajouter des points.</translation>
+        <translation>Ajoutez une forme pour ne montrer qu&apos;une partie de l&apos;image. Les masques à la plume prennent n&apos;importe quel contour : cliquez dans le lecteur pour ajouter des points.</translation>
     </message>
     <message>
         <source> (inverted)</source>
@@ -3865,11 +3873,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Applies to</source>
-        <translation>S'applique à</translation>
+        <translation>S&apos;applique à</translation>
     </message>
     <message>
         <source>The picture</source>
-        <translation>L'image</translation>
+        <translation>L&apos;image</translation>
     </message>
     <message>
         <source>Effects only</source>
@@ -3881,7 +3889,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The picture: what is outside is cut away. Effects or colour: the clip&apos;s effects, or its look and grade, only inside; the picture stays as it was outside.</source>
-        <translation>L'image : ce qui est à l'extérieur est coupé. Effets ou couleur : les effets du clip, ou son look et son étalonnage, seulement à l'intérieur ; l'image reste telle quelle à l'extérieur.</translation>
+        <translation>L&apos;image : ce qui est à l&apos;extérieur est coupé. Effets ou couleur : les effets du clip, ou son look et son étalonnage, seulement à l&apos;intérieur ; l&apos;image reste telle quelle à l&apos;extérieur.</translation>
     </message>
     <message>
         <source>Invert</source>
@@ -3957,7 +3965,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The clip on the track just above becomes the shape (by its transparency or brightness) and is not shown itself.</source>
-        <translation>Le clip de la piste juste au-dessus devient la forme (par sa transparence ou sa luminosité) et n'est pas affiché lui-même.</translation>
+        <translation>Le clip de la piste juste au-dessus devient la forme (par sa transparence ou sa luminosité) et n&apos;est pas affiché lui-même.</translation>
     </message>
     <message>
         <source>Split screen</source>
@@ -3965,7 +3973,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Uses the clips at the playhead on separate tracks, top track first. Picture in picture shrinks the top one into the corner.</source>
-        <translation>Utilise les clips à la tête de lecture sur des pistes séparées, piste du haut en premier. L'incrustation d'image réduit celui du haut dans le coin.</translation>
+        <translation>Utilise les clips à la tête de lecture sur des pistes séparées, piste du haut en premier. L&apos;incrustation d&apos;image réduit celui du haut dans le coin.</translation>
     </message>
     <message>
         <source>Select a clip to change its speed.</source>
@@ -3973,19 +3981,19 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Titles have no speed; trim them to change how long they last.</source>
-        <translation>Les titres n'ont pas de vitesse ; raccourcissez-les pour changer leur durée.</translation>
+        <translation>Les titres n&apos;ont pas de vitesse ; raccourcissez-les pour changer leur durée.</translation>
     </message>
     <message>
         <source>Stickers have no speed; trim them to change how long they last.</source>
-        <translation>Les autocollants n'ont pas de vitesse ; raccourcissez-les pour changer leur durée.</translation>
+        <translation>Les autocollants n&apos;ont pas de vitesse ; raccourcissez-les pour changer leur durée.</translation>
     </message>
     <message>
         <source>Images have no speed; trim them to change how long they last.</source>
-        <translation>Les images n'ont pas de vitesse ; raccourcissez-les pour changer leur durée.</translation>
+        <translation>Les images n&apos;ont pas de vitesse ; raccourcissez-les pour changer leur durée.</translation>
     </message>
     <message>
         <source>Adjustment layers have no speed; trim them to change how long they last.</source>
-        <translation>Les calques de réglage n'ont pas de vitesse ; raccourcissez-les pour changer leur durée.</translation>
+        <translation>Les calques de réglage n&apos;ont pas de vitesse ; raccourcissez-les pour changer leur durée.</translation>
     </message>
     <message>
         <source>A freeze frame holds one frame; trim it to change how long.</source>
@@ -4017,7 +4025,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Insert a 2-second still of the frame under the playhead</source>
-        <translation>Insérer un arrêt de 2 secondes de l'image sous la tête de lecture</translation>
+        <translation>Insérer un arrêt de 2 secondes de l&apos;image sous la tête de lecture</translation>
     </message>
     <message>
         <source>Speed ramp</source>
@@ -4053,11 +4061,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Only one of them has sound.</source>
-        <translation>Un seul d'entre eux a du son.</translation>
+        <translation>Un seul d&apos;entre eux a du son.</translation>
     </message>
     <message>
         <source>%1 of them have sound: those change together.</source>
-        <translation>%1 d'entre eux ont du son : ceux-là changent ensemble.</translation>
+        <translation>%1 d&apos;entre eux ont du son : ceux-là changent ensemble.</translation>
     </message>
     <message>
         <source>Change by</source>
@@ -4101,7 +4109,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Measure each clip and set its volume to reach the target, so they all sound as loud</source>
-        <translation>Mesurer chaque clip et régler son volume pour atteindre la cible, pour qu'ils sonnent aussi fort</translation>
+        <translation>Mesurer chaque clip et régler son volume pour atteindre la cible, pour qu&apos;ils sonnent aussi fort</translation>
     </message>
     <message>
         <source>1 clip normalized.</source>
@@ -4125,7 +4133,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>This clip has no sound.</source>
-        <translation>Ce clip n'a pas de son.</translation>
+        <translation>Ce clip n&apos;a pas de son.</translation>
     </message>
     <message>
         <source>This clip&apos;s sound was detached to an audio track. Select the audio clip to adjust it.</source>
@@ -4145,7 +4153,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Fade in</source>
-        <translation>Fondu d'entrée</translation>
+        <translation>Fondu d&apos;entrée</translation>
     </message>
     <message>
         <source>Fade out</source>
@@ -4193,7 +4201,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>As recorded.</source>
-        <translation>Tel qu'enregistré.</translation>
+        <translation>Tel qu&apos;enregistré.</translation>
     </message>
     <message>
         <source>Fit to length</source>
@@ -4209,11 +4217,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>To the video&apos;s end</source>
-        <translation>Jusqu'à la fin de la vidéo</translation>
+        <translation>Jusqu&apos;à la fin de la vidéo</translation>
     </message>
     <message>
         <source>The length from where the music starts to where the last picture ends</source>
-        <translation>La durée du début de la musique jusqu'à la fin de la dernière image</translation>
+        <translation>La durée du début de la musique jusqu&apos;à la fin de la dernière image</translation>
     </message>
     <message>
         <source>Fitting…</source>
@@ -4261,7 +4269,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Detach audio</source>
-        <translation>Détacher l'audio</translation>
+        <translation>Détacher l&apos;audio</translation>
     </message>
     <message>
         <source>Move this clip&apos;s sound to an audio track</source>
@@ -4313,7 +4321,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Effects run in order, after the volume and fades. Echoes and reverb ring on past the clip&apos;s end.</source>
-        <translation>Les effets s'appliquent dans l'ordre, après le volume et les fondus. Échos et réverbération résonnent après la fin du clip.</translation>
+        <translation>Les effets s&apos;appliquent dans l&apos;ordre, après le volume et les fondus. Échos et réverbération résonnent après la fin du clip.</translation>
     </message>
     <message>
         <source>Looking for plug-ins…</source>
@@ -4333,7 +4341,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Measured %1 LUFS; the volume now brings it to %2 LUFS.</source>
-        <translation>Mesuré à %1 LUFS ; le volume l'amène maintenant à %2 LUFS.</translation>
+        <translation>Mesuré à %1 LUFS ; le volume l&apos;amène maintenant à %2 LUFS.</translation>
     </message>
     <message>
         <source>Red</source>
@@ -4389,7 +4397,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Waveform</source>
-        <translation>Forme d'onde</translation>
+        <translation>Forme d&apos;onde</translation>
     </message>
     <message>
         <source>Parade</source>
@@ -4409,7 +4417,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Select a video clip to grade it.</source>
-        <translation>Sélectionnez un clip vidéo pour l'étalonner.</translation>
+        <translation>Sélectionnez un clip vidéo pour l&apos;étalonner.</translation>
     </message>
     <message>
         <source>Copy</source>
@@ -4417,7 +4425,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Copy this clip&apos;s grade</source>
-        <translation>Copier l'étalonnage de ce clip</translation>
+        <translation>Copier l&apos;étalonnage de ce clip</translation>
     </message>
     <message>
         <source>Paste</source>
@@ -4425,7 +4433,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Give this clip the copied grade</source>
-        <translation>Donner à ce clip l'étalonnage copié</translation>
+        <translation>Donner à ce clip l&apos;étalonnage copié</translation>
     </message>
     <message>
         <source>Look</source>
@@ -4449,7 +4457,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Measures the frame at the playhead and sets the red, green and blue curves: a colour cast taken off and the levels filled, or the colours of another clip.</source>
-        <translation>Mesure l'image à la tête de lecture et règle les courbes rouge, verte et bleue : dominante retirée et niveaux remplis, ou les couleurs d'un autre clip.</translation>
+        <translation>Mesure l&apos;image à la tête de lecture et règle les courbes rouge, verte et bleue : dominante retirée et niveaux remplis, ou les couleurs d&apos;un autre clip.</translation>
     </message>
     <message>
         <source>Auto colour</source>
@@ -4461,7 +4469,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Make this clip&apos;s colours like the chosen clip&apos;s (as graded)</source>
-        <translation>Donner à ce clip les couleurs du clip choisi (tel qu'étalonné)</translation>
+        <translation>Donner à ce clip les couleurs du clip choisi (tel qu&apos;étalonné)</translation>
     </message>
     <message>
         <source>Basic</source>
@@ -4585,7 +4593,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Above the line turns those hues forward, below turns them back (up to 60°).</source>
-        <translation>Au-dessus de la ligne, ces teintes tournent en avant, en dessous en arrière (jusqu'à 60°).</translation>
+        <translation>Au-dessus de la ligne, ces teintes tournent en avant, en dessous en arrière (jusqu&apos;à 60°).</translation>
     </message>
     <message>
         <source>Above the line adds saturation there, below takes it away.</source>
@@ -4645,7 +4653,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>No effects on this clip yet. Pick one above, or click an effect in the library.</source>
-        <translation>Aucun effet sur ce clip pour l'instant. Choisissez-en un ci-dessus, ou cliquez sur un effet de la bibliothèque.</translation>
+        <translation>Aucun effet sur ce clip pour l&apos;instant. Choisissez-en un ci-dessus, ou cliquez sur un effet de la bibliothèque.</translation>
     </message>
 </context>
 <context>
@@ -4692,7 +4700,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Export failed</source>
-        <translation>Échec de l'export</translation>
+        <translation>Échec de l&apos;export</translation>
     </message>
     <message>
         <source>The edit for another editor: the clips and their timing, speed, cross dissolves, gaps, markers, and titles as placeholders. Colour, effects and keyframes stay here.</source>
@@ -4704,7 +4712,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Everything in it came over.</source>
-        <translation>Tout ce qu'il contenait est passé.</translation>
+        <translation>Tout ce qu&apos;il contenait est passé.</translation>
     </message>
     <message>
         <source>Everything carried over.</source>
@@ -4716,11 +4724,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>These didn&apos;t carry over as they are here:</source>
-        <translation>Ceux-ci n'ont pas été transférés tels qu'ils sont ici :</translation>
+        <translation>Ceux-ci n&apos;ont pas été transférés tels qu&apos;ils sont ici :</translation>
     </message>
     <message>
         <source>It is a new project: save it to keep it. Media that isn&apos;t on this Mac can be found again from the library.</source>
-        <translation>C'est un nouveau projet : enregistrez-le pour le garder. Les médias qui ne sont pas sur ce Mac peuvent être retrouvés depuis la bibliothèque.</translation>
+        <translation>C&apos;est un nouveau projet : enregistrez-le pour le garder. Les médias qui ne sont pas sur ce Mac peuvent être retrouvés depuis la bibliothèque.</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -4743,7 +4751,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>This app&apos;s own keys</source>
-        <translation>Raccourcis propres à l'app</translation>
+        <translation>Raccourcis propres à l&apos;app</translation>
     </message>
     <message>
         <source>Like Premiere Pro</source>
@@ -4807,7 +4815,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Mark In</source>
-        <translation>Point d'entrée</translation>
+        <translation>Point d&apos;entrée</translation>
     </message>
     <message>
         <source>Mark Out</source>
@@ -4839,7 +4847,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Before and after the grade</source>
-        <translation>Avant et après l'étalonnage</translation>
+        <translation>Avant et après l&apos;étalonnage</translation>
     </message>
     <message>
         <source>Split at the playhead</source>
@@ -4891,11 +4899,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Select up to the playhead</source>
-        <translation>Sélectionner jusqu'à la tête de lecture</translation>
+        <translation>Sélectionner jusqu&apos;à la tête de lecture</translation>
     </message>
     <message>
         <source>Extend the edit to the playhead</source>
-        <translation>Étendre la coupe jusqu'à la tête de lecture</translation>
+        <translation>Étendre la coupe jusqu&apos;à la tête de lecture</translation>
     </message>
     <message>
         <source>Turn the clip off or on</source>
@@ -4931,39 +4939,39 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Cut to angle 1 (multicam)</source>
-        <translation>Couper vers l'angle 1 (multicam)</translation>
+        <translation>Couper vers l&apos;angle 1 (multicam)</translation>
     </message>
     <message>
         <source>Cut to angle 2 (multicam)</source>
-        <translation>Couper vers l'angle 2 (multicam)</translation>
+        <translation>Couper vers l&apos;angle 2 (multicam)</translation>
     </message>
     <message>
         <source>Cut to angle 3 (multicam)</source>
-        <translation>Couper vers l'angle 3 (multicam)</translation>
+        <translation>Couper vers l&apos;angle 3 (multicam)</translation>
     </message>
     <message>
         <source>Cut to angle 4 (multicam)</source>
-        <translation>Couper vers l'angle 4 (multicam)</translation>
+        <translation>Couper vers l&apos;angle 4 (multicam)</translation>
     </message>
     <message>
         <source>Cut to angle 5 (multicam)</source>
-        <translation>Couper vers l'angle 5 (multicam)</translation>
+        <translation>Couper vers l&apos;angle 5 (multicam)</translation>
     </message>
     <message>
         <source>Cut to angle 6 (multicam)</source>
-        <translation>Couper vers l'angle 6 (multicam)</translation>
+        <translation>Couper vers l&apos;angle 6 (multicam)</translation>
     </message>
     <message>
         <source>Cut to angle 7 (multicam)</source>
-        <translation>Couper vers l'angle 7 (multicam)</translation>
+        <translation>Couper vers l&apos;angle 7 (multicam)</translation>
     </message>
     <message>
         <source>Cut to angle 8 (multicam)</source>
-        <translation>Couper vers l'angle 8 (multicam)</translation>
+        <translation>Couper vers l&apos;angle 8 (multicam)</translation>
     </message>
     <message>
         <source>Cut to angle 9 (multicam)</source>
-        <translation>Couper vers l'angle 9 (multicam)</translation>
+        <translation>Couper vers l&apos;angle 9 (multicam)</translation>
     </message>
     <message>
         <source>Save the project</source>
@@ -4987,7 +4995,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>That is not a single key or key combination</source>
-        <translation>Ce n'est pas une touche ou une combinaison de touches unique</translation>
+        <translation>Ce n&apos;est pas une touche ou une combinaison de touches unique</translation>
     </message>
     <message>
         <source>%1 belongs to the system</source>
@@ -4999,7 +5007,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Cannot write %1</source>
-        <translation>Impossible d'écrire %1</translation>
+        <translation>Impossible d&apos;écrire %1</translation>
     </message>
     <message>
         <source>Cannot read %1</source>
@@ -5007,11 +5015,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>%1 is not a TechieVideoEditor shortcuts file</source>
-        <translation>%1 n'est pas un fichier de raccourcis TechieVideoEditor</translation>
+        <translation>%1 n&apos;est pas un fichier de raccourcis TechieVideoEditor</translation>
     </message>
     <message>
         <source>Cannot save the shortcuts to %1</source>
-        <translation>Impossible d'enregistrer les raccourcis dans %1</translation>
+        <translation>Impossible d&apos;enregistrer les raccourcis dans %1</translation>
     </message>
 </context>
 <context>
@@ -5243,7 +5251,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Add a colour clip at the playhead (choose its colours or gradient in the inspector)</source>
-        <translation>Ajouter un clip de couleur à la tête de lecture (choisissez ses couleurs ou son dégradé dans l'inspecteur)</translation>
+        <translation>Ajouter un clip de couleur à la tête de lecture (choisissez ses couleurs ou son dégradé dans l&apos;inspecteur)</translation>
     </message>
     <message>
         <source>Import from Photos, Music or a device</source>
@@ -5267,7 +5275,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>An image sequence…</source>
-        <translation>Une séquence d'images…</translation>
+        <translation>Une séquence d&apos;images…</translation>
     </message>
     <message>
         <source>A folder, with its folders…</source>
@@ -5315,11 +5323,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The selected picture or animation, or a video&apos;s frame at the playhead, as a sticker</source>
-        <translation>L'image ou l'animation sélectionnée, ou l'image de la vidéo à la tête de lecture, en autocollant</translation>
+        <translation>L&apos;image ou l&apos;animation sélectionnée, ou l&apos;image de la vidéo à la tête de lecture, en autocollant</translation>
     </message>
     <message>
         <source>%1 — click to add at the playhead, or drag it onto the timeline</source>
-        <translation>%1 — cliquez pour l'ajouter à la tête de lecture, ou faites-le glisser sur la timeline</translation>
+        <translation>%1 — cliquez pour l&apos;ajouter à la tête de lecture, ou faites-le glisser sur la timeline</translation>
     </message>
     <message>
         <source>New effect…</source>
@@ -5347,7 +5355,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>An effect someone made in the shader editor (.tveeffect)</source>
-        <translation>Un effet créé dans l'éditeur de shaders (.tveeffect)</translation>
+        <translation>Un effet créé dans l&apos;éditeur de shaders (.tveeffect)</translation>
     </message>
     <message>
         <source>Add to the selected clip, or drag it onto a clip in the timeline</source>
@@ -5366,11 +5374,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Save the clip&apos;s grade…</source>
-        <translation>Enregistrer l'étalonnage du clip…</translation>
+        <translation>Enregistrer l&apos;étalonnage du clip…</translation>
     </message>
     <message>
         <source>Keeps the selected clip&apos;s colour grade (and its LUT) as a filter of yours</source>
-        <translation>Garde l'étalonnage du clip sélectionné (et sa LUT) comme un filtre à vous</translation>
+        <translation>Garde l&apos;étalonnage du clip sélectionné (et sa LUT) comme un filtre à vous</translation>
     </message>
     <message>
         <source>Name your filter</source>
@@ -5402,15 +5410,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Click to add it over the music at the playhead, as long as the music</source>
-        <translation>Cliquez pour l'ajouter sur la musique à la tête de lecture, aussi long que la musique</translation>
+        <translation>Cliquez pour l&apos;ajouter sur la musique à la tête de lecture, aussi long que la musique</translation>
     </message>
     <message>
         <source>Click to add at the playhead, or drag onto a track. Right-click to delete.</source>
-        <translation>Cliquez pour l'ajouter à la tête de lecture, ou faites-le glisser sur une piste. Clic droit pour supprimer.</translation>
+        <translation>Cliquez pour l&apos;ajouter à la tête de lecture, ou faites-le glisser sur une piste. Clic droit pour supprimer.</translation>
     </message>
     <message>
         <source>Click to add at the playhead, or drag onto a track</source>
-        <translation>Cliquez pour l'ajouter à la tête de lecture, ou faites-le glisser sur une piste</translation>
+        <translation>Cliquez pour l&apos;ajouter à la tête de lecture, ou faites-le glisser sur une piste</translation>
     </message>
     <message>
         <source>Default</source>
@@ -5430,7 +5438,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Click to add at the cut nearest the playhead, or drag onto a cut; right-click to make it the default</source>
-        <translation>Cliquez pour l'ajouter à la coupe la plus proche de la tête de lecture, ou faites-la glisser sur une coupe ; clic droit pour en faire la transition par défaut</translation>
+        <translation>Cliquez pour l&apos;ajouter à la coupe la plus proche de la tête de lecture, ou faites-la glisser sur une coupe ; clic droit pour en faire la transition par défaut</translation>
     </message>
     <message>
         <source>Only media with this label: click to show all</source>
@@ -5470,7 +5478,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Sort by when imported</source>
-        <translation>Trier par date d'import</translation>
+        <translation>Trier par date d&apos;import</translation>
     </message>
     <message>
         <source>Sort by name</source>
@@ -5610,11 +5618,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>A lighter copy plays in the preview; export uses the original</source>
-        <translation>Une copie plus légère est lue dans l'aperçu ; l'export utilise l'original</translation>
+        <translation>Une copie plus légère est lue dans l&apos;aperçu ; l&apos;export utilise l&apos;original</translation>
     </message>
     <message>
         <source>Making a lighter copy for the preview</source>
-        <translation>Création d'une copie plus légère pour l'aperçu</translation>
+        <translation>Création d&apos;une copie plus légère pour l&apos;aperçu</translation>
     </message>
     <message>
         <source>Remove proxy</source>
@@ -5638,7 +5646,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Nothing here has that label</source>
-        <translation>Rien ici n'a ce libellé</translation>
+        <translation>Rien ici n&apos;a ce libellé</translation>
     </message>
     <message>
         <source>Drag media here to keep it in this folder</source>
@@ -5710,11 +5718,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>A clip on the timeline uses it and goes with it. You can undo this.</source>
-        <translation>Un clip de la timeline l'utilise et partira avec. Vous pouvez annuler.</translation>
+        <translation>Un clip de la timeline l&apos;utilise et partira avec. Vous pouvez annuler.</translation>
     </message>
     <message>
         <source>%1 clips on the timeline use it and go with it. You can undo this.</source>
-        <translation>%1 clips de la timeline l'utilisent et partiront avec. Vous pouvez annuler.</translation>
+        <translation>%1 clips de la timeline l&apos;utilisent et partiront avec. Vous pouvez annuler.</translation>
     </message>
     <message>
         <source>Open</source>
@@ -5726,7 +5734,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>New folder inside</source>
-        <translation>Nouveau dossier à l'intérieur</translation>
+        <translation>Nouveau dossier à l&apos;intérieur</translation>
     </message>
     <message>
         <source>Delete the folder</source>
@@ -5758,7 +5766,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Edit in the shader editor…</source>
-        <translation>Modifier dans l'éditeur de shaders…</translation>
+        <translation>Modifier dans l&apos;éditeur de shaders…</translation>
     </message>
     <message>
         <source>Export…</source>
@@ -5861,15 +5869,15 @@ Troisième, 4</translation>
     <name>LiveDrawing</name>
     <message>
         <source>Drawing on the screen</source>
-        <translation>Dessin à l'écran</translation>
+        <translation>Dessin à l&apos;écran</translation>
     </message>
     <message>
         <source>Stop drawing: the pointer works the screen again (D or Esc)</source>
-        <translation>Arrêter de dessiner : le pointeur agit de nouveau sur l'écran (D ou Échap)</translation>
+        <translation>Arrêter de dessiner : le pointeur agit de nouveau sur l&apos;écran (D ou Échap)</translation>
     </message>
     <message>
         <source>Draw on the screen (D)</source>
-        <translation>Dessiner à l'écran (D)</translation>
+        <translation>Dessiner à l&apos;écran (D)</translation>
     </message>
     <message>
         <source>Pen</source>
@@ -5908,7 +5916,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Screen recording</source>
-        <translation>Enregistrement d'écran</translation>
+        <translation>Enregistrement d&apos;écran</translation>
     </message>
     <message>
         <source>Instant video</source>
@@ -5924,7 +5932,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Timelines from other editors (*.otio *.fcpxml *.fcpxmld)</source>
-        <translation>Timelines d'autres logiciels (*.otio *.fcpxml *.fcpxmld)</translation>
+        <translation>Timelines d&apos;autres logiciels (*.otio *.fcpxml *.fcpxmld)</translation>
     </message>
     <message>
         <source>All files (*)</source>
@@ -5939,11 +5947,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Search finds what is in %1 of %2 pictures and videos.</source>
-        <translation>La recherche trouve ce qu'il y a dans %1 sur %2 images et vidéos.</translation>
+        <translation>La recherche trouve ce qu&apos;il y a dans %1 sur %2 images et vidéos.</translation>
     </message>
     <message>
         <source>Search finds what is in every picture and video.</source>
-        <translation>La recherche trouve ce qu'il y a dans chaque image et vidéo.</translation>
+        <translation>La recherche trouve ce qu&apos;il y a dans chaque image et vidéo.</translation>
     </message>
     <message>
         <source>It hears what is said in 1 transcribed file.</source>
@@ -5963,7 +5971,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Labels what is in each picture and video, and reads the text on screen, on this Mac</source>
-        <translation>Identifie ce qu'il y a dans chaque image et vidéo, et lit le texte à l'écran, sur ce Mac</translation>
+        <translation>Identifie ce qu&apos;il y a dans chaque image et vidéo, et lit le texte à l&apos;écran, sur ce Mac</translation>
     </message>
     <message>
         <source>Stop</source>
@@ -5995,7 +6003,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>On screen</source>
-        <translation>À l'écran</translation>
+        <translation>À l&apos;écran</translation>
     </message>
     <message>
         <source>Click to open in the source monitor with In and Out around it; double-click to put it on the timeline at the playhead</source>
@@ -6038,7 +6046,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Solo: hear only soloed tracks</source>
-        <translation>Solo : n'entendre que les pistes en solo</translation>
+        <translation>Solo : n&apos;entendre que les pistes en solo</translation>
     </message>
     <message>
         <source>FX %1</source>
@@ -6106,6 +6114,105 @@ Troisième, 4</translation>
     </message>
 </context>
 <context>
+    <name>ModelsDialog</name>
+    <message>
+        <source>Speech to text · English</source>
+        <translation>Parole en texte · anglais</translation>
+    </message>
+    <message>
+        <source>Captions, the transcript, editing by words and smart search</source>
+        <translation>Sous-titres, transcription, montage par les mots et recherche intelligente</translation>
+    </message>
+    <message>
+        <source>Speech to text · 99 languages</source>
+        <translation>Parole en texte · 99 langues</translation>
+    </message>
+    <message>
+        <source>The same, for speech in other languages</source>
+        <translation>La même chose, pour la parole dans d'autres langues</translation>
+    </message>
+    <message>
+        <source>Speech cleanup</source>
+        <translation>Nettoyage de la voix</translation>
+    </message>
+    <message>
+        <source>Enhance speech: noise, hum and room echo taken out of voices</source>
+        <translation>Améliorer la voix : bruit, ronflement et écho de la pièce retirés des voix</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>Profondeur</translation>
+    </message>
+    <message>
+        <source>Depth of field: what is nearer or farther than the focus blurred</source>
+        <translation>Profondeur de champ : ce qui est plus près ou plus loin que la mise au point est flouté</translation>
+    </message>
+    <message>
+        <source>Upscaling</source>
+        <translation>Agrandissement</translation>
+    </message>
+    <message>
+        <source>Upscale: sharper pictures at 2× or 4× (from Apple, through macOS)</source>
+        <translation>Agrandir : des images plus nettes en 2× ou 4× (fourni par Apple, via macOS)</translation>
+    </message>
+    <message>
+        <source>Models for working on this Mac</source>
+        <translation>Modèles pour travailler sur ce Mac</translation>
+    </message>
+    <message>
+        <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
+        <translation>Ces fonctions s'exécutent sur ce Mac : vos médias ne le quittent jamais. Chacune a besoin d'un modèle, téléchargé une fois auprès de ses créateurs et vérifié avant d'être utilisé. Obtenez-les maintenant ou plus tard : chacun vous sera reproposé là où il est nécessaire.</translation>
+    </message>
+    <message>
+        <source>On this Mac</source>
+        <translation>Sur ce Mac</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>En attente</translation>
+    </message>
+    <message>
+        <source>From macOS</source>
+        <translation>Fourni par macOS</translation>
+    </message>
+    <message>
+        <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
+        <translation>Des modèles de parole plus précis (Small et Large, 190–574 Mo) se trouvent dans l'onglet Sous-titres.</translation>
+    </message>
+    <message>
+        <source>Downloading… you can close this and keep working.</source>
+        <translation>Téléchargement… vous pouvez fermer cette fenêtre et continuer à travailler.</translation>
+    </message>
+    <message>
+        <source>Every model is on this Mac.</source>
+        <translation>Tous les modèles sont sur ce Mac.</translation>
+    </message>
+    <message>
+        <source>%1 to download</source>
+        <translation>%1 à télécharger</translation>
+    </message>
+    <message>
+        <source>Nothing chosen</source>
+        <translation>Rien de choisi</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Arrêter</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Fermer</translation>
+    </message>
+    <message>
+        <source>Later</source>
+        <translation>Plus tard</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>Télécharger</translation>
+    </message>
+</context>
+<context>
     <name>OverlayTransitions</name>
     <message>
         <source>Unknown overlay %1</source>
@@ -6132,15 +6239,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The store sent us to an address it may not use</source>
-        <translation>La boutique nous a envoyés vers une adresse qu'elle ne doit pas utiliser</translation>
+        <translation>La boutique nous a envoyés vers une adresse qu&apos;elle ne doit pas utiliser</translation>
     </message>
     <message>
         <source>No signing key is trusted yet, so no catalogue can be checked (see tools/packs/README.md)</source>
-        <translation>Aucune clé de signature n'est encore approuvée, donc aucun catalogue ne peut être vérifié (voir tools/packs/README.md)</translation>
+        <translation>Aucune clé de signature n&apos;est encore approuvée, donc aucun catalogue ne peut être vérifié (voir tools/packs/README.md)</translation>
     </message>
     <message>
         <source>The catalogue address must start with https://</source>
-        <translation>L'adresse du catalogue doit commencer par https://</translation>
+        <translation>L&apos;adresse du catalogue doit commencer par https://</translation>
     </message>
     <message>
         <source>Checking the catalogue…</source>
@@ -6148,7 +6255,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The catalogue&apos;s signature isn&apos;t one we trust, so it was not used</source>
-        <translation>La signature du catalogue n'est pas une signature approuvée, il n'a donc pas été utilisé</translation>
+        <translation>La signature du catalogue n&apos;est pas une signature approuvée, il n&apos;a donc pas été utilisé</translation>
     </message>
     <message>
         <source>The catalogue can&apos;t be read: %1</source>
@@ -6156,15 +6263,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The catalogue is older than one seen before, so it was not used</source>
-        <translation>Le catalogue est plus ancien qu'un catalogue déjà vu, il n'a donc pas été utilisé</translation>
+        <translation>Le catalogue est plus ancien qu&apos;un catalogue déjà vu, il n&apos;a donc pas été utilisé</translation>
     </message>
     <message>
         <source>Wait for the store to finish what it is doing</source>
-        <translation>Attendez que la boutique ait fini ce qu'elle fait</translation>
+        <translation>Attendez que la boutique ait fini ce qu&apos;elle fait</translation>
     </message>
     <message>
         <source>The catalogue has no pack %1</source>
-        <translation>Le catalogue n'a pas de pack %1</translation>
+        <translation>Le catalogue n&apos;a pas de pack %1</translation>
     </message>
     <message>
         <source>Getting %1…</source>
@@ -6172,7 +6279,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The pack&apos;s manifest is not the one the catalogue lists</source>
-        <translation>Le manifeste du pack n'est pas celui que liste le catalogue</translation>
+        <translation>Le manifeste du pack n&apos;est pas celui que liste le catalogue</translation>
     </message>
     <message>
         <source>The pack&apos;s manifest can&apos;t be read: %1</source>
@@ -6184,7 +6291,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Can&apos;t write to %1</source>
-        <translation>Impossible d'écrire dans %1</translation>
+        <translation>Impossible d&apos;écrire dans %1</translation>
     </message>
     <message>
         <source>Downloading %1 — %2 of %3</source>
@@ -6196,7 +6303,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The pack didn&apos;t download whole: %1</source>
-        <translation>Le pack n'a pas été téléchargé en entier : %1</translation>
+        <translation>Le pack n&apos;a pas été téléchargé en entier : %1</translation>
     </message>
     <message>
         <source>Can&apos;t replace the installed pack</source>
@@ -6204,7 +6311,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Can&apos;t install the pack in %1</source>
-        <translation>Impossible d'installer le pack dans %1</translation>
+        <translation>Impossible d&apos;installer le pack dans %1</translation>
     </message>
     <message>
         <source>Updated %1</source>
@@ -6255,7 +6362,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Mark In</source>
-        <translation>Point d'entrée</translation>
+        <translation>Point d&apos;entrée</translation>
     </message>
     <message>
         <source>Previous frame</source>
@@ -6283,15 +6390,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Loop: play round again from the start (of In to Out, when marked)</source>
-        <translation>Boucle : relire depuis le début (de l'entrée à la sortie, si marquées)</translation>
+        <translation>Boucle : relire depuis le début (de l&apos;entrée à la sortie, si marquées)</translation>
     </message>
     <message>
         <source>Snapshot: the frame at the playhead as a picture, into the media library</source>
-        <translation>Instantané : l'image à la tête de lecture comme photo, dans la médiathèque</translation>
+        <translation>Instantané : l&apos;image à la tête de lecture comme photo, dans la médiathèque</translation>
     </message>
     <message>
         <source>Playing proxies of large media where ready (export uses the originals)</source>
-        <translation>Lecture des proxys des gros médias quand ils sont prêts (l'export utilise les originaux)</translation>
+        <translation>Lecture des proxys des gros médias quand ils sont prêts (l&apos;export utilise les originaux)</translation>
     </message>
     <message>
         <source>Playing the original media</source>
@@ -6299,7 +6406,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Previewing at half resolution: heavy timelines play smoothly (export is full size)</source>
-        <translation>Aperçu en demi-résolution : les timelines lourdes sont fluides (l'export est en pleine taille)</translation>
+        <translation>Aperçu en demi-résolution : les timelines lourdes sont fluides (l&apos;export est en pleine taille)</translation>
     </message>
     <message>
         <source>Previewing at full resolution; half resolution plays heavy timelines more smoothly</source>
@@ -6307,27 +6414,27 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Showing a view to look around in (drag it); off: the whole 360° picture</source>
-        <translation>Affiche une vue où regarder autour (faites-la glisser) ; désactivé : toute l'image 360°</translation>
+        <translation>Affiche une vue où regarder autour (faites-la glisser) ; désactivé : toute l&apos;image 360°</translation>
     </message>
     <message>
         <source>Look around the 360° picture in the player (export is unchanged)</source>
-        <translation>Regarder autour dans l'image 360° du lecteur (l'export est inchangé)</translation>
+        <translation>Regarder autour dans l&apos;image 360° du lecteur (l&apos;export est inchangé)</translation>
     </message>
     <message>
         <source>Full-screen preview on the other display (Esc closes it)</source>
-        <translation>Aperçu plein écran sur l'autre écran (Échap le ferme)</translation>
+        <translation>Aperçu plein écran sur l&apos;autre écran (Échap le ferme)</translation>
     </message>
     <message>
         <source>Full-screen preview (Esc closes it); with a second display, it goes there</source>
-        <translation>Aperçu plein écran (Échap le ferme) ; avec un second écran, il s'y affiche</translation>
+        <translation>Aperçu plein écran (Échap le ferme) ; avec un second écran, il s&apos;y affiche</translation>
     </message>
     <message>
         <source>HDR viewer: the picture in a window of its own, HDR on an HDR display (this project is SDR)</source>
-        <translation>Visualiseur HDR : l'image dans sa propre fenêtre, en HDR sur un écran HDR (ce projet est SDR)</translation>
+        <translation>Visualiseur HDR : l&apos;image dans sa propre fenêtre, en HDR sur un écran HDR (ce projet est SDR)</translation>
     </message>
     <message>
         <source>HDR viewer: the picture in a window of its own, HDR on an HDR display</source>
-        <translation>Visualiseur HDR : l'image dans sa propre fenêtre, en HDR sur un écran HDR</translation>
+        <translation>Visualiseur HDR : l&apos;image dans sa propre fenêtre, en HDR sur un écran HDR</translation>
     </message>
     <message>
         <source>Playback statistics</source>
@@ -6335,7 +6442,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Before and after: the picture without its colour grades on the left of the divider, graded on the right (drag it)</source>
-        <translation>Avant et après : l'image sans étalonnage à gauche du séparateur, étalonnée à droite (faites-le glisser)</translation>
+        <translation>Avant et après : l&apos;image sans étalonnage à gauche du séparateur, étalonnée à droite (faites-le glisser)</translation>
     </message>
     <message>
         <source>Transparency grid: a checkerboard where nothing covers the canvas (here only; exports are unchanged)</source>
@@ -6387,7 +6494,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Zoom the player (100 %: a pixel of the picture to a pixel of the screen); scroll to look around</source>
-        <translation>Zoomer le lecteur (100 % : un pixel de l'image pour un pixel de l'écran) ; faites défiler pour regarder autour</translation>
+        <translation>Zoomer le lecteur (100 % : un pixel de l&apos;image pour un pixel de l&apos;écran) ; faites défiler pour regarder autour</translation>
     </message>
 </context>
 <context>
@@ -6413,7 +6520,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not import %1: no video or audio found</source>
-        <translation>Impossible d'importer %1 : aucune vidéo ni aucun audio trouvé</translation>
+        <translation>Impossible d&apos;importer %1 : aucune vidéo ni aucun audio trouvé</translation>
     </message>
     <message>
         <source>Unknown transition</source>
@@ -6421,7 +6528,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Some items could not be imported: %1</source>
-        <translation>Certains éléments n'ont pas pu être importés : %1</translation>
+        <translation>Certains éléments n&apos;ont pas pu être importés : %1</translation>
     </message>
     <message>
         <source>Untitled project</source>
@@ -6441,11 +6548,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not open %1: %2</source>
-        <translation>Impossible d'ouvrir %1 : %2</translation>
+        <translation>Impossible d&apos;ouvrir %1 : %2</translation>
     </message>
     <message>
         <source>%1 isn&apos;t a timeline this app can open (OpenTimelineIO or Final Cut Pro XML)</source>
-        <translation>%1 n'est pas une timeline que cette app peut ouvrir (OpenTimelineIO ou XML Final Cut Pro)</translation>
+        <translation>%1 n&apos;est pas une timeline que cette app peut ouvrir (OpenTimelineIO ou XML Final Cut Pro)</translation>
     </message>
     <message>
         <source>Cannot read %1</source>
@@ -6461,7 +6568,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Cannot write %1</source>
-        <translation>Impossible d'écrire %1</translation>
+        <translation>Impossible d&apos;écrire %1</translation>
     </message>
     <message>
         <source>Choose where to save the project</source>
@@ -6469,7 +6576,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not save: %1</source>
-        <translation>Impossible d'enregistrer : %1</translation>
+        <translation>Impossible d&apos;enregistrer : %1</translation>
     </message>
     <message>
         <source>Media not found</source>
@@ -6477,15 +6584,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>%1 has no other numbered pictures beside it in its folder</source>
-        <translation>%1 n'a pas d'autres images numérotées à côté de lui dans son dossier</translation>
+        <translation>%1 n&apos;a pas d&apos;autres images numérotées à côté de lui dans son dossier</translation>
     </message>
     <message>
         <source>None of the missing files are in %1</source>
-        <translation>Aucun des fichiers manquants n'est dans %1</translation>
+        <translation>Aucun des fichiers manquants n&apos;est dans %1</translation>
     </message>
     <message>
         <source>%1 is not a picture this app can read</source>
-        <translation>%1 n'est pas une image que cette app peut lire</translation>
+        <translation>%1 n&apos;est pas une image que cette app peut lire</translation>
     </message>
     <message>
         <source>Choose a frame rate from 1 to 240 frames a second</source>
@@ -6521,15 +6628,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not autosave to %1</source>
-        <translation>Impossible d'enregistrer automatiquement dans %1</translation>
+        <translation>Impossible d&apos;enregistrer automatiquement dans %1</translation>
     </message>
     <message>
         <source>Could not autosave: %1</source>
-        <translation>Impossible d'enregistrer automatiquement : %1</translation>
+        <translation>Impossible d&apos;enregistrer automatiquement : %1</translation>
     </message>
     <message>
         <source>That unsaved work is no longer there</source>
-        <translation>Ce travail non enregistré n'est plus là</translation>
+        <translation>Ce travail non enregistré n&apos;est plus là</translation>
     </message>
     <message>
         <source>Could not recover: %1</source>
@@ -6541,7 +6648,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>No audio track is free where this clip is</source>
-        <translation>Aucune piste audio n'est libre à l'endroit de ce clip</translation>
+        <translation>Aucune piste audio n&apos;est libre à l&apos;endroit de ce clip</translation>
     </message>
     <message>
         <source>Title</source>
@@ -6553,7 +6660,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not use %1: %2</source>
-        <translation>Impossible d'utiliser %1 : %2</translation>
+        <translation>Impossible d&apos;utiliser %1 : %2</translation>
     </message>
     <message>
         <source>Select a clip</source>
@@ -6577,7 +6684,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Copy a clip&apos;s grade first</source>
-        <translation>Copiez d'abord l'étalonnage d'un clip</translation>
+        <translation>Copiez d&apos;abord l&apos;étalonnage d&apos;un clip</translation>
     </message>
     <message>
         <source>Name the preset</source>
@@ -6589,7 +6696,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not save the preset %1</source>
-        <translation>Impossible d'enregistrer le préréglage %1</translation>
+        <translation>Impossible d&apos;enregistrer le préréglage %1</translation>
     </message>
     <message>
         <source>No colour preset named %1</source>
@@ -6609,11 +6716,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>This clip has no effects to save</source>
-        <translation>Ce clip n'a aucun effet à enregistrer</translation>
+        <translation>Ce clip n&apos;a aucun effet à enregistrer</translation>
     </message>
     <message>
         <source>Could not save your effect</source>
-        <translation>Impossible d'enregistrer votre effet</translation>
+        <translation>Impossible d&apos;enregistrer votre effet</translation>
     </message>
     <message>
         <source>Select a clip with a picture</source>
@@ -6625,7 +6732,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>None of its effects are there any more</source>
-        <translation>Aucun de ses effets n'existe plus</translation>
+        <translation>Aucun de ses effets n&apos;existe plus</translation>
     </message>
     <message>
         <source>No such sticker of yours</source>
@@ -6641,11 +6748,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not read the frame at the playhead</source>
-        <translation>Impossible de lire l'image à la tête de lecture</translation>
+        <translation>Impossible de lire l&apos;image à la tête de lecture</translation>
     </message>
     <message>
         <source>Could not keep the frame</source>
-        <translation>Impossible de garder l'image</translation>
+        <translation>Impossible de garder l&apos;image</translation>
     </message>
     <message>
         <source>Select a clip to animate</source>
@@ -6661,7 +6768,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Another keyframe is already there</source>
-        <translation>Une autre image clé s'y trouve déjà</translation>
+        <translation>Une autre image clé s&apos;y trouve déjà</translation>
     </message>
     <message>
         <source>A speed ramp needs points</source>
@@ -6697,7 +6804,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Put music under the title first</source>
-        <translation>Placez d'abord de la musique sous le titre</translation>
+        <translation>Placez d&apos;abord de la musique sous le titre</translation>
     </message>
     <message>
         <source>Listening to the music</source>
@@ -6713,15 +6820,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>%1 has no values to chart: put a label and a number on each line</source>
-        <translation>%1 n'a pas de valeurs à représenter : mettez un libellé et un nombre par ligne</translation>
+        <translation>%1 n&apos;a pas de valeurs à représenter : mettez un libellé et un nombre par ligne</translation>
     </message>
     <message>
         <source>Analysis failed: %1</source>
-        <translation>Échec de l'analyse : %1</translation>
+        <translation>Échec de l&apos;analyse : %1</translation>
     </message>
     <message>
         <source>Put the playhead on music first</source>
-        <translation>Placez d'abord la tête de lecture sur de la musique</translation>
+        <translation>Placez d&apos;abord la tête de lecture sur de la musique</translation>
     </message>
     <message>
         <source>Select an audio visualiser</source>
@@ -6733,7 +6840,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not open %1</source>
-        <translation>Impossible d'ouvrir %1</translation>
+        <translation>Impossible d&apos;ouvrir %1</translation>
     </message>
     <message>
         <source>Choose a picture of the logo</source>
@@ -6853,7 +6960,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The preset could not be saved</source>
-        <translation>Le préréglage n'a pas pu être enregistré</translation>
+        <translation>Le préréglage n&apos;a pas pu être enregistré</translation>
     </message>
     <message>
         <source>Only your own presets can be deleted</source>
@@ -6865,11 +6972,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Unknown export preset: %1</source>
-        <translation>Préréglage d'export inconnu : %1</translation>
+        <translation>Préréglage d&apos;export inconnu : %1</translation>
     </message>
     <message>
         <source>Unknown export format: %1</source>
-        <translation>Format d'export inconnu : %1</translation>
+        <translation>Format d&apos;export inconnu : %1</translation>
     </message>
     <message>
         <source>Select the clips to export</source>
@@ -6881,11 +6988,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Unknown export range: %1</source>
-        <translation>Plage d'export inconnue : %1</translation>
+        <translation>Plage d&apos;export inconnue : %1</translation>
     </message>
     <message>
         <source>There is nothing to export in that range</source>
-        <translation>Il n'y a rien à exporter dans cette plage</translation>
+        <translation>Il n&apos;y a rien à exporter dans cette plage</translation>
     </message>
     <message>
         <source>%1 MB is too small for %2 seconds of video: make it at least %3 MB</source>
@@ -6897,7 +7004,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>That file is already being exported</source>
-        <translation>Ce fichier est déjà en cours d'export</translation>
+        <translation>Ce fichier est déjà en cours d&apos;export</translation>
     </message>
     <message>
         <source>Live Photo</source>
@@ -6909,7 +7016,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not open the microphone: %1</source>
-        <translation>Impossible d'ouvrir le micro : %1</translation>
+        <translation>Impossible d&apos;ouvrir le micro : %1</translation>
     </message>
     <message>
         <source>Could not create the folder %1</source>
@@ -6917,11 +7024,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not start recording: %1</source>
-        <translation>Impossible de démarrer l'enregistrement : %1</translation>
+        <translation>Impossible de démarrer l&apos;enregistrement : %1</translation>
     </message>
     <message>
         <source>Recording failed: %1</source>
-        <translation>Échec de l'enregistrement : %1</translation>
+        <translation>Échec de l&apos;enregistrement : %1</translation>
     </message>
     <message>
         <source>An import is already under way</source>
@@ -6933,7 +7040,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Transcribe the video first (Transcript tab): the writing works from what is said</source>
-        <translation>Transcrivez d'abord la vidéo (onglet Transcription) : l'écriture part de ce qui est dit</translation>
+        <translation>Transcrivez d&apos;abord la vidéo (onglet Transcription) : l&apos;écriture part de ce qui est dit</translation>
     </message>
     <message>
         <source>Written by %1</source>
@@ -6941,11 +7048,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Another AI job is running</source>
-        <translation>Une autre tâche d'IA est en cours</translation>
+        <translation>Une autre tâche d&apos;IA est en cours</translation>
     </message>
     <message>
         <source>There are no captions to translate</source>
-        <translation>Il n'y a pas de sous-titres à traduire</translation>
+        <translation>Il n&apos;y a pas de sous-titres à traduire</translation>
     </message>
     <message>
         <source>Translating captions %1–%2 of %3…</source>
@@ -6965,7 +7072,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Type something to say first</source>
-        <translation>Tapez d'abord quelque chose à dire</translation>
+        <translation>Tapez d&apos;abord quelque chose à dire</translation>
     </message>
     <message>
         <source>Select a drawing</source>
@@ -6973,7 +7080,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Drawing on and off take longer than the clip</source>
-        <translation>L'apparition et la disparition du dessin durent plus longtemps que le clip</translation>
+        <translation>L&apos;apparition et la disparition du dessin durent plus longtemps que le clip</translation>
     </message>
     <message>
         <source>Path %1 (%2)</source>
@@ -6993,7 +7100,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Choose a picture or a video for the slot</source>
-        <translation>Choisissez une image ou une vidéo pour l'emplacement</translation>
+        <translation>Choisissez une image ou une vidéo pour l&apos;emplacement</translation>
     </message>
     <message>
         <source>This slot takes a video</source>
@@ -7005,7 +7112,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>This project has no template music</source>
-        <translation>Ce projet n'a pas de musique de modèle</translation>
+        <translation>Ce projet n&apos;a pas de musique de modèle</translation>
     </message>
     <message>
         <source>Choose something with sound</source>
@@ -7013,7 +7120,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There are no pictures or videos to look at</source>
-        <translation>Il n'y a ni images ni vidéos à analyser</translation>
+        <translation>Il n&apos;y a ni images ni vidéos à analyser</translation>
     </message>
     <message>
         <source>Looking at the media for search</source>
@@ -7021,7 +7128,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There are no titles or captions to check</source>
-        <translation>Il n'y a ni titres ni sous-titres à vérifier</translation>
+        <translation>Il n&apos;y a ni titres ni sous-titres à vérifier</translation>
     </message>
     <message>
         <source>Checking texts %1–%2 of %3…</source>
@@ -7053,7 +7160,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Unknown kind of prompt</source>
-        <translation>Type d'invite inconnu</translation>
+        <translation>Type d&apos;invite inconnu</translation>
     </message>
     <message>
         <source>Choose a picture to describe</source>
@@ -7061,11 +7168,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There is nothing at the playhead to describe</source>
-        <translation>Il n'y a rien à décrire à la tête de lecture</translation>
+        <translation>Il n&apos;y a rien à décrire à la tête de lecture</translation>
     </message>
     <message>
         <source>Could not read the picture to describe</source>
-        <translation>Impossible de lire l'image à décrire</translation>
+        <translation>Impossible de lire l&apos;image à décrire</translation>
     </message>
     <message>
         <source>Following the subject</source>
@@ -7077,7 +7184,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Claude could not rank the moments (%1); using the measured order</source>
-        <translation>Claude n'a pas pu classer les moments (%1) ; l'ordre mesuré est utilisé</translation>
+        <translation>Claude n&apos;a pas pu classer les moments (%1) ; l&apos;ordre mesuré est utilisé</translation>
     </message>
     <message>
         <source>Something is already being worked on</source>
@@ -7109,7 +7216,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>No captions: transcribe the video first (Transcript tab)</source>
-        <translation>Pas de sous-titres : transcrivez d'abord la vidéo (onglet Transcription)</translation>
+        <translation>Pas de sous-titres : transcrivez d&apos;abord la vidéo (onglet Transcription)</translation>
     </message>
     <message>
         <source>Ranked and titled by Claude</source>
@@ -7117,7 +7224,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Describe the picture first</source>
-        <translation>Décrivez d'abord l'image</translation>
+        <translation>Décrivez d&apos;abord l&apos;image</translation>
     </message>
     <message>
         <source>Only pictures in the media bin can be worked from</source>
@@ -7125,7 +7232,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>OpenAI is drawing the sticker…</source>
-        <translation>OpenAI dessine l'autocollant…</translation>
+        <translation>OpenAI dessine l&apos;autocollant…</translation>
     </message>
     <message>
         <source>OpenAI is drawing…</source>
@@ -7145,7 +7252,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Describe the video first</source>
-        <translation>Décrivez d'abord la vidéo</translation>
+        <translation>Décrivez d&apos;abord la vidéo</translation>
     </message>
     <message>
         <source>Google is making the video; this can take a few minutes…</source>
@@ -7153,19 +7260,19 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>That clip has no picture clip right before it</source>
-        <translation>Ce clip n'a pas de clip image juste avant lui</translation>
+        <translation>Ce clip n&apos;a pas de clip image juste avant lui</translation>
     </message>
     <message>
         <source>There is no cut between two picture clips here</source>
-        <translation>Il n'y a pas de coupe entre deux clips image ici</translation>
+        <translation>Il n&apos;y a pas de coupe entre deux clips image ici</translation>
     </message>
     <message>
         <source>Add your Google AI (Gemini API) key in AI settings first</source>
-        <translation>Ajoutez d'abord votre clé Google AI (API Gemini) dans les réglages IA</translation>
+        <translation>Ajoutez d&apos;abord votre clé Google AI (API Gemini) dans les réglages IA</translation>
     </message>
     <message>
         <source>Could not read the frames either side of the cut</source>
-        <translation>Impossible de lire les images de part et d'autre de la coupe</translation>
+        <translation>Impossible de lire les images de part et d&apos;autre de la coupe</translation>
     </message>
     <message>
         <source>Google is making the transition; this can take a few minutes…</source>
@@ -7177,7 +7284,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Describe your idea first</source>
-        <translation>Décrivez d'abord votre idée</translation>
+        <translation>Décrivez d&apos;abord votre idée</translation>
     </message>
     <message>
         <source>The plan came back unreadable; try again</source>
@@ -7189,11 +7296,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Every shot needs a description</source>
-        <translation>Chaque plan a besoin d'une description</translation>
+        <translation>Chaque plan a besoin d&apos;une description</translation>
     </message>
     <message>
         <source>Plan between one and six shots first</source>
-        <translation>Planifiez d'abord entre un et six plans</translation>
+        <translation>Planifiez d&apos;abord entre un et six plans</translation>
     </message>
     <message>
         <source>Google is making shot %1 of %2; this can take a few minutes…</source>
@@ -7205,7 +7312,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Describe the sound first</source>
-        <translation>Décrivez d'abord le son</translation>
+        <translation>Décrivez d&apos;abord le son</translation>
     </message>
     <message>
         <source>ElevenLabs is composing…</source>
@@ -7225,31 +7332,31 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Allow screen recording in System Settings first</source>
-        <translation>Autorisez d'abord l'enregistrement d'écran dans les Réglages Système</translation>
+        <translation>Autorisez d&apos;abord l&apos;enregistrement d&apos;écran dans les Réglages Système</translation>
     </message>
     <message>
         <source>The screen recording could not start: %1</source>
-        <translation>L'enregistrement d'écran n'a pas pu démarrer : %1</translation>
+        <translation>L&apos;enregistrement d&apos;écran n&apos;a pas pu démarrer : %1</translation>
     </message>
     <message>
         <source>Allow the camera in System Settings first</source>
-        <translation>Autorisez d'abord la caméra dans les Réglages Système</translation>
+        <translation>Autorisez d&apos;abord la caméra dans les Réglages Système</translation>
     </message>
     <message>
         <source>The camera recording could not start: %1</source>
-        <translation>L'enregistrement de la caméra n'a pas pu démarrer : %1</translation>
+        <translation>L&apos;enregistrement de la caméra n&apos;a pas pu démarrer : %1</translation>
     </message>
     <message>
         <source>Nothing was recorded: %1</source>
-        <translation>Rien n'a été enregistré : %1</translation>
+        <translation>Rien n&apos;a été enregistré : %1</translation>
     </message>
     <message>
         <source>Select a screen recording</source>
-        <translation>Sélectionnez un enregistrement d'écran</translation>
+        <translation>Sélectionnez un enregistrement d&apos;écran</translation>
     </message>
     <message>
         <source>Select a screen recording with clicks</source>
-        <translation>Sélectionnez un enregistrement d'écran avec des clics</translation>
+        <translation>Sélectionnez un enregistrement d&apos;écran avec des clics</translation>
     </message>
     <message>
         <source>Zooming on clicks works on clips playing forwards at a steady speed</source>
@@ -7261,7 +7368,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The click sound could not be made</source>
-        <translation>Le son de clic n'a pas pu être créé</translation>
+        <translation>Le son de clic n&apos;a pas pu être créé</translation>
     </message>
     <message>
         <source>Select a clip with sound</source>
@@ -7277,11 +7384,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>That isn&apos;t a plug-in</source>
-        <translation>Ce n'est pas un module</translation>
+        <translation>Ce n&apos;est pas un module</translation>
     </message>
     <message>
         <source>This clip has no sound of its own</source>
-        <translation>Ce clip n'a pas de son propre</translation>
+        <translation>Ce clip n&apos;a pas de son propre</translation>
     </message>
     <message>
         <source>The volume is animated: remove its keyframes to normalize</source>
@@ -7301,7 +7408,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>A clip&apos;s loudness is already being measured</source>
-        <translation>La sonie d'un clip est déjà en cours de mesure</translation>
+        <translation>La sonie d&apos;un clip est déjà en cours de mesure</translation>
     </message>
     <message>
         <source>Select clips with sound to normalize</source>
@@ -7309,7 +7416,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There are no cuts between clips to put transitions on</source>
-        <translation>Il n'y a pas de coupes entre clips où mettre des transitions</translation>
+        <translation>Il n&apos;y a pas de coupes entre clips où mettre des transitions</translation>
     </message>
     <message>
         <source>Unknown sticker %1</source>
@@ -7321,7 +7428,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Drop the effect on a clip</source>
-        <translation>Déposez l'effet sur un clip</translation>
+        <translation>Déposez l&apos;effet sur un clip</translation>
     </message>
     <message>
         <source>Markers go on the main timeline</source>
@@ -7349,7 +7456,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Analysis works on clips playing at normal speed</source>
-        <translation>L'analyse fonctionne sur les clips lus à vitesse normale</translation>
+        <translation>L&apos;analyse fonctionne sur les clips lus à vitesse normale</translation>
     </message>
     <message>
         <source>Listening for pauses</source>
@@ -7357,7 +7464,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Find the pauses first</source>
-        <translation>Trouvez d'abord les pauses</translation>
+        <translation>Trouvez d&apos;abord les pauses</translation>
     </message>
     <message>
         <source>Looking for scene changes</source>
@@ -7365,7 +7472,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Find the scene changes first</source>
-        <translation>Trouvez d'abord les changements de scène</translation>
+        <translation>Trouvez d&apos;abord les changements de scène</translation>
     </message>
     <message>
         <source>Finding the beat</source>
@@ -7373,7 +7480,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Select music on an audio track to fit</source>
-        <translation>Sélectionnez la musique d'une piste audio à ajuster</translation>
+        <translation>Sélectionnez la musique d&apos;une piste audio à ajuster</translation>
     </message>
     <message>
         <source>Choose a length between 1 second and an hour</source>
@@ -7385,15 +7492,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Find the beat first</source>
-        <translation>Trouvez d'abord le tempo</translation>
+        <translation>Trouvez d&apos;abord le tempo</translation>
     </message>
     <message>
         <source>Select a clip of a video file</source>
-        <translation>Sélectionnez un clip d'un fichier vidéo</translation>
+        <translation>Sélectionnez un clip d&apos;un fichier vidéo</translation>
     </message>
     <message>
         <source>Download the depth model first</source>
-        <translation>Téléchargez d'abord le modèle de profondeur</translation>
+        <translation>Téléchargez d&apos;abord le modèle de profondeur</translation>
     </message>
     <message>
         <source>Looking for faces</source>
@@ -7401,7 +7508,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Find the faces first</source>
-        <translation>Trouvez d'abord les visages</translation>
+        <translation>Trouvez d&apos;abord les visages</translation>
     </message>
     <message>
         <source>Unknown face cover</source>
@@ -7429,7 +7536,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Those faces are not on screen in this clip</source>
-        <translation>Ces visages ne sont pas à l'écran dans ce clip</translation>
+        <translation>Ces visages ne sont pas à l&apos;écran dans ce clip</translation>
     </message>
     <message>
         <source>This clip covers no faces</source>
@@ -7453,7 +7560,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>This clip is not stabilized</source>
-        <translation>Ce clip n'est pas stabilisé</translation>
+        <translation>Ce clip n&apos;est pas stabilisé</translation>
     </message>
     <message>
         <source>Measuring brightness</source>
@@ -7461,7 +7568,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>This clip&apos;s flicker is not removed</source>
-        <translation>Le scintillement de ce clip n'est pas retiré</translation>
+        <translation>Le scintillement de ce clip n&apos;est pas retiré</translation>
     </message>
     <message>
         <source>Place all four corners</source>
@@ -7481,15 +7588,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Draw a box around what to follow first</source>
-        <translation>Tracez d'abord un cadre autour de ce qu'il faut suivre</translation>
+        <translation>Tracez d&apos;abord un cadre autour de ce qu&apos;il faut suivre</translation>
     </message>
     <message>
         <source>No such kind of tracking</source>
-        <translation>Ce type de suivi n'existe pas</translation>
+        <translation>Ce type de suivi n&apos;existe pas</translation>
     </message>
     <message>
         <source>Place the four corners on the flat surface first</source>
-        <translation>Placez d'abord les quatre coins sur la surface plane</translation>
+        <translation>Placez d&apos;abord les quatre coins sur la surface plane</translation>
     </message>
     <message>
         <source>Smart cutout works on clips playing forwards at a steady speed</source>
@@ -7497,7 +7604,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Draw a box around the subject first</source>
-        <translation>Tracez d'abord un cadre autour du sujet</translation>
+        <translation>Tracez d&apos;abord un cadre autour du sujet</translation>
     </message>
     <message>
         <source>No such track</source>
@@ -7513,23 +7620,23 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>This clip and the track are never on screen together</source>
-        <translation>Ce clip et le suivi ne sont jamais à l'écran en même temps</translation>
+        <translation>Ce clip et le suivi ne sont jamais à l&apos;écran en même temps</translation>
     </message>
     <message>
         <source>Only a plane&apos;s track can have something pinned onto it</source>
-        <translation>Seul le suivi d'un plan peut recevoir quelque chose d'épinglé</translation>
+        <translation>Seul le suivi d&apos;un plan peut recevoir quelque chose d&apos;épinglé</translation>
     </message>
     <message>
         <source>Upscaling is not available on this Mac</source>
-        <translation>L'agrandissement n'est pas disponible sur ce Mac</translation>
+        <translation>L&apos;agrandissement n&apos;est pas disponible sur ce Mac</translation>
     </message>
     <message>
         <source>The upscaling model could not be downloaded: %1</source>
-        <translation>Le modèle d'agrandissement n'a pas pu être téléchargé : %1</translation>
+        <translation>Le modèle d&apos;agrandissement n&apos;a pas pu être téléchargé : %1</translation>
     </message>
     <message>
         <source>Download Apple&apos;s upscaling model first</source>
-        <translation>Téléchargez d'abord le modèle d'agrandissement d'Apple</translation>
+        <translation>Téléchargez d&apos;abord le modèle d&apos;agrandissement d&apos;Apple</translation>
     </message>
     <message>
         <source>Making frames between</source>
@@ -7541,7 +7648,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Draw a box around what to remove first</source>
-        <translation>Tracez d'abord un cadre autour de ce qu'il faut retirer</translation>
+        <translation>Tracez d&apos;abord un cadre autour de ce qu&apos;il faut retirer</translation>
     </message>
     <message>
         <source>Unknown processing: %1</source>
@@ -7569,11 +7676,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Download the speech enhancement model first</source>
-        <translation>Téléchargez d'abord le modèle d'amélioration de la voix</translation>
+        <translation>Téléchargez d&apos;abord le modèle d&apos;amélioration de la voix</translation>
     </message>
     <message>
         <source>Changing the strength</source>
-        <translation>Changement de l'intensité</translation>
+        <translation>Changement de l&apos;intensité</translation>
     </message>
     <message>
         <source>Enhancing speech</source>
@@ -7581,7 +7688,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>This clip&apos;s sound is not enhanced</source>
-        <translation>Le son de ce clip n'est pas amélioré</translation>
+        <translation>Le son de ce clip n&apos;est pas amélioré</translation>
     </message>
     <message>
         <source>Select the music to lower under speech</source>
@@ -7589,7 +7696,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>No other clip with sound plays under this one</source>
-        <translation>Aucun autre clip avec du son n'est lu sous celui-ci</translation>
+        <translation>Aucun autre clip avec du son n&apos;est lu sous celui-ci</translation>
     </message>
     <message>
         <source>Listening for speech</source>
@@ -7601,7 +7708,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Download the speech model first</source>
-        <translation>Téléchargez d'abord le modèle vocal</translation>
+        <translation>Téléchargez d&apos;abord le modèle vocal</translation>
     </message>
     <message>
         <source>Add clips with sound (at normal speed) to make captions from</source>
@@ -7609,7 +7716,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The selected clips have no sound to make captions from</source>
-        <translation>Les clips sélectionnés n'ont pas de son pour en faire des sous-titres</translation>
+        <translation>Les clips sélectionnés n&apos;ont pas de son pour en faire des sous-titres</translation>
     </message>
     <message>
         <source>No speech found</source>
@@ -7629,15 +7736,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Make captions first</source>
-        <translation>Créez d'abord des sous-titres</translation>
+        <translation>Créez d&apos;abord des sous-titres</translation>
     </message>
     <message>
         <source>There are no captions to export</source>
-        <translation>Il n'y a pas de sous-titres à exporter</translation>
+        <translation>Il n&apos;y a pas de sous-titres à exporter</translation>
     </message>
     <message>
         <source>There are no empty tracks to remove</source>
-        <translation>Il n'y a pas de pistes vides à retirer</translation>
+        <translation>Il n&apos;y a pas de pistes vides à retirer</translation>
     </message>
     <message>
         <source>Select the clips to copy</source>
@@ -7653,7 +7760,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Copy or cut some clips first</source>
-        <translation>Copiez ou coupez d'abord des clips</translation>
+        <translation>Copiez ou coupez d&apos;abord des clips</translation>
     </message>
     <message>
         <source>Select the clips to duplicate</source>
@@ -7661,11 +7768,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The file is not where it was</source>
-        <translation>Le fichier n'est plus là où il était</translation>
+        <translation>Le fichier n&apos;est plus là où il était</translation>
     </message>
     <message>
         <source>Mark an In or Out point first (I, O)</source>
-        <translation>Marquez d'abord un point d'entrée ou de sortie (I, O)</translation>
+        <translation>Marquez d&apos;abord un point d&apos;entrée ou de sortie (I, O)</translation>
     </message>
     <message>
         <source>Mark both an In and an Out point to delete the range between them</source>
@@ -7673,7 +7780,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There is nothing in the marked range</source>
-        <translation>Il n'y a rien dans la plage marquée</translation>
+        <translation>Il n&apos;y a rien dans la plage marquée</translation>
     </message>
     <message>
         <source>Click inside a clip to cut it there</source>
@@ -7681,7 +7788,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There are no gaps between clips to close</source>
-        <translation>Il n'y a pas de vides entre clips à combler</translation>
+        <translation>Il n&apos;y a pas de vides entre clips à combler</translation>
     </message>
     <message>
         <source>That track cannot be changed</source>
@@ -7689,7 +7796,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Right-click the empty space between clips to close it</source>
-        <translation>Faites un clic droit sur l'espace vide entre clips pour le combler</translation>
+        <translation>Faites un clic droit sur l&apos;espace vide entre clips pour le combler</translation>
     </message>
     <message>
         <source>Select a clip to copy its attributes</source>
@@ -7697,7 +7804,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Copy a clip&apos;s attributes first</source>
-        <translation>Copiez d'abord les attributs d'un clip</translation>
+        <translation>Copiez d&apos;abord les attributs d&apos;un clip</translation>
     </message>
     <message>
         <source>Select the clips to paste the attributes onto</source>
@@ -7705,15 +7812,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Nothing to paste: the chosen attributes do not apply to these clips</source>
-        <translation>Rien à coller : les attributs choisis ne s'appliquent pas à ces clips</translation>
+        <translation>Rien à coller : les attributs choisis ne s&apos;appliquent pas à ces clips</translation>
     </message>
     <message>
         <source>There is no transition there to copy</source>
-        <translation>Il n'y a pas de transition à copier à cet endroit</translation>
+        <translation>Il n&apos;y a pas de transition à copier à cet endroit</translation>
     </message>
     <message>
         <source>Copy a transition first</source>
-        <translation>Copiez d'abord une transition</translation>
+        <translation>Copiez d&apos;abord une transition</translation>
     </message>
     <message>
         <source>Main timeline</source>
@@ -7721,7 +7828,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Add an audio track for the sound first</source>
-        <translation>Ajoutez d'abord une piste audio pour le son</translation>
+        <translation>Ajoutez d&apos;abord une piste audio pour le son</translation>
     </message>
     <message>
         <source>Select a compound clip to open</source>
@@ -7733,11 +7840,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not open the project: %1</source>
-        <translation>Impossible d'ouvrir le projet : %1</translation>
+        <translation>Impossible d&apos;ouvrir le projet : %1</translation>
     </message>
     <message>
         <source>There is no multicam clip at the playhead</source>
-        <translation>Il n'y a pas de clip multicam à la tête de lecture</translation>
+        <translation>Il n&apos;y a pas de clip multicam à la tête de lecture</translation>
     </message>
     <message>
         <source>Select a video or picture clip to animate</source>
@@ -7757,7 +7864,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There is nothing on the timeline to take a snapshot of</source>
-        <translation>Il n'y a rien sur la timeline à photographier</translation>
+        <translation>Il n&apos;y a rien sur la timeline à photographier</translation>
     </message>
     <message>
         <source>Could not take a snapshot: no GPU device</source>
@@ -7773,7 +7880,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not write %1</source>
-        <translation>Impossible d'écrire %1</translation>
+        <translation>Impossible d&apos;écrire %1</translation>
     </message>
     <message>
         <source>Select a video or picture clip</source>
@@ -7789,19 +7896,19 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Both clips need a picture to match colours</source>
-        <translation>Les deux clips ont besoin d'une image pour faire correspondre les couleurs</translation>
+        <translation>Les deux clips ont besoin d&apos;une image pour faire correspondre les couleurs</translation>
     </message>
     <message>
         <source>Action camera, wide</source>
-        <translation>Caméra d'action, grand-angle</translation>
+        <translation>Caméra d&apos;action, grand-angle</translation>
     </message>
     <message>
         <source>Action camera, super wide</source>
-        <translation>Caméra d'action, très grand-angle</translation>
+        <translation>Caméra d&apos;action, très grand-angle</translation>
     </message>
     <message>
         <source>Action camera, medium</source>
-        <translation>Caméra d'action, moyen</translation>
+        <translation>Caméra d&apos;action, moyen</translation>
     </message>
     <message>
         <source>Phone ultra wide (0.5×)</source>
@@ -7817,7 +7924,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There is no such lens</source>
-        <translation>Cet objectif n'existe pas</translation>
+        <translation>Cet objectif n&apos;existe pas</translation>
     </message>
     <message>
         <source>The new media is shorter, so the clip is shorter too</source>
@@ -7829,11 +7936,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The placeholder could not be drawn</source>
-        <translation>L'espace réservé n'a pas pu être dessiné</translation>
+        <translation>L&apos;espace réservé n&apos;a pas pu être dessiné</translation>
     </message>
     <message>
         <source>There is no clip to extend</source>
-        <translation>Il n'y a pas de clip à prolonger</translation>
+        <translation>Il n&apos;y a pas de clip à prolonger</translation>
     </message>
     <message>
         <source>Put the playhead over a clip of media</source>
@@ -7841,15 +7948,15 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There are no transitions to delete</source>
-        <translation>Il n'y a pas de transitions à supprimer</translation>
+        <translation>Il n&apos;y a pas de transitions à supprimer</translation>
     </message>
     <message>
         <source>There are no markers to delete</source>
-        <translation>Il n'y a pas de marqueurs à supprimer</translation>
+        <translation>Il n&apos;y a pas de marqueurs à supprimer</translation>
     </message>
     <message>
         <source>There is no such label</source>
-        <translation>Ce libellé n'existe pas</translation>
+        <translation>Ce libellé n&apos;existe pas</translation>
     </message>
     <message>
         <source>Every piece of media is in use</source>
@@ -7857,7 +7964,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There is no such channel choice</source>
-        <translation>Ce choix de canaux n'existe pas</translation>
+        <translation>Ce choix de canaux n&apos;existe pas</translation>
     </message>
     <message>
         <source>Choose a folder to import</source>
@@ -7865,19 +7972,19 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>There is no media in that folder</source>
-        <translation>Il n'y a pas de média dans ce dossier</translation>
+        <translation>Il n&apos;y a pas de média dans ce dossier</translation>
     </message>
     <message>
         <source>None of the files in that folder could be read</source>
-        <translation>Aucun des fichiers de ce dossier n'a pu être lu</translation>
+        <translation>Aucun des fichiers de ce dossier n&apos;a pu être lu</translation>
     </message>
     <message>
         <source>One file in the folder could not be read</source>
-        <translation>Un fichier du dossier n'a pas pu être lu</translation>
+        <translation>Un fichier du dossier n&apos;a pas pu être lu</translation>
     </message>
     <message>
         <source>%1 files in the folder could not be read</source>
-        <translation>%1 fichiers du dossier n'ont pas pu être lus</translation>
+        <translation>%1 fichiers du dossier n&apos;ont pas pu être lus</translation>
     </message>
     <message>
         <source>An archive is being made already</source>
@@ -7885,7 +7992,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Choose a folder for the archive</source>
-        <translation>Choisissez un dossier pour l'archive</translation>
+        <translation>Choisissez un dossier pour l&apos;archive</translation>
     </message>
     <message>
         <source>%1 Archive</source>
@@ -7897,23 +8004,23 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The archive folder could not be made</source>
-        <translation>Le dossier d'archive n'a pas pu être créé</translation>
+        <translation>Le dossier d&apos;archive n&apos;a pas pu être créé</translation>
     </message>
     <message>
         <source>The archive was cancelled</source>
-        <translation>L'archive a été annulée</translation>
+        <translation>L&apos;archive a été annulée</translation>
     </message>
     <message>
         <source>The archive could not be made: %1</source>
-        <translation>L'archive n'a pas pu être créée : %1</translation>
+        <translation>L&apos;archive n&apos;a pas pu être créée : %1</translation>
     </message>
     <message>
         <source>%1 was missing, so it is not in the archive</source>
-        <translation>%1 manquait, il n'est donc pas dans l'archive</translation>
+        <translation>%1 manquait, il n&apos;est donc pas dans l&apos;archive</translation>
     </message>
     <message>
         <source>%1 missing files are not in the archive</source>
-        <translation>%1 fichiers manquants ne sont pas dans l'archive</translation>
+        <translation>%1 fichiers manquants ne sont pas dans l&apos;archive</translation>
     </message>
     <message>
         <source>Choose a size from 16 to 16384 pixels a side</source>
@@ -7980,7 +8087,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Frame rate</source>
-        <translation>Fréquence d'images</translation>
+        <translation>Fréquence d&apos;images</translation>
     </message>
     <message>
         <source>%1 fps</source>
@@ -7988,7 +8095,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Clips keep their times. Pictures fit the new shape as they do any canvas; move or scale them afterwards if they should fill it.</source>
-        <translation>Les clips gardent leurs temps. Les images s'adaptent à la nouvelle forme comme à tout canevas ; déplacez-les ou redimensionnez-les ensuite si elles doivent le remplir.</translation>
+        <translation>Les clips gardent leurs temps. Les images s&apos;adaptent à la nouvelle forme comme à tout canevas ; déplacez-les ou redimensionnez-les ensuite si elles doivent le remplir.</translation>
     </message>
     <message>
         <source>Change the canvas</source>
@@ -8000,7 +8107,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Copies the project and every file it uses (media, cleaned sound, LUTs) into one new folder, to move or keep. The project open here stays as it is.</source>
-        <translation>Copie le projet et tous les fichiers qu'il utilise (médias, son nettoyé, LUT) dans un nouveau dossier, à déplacer ou à garder. Le projet ouvert ici reste tel quel.</translation>
+        <translation>Copie le projet et tous les fichiers qu&apos;il utilise (médias, son nettoyé, LUT) dans un nouveau dossier, à déplacer ou à garder. Le projet ouvert ici reste tel quel.</translation>
     </message>
     <message>
         <source>Only media the timeline uses</source>
@@ -8020,7 +8127,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Where to put the archive</source>
-        <translation>Où mettre l'archive</translation>
+        <translation>Où mettre l&apos;archive</translation>
     </message>
 </context>
 <context>
@@ -8031,7 +8138,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not write %1</source>
-        <translation>Impossible d'écrire %1</translation>
+        <translation>Impossible d&apos;écrire %1</translation>
     </message>
     <message>
         <source>Could not make %1</source>
@@ -8039,7 +8146,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Could not save the effect in %1</source>
-        <translation>Impossible d'enregistrer l'effet dans %1</translation>
+        <translation>Impossible d&apos;enregistrer l&apos;effet dans %1</translation>
     </message>
     <message>
         <source>“%1” cannot name a setting: use small letters, digits and _, starting with a letter</source>
@@ -8047,7 +8154,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Two settings are called “%1”</source>
-        <translation>Deux réglages s'appellent « %1 »</translation>
+        <translation>Deux réglages s&apos;appellent « %1 »</translation>
     </message>
     <message>
         <source>Write a function vec4 effect(vec2 uv) that returns the colour at uv</source>
@@ -8059,7 +8166,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The shader could not be compiled</source>
-        <translation>Le shader n'a pas pu être compilé</translation>
+        <translation>Le shader n&apos;a pas pu être compilé</translation>
     </message>
     <message>
         <source>No such effect of yours</source>
@@ -8071,7 +8178,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>%1 is not an effect made in the shader editor</source>
-        <translation>%1 n'est pas un effet créé dans l'éditeur de shaders</translation>
+        <translation>%1 n&apos;est pas un effet créé dans l&apos;éditeur de shaders</translation>
     </message>
     <message>
         <source>Could not copy %1</source>
@@ -8090,22 +8197,22 @@ Troisième, 4</translation>
     <name>RecordCountdown</name>
     <message>
         <source>Recording starts</source>
-        <translation>L'enregistrement démarre</translation>
+        <translation>L&apos;enregistrement démarre</translation>
     </message>
 </context>
 <context>
     <name>RecordPanel</name>
     <message>
         <source>Record screen and camera</source>
-        <translation>Enregistrer l'écran et la caméra</translation>
+        <translation>Enregistrer l&apos;écran et la caméra</translation>
     </message>
     <message>
         <source>To record the screen, allow TechieVideoEditor in System Settings › Privacy &amp; Security › Screen &amp; System Audio Recording.</source>
-        <translation>Pour enregistrer l'écran, autorisez TechieVideoEditor dans Réglages Système › Confidentialité et sécurité › Enregistrement de l'écran et de l'audio du système.</translation>
+        <translation>Pour enregistrer l&apos;écran, autorisez TechieVideoEditor dans Réglages Système › Confidentialité et sécurité › Enregistrement de l&apos;écran et de l&apos;audio du système.</translation>
     </message>
     <message>
         <source>Allow screen recording</source>
-        <translation>Autoriser l'enregistrement d'écran</translation>
+        <translation>Autoriser l&apos;enregistrement d&apos;écran</translation>
     </message>
     <message>
         <source>Screen</source>
@@ -8129,11 +8236,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>%1 × %2 points of the display</source>
-        <translation>%1 × %2 points de l'écran</translation>
+        <translation>%1 × %2 points de l&apos;écran</translation>
     </message>
     <message>
         <source>No area chosen yet</source>
-        <translation>Aucune zone choisie pour l'instant</translation>
+        <translation>Aucune zone choisie pour l&apos;instant</translation>
     </message>
     <message>
         <source>Change…</source>
@@ -8149,7 +8256,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Draw on the screen while recording</source>
-        <translation>Dessiner à l'écran pendant l'enregistrement</translation>
+        <translation>Dessiner à l&apos;écran pendant l&apos;enregistrement</translation>
     </message>
     <message>
         <source>Camera</source>
@@ -8177,7 +8284,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The camera goes small in the corner over the screen (picture in picture).</source>
-        <translation>La caméra se place en petit dans le coin, sur l'écran (image dans l'image).</translation>
+        <translation>La caméra se place en petit dans le coin, sur l&apos;écran (image dans l&apos;image).</translation>
     </message>
     <message>
         <source>Teleprompter…</source>
@@ -8185,7 +8292,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Your script, scrolling while you record, in a window left out of the recording</source>
-        <translation>Votre script, qui défile pendant l'enregistrement, dans une fenêtre exclue de l'enregistrement</translation>
+        <translation>Votre script, qui défile pendant l&apos;enregistrement, dans une fenêtre exclue de l&apos;enregistrement</translation>
     </message>
     <message>
         <source>Microphone (%1)</source>
@@ -8233,11 +8340,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Carry on recording in the same takes</source>
-        <translation>Continuer l'enregistrement dans les mêmes prises</translation>
+        <translation>Continuer l&apos;enregistrement dans les mêmes prises</translation>
     </message>
     <message>
         <source>Pause: nothing is recorded until you resume; the takes leave the pause out</source>
-        <translation>Pause : rien n'est enregistré jusqu'à la reprise ; les prises excluent la pause</translation>
+        <translation>Pause : rien n&apos;est enregistré jusqu&apos;à la reprise ; les prises excluent la pause</translation>
     </message>
     <message>
         <source>Draw</source>
@@ -8279,7 +8386,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>These files are not where the project expects them. Their clips stay on the timeline, but show and play nothing until you find the files.</source>
-        <translation>Ces fichiers ne sont pas là où le projet les attend. Leurs clips restent sur la timeline, mais n'affichent et ne lisent rien tant que vous n'avez pas retrouvé les fichiers.</translation>
+        <translation>Ces fichiers ne sont pas là où le projet les attend. Leurs clips restent sur la timeline, mais n&apos;affichent et ne lisent rien tant que vous n&apos;avez pas retrouvé les fichiers.</translation>
     </message>
     <message>
         <source>Every clip has its file again.</source>
@@ -8346,7 +8453,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Nothing exported yet. Exports wait here and run one after another while you keep editing.</source>
-        <translation>Rien d'exporté pour l'instant. Les exports attendent ici et s'exécutent l'un après l'autre pendant que vous continuez le montage.</translation>
+        <translation>Rien d&apos;exporté pour l&apos;instant. Les exports attendent ici et s&apos;exécutent l&apos;un après l&apos;autre pendant que vous continuez le montage.</translation>
     </message>
     <message>
         <source>Resume</source>
@@ -8511,7 +8618,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Compiles: the preview is your effect on the sample scene.</source>
-        <translation>Compile : l'aperçu montre votre effet sur la scène d'exemple.</translation>
+        <translation>Compile : l&apos;aperçu montre votre effet sur la scène d&apos;exemple.</translation>
     </message>
     <message>
         <source>Check</source>
@@ -8542,7 +8649,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>This starts a new project in place of the current one; save that first if you want to keep it.</source>
-        <translation>Ceci démarre un nouveau projet à la place de l'actuel ; enregistrez-le d'abord si vous voulez le garder.</translation>
+        <translation>Ceci démarre un nouveau projet à la place de l&apos;actuel ; enregistrez-le d&apos;abord si vous voulez le garder.</translation>
     </message>
     <message>
         <source>Delete template</source>
@@ -8593,7 +8700,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Imported the keys of 1 action.</source>
-        <translation>Touches d'1 action importées.</translation>
+        <translation>Touches d&apos;1 action importées.</translation>
     </message>
     <message>
         <source>Imported the keys of %1 actions.</source>
@@ -8692,7 +8799,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The pack could not be copied.</source>
-        <translation>Le pack n'a pas pu être copié.</translation>
+        <translation>Le pack n&apos;a pas pu être copié.</translation>
     </message>
     <message>
         <source>Unknown sound %1</source>
@@ -8700,7 +8807,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The sound could not be played.</source>
-        <translation>Le son n'a pas pu être lu.</translation>
+        <translation>Le son n&apos;a pas pu être lu.</translation>
     </message>
 </context>
 <context>
@@ -8711,7 +8818,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>%1 · mark In and Out (I, O) to take a part</source>
-        <translation>%1 · marquez l'entrée et la sortie (I, O) pour en prendre une partie</translation>
+        <translation>%1 · marquez l&apos;entrée et la sortie (I, O) pour en prendre une partie</translation>
     </message>
     <message>
         <source>Insert</source>
@@ -8727,7 +8834,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>At the playhead on the main track, over what is there</source>
-        <translation>À la tête de lecture sur la piste principale, par-dessus ce qui s'y trouve</translation>
+        <translation>À la tête de lecture sur la piste principale, par-dessus ce qui s&apos;y trouve</translation>
     </message>
     <message>
         <source>Append</source>
@@ -8786,7 +8893,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Cannot write to %1</source>
-        <translation>Impossible d'écrire dans %1</translation>
+        <translation>Impossible d&apos;écrire dans %1</translation>
     </message>
     <message>
         <source>Download failed: %1</source>
@@ -8794,7 +8901,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The downloaded model is not the expected file (size or SHA-256 differs)</source>
-        <translation>Le modèle téléchargé n'est pas le fichier attendu (taille ou SHA-256 différente)</translation>
+        <translation>Le modèle téléchargé n&apos;est pas le fichier attendu (taille ou SHA-256 différente)</translation>
     </message>
     <message>
         <source>Cannot keep the downloaded model in %1</source>
@@ -8802,7 +8909,7 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>The downloaded model could not be unpacked</source>
-        <translation>Le modèle téléchargé n'a pas pu être décompressé</translation>
+        <translation>Le modèle téléchargé n&apos;a pas pu être décompressé</translation>
     </message>
     <message>
         <source>The downloaded model is missing %1</source>
@@ -8828,19 +8935,19 @@ Troisième, 4</translation>
     <name>StickerCutout</name>
     <message>
         <source>The picture could not be read.</source>
-        <translation>L'image n'a pas pu être lue.</translation>
+        <translation>L&apos;image n&apos;a pas pu être lue.</translation>
     </message>
     <message>
         <source>The picture could not be prepared.</source>
-        <translation>L'image n'a pas pu être préparée.</translation>
+        <translation>L&apos;image n&apos;a pas pu être préparée.</translation>
     </message>
     <message>
         <source>No subject stood out to cut out; the picture is kept as it is.</source>
-        <translation>Aucun sujet ne ressortait à détourer ; l'image est gardée telle quelle.</translation>
+        <translation>Aucun sujet ne ressortait à détourer ; l&apos;image est gardée telle quelle.</translation>
     </message>
     <message>
         <source>The sticker could not be saved.</source>
-        <translation>L'autocollant n'a pas pu être enregistré.</translation>
+        <translation>L&apos;autocollant n&apos;a pas pu être enregistré.</translation>
     </message>
 </context>
 <context>
@@ -8867,11 +8974,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Packs of templates, music, stickers and effects. Each is checked against our signature before it is installed.</source>
-        <translation>Packs de modèles, musiques, autocollants et effets. Chacun est vérifié avec notre signature avant d'être installé.</translation>
+        <translation>Packs de modèles, musiques, autocollants et effets. Chacun est vérifié avec notre signature avant d&apos;être installé.</translation>
     </message>
     <message>
         <source>This copy of the app trusts no signing key yet, so it can&apos;t check packs. Whoever publishes them adds theirs (tools/packs/README.md).</source>
-        <translation>Cette copie de l'app n'approuve encore aucune clé de signature, elle ne peut donc pas vérifier les packs. Leur éditeur ajoute la sienne (tools/packs/README.md).</translation>
+        <translation>Cette copie de l&apos;app n&apos;approuve encore aucune clé de signature, elle ne peut donc pas vérifier les packs. Leur éditeur ajoute la sienne (tools/packs/README.md).</translation>
     </message>
     <message>
         <source>All</source>
@@ -8899,11 +9006,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>today</source>
-        <translation>aujourd'hui</translation>
+        <translation>aujourd&apos;hui</translation>
     </message>
     <message>
         <source>Effects and transitions from packs change the next time you open the app.</source>
-        <translation>Les effets et transitions des packs changent à la prochaine ouverture de l'app.</translation>
+        <translation>Les effets et transitions des packs changent à la prochaine ouverture de l&apos;app.</translation>
     </message>
     <message>
         <source>Update</source>
@@ -8923,11 +9030,11 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>No packs installed yet.</source>
-        <translation>Aucun pack installé pour l'instant.</translation>
+        <translation>Aucun pack installé pour l&apos;instant.</translation>
     </message>
     <message>
         <source>The catalogue has no packs yet.</source>
-        <translation>Le catalogue n'a pas encore de packs.</translation>
+        <translation>Le catalogue n&apos;a pas encore de packs.</translation>
     </message>
     <message>
         <source>Catalogue address</source>
@@ -8935,18 +9042,18 @@ Troisième, 4</translation>
     </message>
     <message>
         <source>Use the default</source>
-        <translation>Utiliser l'adresse par défaut</translation>
+        <translation>Utiliser l&apos;adresse par défaut</translation>
     </message>
 </context>
 <context>
     <name>SystemSpeechTask</name>
     <message>
         <source>The voice could not be written.</source>
-        <translation>La voix n'a pas pu être écrite.</translation>
+        <translation>La voix n&apos;a pas pu être écrite.</translation>
     </message>
     <message>
         <source>The voice made no sound.</source>
-        <translation>La voix n'a produit aucun son.</translation>
+        <translation>La voix n&apos;a produit aucun son.</translation>
     </message>
 </context>
 <context>
@@ -8957,7 +9064,7 @@ Troisième, 4</translation>
 It scrolls while you record, at the speed you set. Keep your eyes on the line by the arrows.</source>
         <translation>Tapez ou collez votre script ici.
 
-Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur la ligne marquée par les flèches.</translation>
+Il défile pendant l&apos;enregistrement, à la vitesse choisie. Gardez les yeux sur la ligne marquée par les flèches.</translation>
     </message>
 </context>
 <context>
@@ -8992,11 +9099,11 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>With recording</source>
-        <translation>Avec l'enregistrement</translation>
+        <translation>Avec l&apos;enregistrement</translation>
     </message>
     <message>
         <source>Start from the top when a recording starts, and stop when it stops</source>
-        <translation>Repartir du haut au début d'un enregistrement, et s'arrêter quand il s'arrête</translation>
+        <translation>Repartir du haut au début d&apos;un enregistrement, et s&apos;arrêter quand il s&apos;arrête</translation>
     </message>
     <message>
         <source>Done</source>
@@ -9019,11 +9126,11 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>The template could not be read.</source>
-        <translation>Le modèle n'a pas pu être lu.</translation>
+        <translation>Le modèle n&apos;a pas pu être lu.</translation>
     </message>
     <message>
         <source>The template could not be read: %1</source>
-        <translation>Le modèle n'a pas pu être lu : %1</translation>
+        <translation>Le modèle n&apos;a pas pu être lu : %1</translation>
     </message>
     <message>
         <source>Unknown music %1</source>
@@ -9031,7 +9138,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>This template came with a pack; remove the pack in the Store.</source>
-        <translation>Ce modèle vient d'un pack ; retirez le pack dans la Boutique.</translation>
+        <translation>Ce modèle vient d&apos;un pack ; retirez le pack dans la Boutique.</translation>
     </message>
     <message>
         <source>Built-in templates cannot be deleted.</source>
@@ -9039,7 +9146,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>The template could not be deleted.</source>
-        <translation>Le modèle n'a pas pu être supprimé.</translation>
+        <translation>Le modèle n&apos;a pas pu être supprimé.</translation>
     </message>
     <message>
         <source>Unknown shape %1</source>
@@ -9067,18 +9174,18 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Made from a project</source>
-        <translation>Créé à partir d'un projet</translation>
+        <translation>Créé à partir d&apos;un projet</translation>
     </message>
     <message>
         <source>The template could not be written.</source>
-        <translation>Le modèle n'a pas pu être écrit.</translation>
+        <translation>Le modèle n&apos;a pas pu être écrit.</translation>
     </message>
 </context>
 <context>
     <name>TemplatesPage</name>
     <message>
         <source>Choose a picture or video for the slot</source>
-        <translation>Choisissez une image ou une vidéo pour l'emplacement</translation>
+        <translation>Choisissez une image ou une vidéo pour l&apos;emplacement</translation>
     </message>
     <message>
         <source>Pictures and videos (*.mp4 *.mov *.m4v *.mkv *.avi *.webm *.png *.jpg *.jpeg *.heic *.heif *.webp *.tif *.tiff)</source>
@@ -9106,7 +9213,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Choose what goes in each slot; it is cropped to fill the frame, and a short video is slowed to fit.</source>
-        <translation>Choisissez ce qui va dans chaque emplacement ; c'est recadré pour remplir le cadre, et une vidéo courte est ralentie pour tenir.</translation>
+        <translation>Choisissez ce qui va dans chaque emplacement ; c&apos;est recadré pour remplir le cadre, et une vidéo courte est ralentie pour tenir.</translation>
     </message>
     <message>
         <source> · slowed to %1</source>
@@ -9205,15 +9312,15 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Trim the start to the playhead</source>
-        <translation>Raccourcir le début jusqu'à la tête de lecture</translation>
+        <translation>Raccourcir le début jusqu&apos;à la tête de lecture</translation>
     </message>
     <message>
         <source>Trim the end to the playhead</source>
-        <translation>Raccourcir la fin jusqu'à la tête de lecture</translation>
+        <translation>Raccourcir la fin jusqu&apos;à la tête de lecture</translation>
     </message>
     <message>
         <source>Extend the nearer edge to the playhead</source>
-        <translation>Étendre le bord le plus proche jusqu'à la tête de lecture</translation>
+        <translation>Étendre le bord le plus proche jusqu&apos;à la tête de lecture</translation>
     </message>
     <message>
         <source>Turn on</source>
@@ -9257,7 +9364,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Detach audio</source>
-        <translation>Détacher l'audio</translation>
+        <translation>Détacher l&apos;audio</translation>
     </message>
     <message>
         <source>Crossfade from the clip before</source>
@@ -9317,11 +9424,11 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Copy the colour grade</source>
-        <translation>Copier l'étalonnage</translation>
+        <translation>Copier l&apos;étalonnage</translation>
     </message>
     <message>
         <source>Paste the colour grade</source>
-        <translation>Coller l'étalonnage</translation>
+        <translation>Coller l&apos;étalonnage</translation>
     </message>
     <message>
         <source>Select every clip on this track</source>
@@ -9425,11 +9532,11 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Play from In to Out</source>
-        <translation>Lire de l'entrée à la sortie</translation>
+        <translation>Lire de l&apos;entrée à la sortie</translation>
     </message>
     <message>
         <source>Delete from In to Out</source>
-        <translation>Supprimer de l'entrée à la sortie</translation>
+        <translation>Supprimer de l&apos;entrée à la sortie</translation>
     </message>
     <message>
         <source>Clear In and Out</source>
@@ -9445,7 +9552,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Select up to the playhead</source>
-        <translation>Sélectionner jusqu'à la tête de lecture</translation>
+        <translation>Sélectionner jusqu&apos;à la tête de lecture</translation>
     </message>
     <message>
         <source>Delete every transition…</source>
@@ -9473,7 +9580,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Chapters made from them go too. You can undo this.</source>
-        <translation>Les chapitres créés à partir d'eux partent aussi. Vous pouvez annuler.</translation>
+        <translation>Les chapitres créés à partir d&apos;eux partent aussi. Vous pouvez annuler.</translation>
     </message>
     <message>
         <source>Delete markers</source>
@@ -9529,7 +9636,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Onto the selected clips, from the clip you copied them from:</source>
-        <translation>Sur les clips sélectionnés, depuis le clip d'où vous les avez copiés :</translation>
+        <translation>Sur les clips sélectionnés, depuis le clip d&apos;où vous les avez copiés :</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -9584,7 +9691,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Skimming: the player shows the frame under the pointer as it moves over the timeline</source>
-        <translation>Survol : le lecteur montre l'image sous le pointeur quand il passe sur la timeline</translation>
+        <translation>Survol : le lecteur montre l&apos;image sous le pointeur quand il passe sur la timeline</translation>
     </message>
     <message>
         <source>Snapping</source>
@@ -9592,11 +9699,11 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Select a clip to animate it</source>
-        <translation>Sélectionnez un clip pour l'animer</translation>
+        <translation>Sélectionnez un clip pour l&apos;animer</translation>
     </message>
     <message>
         <source>Remove the selected clip&apos;s keyframe at the playhead</source>
-        <translation>Retirer l'image clé du clip sélectionné à la tête de lecture</translation>
+        <translation>Retirer l&apos;image clé du clip sélectionné à la tête de lecture</translation>
     </message>
     <message>
         <source>Add a keyframe to the selected clip at the playhead</source>
@@ -9608,7 +9715,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Draw on the picture — brush, lines, arrows and shapes, as a drawing at the playhead</source>
-        <translation>Dessiner sur l'image — pinceau, lignes, flèches et formes, comme dessin à la tête de lecture</translation>
+        <translation>Dessiner sur l&apos;image — pinceau, lignes, flèches et formes, comme dessin à la tête de lecture</translation>
     </message>
     <message>
         <source>Add a marker at the playhead%1 — click a marker to edit it</source>
@@ -9632,7 +9739,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Make a multicam clip of the selected clips, one angle per camera (line them up by sound first); then 1–9 cut to an angle at the playhead</source>
-        <translation>Créer un clip multicam à partir des clips sélectionnés, un angle par caméra (alignez-les d'abord par le son) ; puis 1–9 coupe vers un angle à la tête de lecture</translation>
+        <translation>Créer un clip multicam à partir des clips sélectionnés, un angle par caméra (alignez-les d&apos;abord par le son) ; puis 1–9 coupe vers un angle à la tête de lecture</translation>
     </message>
     <message>
         <source>Record voice-over</source>
@@ -9640,7 +9747,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Record screen and camera</source>
-        <translation>Enregistrer l'écran et la caméra</translation>
+        <translation>Enregistrer l&apos;écran et la caméra</translation>
     </message>
     <message>
         <source>Mixer: track volume, balance, solo and loudness meters</source>
@@ -9684,7 +9791,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>Back to %1 (the edits inside stay, one undo step)</source>
-        <translation>Retour à %1 (les modifications à l'intérieur restent, une seule étape d'annulation)</translation>
+        <translation>Retour à %1 (les modifications à l&apos;intérieur restent, une seule étape d&apos;annulation)</translation>
     </message>
     <message>
         <source>Close the compound clip (back to %1)</source>
@@ -9907,7 +10014,7 @@ Il défile pendant l'enregistrement, à la vitesse choisie. Gardez les yeux sur 
     </message>
     <message>
         <source>LET&apos;S GO</source>
-        <translation>C'EST PARTI</translation>
+        <translation>C&apos;EST PARTI</translation>
     </message>
     <message>
         <source>Elegant</source>
@@ -10104,8 +10211,8 @@ TechieVideoEditor</translation>
 is to stop talking
 and begin doing.”</source>
         <translation>« La meilleure façon de commencer
-est d'arrêter de parler
-et de passer à l'action. »</translation>
+est d&apos;arrêter de parler
+et de passer à l&apos;action. »</translation>
     </message>
     <message>
         <source>News Ticker</source>
@@ -10113,7 +10220,7 @@ et de passer à l'action. »</translation>
     </message>
     <message>
         <source>Markets open higher · Storm moves north · Local team wins the cup · Weather: sunny, 24°</source>
-        <translation>Les marchés ouvrent en hausse · La tempête remonte vers le nord · L'équipe locale remporte la coupe · Météo : ensoleillé, 24°</translation>
+        <translation>Les marchés ouvrent en hausse · La tempête remonte vers le nord · L&apos;équipe locale remporte la coupe · Météo : ensoleillé, 24°</translation>
     </message>
     <message>
         <source>End Card</source>
@@ -10121,7 +10228,7 @@ et de passer à l'action. »</translation>
     </message>
     <message>
         <source>Thanks for watching</source>
-        <translation>Merci d'avoir regardé</translation>
+        <translation>Merci d&apos;avoir regardé</translation>
     </message>
     <message>
         <source>Chapter Card</source>
@@ -10247,7 +10354,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>ON AIR</source>
-        <translation>À L'ANTENNE</translation>
+        <translation>À L&apos;ANTENNE</translation>
     </message>
     <message>
         <source>Bar Chart</source>
@@ -10286,7 +10393,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Project settings: change the size or frame rate, or archive the project with its media</source>
-        <translation>Réglages du projet : changez la taille ou la fréquence d'images, ou archivez le projet avec ses médias</translation>
+        <translation>Réglages du projet : changez la taille ou la fréquence d&apos;images, ou archivez le projet avec ses médias</translation>
     </message>
     <message>
         <source>%1 × %2 · %3 fps</source>
@@ -10370,7 +10477,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Export a video, a GIF or the sound%1; exports queue up and run while you edit</source>
-        <translation>Exporter une vidéo, un GIF ou le son%1 ; les exports se mettent en file et s'exécutent pendant le montage</translation>
+        <translation>Exporter une vidéo, un GIF ou le son%1 ; les exports se mettent en file et s&apos;exécutent pendant le montage</translation>
     </message>
 </context>
 <context>
@@ -10385,7 +10492,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Drag a box around what to follow</source>
-        <translation>Tracez un cadre autour de ce qu'il faut suivre</translation>
+        <translation>Tracez un cadre autour de ce qu&apos;il faut suivre</translation>
     </message>
 </context>
 <context>
@@ -10396,7 +10503,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Download a speech model in the Captions tab first; then transcribe the clips here and edit them by their words.</source>
-        <translation>Téléchargez d'abord un modèle vocal dans l'onglet Sous-titres ; puis transcrivez les clips ici et montez-les par leurs mots.</translation>
+        <translation>Téléchargez d&apos;abord un modèle vocal dans l&apos;onglet Sous-titres ; puis transcrivez les clips ici et montez-les par leurs mots.</translation>
     </message>
     <message>
         <source>Transcribe</source>
@@ -10404,7 +10511,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Write with AI…</source>
-        <translation>Écrire avec l'IA…</translation>
+        <translation>Écrire avec l&apos;IA…</translation>
     </message>
     <message>
         <source>Titles, a description or a clean script from what is said</source>
@@ -10451,7 +10558,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>The voice wasn&apos;t made</source>
-        <translation>La voix n'a pas été créée</translation>
+        <translation>La voix n&apos;a pas été créée</translation>
     </message>
     <message>
         <source>Copy a voice, with consent</source>
@@ -10459,7 +10566,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>ElevenLabs makes a copy of a voice from a recording, for speech in your videos. Here it is made only from a recording of the speaker reading a consent statement aloud, checked on this Mac first.</source>
-        <translation>ElevenLabs crée une copie d'une voix à partir d'un enregistrement, pour la parole dans vos vidéos. Ici, elle n'est créée qu'à partir d'un enregistrement de la personne lisant à voix haute une déclaration de consentement, vérifié d'abord sur ce Mac.</translation>
+        <translation>ElevenLabs crée une copie d&apos;une voix à partir d&apos;un enregistrement, pour la parole dans vos vidéos. Ici, elle n&apos;est créée qu&apos;à partir d&apos;un enregistrement de la personne lisant à voix haute une déclaration de consentement, vérifié d&apos;abord sur ce Mac.</translation>
     </message>
     <message>
         <source>Speaker&apos;s name</source>
@@ -10467,7 +10574,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>As they&apos;ll say it</source>
-        <translation>Tel qu'elle le prononcera</translation>
+        <translation>Tel qu&apos;elle le prononcera</translation>
     </message>
     <message>
         <source>Voice name</source>
@@ -10491,7 +10598,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>The recording is checked with a speech model on this Mac (Base · English, about 60 MB).</source>
-        <translation>L'enregistrement est vérifié avec un modèle vocal sur ce Mac (Base · anglais, environ 60 Mo).</translation>
+        <translation>L&apos;enregistrement est vérifié avec un modèle vocal sur ce Mac (Base · anglais, environ 60 Mo).</translation>
     </message>
     <message>
         <source>Downloading…</source>
@@ -10511,7 +10618,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Checking the recording on this Mac…</source>
-        <translation>Vérification de l'enregistrement sur ce Mac…</translation>
+        <translation>Vérification de l&apos;enregistrement sur ce Mac…</translation>
     </message>
     <message>
         <source>Copying the voice…</source>
@@ -10519,7 +10626,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>The recording says the statement (%1 of its words heard in order). Making the voice sends this recording to ElevenLabs.</source>
-        <translation>L'enregistrement contient la déclaration (%1 de ses mots entendus dans l'ordre). Créer la voix envoie cet enregistrement à ElevenLabs.</translation>
+        <translation>L&apos;enregistrement contient la déclaration (%1 de ses mots entendus dans l&apos;ordre). Créer la voix envoie cet enregistrement à ElevenLabs.</translation>
     </message>
     <message>
         <source>“%1” is in your voices. Its consent recording is kept with it; deleting the voice deletes both.</source>
@@ -10539,7 +10646,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Start recording</source>
-        <translation>Démarrer l'enregistrement</translation>
+        <translation>Démarrer l&apos;enregistrement</translation>
     </message>
     <message>
         <source>Record again</source>
@@ -10566,7 +10673,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>These weren&apos;t heard in the recording: %1. Record the statement again, clearly.</source>
-        <translation>Ceux-ci n'ont pas été entendus dans l'enregistrement : %1. Réenregistrez la déclaration, distinctement.</translation>
+        <translation>Ceux-ci n&apos;ont pas été entendus dans l&apos;enregistrement : %1. Réenregistrez la déclaration, distinctement.</translation>
     </message>
     <message>
         <source>Write the speaker&apos;s name: they say it in the statement.</source>
@@ -10574,31 +10681,31 @@ Le voyage</translation>
     </message>
     <message>
         <source>A voice is copied only by the person it belongs to, 18 or older, who agrees to it.</source>
-        <translation>Une voix n'est copiée que par la personne à qui elle appartient, âgée de 18 ans ou plus, qui y consent.</translation>
+        <translation>Une voix n&apos;est copiée que par la personne à qui elle appartient, âgée de 18 ans ou plus, qui y consent.</translation>
     </message>
     <message>
         <source>Add your ElevenLabs API key in AI settings first.</source>
-        <translation>Ajoutez d'abord votre clé d'API ElevenLabs dans les réglages IA.</translation>
+        <translation>Ajoutez d&apos;abord votre clé d&apos;API ElevenLabs dans les réglages IA.</translation>
     </message>
     <message>
         <source>The microphone isn&apos;t available: allow it in System Settings › Privacy &amp; Security › Microphone.</source>
-        <translation>Le micro n'est pas disponible : autorisez-le dans Réglages Système › Confidentialité et sécurité › Micro.</translation>
+        <translation>Le micro n&apos;est pas disponible : autorisez-le dans Réglages Système › Confidentialité et sécurité › Micro.</translation>
     </message>
     <message>
         <source>Could not start recording: %1</source>
-        <translation>Impossible de démarrer l'enregistrement : %1</translation>
+        <translation>Impossible de démarrer l&apos;enregistrement : %1</translation>
     </message>
     <message>
         <source>Recording failed: %1</source>
-        <translation>Échec de l'enregistrement : %1</translation>
+        <translation>Échec de l&apos;enregistrement : %1</translation>
     </message>
     <message>
         <source>Download a speech model first: the recording is checked on this Mac.</source>
-        <translation>Téléchargez d'abord un modèle vocal : l'enregistrement est vérifié sur ce Mac.</translation>
+        <translation>Téléchargez d&apos;abord un modèle vocal : l&apos;enregistrement est vérifié sur ce Mac.</translation>
     </message>
     <message>
         <source>The recording couldn&apos;t be checked: %1</source>
-        <translation>L'enregistrement n'a pas pu être vérifié : %1</translation>
+        <translation>L&apos;enregistrement n&apos;a pas pu être vérifié : %1</translation>
     </message>
     <message>
         <source>Another AI job is running; try again when it&apos;s done.</source>
@@ -10617,15 +10724,15 @@ Le voyage</translation>
     </message>
     <message>
         <source>Stop recording first</source>
-        <translation>Arrêtez d'abord l'enregistrement</translation>
+        <translation>Arrêtez d&apos;abord l&apos;enregistrement</translation>
     </message>
     <message>
         <source>TechieVideoEditor isn&apos;t allowed to use the microphone. Turn it on in System Settings › Privacy &amp; Security › Microphone, then open this panel again.</source>
-        <translation>TechieVideoEditor n'est pas autorisé à utiliser le micro. Activez-le dans Réglages Système › Confidentialité et sécurité › Micro, puis rouvrez ce panneau.</translation>
+        <translation>TechieVideoEditor n&apos;est pas autorisé à utiliser le micro. Activez-le dans Réglages Système › Confidentialité et sécurité › Micro, puis rouvrez ce panneau.</translation>
     </message>
     <message>
         <source>Waiting for permission to use the microphone…</source>
-        <translation>En attente de l'autorisation d'utiliser le micro…</translation>
+        <translation>En attente de l&apos;autorisation d&apos;utiliser le micro…</translation>
     </message>
     <message>
         <source>Open Privacy Settings</source>
@@ -10641,7 +10748,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Mute the timeline while recording</source>
-        <translation>Couper le son de la timeline pendant l'enregistrement</translation>
+        <translation>Couper le son de la timeline pendant l&apos;enregistrement</translation>
     </message>
     <message>
         <source>Count down 3 seconds first</source>
@@ -10653,7 +10760,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Your script, scrolling while you record</source>
-        <translation>Votre script, qui défile pendant l'enregistrement</translation>
+        <translation>Votre script, qui défile pendant l&apos;enregistrement</translation>
     </message>
     <message>
         <source>Stop and add to the timeline (Space)</source>
@@ -10748,15 +10855,15 @@ Le voyage</translation>
     </message>
     <message>
         <source>Make a copy of a voice from the speaker reading a consent statement</source>
-        <translation>Créer une copie d'une voix à partir de la personne lisant une déclaration de consentement</translation>
+        <translation>Créer une copie d&apos;une voix à partir de la personne lisant une déclaration de consentement</translation>
     </message>
     <message>
         <source>Add an ElevenLabs key in AI settings first</source>
-        <translation>Ajoutez d'abord une clé ElevenLabs dans les réglages IA</translation>
+        <translation>Ajoutez d&apos;abord une clé ElevenLabs dans les réglages IA</translation>
     </message>
     <message>
         <source>Delete “%1” from your ElevenLabs account? Its consent recording here is deleted too. This can&apos;t be undone.</source>
-        <translation>Supprimer « %1 » de votre compte ElevenLabs ? Son enregistrement de consentement ici est supprimé aussi. C'est irréversible.</translation>
+        <translation>Supprimer « %1 » de votre compte ElevenLabs ? Son enregistrement de consentement ici est supprimé aussi. C&apos;est irréversible.</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -10830,7 +10937,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Write with AI</source>
-        <translation>Écrire avec l'IA</translation>
+        <translation>Écrire avec l&apos;IA</translation>
     </message>
     <message>
         <source>Close</source>
@@ -10854,7 +10961,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Add your Claude API key in AI settings (the speech bubble at the top) to write.</source>
-        <translation>Ajoutez votre clé d'API Claude dans les réglages IA (la bulle en haut) pour écrire.</translation>
+        <translation>Ajoutez votre clé d&apos;API Claude dans les réglages IA (la bulle en haut) pour écrire.</translation>
     </message>
     <message>
         <source>What Claude writes appears here.</source>
@@ -11213,7 +11320,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Underwater</source>
-        <translation>Sous l'eau</translation>
+        <translation>Sous l&apos;eau</translation>
     </message>
     <message>
         <source>Voice Clarity</source>
@@ -11549,7 +11656,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Water Drop</source>
-        <translation>Goutte d'eau</translation>
+        <translation>Goutte d&apos;eau</translation>
     </message>
     <message>
         <source>Ripples</source>
@@ -11917,7 +12024,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Lens Blur</source>
-        <translation>Flou d'objectif</translation>
+        <translation>Flou d&apos;objectif</translation>
     </message>
     <message>
         <source>Bright spots</source>
@@ -11925,7 +12032,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Lens Distortion</source>
-        <translation>Distorsion d'objectif</translation>
+        <translation>Distorsion d&apos;objectif</translation>
     </message>
     <message>
         <source>Colour fringe</source>
@@ -11933,7 +12040,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Lens Flare</source>
-        <translation>Reflet d'objectif</translation>
+        <translation>Reflet d&apos;objectif</translation>
     </message>
     <message>
         <source>Light X</source>
@@ -12005,7 +12112,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Picture&apos;s colours</source>
-        <translation>Couleurs de l'image</translation>
+        <translation>Couleurs de l&apos;image</translation>
     </message>
     <message>
         <source>One colour</source>
@@ -12021,7 +12128,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Oil Paint</source>
-        <translation>Peinture à l'huile</translation>
+        <translation>Peinture à l&apos;huile</translation>
     </message>
     <message>
         <source>Brush</source>
@@ -12073,7 +12180,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Water Ripple</source>
-        <translation>Ondulation de l'eau</translation>
+        <translation>Ondulation de l&apos;eau</translation>
     </message>
     <message>
         <source>Fade out</source>
@@ -12141,7 +12248,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Flash length</source>
-        <translation>Durée de l'éclair</translation>
+        <translation>Durée de l&apos;éclair</translation>
     </message>
     <message>
         <source>Dark</source>
@@ -12185,7 +12292,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Wavelength</source>
-        <translation>Longueur d'onde</translation>
+        <translation>Longueur d&apos;onde</translation>
     </message>
     <message>
         <source>Radial Blur</source>
@@ -12357,7 +12464,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Teamwork</source>
-        <translation>Travail d'équipe</translation>
+        <translation>Travail d&apos;équipe</translation>
     </message>
     <message>
         <source>The Reveal</source>
@@ -12409,7 +12516,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>ProRes 422 HQ MOV with 24-bit sound at the project&apos;s size: for archiving and other editors</source>
-        <translation>MOV ProRes 422 HQ avec son 24 bits à la taille du projet : pour l'archivage et les autres logiciels</translation>
+        <translation>MOV ProRes 422 HQ avec son 24 bits à la taille du projet : pour l&apos;archivage et les autres logiciels</translation>
     </message>
     <message>
         <source>Editing copy (ProRes Proxy)</source>
@@ -12908,11 +13015,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>Change Audio</source>
-        <translation>Changer l'audio</translation>
+        <translation>Changer l&apos;audio</translation>
     </message>
     <message>
         <source>Change Picture</source>
-        <translation>Changer l'image</translation>
+        <translation>Changer l&apos;image</translation>
     </message>
     <message>
         <source>Reset Color</source>
@@ -12940,7 +13047,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Change Key</source>
-        <translation>Modifier l'incrustation</translation>
+        <translation>Modifier l&apos;incrustation</translation>
     </message>
     <message>
         <source>Change Matte</source>
@@ -12948,7 +13055,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Picture in picture</source>
-        <translation>Image dans l'image</translation>
+        <translation>Image dans l&apos;image</translation>
     </message>
     <message>
         <source>Side by side</source>
@@ -12988,7 +13095,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Paste Grade</source>
-        <translation>Coller l'étalonnage</translation>
+        <translation>Coller l&apos;étalonnage</translation>
     </message>
     <message>
         <source>Apply Color Preset</source>
@@ -13004,7 +13111,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Remove Keyframe</source>
-        <translation>Retirer l'image clé</translation>
+        <translation>Retirer l&apos;image clé</translation>
     </message>
     <message>
         <source>Clear Keyframes</source>
@@ -13012,11 +13119,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>Change Keyframe</source>
-        <translation>Modifier l'image clé</translation>
+        <translation>Modifier l&apos;image clé</translation>
     </message>
     <message>
         <source>Move Keyframe</source>
-        <translation>Déplacer l'image clé</translation>
+        <translation>Déplacer l&apos;image clé</translation>
     </message>
     <message>
         <source>Move With the Music</source>
@@ -13044,19 +13151,19 @@ Le voyage</translation>
     </message>
     <message>
         <source>Remove Effect</source>
-        <translation>Retirer l'effet</translation>
+        <translation>Retirer l&apos;effet</translation>
     </message>
     <message>
         <source>Enable Effect</source>
-        <translation>Activer l'effet</translation>
+        <translation>Activer l&apos;effet</translation>
     </message>
     <message>
         <source>Disable Effect</source>
-        <translation>Désactiver l'effet</translation>
+        <translation>Désactiver l&apos;effet</translation>
     </message>
     <message>
         <source>Change Effect</source>
-        <translation>Modifier l'effet</translation>
+        <translation>Modifier l&apos;effet</translation>
     </message>
     <message>
         <source>Add Music</source>
@@ -13092,7 +13199,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Fill Slot</source>
-        <translation>Remplir l'emplacement</translation>
+        <translation>Remplir l&apos;emplacement</translation>
     </message>
     <message>
         <source>Replace Music</source>
@@ -13116,7 +13223,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Video from an Idea</source>
-        <translation>Vidéo à partir d'une idée</translation>
+        <translation>Vidéo à partir d&apos;une idée</translation>
     </message>
     <message>
         <source>Add AI Music</source>
@@ -13128,7 +13235,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Record Screen</source>
-        <translation>Enregistrer l'écran</translation>
+        <translation>Enregistrer l&apos;écran</translation>
     </message>
     <message>
         <source>Record Camera</source>
@@ -13144,15 +13251,15 @@ Le voyage</translation>
     </message>
     <message>
         <source>Remove Audio Effect</source>
-        <translation>Retirer l'effet audio</translation>
+        <translation>Retirer l&apos;effet audio</translation>
     </message>
     <message>
         <source>Enable Audio Effect</source>
-        <translation>Activer l'effet audio</translation>
+        <translation>Activer l&apos;effet audio</translation>
     </message>
     <message>
         <source>Disable Audio Effect</source>
-        <translation>Désactiver l'effet audio</translation>
+        <translation>Désactiver l&apos;effet audio</translation>
     </message>
     <message>
         <source>Change Plug-in</source>
@@ -13160,7 +13267,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Change Audio Effect</source>
-        <translation>Modifier l'effet audio</translation>
+        <translation>Modifier l&apos;effet audio</translation>
     </message>
     <message>
         <source>Add Track Plug-in</source>
@@ -13172,19 +13279,19 @@ Le voyage</translation>
     </message>
     <message>
         <source>Remove Track Effect</source>
-        <translation>Retirer l'effet de piste</translation>
+        <translation>Retirer l&apos;effet de piste</translation>
     </message>
     <message>
         <source>Enable Track Effect</source>
-        <translation>Activer l'effet de piste</translation>
+        <translation>Activer l&apos;effet de piste</translation>
     </message>
     <message>
         <source>Disable Track Effect</source>
-        <translation>Désactiver l'effet de piste</translation>
+        <translation>Désactiver l&apos;effet de piste</translation>
     </message>
     <message>
         <source>Change Track Effect</source>
-        <translation>Modifier l'effet de piste</translation>
+        <translation>Modifier l&apos;effet de piste</translation>
     </message>
     <message>
         <source>Adjust Plug-in</source>
@@ -13244,7 +13351,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Change Beauty</source>
-        <translation>Modifier l'embellissement</translation>
+        <translation>Modifier l&apos;embellissement</translation>
     </message>
     <message>
         <source>Beauty</source>
@@ -13252,7 +13359,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Remove Beauty</source>
-        <translation>Retirer l'embellissement</translation>
+        <translation>Retirer l&apos;embellissement</translation>
     </message>
     <message>
         <source>Change Night View</source>
@@ -13364,11 +13471,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>Remove Object</source>
-        <translation>Retirer l'objet</translation>
+        <translation>Retirer l&apos;objet</translation>
     </message>
     <message>
         <source>Original Picture</source>
-        <translation>Image d'origine</translation>
+        <translation>Image d&apos;origine</translation>
     </message>
     <message>
         <source>Auto Ducking</source>
@@ -13536,11 +13643,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>Switch Angle</source>
-        <translation>Changer d'angle</translation>
+        <translation>Changer d&apos;angle</translation>
     </message>
     <message>
         <source>Cut to Angle</source>
-        <translation>Couper vers l'angle</translation>
+        <translation>Couper vers l&apos;angle</translation>
     </message>
     <message>
         <source>Animate Clip</source>
@@ -13548,7 +13655,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Remove Animation</source>
-        <translation>Retirer l'animation</translation>
+        <translation>Retirer l&apos;animation</translation>
     </message>
     <message>
         <source>Pan and Zoom</source>
@@ -13576,7 +13683,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Lens Correction</source>
-        <translation>Correction d'objectif</translation>
+        <translation>Correction d&apos;objectif</translation>
     </message>
     <message>
         <source>Replace Media</source>
@@ -13672,7 +13779,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Fade in</source>
-        <translation>Fondu d'entrée</translation>
+        <translation>Fondu d&apos;entrée</translation>
     </message>
     <message>
         <source>Grow in</source>
@@ -13748,7 +13855,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Pop out</source>
-        <translation>Disparaître d'un coup</translation>
+        <translation>Disparaître d&apos;un coup</translation>
     </message>
     <message>
         <source>Fade in and out</source>
@@ -13776,11 +13883,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>an animation needs a length</source>
-        <translation>une animation a besoin d'une durée</translation>
+        <translation>une animation a besoin d&apos;une durée</translation>
     </message>
     <message>
         <source>there is no such animation</source>
-        <translation>cette animation n'existe pas</translation>
+        <translation>cette animation n&apos;existe pas</translation>
     </message>
     <message>
         <source>Zoom in</source>
@@ -13876,11 +13983,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>The recording is too short: read the whole statement, at an easy pace.</source>
-        <translation>L'enregistrement est trop court : lisez toute la déclaration, posément.</translation>
+        <translation>L&apos;enregistrement est trop court : lisez toute la déclaration, posément.</translation>
     </message>
     <message>
         <source>The recording doesn&apos;t say the statement as it is written. Record it again, reading every word.</source>
-        <translation>L'enregistrement ne dit pas la déclaration telle qu'elle est écrite. Réenregistrez-la en lisant chaque mot.</translation>
+        <translation>L&apos;enregistrement ne dit pas la déclaration telle qu&apos;elle est écrite. Réenregistrez-la en lisant chaque mot.</translation>
     </message>
     <message>
         <source>Position, size, crop, opacity and blend modes</source>
@@ -13928,7 +14035,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>The project&apos;s HDR colour: the other editor&apos;s timeline is set up as its own</source>
-        <translation>La couleur HDR du projet : la timeline de l'autre logiciel est réglée comme la sienne</translation>
+        <translation>La couleur HDR du projet : la timeline de l&apos;autre logiciel est réglée comme la sienne</translation>
     </message>
     <message>
         <source>The 360° project setting</source>
@@ -13996,7 +14103,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Marker colours this app doesn&apos;t have (as the nearest)</source>
-        <translation>Couleurs de marqueur que cette app n'a pas (la plus proche)</translation>
+        <translation>Couleurs de marqueur que cette app n&apos;a pas (la plus proche)</translation>
     </message>
     <message>
         <source>Track effects (left out)</source>
@@ -14036,7 +14143,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Marker colours (Final Cut&apos;s markers have none)</source>
-        <translation>Couleurs des marqueurs (ceux de Final Cut n'en ont pas)</translation>
+        <translation>Couleurs des marqueurs (ceux de Final Cut n&apos;en ont pas)</translation>
     </message>
     <message>
         <source>Effects, transforms and volume (left out)</source>
@@ -14052,7 +14159,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Clips whose media isn&apos;t in the file (left as space)</source>
-        <translation>Clips dont le média n'est pas dans le fichier (laissés vides)</translation>
+        <translation>Clips dont le média n&apos;est pas dans le fichier (laissés vides)</translation>
     </message>
     <message>
         <source>Pictures below the main storyline (left out)</source>
@@ -14080,7 +14187,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Tracks other than the main video track (an EDL holds one)</source>
-        <translation>Pistes autres que la piste vidéo principale (une EDL n'en contient qu'une)</translation>
+        <translation>Pistes autres que la piste vidéo principale (une EDL n&apos;en contient qu&apos;une)</translation>
     </message>
     <message>
         <source>Titles (an EDL holds media only)</source>
@@ -14092,7 +14199,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Transitions from titles (left out of the EDL)</source>
-        <translation>Transitions depuis des titres (omises de l'EDL)</translation>
+        <translation>Transitions depuis des titres (omises de l&apos;EDL)</translation>
     </message>
     <message>
         <source>Fade</source>
@@ -14192,7 +14299,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>Detach Audio</source>
-        <translation>Détacher l'audio</translation>
+        <translation>Détacher l&apos;audio</translation>
     </message>
     <message>
         <source>Keep Pitch</source>
@@ -14288,7 +14395,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>the anchor point must be on the picture or near it</source>
-        <translation>le point d'ancrage doit être sur l'image ou près d'elle</translation>
+        <translation>le point d&apos;ancrage doit être sur l&apos;image ou près d&apos;elle</translation>
     </message>
     <message>
         <source>a pinned corner is too far off the canvas</source>
@@ -14316,7 +14423,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>the tilt must be between -60° and 60°</source>
-        <translation>l'inclinaison doit être entre -60° et 60°</translation>
+        <translation>l&apos;inclinaison doit être entre -60° et 60°</translation>
     </message>
     <message>
         <source>choose a picture to fill the text with</source>
@@ -14324,11 +14431,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>how much it moves with the music must be between 0% and 100%</source>
-        <translation>l'intensité du mouvement avec la musique doit être entre 0 % et 100 %</translation>
+        <translation>l&apos;intensité du mouvement avec la musique doit être entre 0 % et 100 %</translation>
     </message>
     <message>
         <source>a chart needs at least one value</source>
-        <translation>un graphique a besoin d'au moins une valeur</translation>
+        <translation>un graphique a besoin d&apos;au moins une valeur</translation>
     </message>
     <message>
         <source>a chart can show at most 50 values</source>
@@ -14336,7 +14443,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>chart values must be numbers</source>
-        <translation>les valeurs d'un graphique doivent être des nombres</translation>
+        <translation>les valeurs d&apos;un graphique doivent être des nombres</translation>
     </message>
     <message>
         <source>a chart label is too long</source>
@@ -14352,7 +14459,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>a visualiser&apos;s size must be between 10% and 100%</source>
-        <translation>la taille d'un visualiseur doit être entre 10 % et 100 %</translation>
+        <translation>la taille d&apos;un visualiseur doit être entre 10 % et 100 %</translation>
     </message>
     <message>
         <source>Add Marker</source>
@@ -14408,11 +14515,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>only a compound clip opens on the timeline</source>
-        <translation>seul un clip composé s'ouvre dans la timeline</translation>
+        <translation>seul un clip composé s&apos;ouvre dans la timeline</translation>
     </message>
     <message>
         <source>the compound clip&apos;s insides are missing</source>
-        <translation>l'intérieur du clip composé est manquant</translation>
+        <translation>l&apos;intérieur du clip composé est manquant</translation>
     </message>
     <message>
         <source>track is locked</source>
@@ -14440,7 +14547,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>the playhead is not over the multicam clip</source>
-        <translation>la tête de lecture n'est pas sur le clip multicam</translation>
+        <translation>la tête de lecture n&apos;est pas sur le clip multicam</translation>
     </message>
     <message>
         <source>that project&apos;s timeline is empty</source>
@@ -14460,7 +14567,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>music can be fitted only at normal speed</source>
-        <translation>la musique ne peut être ajustée qu'à vitesse normale</translation>
+        <translation>la musique ne peut être ajustée qu&apos;à vitesse normale</translation>
     </message>
     <message>
         <source>nothing to fit</source>
@@ -14468,7 +14575,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>there is not room for the music on its track</source>
-        <translation>il n'y a pas de place pour la musique sur sa piste</translation>
+        <translation>il n&apos;y a pas de place pour la musique sur sa piste</translation>
     </message>
     <message>
         <source>Select a clip</source>
@@ -14484,11 +14591,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>That media is not in the project</source>
-        <translation>Ce média n'est pas dans le projet</translation>
+        <translation>Ce média n&apos;est pas dans le projet</translation>
     </message>
     <message>
         <source>That media has no sound for an audio track</source>
-        <translation>Ce média n'a pas de son pour une piste audio</translation>
+        <translation>Ce média n&apos;a pas de son pour une piste audio</translation>
     </message>
     <message>
         <source>Sound-only media goes on an audio track</source>
@@ -14508,7 +14615,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>There is no more of the media there</source>
-        <translation>Il n'y a plus de média à cet endroit</translation>
+        <translation>Il n&apos;y a plus de média à cet endroit</translation>
     </message>
     <message>
         <source>There is another clip in the way</source>
@@ -14516,7 +14623,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>That track is not on the timeline</source>
-        <translation>Cette piste n'est pas sur la timeline</translation>
+        <translation>Cette piste n&apos;est pas sur la timeline</translation>
     </message>
     <message>
         <source>The track is at the top already</source>
@@ -14540,7 +14647,7 @@ Le voyage</translation>
     </message>
     <message>
         <source>That folder is not in the project</source>
-        <translation>Ce dossier n'est pas dans le projet</translation>
+        <translation>Ce dossier n&apos;est pas dans le projet</translation>
     </message>
     <message>
         <source>Choose something to move</source>
@@ -14564,31 +14671,31 @@ Le voyage</translation>
     </message>
     <message>
         <source>The processed copy could not be written.</source>
-        <translation>La copie traitée n'a pas pu être écrite.</translation>
+        <translation>La copie traitée n&apos;a pas pu être écrite.</translation>
     </message>
     <message>
         <source>The processed copy could not be kept.</source>
-        <translation>La copie traitée n'a pas pu être gardée.</translation>
+        <translation>La copie traitée n&apos;a pas pu être gardée.</translation>
     </message>
     <message>
         <source>This file has no pictures to work on.</source>
-        <translation>Ce fichier n'a pas d'images à traiter.</translation>
+        <translation>Ce fichier n&apos;a pas d&apos;images à traiter.</translation>
     </message>
     <message>
         <source>Upscaling is not available on this Mac.</source>
-        <translation>L'agrandissement n'est pas disponible sur ce Mac.</translation>
+        <translation>L&apos;agrandissement n&apos;est pas disponible sur ce Mac.</translation>
     </message>
     <message>
         <source>Upscaling works on pictures up to 1920 × 1080.</source>
-        <translation>L'agrandissement fonctionne sur des images jusqu'à 1920 × 1080.</translation>
+        <translation>L&apos;agrandissement fonctionne sur des images jusqu&apos;à 1920 × 1080.</translation>
     </message>
     <message>
         <source>Download Apple&apos;s upscaling model first.</source>
-        <translation>Téléchargez d'abord le modèle d'agrandissement d'Apple.</translation>
+        <translation>Téléchargez d&apos;abord le modèle d&apos;agrandissement d&apos;Apple.</translation>
     </message>
     <message>
         <source>Smooth slow motion is not available on this Mac.</source>
-        <translation>Le ralenti fluide n'est pas disponible sur ce Mac.</translation>
+        <translation>Le ralenti fluide n&apos;est pas disponible sur ce Mac.</translation>
     </message>
     <message>
         <source>Smooth slow motion does not work on pictures of this size.</source>
@@ -14596,27 +14703,27 @@ Le voyage</translation>
     </message>
     <message>
         <source>Draw a box around what to remove first.</source>
-        <translation>Tracez d'abord un cadre autour de ce qu'il faut retirer.</translation>
+        <translation>Tracez d&apos;abord un cadre autour de ce qu&apos;il faut retirer.</translation>
     </message>
     <message>
         <source>A frame could not be read.</source>
-        <translation>Une image n'a pas pu être lue.</translation>
+        <translation>Une image n&apos;a pas pu être lue.</translation>
     </message>
     <message>
         <source>The screen cannot be recorded (check Screen Recording in System Settings).</source>
-        <translation>L'écran ne peut pas être enregistré (vérifiez Enregistrement de l'écran dans les Réglages Système).</translation>
+        <translation>L&apos;écran ne peut pas être enregistré (vérifiez Enregistrement de l&apos;écran dans les Réglages Système).</translation>
     </message>
     <message>
         <source>That screen or window is gone.</source>
-        <translation>Cet écran ou cette fenêtre n'existe plus.</translation>
+        <translation>Cet écran ou cette fenêtre n&apos;existe plus.</translation>
     </message>
     <message>
         <source>The screen recording could not start.</source>
-        <translation>L'enregistrement d'écran n'a pas pu démarrer.</translation>
+        <translation>L&apos;enregistrement d&apos;écran n&apos;a pas pu démarrer.</translation>
     </message>
     <message>
         <source>That camera is not connected.</source>
-        <translation>Cette caméra n'est pas connectée.</translation>
+        <translation>Cette caméra n&apos;est pas connectée.</translation>
     </message>
     <message>
         <source>The camera cannot be opened.</source>
@@ -14624,27 +14731,27 @@ Le voyage</translation>
     </message>
     <message>
         <source>The camera did not start.</source>
-        <translation>La caméra n'a pas démarré.</translation>
+        <translation>La caméra n&apos;a pas démarré.</translation>
     </message>
     <message>
         <source>The recording file could not be made.</source>
-        <translation>Le fichier d'enregistrement n'a pas pu être créé.</translation>
+        <translation>Le fichier d&apos;enregistrement n&apos;a pas pu être créé.</translation>
     </message>
     <message>
         <source>The recording could not be written.</source>
-        <translation>L'enregistrement n'a pas pu être écrit.</translation>
+        <translation>L&apos;enregistrement n&apos;a pas pu être écrit.</translation>
     </message>
     <message>
         <source>The recording could not be finished.</source>
-        <translation>L'enregistrement n'a pas pu être terminé.</translation>
+        <translation>L&apos;enregistrement n&apos;a pas pu être terminé.</translation>
     </message>
     <message>
         <source>Nothing is being recorded.</source>
-        <translation>Rien n'est en cours d'enregistrement.</translation>
+        <translation>Rien n&apos;est en cours d&apos;enregistrement.</translation>
     </message>
     <message>
         <source>Nothing was recorded.</source>
-        <translation>Rien n'a été enregistré.</translation>
+        <translation>Rien n&apos;a été enregistré.</translation>
     </message>
     <message>
         <source>All photos and videos</source>
@@ -14652,11 +14759,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>The item is no longer in the Photos library.</source>
-        <translation>L'élément n'est plus dans la photothèque Photos.</translation>
+        <translation>L&apos;élément n&apos;est plus dans la photothèque Photos.</translation>
     </message>
     <message>
         <source>Photos has no file for the item.</source>
-        <translation>Photos n'a pas de fichier pour cet élément.</translation>
+        <translation>Photos n&apos;a pas de fichier pour cet élément.</translation>
     </message>
     <message>
         <source>Songs</source>
@@ -14664,35 +14771,35 @@ Le voyage</translation>
     </message>
     <message>
         <source>The song&apos;s file is not on this Mac.</source>
-        <translation>Le fichier du morceau n'est pas sur ce Mac.</translation>
+        <translation>Le fichier du morceau n&apos;est pas sur ce Mac.</translation>
     </message>
     <message>
         <source>The device or the file is no longer there.</source>
-        <translation>L'appareil ou le fichier n'est plus là.</translation>
+        <translation>L&apos;appareil ou le fichier n&apos;est plus là.</translation>
     </message>
     <message>
         <source>The file did not download.</source>
-        <translation>Le fichier n'a pas été téléchargé.</translation>
+        <translation>Le fichier n&apos;a pas été téléchargé.</translation>
     </message>
     <message>
         <source>The file is no longer there.</source>
-        <translation>Le fichier n'est plus là.</translation>
+        <translation>Le fichier n&apos;est plus là.</translation>
     </message>
     <message>
         <source>This file has no pictures to look at.</source>
-        <translation>Ce fichier n'a pas d'images à analyser.</translation>
+        <translation>Ce fichier n&apos;a pas d&apos;images à analyser.</translation>
     </message>
     <message>
         <source>Draw a box around what to follow first.</source>
-        <translation>Tracez d'abord un cadre autour de ce qu'il faut suivre.</translation>
+        <translation>Tracez d&apos;abord un cadre autour de ce qu&apos;il faut suivre.</translation>
     </message>
     <message>
         <source>This file has no pictures to follow.</source>
-        <translation>Ce fichier n'a pas d'images à suivre.</translation>
+        <translation>Ce fichier n&apos;a pas d&apos;images à suivre.</translation>
     </message>
     <message>
         <source>No flat rectangle (a screen, a sign, a page) was found in the box.</source>
-        <translation>Aucun rectangle plat (un écran, un panneau, une page) n'a été trouvé dans le cadre.</translation>
+        <translation>Aucun rectangle plat (un écran, un panneau, une page) n&apos;a été trouvé dans le cadre.</translation>
     </message>
     <message>
         <source>Nothing to follow there.</source>
@@ -14700,11 +14807,11 @@ Le voyage</translation>
     </message>
     <message>
         <source>Place the four corners on the flat surface to follow first.</source>
-        <translation>Placez d'abord les quatre coins sur la surface plane à suivre.</translation>
+        <translation>Placez d&apos;abord les quatre coins sur la surface plane à suivre.</translation>
     </message>
     <message>
         <source>Could not look at this picture.</source>
-        <translation>Impossible d'analyser cette image.</translation>
+        <translation>Impossible d&apos;analyser cette image.</translation>
     </message>
     <message>
         <source>The depth model is not there.</source>
@@ -14712,51 +14819,51 @@ Le voyage</translation>
     </message>
     <message>
         <source>The depth model could not be prepared.</source>
-        <translation>Le modèle de profondeur n'a pas pu être préparé.</translation>
+        <translation>Le modèle de profondeur n&apos;a pas pu être préparé.</translation>
     </message>
     <message>
         <source>The depth model could not be loaded.</source>
-        <translation>Le modèle de profondeur n'a pas pu être chargé.</translation>
+        <translation>Le modèle de profondeur n&apos;a pas pu être chargé.</translation>
     </message>
     <message>
         <source>The model&apos;s settings could not be read.</source>
-        <translation>Les réglages du modèle n'ont pas pu être lus.</translation>
+        <translation>Les réglages du modèle n&apos;ont pas pu être lus.</translation>
     </message>
     <message>
         <source>This model&apos;s settings are not ones the app can run (it needs 48 kHz).</source>
-        <translation>Les réglages de ce modèle ne sont pas exécutables par l'app (il lui faut 48 kHz).</translation>
+        <translation>Les réglages de ce modèle ne sont pas exécutables par l&apos;app (il lui faut 48 kHz).</translation>
     </message>
     <message>
         <source>This has no sound to work on.</source>
-        <translation>Ceci n'a pas de son à traiter.</translation>
+        <translation>Ceci n&apos;a pas de son à traiter.</translation>
     </message>
     <message>
         <source>The cleaned sound could not be written.</source>
-        <translation>Le son nettoyé n'a pas pu être écrit.</translation>
+        <translation>Le son nettoyé n&apos;a pas pu être écrit.</translation>
     </message>
     <message>
         <source>The sound could not be written.</source>
-        <translation>Le son n'a pas pu être écrit.</translation>
+        <translation>Le son n&apos;a pas pu être écrit.</translation>
     </message>
     <message>
         <source>The pack has no manifest.</source>
-        <translation>Le pack n'a pas de manifeste.</translation>
+        <translation>Le pack n&apos;a pas de manifeste.</translation>
     </message>
     <message>
         <source>The manifest is not a sound pack&apos;s.</source>
-        <translation>Le manifeste n'est pas celui d'un pack de sons.</translation>
+        <translation>Le manifeste n&apos;est pas celui d&apos;un pack de sons.</translation>
     </message>
     <message>
         <source>The pack is a newer version than this app reads.</source>
-        <translation>Le pack est d'une version plus récente que celle que lit cette app.</translation>
+        <translation>Le pack est d&apos;une version plus récente que celle que lit cette app.</translation>
     </message>
     <message>
         <source>The pack has no id.</source>
-        <translation>Le pack n'a pas d'identifiant.</translation>
+        <translation>Le pack n&apos;a pas d&apos;identifiant.</translation>
     </message>
     <message>
         <source>The manifest could not be written.</source>
-        <translation>Le manifeste n'a pas pu être écrit.</translation>
+        <translation>Le manifeste n&apos;a pas pu être écrit.</translation>
     </message>
 </context>
 </TS>

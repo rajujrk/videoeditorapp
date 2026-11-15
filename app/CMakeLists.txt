@@ -1,4 +1,7 @@
-qt_add_executable(TechieVideoEditor MACOSX_BUNDLE main.cpp)
+# The icon (drawn by tools/make_icon.swift), in the bundle's Resources.
+set(TVE_APP_ICON ${CMAKE_CURRENT_SOURCE_DIR}/AppIcon.icns)
+set_source_files_properties(${TVE_APP_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+qt_add_executable(TechieVideoEditor MACOSX_BUNDLE main.cpp ${TVE_APP_ICON})
 
 qt_add_qml_module(TechieVideoEditor
     URI TechieVideoEditor.App

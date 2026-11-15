@@ -1,3 +1,4 @@
+import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
@@ -46,6 +47,36 @@ ApplicationWindow {
     }
     font: Theme.type.body
 
+    // Asked once, on the first start: the models on-device features need (main.cpp calls
+    // this unless the app was started for a scripted run).
+    Settings {
+        id: firstRun
+        category: "firstRun"
+        property bool modelsOffered: false
+    }
+    function offerModelsOnce() {
+        if (firstRun.modelsOffered)
+            return
+        firstRun.modelsOffered = true
+        home.openModels()
+    }
+    // A file opened from Finder (double-clicked, dropped on the Dock icon, Open With): a
+    // project or another editor's timeline replaces the one open; media starts a new project
+    // from the Home screen, or joins the open one.
+    function openFile(file) {
+        const name = String(file).toLowerCase()
+        if (/\.(tve|otio|fcpxml|fcpxmld)$/.test(name)) {
+            project.pause()
+            if (project.open(file))
+                root.screen = "editor"
+            return
+        }
+        if (root.screen !== "editor")
+            project.newProject(1920, 1080)
+        if (project.importAndAppend(file))
+            root.screen = "editor"
+    }
+
     ProjectController {
         id: project
         objectName: "project"
@@ -57,6 +88,7 @@ ApplicationWindow {
         currentIndex: root.screen === "editor" ? 1 : 0
 
         HomeScreen {
+            id: home
             project: project
             onRecoverRequested: (id) => {
                 if (project.recoverProject(id))

@@ -2718,6 +2718,14 @@
         <translation>การบันทึก</translation>
     </message>
     <message>
+        <source>On-device models…</source>
+        <translation>โมเดลบนเครื่อง…</translation>
+    </message>
+    <message>
+        <source>Download the models for captions, speech cleanup and depth of field</source>
+        <translation>ดาวน์โหลดโมเดลสำหรับคำบรรยาย การทำเสียงพูดให้สะอาด และระยะชัดลึก</translation>
+    </message>
+    <message>
         <source>Language</source>
         <translation>ภาษา</translation>
     </message>
@@ -5705,7 +5713,7 @@ Third, 4</source>
     </message>
     <message>
         <source>Remove &quot;%1&quot;?</source>
-        <translation>ลบ "%1" หรือไม่</translation>
+        <translation>ลบ &quot;%1&quot; หรือไม่</translation>
     </message>
     <message>
         <source>A clip on the timeline uses it and goes with it. You can undo this.</source>
@@ -6102,6 +6110,105 @@ Third, 4</source>
     <message>
         <source>Add</source>
         <translation>เพิ่ม</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsDialog</name>
+    <message>
+        <source>Speech to text · English</source>
+        <translation>เสียงพูดเป็นข้อความ · ภาษาอังกฤษ</translation>
+    </message>
+    <message>
+        <source>Captions, the transcript, editing by words and smart search</source>
+        <translation>คำบรรยาย บทถอดความ การตัดต่อด้วยคำ และการค้นหาอัจฉริยะ</translation>
+    </message>
+    <message>
+        <source>Speech to text · 99 languages</source>
+        <translation>เสียงพูดเป็นข้อความ · 99 ภาษา</translation>
+    </message>
+    <message>
+        <source>The same, for speech in other languages</source>
+        <translation>เหมือนกัน สำหรับเสียงพูดภาษาอื่น</translation>
+    </message>
+    <message>
+        <source>Speech cleanup</source>
+        <translation>ทำเสียงพูดให้สะอาด</translation>
+    </message>
+    <message>
+        <source>Enhance speech: noise, hum and room echo taken out of voices</source>
+        <translation>ปรับปรุงเสียงพูด: ตัดเสียงรบกวน เสียงฮัม และเสียงก้องห้องออกจากเสียงพูด</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>ความลึก</translation>
+    </message>
+    <message>
+        <source>Depth of field: what is nearer or farther than the focus blurred</source>
+        <translation>ระยะชัดลึก: สิ่งที่อยู่ใกล้หรือไกลกว่าจุดโฟกัสจะถูกเบลอ</translation>
+    </message>
+    <message>
+        <source>Upscaling</source>
+        <translation>การขยายภาพ</translation>
+    </message>
+    <message>
+        <source>Upscale: sharper pictures at 2× or 4× (from Apple, through macOS)</source>
+        <translation>ขยายภาพ: ภาพคมชัดขึ้นที่ 2× หรือ 4× (จาก Apple ผ่าน macOS)</translation>
+    </message>
+    <message>
+        <source>Models for working on this Mac</source>
+        <translation>โมเดลสำหรับทำงานบน Mac เครื่องนี้</translation>
+    </message>
+    <message>
+        <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
+        <translation>ฟีเจอร์เหล่านี้ทำงานบน Mac เครื่องนี้ สื่อของคุณจึงไม่ออกไปจากเครื่อง แต่ละฟีเจอร์ต้องใช้โมเดลที่ดาวน์โหลดครั้งเดียวจากผู้สร้างและตรวจสอบก่อนใช้งาน ดาวน์โหลดตอนนี้หรือภายหลังก็ได้ แต่ละโมเดลจะถูกเสนออีกครั้งในจุดที่ต้องใช้</translation>
+    </message>
+    <message>
+        <source>On this Mac</source>
+        <translation>อยู่ใน Mac เครื่องนี้</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>รอคิว</translation>
+    </message>
+    <message>
+        <source>From macOS</source>
+        <translation>จาก macOS</translation>
+    </message>
+    <message>
+        <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
+        <translation>โมเดลเสียงพูดที่แม่นยำกว่า (Small และ Large, 190–574 MB) อยู่ในแท็บคำบรรยาย</translation>
+    </message>
+    <message>
+        <source>Downloading… you can close this and keep working.</source>
+        <translation>กำลังดาวน์โหลด… ปิดหน้าต่างนี้แล้วทำงานต่อได้</translation>
+    </message>
+    <message>
+        <source>Every model is on this Mac.</source>
+        <translation>โมเดลทั้งหมดอยู่ใน Mac เครื่องนี้แล้ว</translation>
+    </message>
+    <message>
+        <source>%1 to download</source>
+        <translation>ต้องดาวน์โหลด %1</translation>
+    </message>
+    <message>
+        <source>Nothing chosen</source>
+        <translation>ไม่ได้เลือกอะไร</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>หยุด</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>ปิด</translation>
+    </message>
+    <message>
+        <source>Later</source>
+        <translation>ภายหลัง</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>ดาวน์โหลด</translation>
     </message>
 </context>
 <context>
@@ -9152,7 +9259,7 @@ It scrolls while you record, at the speed you set. Keep your eyes on the line by
     <name>TimelineMenus</name>
     <message>
         <source>Delete &quot;%1&quot;?</source>
-        <translation>ลบ "%1" หรือไม่</translation>
+        <translation>ลบ &quot;%1&quot; หรือไม่</translation>
     </message>
     <message>
         <source>Its clip goes with it. You can undo this.</source>

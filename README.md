@@ -27,7 +27,7 @@ and the plan the project was built to is [docs/TechieVideoEditor_Build_Plan.md](
 
 ## Contents
 
-- [Getting started](#getting-started): [requirements](#requirements), [build and test](#build-and-test), [run](#run)
+- [Getting started](#getting-started): [requirements](#requirements), [build and test](#build-and-test), [run](#run), [make a disk image to share](#make-a-disk-image-to-share)
 - [Screenshots](#screenshots)
 - [Features](#features)
 - [Using the editor](#using-the-editor): [editing on the timeline](#editing-on-the-timeline), [media and projects](#media-and-projects), [colour, effects and compositing](#colour-effects-and-compositing), [titles, stickers, drawing and transitions](#titles-stickers-drawing-and-transitions), [sound and captions](#sound-and-captions), [analysis on this Mac](#analysis-on-this-mac), [recording the screen and camera](#recording-the-screen-and-camera), [templates and AI with your own keys](#templates-and-ai-with-your-own-keys), [export, delivery and setup](#export-delivery-and-setup)
@@ -121,6 +121,38 @@ playhead.
 
 Set `TVE_AUDIO=null` to render audio without a sound card (used by the tests), or
 `TVE_AUDIO=none` to disable audio output.
+
+### Make a disk image to share
+
+```bash
+tools/make_dmg.sh
+```
+
+builds `build/dmg/TechieVideoEditor-<version>.dmg`: the app with Qt's frameworks inside it,
+the licences of everything it is made from (in `Contents/Resources/Licenses`), a link to
+Applications to drag it onto and a short read-me. It builds the `macos-dist` preset first: the
+app and the libraries linked into it for Apple Silicon and macOS 14.4 and later (the libraries
+in their own folder, `build/vcpkg_installed_dist`; the first run builds them, which takes a
+while). The script checks that nothing in the app points outside it, and works out the oldest
+macOS it opens on from what is inside, writing it into the app's Info.plist and the read-me.
+
+That oldest macOS is set by Qt's frameworks, which are copied in as they are. Homebrew builds
+its Qt for the macOS of the Mac that installed it, so a DMG made with Homebrew's Qt opens only on
+that macOS and later. For older Macs (down to 14.4), install Qt with Qt's own installer
+(qt.io) and point the script at it — `QT_PREFIX=~/Qt/6.12.0/macos tools/make_dmg.sh`, after
+removing `build/macos-dist` so it configures with that Qt.
+
+The app is signed ad hoc unless you have an Apple Developer ID: then it is signed with the
+hardened runtime (entitlements in `app/TechieVideoEditor.entitlements`) and, with a notary
+profile, notarized by Apple and stapled, so it opens like any app downloaded from the web:
+
+```bash
+TVE_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" TVE_NOTARY_PROFILE=<profile> tools/make_dmg.sh
+```
+
+(The profile is saved once with `xcrun notarytool store-credentials`; the script never sees
+your password.) Without notarization, the person installing it allows it once in System
+Settings › Privacy & Security › Open Anyway — the DMG's read-me says how.
 
 ## Screenshots
 
@@ -246,7 +278,11 @@ More in the [design system](docs/design-system.md) and the [feature guide](web/R
 - Switch workspaces (panel layouts) and save your own.
 - Use shortcut presets like Premiere Pro's or Final Cut Pro's, see them on a keyboard map, and carry them in a file.
 - Edit heavy 4K media smoothly using proxy files.
-- Save and reopen `.tve` project files.
+- Save and reopen `.tve` project files; double-clicking one in Finder opens it in the app (which
+  gives projects their own icon), and videos, sounds and pictures open with it too (Open With,
+  or dropped on its Dock icon).
+- Get the models on-device features use in one go: offered the first time the app opens, and
+  from **On-device models…** on the Home screen.
 - Automatically save unsaved work.
 - Recover projects after unexpected application crashes.
 
@@ -1480,8 +1516,11 @@ changed in the Keyboard shortcuts dialog, ⌘/):
 - `tests/` — Catch2 tests for `core/` and `engine/`, the golden-frame suite (`golden/`), performance
   budgets (`perf/`), QML tests that drive the real editor (`qml/`), the screenshot scenes
   (`screens/`), and test OpenFX and VST3 plug-ins.
-- `tools/` — test media and model fetching, the screenshot and web-image scripts, pack publishing
-  (`packtool`), the plug-in scanner, and generators for looks and stickers.
+- `tools/` — test media and model fetching, the screenshot and web-image scripts, the disk image
+  (`make_dmg.sh`) and app icon (`make_icon.swift`), pack publishing (`packtool`), the plug-in
+  scanner, and generators for looks and stickers.
+- `licenses/` — the GNU licence texts shipped with the app (for Qt, FFmpeg and LAME).
+- `cmake/triplets/` — the vcpkg triplet for the shared build (macOS 14.4 and later).
 - `web/` — the feature guide: a static website (plain HTML, CSS and JavaScript, no backend)
   listing every feature with a screenshot, where to find it and the steps to use it. Open
   `web/index.html` from the folder or serve it from any static host; see [web/README.md](web/README.md).

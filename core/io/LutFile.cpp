@@ -1,8 +1,9 @@
 #include "io/LutFile.h"
 
 #include <algorithm>
-#include <charconv>
 #include <cmath>
+#include <cstdlib>
+#include <xlocale.h>
 #include <fstream>
 #include <sstream>
 
@@ -35,10 +36,20 @@ std::vector<std::string_view> words(std::string_view line)
     return out;
 }
 
+// A number as LUT files write it ("0.25", "1e-3"), whatever the Mac's decimal separator.
+// (strtod_l in the C locale: std::from_chars for doubles needs macOS 26, and the app opens on
+// macOS 14.4.)
 bool number(std::string_view word, double& out)
 {
-    const auto result = std::from_chars(word.data(), word.data() + word.size(), out);
-    return result.ec == std::errc() && result.ptr == word.data() + word.size() && std::isfinite(out);
+    if (word.empty() || word.size() > 64)
+        return false;
+    static const locale_t c = newlocale(LC_ALL_MASK, "C", nullptr);
+    char text[65];
+    std::copy(word.begin(), word.end(), text);
+    text[word.size()] = '\0';
+    char* end = nullptr;
+    out = strtod_l(text, &end, c);
+    return end == text + word.size() && std::isfinite(out);
 }
 
 // Calls f(line, lineNumber) for every line without its comment, skipping blank ones.

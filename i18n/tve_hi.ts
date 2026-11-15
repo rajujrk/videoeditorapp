@@ -2718,6 +2718,14 @@
         <translation>रिकॉर्डिंग</translation>
     </message>
     <message>
+        <source>On-device models…</source>
+        <translation>डिवाइस पर चलने वाले मॉडल…</translation>
+    </message>
+    <message>
+        <source>Download the models for captions, speech cleanup and depth of field</source>
+        <translation>कैप्शन, आवाज़ की सफ़ाई और डेप्थ ऑफ़ फ़ील्ड के लिए मॉडल डाउनलोड करें</translation>
+    </message>
+    <message>
         <source>Language</source>
         <translation>भाषा</translation>
     </message>
@@ -5706,7 +5714,7 @@ Third, 4</source>
     </message>
     <message>
         <source>Remove &quot;%1&quot;?</source>
-        <translation>"%1" हटाएँ?</translation>
+        <translation>&quot;%1&quot; हटाएँ?</translation>
     </message>
     <message>
         <source>A clip on the timeline uses it and goes with it. You can undo this.</source>
@@ -6103,6 +6111,105 @@ Third, 4</source>
     <message>
         <source>Add</source>
         <translation>जोड़ें</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsDialog</name>
+    <message>
+        <source>Speech to text · English</source>
+        <translation>आवाज़ से टेक्स्ट · अंग्रेज़ी</translation>
+    </message>
+    <message>
+        <source>Captions, the transcript, editing by words and smart search</source>
+        <translation>कैप्शन, ट्रांसक्रिप्ट, शब्दों से एडिटिंग और स्मार्ट खोज</translation>
+    </message>
+    <message>
+        <source>Speech to text · 99 languages</source>
+        <translation>आवाज़ से टेक्स्ट · 99 भाषाएँ</translation>
+    </message>
+    <message>
+        <source>The same, for speech in other languages</source>
+        <translation>वही, दूसरी भाषाओं की आवाज़ के लिए</translation>
+    </message>
+    <message>
+        <source>Speech cleanup</source>
+        <translation>आवाज़ की सफ़ाई</translation>
+    </message>
+    <message>
+        <source>Enhance speech: noise, hum and room echo taken out of voices</source>
+        <translation>आवाज़ सुधारें: आवाज़ों से शोर, भनभनाहट और कमरे की गूँज हटाई जाती है</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>गहराई</translation>
+    </message>
+    <message>
+        <source>Depth of field: what is nearer or farther than the focus blurred</source>
+        <translation>डेप्थ ऑफ़ फ़ील्ड: फ़ोकस से पास या दूर की चीज़ें धुंधली की जाती हैं</translation>
+    </message>
+    <message>
+        <source>Upscaling</source>
+        <translation>बड़ा करना</translation>
+    </message>
+    <message>
+        <source>Upscale: sharper pictures at 2× or 4× (from Apple, through macOS)</source>
+        <translation>बड़ा करें: 2× या 4× पर ज़्यादा साफ़ तस्वीरें (Apple से, macOS के ज़रिए)</translation>
+    </message>
+    <message>
+        <source>Models for working on this Mac</source>
+        <translation>इस Mac पर काम करने के लिए मॉडल</translation>
+    </message>
+    <message>
+        <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
+        <translation>ये सुविधाएँ इसी Mac पर चलती हैं, इसलिए आपकी मीडिया इससे बाहर नहीं जाती। हर एक को एक मॉडल चाहिए, जो उसके बनाने वालों से एक बार डाउनलोड होता है और इस्तेमाल से पहले जाँचा जाता है। इन्हें अभी लें या बाद में: हर एक ज़रूरत की जगह पर फिर से पेश किया जाएगा।</translation>
+    </message>
+    <message>
+        <source>On this Mac</source>
+        <translation>इस Mac पर</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>प्रतीक्षा में</translation>
+    </message>
+    <message>
+        <source>From macOS</source>
+        <translation>macOS से</translation>
+    </message>
+    <message>
+        <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
+        <translation>ज़्यादा सटीक आवाज़ मॉडल (Small और Large, 190–574 MB) कैप्शन टैब में हैं।</translation>
+    </message>
+    <message>
+        <source>Downloading… you can close this and keep working.</source>
+        <translation>डाउनलोड हो रहा है… आप इसे बंद करके काम जारी रख सकते हैं।</translation>
+    </message>
+    <message>
+        <source>Every model is on this Mac.</source>
+        <translation>सभी मॉडल इस Mac पर हैं।</translation>
+    </message>
+    <message>
+        <source>%1 to download</source>
+        <translation>%1 डाउनलोड करना है</translation>
+    </message>
+    <message>
+        <source>Nothing chosen</source>
+        <translation>कुछ नहीं चुना गया</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>रोकें</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>बंद करें</translation>
+    </message>
+    <message>
+        <source>Later</source>
+        <translation>बाद में</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>डाउनलोड करें</translation>
     </message>
 </context>
 <context>
@@ -9153,7 +9260,7 @@ It scrolls while you record, at the speed you set. Keep your eyes on the line by
     <name>TimelineMenus</name>
     <message>
         <source>Delete &quot;%1&quot;?</source>
-        <translation>"%1" हटाएँ?</translation>
+        <translation>&quot;%1&quot; हटाएँ?</translation>
     </message>
     <message>
         <source>Its clip goes with it. You can undo this.</source>

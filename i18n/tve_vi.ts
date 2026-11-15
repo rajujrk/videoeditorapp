@@ -2718,6 +2718,14 @@
         <translation>Bản ghi</translation>
     </message>
     <message>
+        <source>On-device models…</source>
+        <translation>Mô hình trên máy…</translation>
+    </message>
+    <message>
+        <source>Download the models for captions, speech cleanup and depth of field</source>
+        <translation>Tải về các mô hình cho phụ đề, làm sạch giọng nói và độ sâu trường ảnh</translation>
+    </message>
+    <message>
         <source>Language</source>
         <translation>Ngôn ngữ</translation>
     </message>
@@ -5705,7 +5713,7 @@ Thứ ba, 4</translation>
     </message>
     <message>
         <source>Remove &quot;%1&quot;?</source>
-        <translation>Xóa "%1"?</translation>
+        <translation>Xóa &quot;%1&quot;?</translation>
     </message>
     <message>
         <source>A clip on the timeline uses it and goes with it. You can undo this.</source>
@@ -6102,6 +6110,105 @@ Thứ ba, 4</translation>
     <message>
         <source>Add</source>
         <translation>Thêm</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsDialog</name>
+    <message>
+        <source>Speech to text · English</source>
+        <translation>Giọng nói thành văn bản · Tiếng Anh</translation>
+    </message>
+    <message>
+        <source>Captions, the transcript, editing by words and smart search</source>
+        <translation>Phụ đề, bản ghi lời, chỉnh sửa theo từ và tìm kiếm thông minh</translation>
+    </message>
+    <message>
+        <source>Speech to text · 99 languages</source>
+        <translation>Giọng nói thành văn bản · 99 ngôn ngữ</translation>
+    </message>
+    <message>
+        <source>The same, for speech in other languages</source>
+        <translation>Tương tự, cho giọng nói bằng ngôn ngữ khác</translation>
+    </message>
+    <message>
+        <source>Speech cleanup</source>
+        <translation>Làm sạch giọng nói</translation>
+    </message>
+    <message>
+        <source>Enhance speech: noise, hum and room echo taken out of voices</source>
+        <translation>Cải thiện giọng nói: loại bỏ tiếng ồn, tiếng ù và tiếng vang phòng khỏi giọng nói</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>Độ sâu</translation>
+    </message>
+    <message>
+        <source>Depth of field: what is nearer or farther than the focus blurred</source>
+        <translation>Độ sâu trường ảnh: làm mờ những gì gần hơn hoặc xa hơn điểm lấy nét</translation>
+    </message>
+    <message>
+        <source>Upscaling</source>
+        <translation>Phóng to</translation>
+    </message>
+    <message>
+        <source>Upscale: sharper pictures at 2× or 4× (from Apple, through macOS)</source>
+        <translation>Phóng to: hình ảnh sắc nét hơn ở 2× hoặc 4× (của Apple, qua macOS)</translation>
+    </message>
+    <message>
+        <source>Models for working on this Mac</source>
+        <translation>Mô hình để xử lý trên máy Mac này</translation>
+    </message>
+    <message>
+        <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
+        <translation>Các tính năng này chạy ngay trên máy Mac này, nên tệp của bạn không bao giờ rời khỏi máy. Mỗi tính năng cần một mô hình, được tải về một lần từ nhà phát triển và kiểm tra trước khi dùng. Hãy tải ngay hoặc để sau: mỗi mô hình sẽ được đề xuất lại ở nơi cần đến.</translation>
+    </message>
+    <message>
+        <source>On this Mac</source>
+        <translation>Đã có trên máy</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>Đang chờ</translation>
+    </message>
+    <message>
+        <source>From macOS</source>
+        <translation>Từ macOS</translation>
+    </message>
+    <message>
+        <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
+        <translation>Các mô hình giọng nói chính xác hơn (Small và Large, 190–574 MB) nằm trong thẻ Phụ đề.</translation>
+    </message>
+    <message>
+        <source>Downloading… you can close this and keep working.</source>
+        <translation>Đang tải về… bạn có thể đóng cửa sổ này và tiếp tục làm việc.</translation>
+    </message>
+    <message>
+        <source>Every model is on this Mac.</source>
+        <translation>Tất cả mô hình đã có trên máy Mac này.</translation>
+    </message>
+    <message>
+        <source>%1 to download</source>
+        <translation>Cần tải về %1</translation>
+    </message>
+    <message>
+        <source>Nothing chosen</source>
+        <translation>Chưa chọn gì</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Dừng</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Đóng</translation>
+    </message>
+    <message>
+        <source>Later</source>
+        <translation>Để sau</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>Tải về</translation>
     </message>
 </context>
 <context>
@@ -9152,7 +9259,7 @@ Nó cuộn khi bạn quay, theo tốc độ bạn đặt. Hãy nhìn vào dòng 
     <name>TimelineMenus</name>
     <message>
         <source>Delete &quot;%1&quot;?</source>
-        <translation>Xóa "%1"?</translation>
+        <translation>Xóa &quot;%1&quot;?</translation>
     </message>
     <message>
         <source>Its clip goes with it. You can undo this.</source>

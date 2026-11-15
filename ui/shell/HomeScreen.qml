@@ -18,6 +18,19 @@ Rectangle {
 
     color: Theme.color.canvas
 
+    // The models dialog (offered by the app once, when it is first opened).
+    function openModels() {
+        if (home.project)
+            modelsLoader.active = true
+        if (modelsLoader.item)
+            modelsLoader.item.open()
+    }
+    Loader {
+        id: modelsLoader
+        active: false
+        sourceComponent: ModelsDialog { objectName: "modelsDialog"; project: home.project }
+    }
+
     readonly property var ratios: [
         { name: qsTr("Landscape"), ratio: "16:9", w: 1920, h: 1080 },
         { name: qsTr("Vertical"), ratio: "9:16", w: 1080, h: 1920 },
@@ -96,6 +109,19 @@ Rectangle {
                 }
 
                 Item { Layout.fillHeight: true }
+
+                // The models on-device features use: which are here, and getting them.
+                TextButton {
+                    objectName: "homeModels"
+                    visible: home.project !== null
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: Theme.space.m
+                    text: qsTr("On-device models…")
+                    iconName: "import"
+                    variant: "secondary"
+                    tip: qsTr("Download the models for captions, speech cleanup and depth of field")
+                    onClicked: home.openModels()
+                }
 
                 // The app's language: this Mac's, or one chosen here (switches at once).
                 Text {

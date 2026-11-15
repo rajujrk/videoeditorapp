@@ -761,7 +761,7 @@ window.TVE = {
     {
       id: "home", title: "Start a project", chapter: "setup", area: "home", where: ["Home"], image: "home",
       summary: "Pick a canvas shape, open a recent project, or start straight into recording or an instant video.",
-      steps: ["Click a canvas shape: 16:9, 9:16, 1:1, 4:3 or 21:9.", "Or use Record screen or Instant mode to open a new project with that tool ready.", "⌘S saves a .tve project file."],
+      steps: ["Click a canvas shape: 16:9, 9:16, 1:1, 4:3 or 21:9.", "Or use Record screen or Instant mode to open a new project with that tool ready.", "⌘S saves a .tve project file; double-click one in Finder to open it in the app.", "Videos, sounds and pictures open with the app too (Open With, or drop them on its Dock icon): they start a new project."],
       keys: ["⌘S"]
     },
     {
@@ -774,6 +774,12 @@ window.TVE = {
       summary: "English, தமிழ், Français, Deutsch, Español, हिन्दी, 日本語, 한국어, ไทย, Tiếng Việt and 简体中文; the app follows your Mac's language or the one you choose.",
       steps: ["Open the Language menu at the bottom left of the Home screen.", "Choose a language; menus, messages, effect names, undo steps, numbers and dates change at once, everywhere."],
       note: "Names of other products, file formats and what is sent to cloud services stay as they are."
+    },
+    {
+      id: "models", title: "On-device models", chapter: "setup", area: "home", focus: [29, 18, 42, 64], where: ["Home", "On-device models…"], image: "models",
+      summary: "Get the models that let captions, speech cleanup and depth of field work on your Mac in one go — offered the first time the app opens.",
+      steps: ["The first time the app opens it offers them; later, click On-device models… on the Home screen.", "Leave the recommended ones on (speech to text in your language, speech cleanup, depth), or choose others.", "Click Download: they come one after another, each checked before it is used; you can close the window and keep working."],
+      note: "Each is downloaded once from its makers (about 120 MB for the recommended ones). Those you skip are offered again where they are needed; larger speech models are in the Captions tab."
     },
     {
       id: "shortcuts", title: "Keyboard shortcuts and presets", chapter: "setup", area: "topbar", where: ["Top bar", "Keyboard"], image: "shortcuts",

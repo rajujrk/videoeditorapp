@@ -2718,6 +2718,14 @@
         <translation>録画</translation>
     </message>
     <message>
+        <source>On-device models…</source>
+        <translation>デバイス上のモデル…</translation>
+    </message>
+    <message>
+        <source>Download the models for captions, speech cleanup and depth of field</source>
+        <translation>キャプション、音声のクリーンアップ、被写界深度のためのモデルをダウンロード</translation>
+    </message>
+    <message>
         <source>Language</source>
         <translation>言語</translation>
     </message>
@@ -6102,6 +6110,105 @@ Third, 4</source>
     <message>
         <source>Add</source>
         <translation>追加</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsDialog</name>
+    <message>
+        <source>Speech to text · English</source>
+        <translation>音声からテキスト · 英語</translation>
+    </message>
+    <message>
+        <source>Captions, the transcript, editing by words and smart search</source>
+        <translation>キャプション、トランスクリプト、単語での編集、スマート検索</translation>
+    </message>
+    <message>
+        <source>Speech to text · 99 languages</source>
+        <translation>音声からテキスト · 99 言語</translation>
+    </message>
+    <message>
+        <source>The same, for speech in other languages</source>
+        <translation>同じことを、ほかの言語の音声で</translation>
+    </message>
+    <message>
+        <source>Speech cleanup</source>
+        <translation>音声のクリーンアップ</translation>
+    </message>
+    <message>
+        <source>Enhance speech: noise, hum and room echo taken out of voices</source>
+        <translation>音声を強調：声からノイズ、ハム、部屋の反響を取り除きます</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>深度</translation>
+    </message>
+    <message>
+        <source>Depth of field: what is nearer or farther than the focus blurred</source>
+        <translation>被写界深度：ピントより手前や奥にあるものをぼかします</translation>
+    </message>
+    <message>
+        <source>Upscaling</source>
+        <translation>拡大</translation>
+    </message>
+    <message>
+        <source>Upscale: sharper pictures at 2× or 4× (from Apple, through macOS)</source>
+        <translation>拡大：2× または 4× でより鮮明な画像に（Apple 提供、macOS 経由）</translation>
+    </message>
+    <message>
+        <source>Models for working on this Mac</source>
+        <translation>この Mac で処理するためのモデル</translation>
+    </message>
+    <message>
+        <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
+        <translation>これらの機能はこの Mac 上で動作するため、メディアが Mac の外に出ることはありません。それぞれにモデルが必要で、提供元から一度だけダウンロードし、使用前に検証します。今すぐ入手するか、後で入手してください。必要になった場所で改めて案内されます。</translation>
+    </message>
+    <message>
+        <source>On this Mac</source>
+        <translation>この Mac にあり</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>待機中</translation>
+    </message>
+    <message>
+        <source>From macOS</source>
+        <translation>macOS から</translation>
+    </message>
+    <message>
+        <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
+        <translation>より高精度な音声モデル（Small と Large、190–574 MB）は「キャプション」タブにあります。</translation>
+    </message>
+    <message>
+        <source>Downloading… you can close this and keep working.</source>
+        <translation>ダウンロード中… このウインドウを閉じて作業を続けられます。</translation>
+    </message>
+    <message>
+        <source>Every model is on this Mac.</source>
+        <translation>すべてのモデルがこの Mac にあります。</translation>
+    </message>
+    <message>
+        <source>%1 to download</source>
+        <translation>ダウンロード: %1</translation>
+    </message>
+    <message>
+        <source>Nothing chosen</source>
+        <translation>何も選択されていません</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>停止</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>閉じる</translation>
+    </message>
+    <message>
+        <source>Later</source>
+        <translation>後で</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>ダウンロード</translation>
     </message>
 </context>
 <context>

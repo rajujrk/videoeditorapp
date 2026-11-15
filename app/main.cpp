@@ -14,8 +14,10 @@
 
 #include <QCommandLineParser>
 #include <QElapsedTimer>
+#include <QFileOpenEvent>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QPointer>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
@@ -24,6 +26,7 @@
 #include <QtQml/qqmlextensionplugin.h>
 
 #include <algorithm>
+#include <utility>
 #include <chrono>
 #include <cstdio>
 #include <memory>
@@ -35,6 +38,48 @@ Q_IMPORT_QML_PLUGIN(TechieVideoEditor_ShellPlugin)
 namespace {
 
 // Prints one line per stats sample and a summary on exit, for unattended benchmarking.
+// Files macOS asks the app to open — a .tve project double-clicked in Finder, files dropped
+// on the Dock icon, Open With — handed to the window's openFile(); those that come before
+// the window is there wait for it.
+class FileOpener : public QObject {
+public:
+    void setWindow(QObject* window)
+    {
+        m_window = window;
+        const QList<QUrl> pending = std::exchange(m_pending, {});
+        for (const QUrl& url : pending)
+            open(url);
+    }
+
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        if (event->type() != QEvent::FileOpen)
+            return QObject::eventFilter(watched, event);
+        const QUrl url = static_cast<QFileOpenEvent*>(event)->url();
+        if (url.isLocalFile()) {
+            if (m_window)
+                open(url);
+            else
+                m_pending.append(url);
+        }
+        return true;
+    }
+
+private:
+    void open(const QUrl& url)
+    {
+        QMetaObject::invokeMethod(m_window, "openFile", Q_ARG(QVariant, QVariant(url)));
+        if (auto* window = qobject_cast<QWindow*>(m_window.data())) {
+            window->raise();
+            window->requestActivate();
+        }
+    }
+
+    QPointer<QObject> m_window;
+    QList<QUrl> m_pending;
+};
+
 void attachStatsPrinter(VideoView* view, QCoreApplication& app)
 {
     struct Summary {
@@ -93,6 +138,8 @@ int main(int argc, char* argv[])
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QGuiApplication app(argc, argv);
+    FileOpener fileOpener;
+    app.installEventFilter(&fileOpener);
     QGuiApplication::setApplicationName(QStringLiteral("TechieVideoEditor"));
     QGuiApplication::setOrganizationName(QStringLiteral("TechieVideoEditor"));
     QGuiApplication::setApplicationVersion(QStringLiteral(TVE_VERSION));
@@ -181,6 +228,7 @@ int main(int argc, char* argv[])
         return 1;
 
     auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+    fileOpener.setWindow(engine.rootObjects().constFirst());
     const bool hasFile = !parser.positionalArguments().isEmpty();
     const QString screen = parser.isSet(screenOption) ? parser.value(screenOption)
                                                       : QString::fromLatin1(hasFile ? "editor" : "home");
@@ -295,6 +343,13 @@ int main(int argc, char* argv[])
         }, Qt::SingleShotConnection);
         if (project)
             project->setAutosaveEnabled(false);
+    }
+    // On the first start (not a scripted run), the models on-device features use are offered.
+    const bool scripted = parser.isSet(statsOption) || parser.isSet(quitOption) || parser.isSet(screenshotOption)
+                          || parser.isSet(exportOption) || parser.isSet(makeProxiesOption) || parser.isSet(startupProbeOption);
+    if (!scripted) {
+        QObject* root = engine.rootObjects().constFirst();
+        QTimer::singleShot(600, root, [root] { QMetaObject::invokeMethod(root, "offerModelsOnce"); });
     }
     if (parser.isSet(quitOption)) {
         bool ok = false;

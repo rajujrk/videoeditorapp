@@ -2718,6 +2718,14 @@
         <translation>Aufnahmen</translation>
     </message>
     <message>
+        <source>On-device models…</source>
+        <translation>Modelle auf dem Gerät…</translation>
+    </message>
+    <message>
+        <source>Download the models for captions, speech cleanup and depth of field</source>
+        <translation>Die Modelle für Untertitel, Sprachbereinigung und Schärfentiefe laden</translation>
+    </message>
+    <message>
         <source>Language</source>
         <translation>Sprache</translation>
     </message>
@@ -6103,6 +6111,105 @@ Drittens, 4</translation>
     <message>
         <source>Add</source>
         <translation>Hinzufügen</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsDialog</name>
+    <message>
+        <source>Speech to text · English</source>
+        <translation>Sprache zu Text · Englisch</translation>
+    </message>
+    <message>
+        <source>Captions, the transcript, editing by words and smart search</source>
+        <translation>Untertitel, Transkript, Schnitt über Wörter und intelligente Suche</translation>
+    </message>
+    <message>
+        <source>Speech to text · 99 languages</source>
+        <translation>Sprache zu Text · 99 Sprachen</translation>
+    </message>
+    <message>
+        <source>The same, for speech in other languages</source>
+        <translation>Dasselbe für Sprache in anderen Sprachen</translation>
+    </message>
+    <message>
+        <source>Speech cleanup</source>
+        <translation>Sprachbereinigung</translation>
+    </message>
+    <message>
+        <source>Enhance speech: noise, hum and room echo taken out of voices</source>
+        <translation>Sprache verbessern: Rauschen, Brummen und Raumhall aus Stimmen entfernt</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>Tiefe</translation>
+    </message>
+    <message>
+        <source>Depth of field: what is nearer or farther than the focus blurred</source>
+        <translation>Schärfentiefe: Was näher oder ferner als der Fokus ist, wird weichgezeichnet</translation>
+    </message>
+    <message>
+        <source>Upscaling</source>
+        <translation>Hochskalierung</translation>
+    </message>
+    <message>
+        <source>Upscale: sharper pictures at 2× or 4× (from Apple, through macOS)</source>
+        <translation>Hochskalieren: schärfere Bilder in 2× oder 4× (von Apple, über macOS)</translation>
+    </message>
+    <message>
+        <source>Models for working on this Mac</source>
+        <translation>Modelle für die Arbeit auf diesem Mac</translation>
+    </message>
+    <message>
+        <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
+        <translation>Diese Funktionen laufen auf diesem Mac, Ihre Medien verlassen ihn also nie. Jede braucht ein Modell, das einmal von seinen Entwicklern geladen und vor der Verwendung geprüft wird. Laden Sie sie jetzt oder später – jedes wird dort erneut angeboten, wo es gebraucht wird.</translation>
+    </message>
+    <message>
+        <source>On this Mac</source>
+        <translation>Auf diesem Mac</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>Wartet</translation>
+    </message>
+    <message>
+        <source>From macOS</source>
+        <translation>Von macOS</translation>
+    </message>
+    <message>
+        <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
+        <translation>Genauere Sprachmodelle (Small und Large, 190–574 MB) finden Sie im Tab „Untertitel“.</translation>
+    </message>
+    <message>
+        <source>Downloading… you can close this and keep working.</source>
+        <translation>Wird geladen … Sie können dieses Fenster schließen und weiterarbeiten.</translation>
+    </message>
+    <message>
+        <source>Every model is on this Mac.</source>
+        <translation>Alle Modelle sind auf diesem Mac.</translation>
+    </message>
+    <message>
+        <source>%1 to download</source>
+        <translation>%1 zu laden</translation>
+    </message>
+    <message>
+        <source>Nothing chosen</source>
+        <translation>Nichts ausgewählt</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Stoppen</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Schließen</translation>
+    </message>
+    <message>
+        <source>Later</source>
+        <translation>Später</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>Laden</translation>
     </message>
 </context>
 <context>
@@ -9907,7 +10014,7 @@ Es scrollt beim Aufnehmen mit der eingestellten Geschwindigkeit. Behalte die Zei
     </message>
     <message>
         <source>LET&apos;S GO</source>
-        <translation>LOS GEHT'S</translation>
+        <translation>LOS GEHT&apos;S</translation>
     </message>
     <message>
         <source>Elegant</source>

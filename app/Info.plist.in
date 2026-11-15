@@ -24,6 +24,75 @@
 	<key>CFBundleAllowMixedLocalizations</key>
 	<true/>
 
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.video</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+
+	<!-- Projects (.tve) belong to this app: double-clicked in Finder they open here, with a
+	     document icon macOS makes from the app's. Videos, sounds and pictures can be opened
+	     with it too (Open With, or dropped on the Dock icon): they start a new project. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>TechieVideoEditor project</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.techievideoeditor.project</string>
+			</array>
+			<key>CFBundleTypeIconSystemGenerated</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Media</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.movie</string>
+				<string>public.audio</string>
+				<string>public.image</string>
+			</array>
+		</dict>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.techievideoeditor.project</string>
+			<key>UTTypeDescription</key>
+			<string>TechieVideoEditor project</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.content</string>
+			</array>
+			<key>UTTypeIconFile</key>
+			<string>AppIcon</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tve</string>
+				</array>
+				<key>public.mime-type</key>
+				<string>application/x-techievideoeditor-project</string>
+			</dict>
+		</dict>
+	</array>
+
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>

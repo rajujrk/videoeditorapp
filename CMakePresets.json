@@ -29,11 +29,27 @@
       "inherits": "macos-debug",
       "displayName": "macOS arm64 Release",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "macos-dist",
+      "inherits": "base",
+      "displayName": "macOS arm64 Release to share (macOS 14.4 and later; tools/make_dmg.sh)",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "14.4",
+        "VCPKG_TARGET_TRIPLET": "arm64-osx-dist",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/build/vcpkg_installed_dist",
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake/triplets",
+        "TVE_BUILD_TESTS": "OFF"
+      }
     }
   ],
   "buildPresets": [
     { "name": "macos-debug", "configurePreset": "macos-debug" },
-    { "name": "macos-release", "configurePreset": "macos-release" }
+    { "name": "macos-release", "configurePreset": "macos-release" },
+    { "name": "macos-dist", "configurePreset": "macos-dist", "targets": ["TechieVideoEditor"] }
   ],
   "testPresets": [
     {

@@ -157,7 +157,8 @@ namespace {
 
 std::atomic<bool> g_downloading{false};
 
-VTSuperResolutionScalerConfiguration* upscaleConfiguration(int width, int height) // retained, or nil
+// (Upscaling needs macOS 26, smooth slow motion 15.4; the app opens on 14.4.)
+API_AVAILABLE(macos(26.0)) VTSuperResolutionScalerConfiguration* upscaleConfiguration(int width, int height) // retained, or nil
 {
     if (!VTSuperResolutionScalerConfiguration.isSupported)
         return nil;
@@ -175,7 +176,7 @@ VTSuperResolutionScalerConfiguration* upscaleConfiguration(int width, int height
 
 UpscaleModel upscaleModelStatus()
 {
-    @autoreleasepool {
+    if (@available(macOS 26.0, *)) @autoreleasepool {
         VTSuperResolutionScalerConfiguration* c = upscaleConfiguration(1280, 720);
         if (!c)
             return UpscaleModel::Unsupported;
@@ -187,38 +188,43 @@ UpscaleModel upscaleModelStatus()
             return UpscaleModel::Downloading;
         return UpscaleModel::NeedsDownload;
     }
+    return UpscaleModel::Unsupported;
 }
 
 double upscaleModelProgress()
 {
-    @autoreleasepool {
+    if (@available(macOS 26.0, *)) @autoreleasepool {
         VTSuperResolutionScalerConfiguration* c = upscaleConfiguration(1280, 720);
         const double p = c ? c.configurationModelPercentageAvailable : 0.0;
         [c release];
         return p;
     }
+    return 0.0;
 }
 
 void downloadUpscaleModel(std::function<void(bool, std::string)> done)
 {
-    VTSuperResolutionScalerConfiguration* c = upscaleConfiguration(1280, 720);
-    if (!c) {
-        done(false, TVE_TR("core", "Upscaling is not available on this Mac."));
-        return;
+    if (@available(macOS 26.0, *)) {
+        VTSuperResolutionScalerConfiguration* c = upscaleConfiguration(1280, 720);
+        if (c) {
+            g_downloading = true;
+            auto callback = std::make_shared<std::function<void(bool, std::string)>>(std::move(done));
+            [c downloadConfigurationModelWithCompletionHandler:^(NSError* error) {
+                g_downloading = false;
+                // (It can report an error and still leave the model ready: the status decides.)
+                const bool ready = upscaleModelStatus() == UpscaleModel::Ready;
+                (*callback)(ready, ready || !error ? std::string() : std::string(error.localizedDescription.UTF8String));
+            }];
+            [c release];
+            return;
+        }
     }
-    g_downloading = true;
-    auto callback = std::make_shared<std::function<void(bool, std::string)>>(std::move(done));
-    [c downloadConfigurationModelWithCompletionHandler:^(NSError* error) {
-        g_downloading = false;
-        // (It can report an error and still leave the model ready: the status decides.)
-        const bool ready = upscaleModelStatus() == UpscaleModel::Ready;
-        (*callback)(ready, ready || !error ? std::string() : std::string(error.localizedDescription.UTF8String));
-    }];
-    [c release];
+    done(false, TVE_TR("core", "Upscaling is not available on this Mac."));
 }
 
-bool upscaleVideo(const std::string& path, Ticks from, Ticks to, int scale, const std::string& output,
-                  const AnalysisProgress& progress, std::string* error)
+API_AVAILABLE(macos(26.0))
+static bool upscaleVideoOnThisMac(const std::string& path, Ticks from, Ticks to, int scale, const std::string& output,
+                                  const AnalysisProgress& progress, std::string* error)
 {
     auto decoder = openAt(path, from, error);
     if (!decoder)
@@ -322,10 +328,20 @@ bool upscaleVideo(const std::string& path, Ticks from, Ticks to, int scale, cons
     }
 }
 
+bool upscaleVideo(const std::string& path, Ticks from, Ticks to, int scale, const std::string& output,
+                  const AnalysisProgress& progress, std::string* error)
+{
+    if (@available(macOS 26.0, *))
+        return upscaleVideoOnThisMac(path, from, to, scale, output, progress, error);
+    fail(error, TVE_TR("core", "Upscaling is not available on this Mac."));
+    return false;
+}
+
 // --- smooth slow motion ---
 
-bool smoothVideo(const std::string& path, Ticks from, Ticks to, int factor, const std::string& output,
-                 const AnalysisProgress& progress, std::string* error)
+API_AVAILABLE(macos(15.4))
+static bool smoothVideoOnThisMac(const std::string& path, Ticks from, Ticks to, int factor, const std::string& output,
+                                 const AnalysisProgress& progress, std::string* error)
 {
     factor = std::clamp(factor, 2, 8);
     auto decoder = openAt(path, from, error);
@@ -430,6 +446,15 @@ bool smoothVideo(const std::string& path, Ticks from, Ticks to, int factor, cons
         }
         return copy.finish(output, error);
     }
+}
+
+bool smoothVideo(const std::string& path, Ticks from, Ticks to, int factor, const std::string& output,
+                 const AnalysisProgress& progress, std::string* error)
+{
+    if (@available(macOS 15.4, *))
+        return smoothVideoOnThisMac(path, from, to, factor, output, progress, error);
+    fail(error, TVE_TR("core", "Smooth slow motion is not available on this Mac."));
+    return false;
 }
 
 // --- object removal ---

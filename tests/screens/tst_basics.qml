@@ -66,6 +66,12 @@ Item {
                 let home = createTemporaryObject(homeComponent, root, { project: c })
                 waitForRendering(home)
                 shot("home", dark)
+                // The on-device models, as offered on the first start.
+                home.openModels()
+                const models = findChild(home, "modelsDialog")
+                tryVerify(() => models && models.opened)
+                shot("models", dark)
+                models.close()
                 home.destroy(); c.destroy(); wait(100)
 
                 // Home after a crash: unsaved work offered back.

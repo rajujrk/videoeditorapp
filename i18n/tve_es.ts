@@ -2718,6 +2718,14 @@
         <translation>Grabaciones</translation>
     </message>
     <message>
+        <source>On-device models…</source>
+        <translation>Modelos en el dispositivo…</translation>
+    </message>
+    <message>
+        <source>Download the models for captions, speech cleanup and depth of field</source>
+        <translation>Descargar los modelos para subtítulos, limpieza de voz y profundidad de campo</translation>
+    </message>
+    <message>
         <source>Language</source>
         <translation>Idioma</translation>
     </message>
@@ -6103,6 +6111,105 @@ Tercero, 4</translation>
     <message>
         <source>Add</source>
         <translation>Añadir</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsDialog</name>
+    <message>
+        <source>Speech to text · English</source>
+        <translation>Voz a texto · inglés</translation>
+    </message>
+    <message>
+        <source>Captions, the transcript, editing by words and smart search</source>
+        <translation>Subtítulos, transcripción, edición por palabras y búsqueda inteligente</translation>
+    </message>
+    <message>
+        <source>Speech to text · 99 languages</source>
+        <translation>Voz a texto · 99 idiomas</translation>
+    </message>
+    <message>
+        <source>The same, for speech in other languages</source>
+        <translation>Lo mismo, para voz en otros idiomas</translation>
+    </message>
+    <message>
+        <source>Speech cleanup</source>
+        <translation>Limpieza de voz</translation>
+    </message>
+    <message>
+        <source>Enhance speech: noise, hum and room echo taken out of voices</source>
+        <translation>Mejorar la voz: ruido, zumbido y eco de la sala eliminados de las voces</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>Profundidad</translation>
+    </message>
+    <message>
+        <source>Depth of field: what is nearer or farther than the focus blurred</source>
+        <translation>Profundidad de campo: lo que está más cerca o más lejos que el foco se desenfoca</translation>
+    </message>
+    <message>
+        <source>Upscaling</source>
+        <translation>Ampliación</translation>
+    </message>
+    <message>
+        <source>Upscale: sharper pictures at 2× or 4× (from Apple, through macOS)</source>
+        <translation>Ampliar: imágenes más nítidas a 2× o 4× (de Apple, a través de macOS)</translation>
+    </message>
+    <message>
+        <source>Models for working on this Mac</source>
+        <translation>Modelos para trabajar en este Mac</translation>
+    </message>
+    <message>
+        <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
+        <translation>Estas funciones se ejecutan en este Mac, así que tus archivos nunca salen de él. Cada una necesita un modelo, que se descarga una vez de sus creadores y se comprueba antes de usarlo. Descárgalos ahora o más tarde: cada uno se vuelve a ofrecer donde se necesita.</translation>
+    </message>
+    <message>
+        <source>On this Mac</source>
+        <translation>En este Mac</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>En espera</translation>
+    </message>
+    <message>
+        <source>From macOS</source>
+        <translation>De macOS</translation>
+    </message>
+    <message>
+        <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
+        <translation>Hay modelos de voz más precisos (Small y Large, 190–574 MB) en la pestaña Subtítulos.</translation>
+    </message>
+    <message>
+        <source>Downloading… you can close this and keep working.</source>
+        <translation>Descargando… puedes cerrar esto y seguir trabajando.</translation>
+    </message>
+    <message>
+        <source>Every model is on this Mac.</source>
+        <translation>Todos los modelos están en este Mac.</translation>
+    </message>
+    <message>
+        <source>%1 to download</source>
+        <translation>%1 por descargar</translation>
+    </message>
+    <message>
+        <source>Nothing chosen</source>
+        <translation>Nada elegido</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Detener</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Cerrar</translation>
+    </message>
+    <message>
+        <source>Later</source>
+        <translation>Más tarde</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>Descargar</translation>
     </message>
 </context>
 <context>

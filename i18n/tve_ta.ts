@@ -2718,6 +2718,14 @@
         <translation>பதிவுகள்</translation>
     </message>
     <message>
+        <source>On-device models…</source>
+        <translation>சாதனத்தில் இயங்கும் மாதிரிகள்…</translation>
+    </message>
+    <message>
+        <source>Download the models for captions, speech cleanup and depth of field</source>
+        <translation>வசனங்கள், பேச்சுச் சுத்திகரிப்பு, புல ஆழம் ஆகியவற்றுக்கான மாதிரிகளைப் பதிவிறக்கு</translation>
+    </message>
+    <message>
         <source>Language</source>
         <translation>மொழி</translation>
     </message>
@@ -6103,6 +6111,105 @@ Third, 4</source>
     <message>
         <source>Add</source>
         <translation>சேர்</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsDialog</name>
+    <message>
+        <source>Speech to text · English</source>
+        <translation>பேச்சிலிருந்து உரை · ஆங்கிலம்</translation>
+    </message>
+    <message>
+        <source>Captions, the transcript, editing by words and smart search</source>
+        <translation>வசனங்கள், எழுத்துப்படி, சொற்களால் திருத்துதல், திறன்மிகு தேடல்</translation>
+    </message>
+    <message>
+        <source>Speech to text · 99 languages</source>
+        <translation>பேச்சிலிருந்து உரை · 99 மொழிகள்</translation>
+    </message>
+    <message>
+        <source>The same, for speech in other languages</source>
+        <translation>அதே, பிற மொழிப் பேச்சுக்கு</translation>
+    </message>
+    <message>
+        <source>Speech cleanup</source>
+        <translation>பேச்சுச் சுத்திகரிப்பு</translation>
+    </message>
+    <message>
+        <source>Enhance speech: noise, hum and room echo taken out of voices</source>
+        <translation>பேச்சை மேம்படுத்து: குரல்களிலிருந்து இரைச்சல், ரீங்காரம், அறை எதிரொலி நீக்கப்படும்</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>ஆழம்</translation>
+    </message>
+    <message>
+        <source>Depth of field: what is nearer or farther than the focus blurred</source>
+        <translation>புல ஆழம்: குவியத்தை விட அருகில் அல்லது தொலைவில் உள்ளவை மங்கலாக்கப்படும்</translation>
+    </message>
+    <message>
+        <source>Upscaling</source>
+        <translation>பெரிதாக்கல்</translation>
+    </message>
+    <message>
+        <source>Upscale: sharper pictures at 2× or 4× (from Apple, through macOS)</source>
+        <translation>பெரிதாக்கு: 2× அல்லது 4× அளவில் கூர்மையான படங்கள் (Apple-இடமிருந்து, macOS வழியாக)</translation>
+    </message>
+    <message>
+        <source>Models for working on this Mac</source>
+        <translation>இந்த Mac-இல் வேலை செய்வதற்கான மாதிரிகள்</translation>
+    </message>
+    <message>
+        <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
+        <translation>இந்த அம்சங்கள் இந்த Mac-இலேயே இயங்குகின்றன, எனவே உங்கள் ஊடகம் இதை விட்டு வெளியேறாது. ஒவ்வொன்றுக்கும் ஒரு மாதிரி தேவை; அதன் உருவாக்குநர்களிடமிருந்து ஒருமுறை பதிவிறக்கப்பட்டு, பயன்படுத்தும் முன் சரிபார்க்கப்படும். இப்போதே பெறுங்கள், அல்லது பிறகு: ஒவ்வொன்றும் தேவைப்படும் இடத்தில் மீண்டும் வழங்கப்படும்.</translation>
+    </message>
+    <message>
+        <source>On this Mac</source>
+        <translation>இந்த Mac-இல் உள்ளது</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>காத்திருக்கிறது</translation>
+    </message>
+    <message>
+        <source>From macOS</source>
+        <translation>macOS-இடமிருந்து</translation>
+    </message>
+    <message>
+        <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
+        <translation>இன்னும் துல்லியமான பேச்சு மாதிரிகள் (Small, Large, 190–574 MB) வசனங்கள் தாவலில் உள்ளன.</translation>
+    </message>
+    <message>
+        <source>Downloading… you can close this and keep working.</source>
+        <translation>பதிவிறக்குகிறது… இதை மூடிவிட்டு வேலையைத் தொடரலாம்.</translation>
+    </message>
+    <message>
+        <source>Every model is on this Mac.</source>
+        <translation>எல்லா மாதிரிகளும் இந்த Mac-இல் உள்ளன.</translation>
+    </message>
+    <message>
+        <source>%1 to download</source>
+        <translation>பதிவிறக்க வேண்டியது %1</translation>
+    </message>
+    <message>
+        <source>Nothing chosen</source>
+        <translation>எதுவும் தேர்ந்தெடுக்கப்படவில்லை</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>நிறுத்து</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>மூடு</translation>
+    </message>
+    <message>
+        <source>Later</source>
+        <translation>பிறகு</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>பதிவிறக்கு</translation>
     </message>
 </context>
 <context>

@@ -2718,6 +2718,14 @@
         <translation>录制</translation>
     </message>
     <message>
+        <source>On-device models…</source>
+        <translation>本机模型…</translation>
+    </message>
+    <message>
+        <source>Download the models for captions, speech cleanup and depth of field</source>
+        <translation>下载用于字幕、人声清理和景深的模型</translation>
+    </message>
+    <message>
         <source>Language</source>
         <translation>语言</translation>
     </message>
@@ -6102,6 +6110,105 @@ Third, 4</source>
     <message>
         <source>Add</source>
         <translation>添加</translation>
+    </message>
+</context>
+<context>
+    <name>ModelsDialog</name>
+    <message>
+        <source>Speech to text · English</source>
+        <translation>语音转文字 · 英语</translation>
+    </message>
+    <message>
+        <source>Captions, the transcript, editing by words and smart search</source>
+        <translation>字幕、文字稿、按文字剪辑和智能搜索</translation>
+    </message>
+    <message>
+        <source>Speech to text · 99 languages</source>
+        <translation>语音转文字 · 99 种语言</translation>
+    </message>
+    <message>
+        <source>The same, for speech in other languages</source>
+        <translation>同上，用于其他语言的语音</translation>
+    </message>
+    <message>
+        <source>Speech cleanup</source>
+        <translation>人声清理</translation>
+    </message>
+    <message>
+        <source>Enhance speech: noise, hum and room echo taken out of voices</source>
+        <translation>增强人声：去除人声中的噪声、嗡嗡声和房间回声</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>深度</translation>
+    </message>
+    <message>
+        <source>Depth of field: what is nearer or farther than the focus blurred</source>
+        <translation>景深：比焦点更近或更远的部分会被模糊</translation>
+    </message>
+    <message>
+        <source>Upscaling</source>
+        <translation>放大</translation>
+    </message>
+    <message>
+        <source>Upscale: sharper pictures at 2× or 4× (from Apple, through macOS)</source>
+        <translation>放大：以 2× 或 4× 获得更清晰的画面（来自 Apple，通过 macOS）</translation>
+    </message>
+    <message>
+        <source>Models for working on this Mac</source>
+        <translation>在这台 Mac 上处理所需的模型</translation>
+    </message>
+    <message>
+        <source>These features run on this Mac, so your media never leaves it. Each needs a model, downloaded once from its makers and checked before it is used. Get them now, or later: each is offered again where it is needed.</source>
+        <translation>这些功能在这台 Mac 上运行，你的媒体不会离开它。每项功能都需要一个模型：从其开发者处下载一次，并在使用前校验。现在获取或以后再说都可以：需要时会在相应位置再次提供。</translation>
+    </message>
+    <message>
+        <source>On this Mac</source>
+        <translation>已在本机</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>等待中</translation>
+    </message>
+    <message>
+        <source>From macOS</source>
+        <translation>来自 macOS</translation>
+    </message>
+    <message>
+        <source>More accurate speech models (Small and Large, 190–574 MB) are in the Captions tab.</source>
+        <translation>更准确的语音模型（Small 和 Large，190–574 MB）在“字幕”标签页中。</translation>
+    </message>
+    <message>
+        <source>Downloading… you can close this and keep working.</source>
+        <translation>正在下载… 你可以关闭此窗口并继续工作。</translation>
+    </message>
+    <message>
+        <source>Every model is on this Mac.</source>
+        <translation>所有模型都已在这台 Mac 上。</translation>
+    </message>
+    <message>
+        <source>%1 to download</source>
+        <translation>需下载 %1</translation>
+    </message>
+    <message>
+        <source>Nothing chosen</source>
+        <translation>未选择任何项</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>停止</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>Later</source>
+        <translation>稍后</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>下载</translation>
     </message>
 </context>
 <context>

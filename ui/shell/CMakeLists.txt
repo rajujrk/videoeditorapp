@@ -22,6 +22,7 @@ qt_add_qml_module(tve_shell
         ParamControl.qml
         ExportDialog.qml
         RenderQueuePanel.qml
+        ModelsDialog.qml
         RelinkDialog.qml
         ShortcutsDialog.qml
         AnalyzePage.qml
