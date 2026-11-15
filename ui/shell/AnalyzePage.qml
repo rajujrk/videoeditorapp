@@ -983,33 +983,49 @@ ScrollView {
             }
             Repeater {
                 model: page.clipInfo.motionTracks || []
-                delegate: RowLayout {
+                // One card per track: what it is and when, in full, then what to do with it.
+                delegate: Rectangle {
+                    id: trackCard
                     required property var modelData
-                    Layout.fillWidth: true
                     readonly property string kindLabel: modelData.kind === "plane" ? qsTr("plane")
                                                       : modelData.kind === "point" ? qsTr("point")
                                                       : modelData.kind === "surface" ? qsTr("surface") : qsTr("object")
-                    Text {
-                        objectName: "motionTrack:" + modelData.id
-                        Layout.fillWidth: true
-                        text: qsTr("Track %1 · %2 · %3–%4 s").arg(modelData.id).arg(parent.kindLabel)
-                              .arg(Fmt.num(modelData.start, 1)).arg(Fmt.num(modelData.end, 1))
-                        font: Theme.type.body
-                        color: Theme.color.textPrimary
-                        elide: Text.ElideRight
-                    }
-                    TextButton {
-                        objectName: "holdStill:" + modelData.id
-                        text: qsTr("Hold still")
-                        variant: "ghost"
-                        tip: qsTr("Keeps what this track follows still in the picture: the clip moves the other way, as keyframes")
-                        onClicked: page.project.holdStill(page.clipInfo.id, modelData.id)
-                    }
-                    TextButton {
-                        objectName: "deleteTrack:" + modelData.id
-                        text: qsTr("Delete")
-                        variant: "ghost"
-                        onClicked: page.project.deleteTrack(page.clipInfo.id, modelData.id)
+                    Layout.fillWidth: true
+                    implicitHeight: trackRows.implicitHeight + Theme.space.s * 2
+                    radius: Theme.radius.m
+                    color: Theme.color.surfaceRaised
+                    border.color: Theme.color.borderSubtle
+                    ColumnLayout {
+                        id: trackRows
+                        anchors.fill: parent
+                        anchors.margins: Theme.space.s
+                        spacing: Theme.space.xs
+                        Text {
+                            objectName: "motionTrack:" + trackCard.modelData.id
+                            Layout.fillWidth: true
+                            text: qsTr("Track %1 · %2 · %3–%4 s").arg(trackCard.modelData.id).arg(trackCard.kindLabel)
+                                  .arg(Fmt.num(trackCard.modelData.start, 1)).arg(Fmt.num(trackCard.modelData.end, 1))
+                            font: Theme.type.body
+                            color: Theme.color.textPrimary
+                            wrapMode: Text.Wrap
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Theme.space.xs
+                            TextButton {
+                                objectName: "holdStill:" + trackCard.modelData.id
+                                text: qsTr("Hold still")
+                                variant: "secondary"
+                                tip: qsTr("Keeps what this track follows still in the picture: the clip moves the other way, as keyframes")
+                                onClicked: page.project.holdStill(page.clipInfo.id, trackCard.modelData.id)
+                            }
+                            TextButton {
+                                objectName: "deleteTrack:" + trackCard.modelData.id
+                                text: qsTr("Delete")
+                                variant: "ghost"
+                                onClicked: page.project.deleteTrack(page.clipInfo.id, trackCard.modelData.id)
+                            }
+                        }
                     }
                 }
             }

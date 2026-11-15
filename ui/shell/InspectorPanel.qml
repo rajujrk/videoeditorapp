@@ -2603,6 +2603,7 @@ Rectangle {
                     visible: colorPage.gradable
                     Layout.fillWidth: true
                     title: qsTr("Wheels")
+                    objectName: "wheelsSection"
                     GridLayout {
                         Layout.fillWidth: true
                         columns: 2
@@ -2665,6 +2666,7 @@ Rectangle {
                     visible: colorPage.gradable
                     Layout.fillWidth: true
                     title: qsTr("Curves")
+                    objectName: "curvesSection"
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Theme.space.xs
@@ -2837,6 +2839,7 @@ Rectangle {
                     visible: colorPage.gradable
                     Layout.fillWidth: true
                     title: qsTr("LUT")
+                    objectName: "lutSection"
                     Text {
                         objectName: "lutName"
                         Layout.fillWidth: true

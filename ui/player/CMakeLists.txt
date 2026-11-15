@@ -30,6 +30,8 @@ qt_add_qml_module(tve_player
         KeyMap.cpp
         ShaderEffects.h
         ShaderEffects.cpp
+        GlslHighlighter.h
+        GlslHighlighter.cpp
         MyItems.h
         MyItems.cpp
         Favourites.h

@@ -2,6 +2,7 @@
 #include "audio/AudioEffects.h"
 #include "audio/dsp/Loudness.h"
 #include "audio/dsp/Processors.h"
+#include "audio/dsp/TimeStretch.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -237,4 +238,31 @@ TEST_CASE("loudness meter reads the EBU reference tone", "[audio-dsp]")
     CHECK(louder.integrated() == Approx(-17.0).margin(0.1));
     dsp::LoudnessMeter empty;
     CHECK(std::isinf(empty.integrated()));
+}
+
+TEST_CASE("time stretching pulls on safely past the end of its input", "[audio-dsp]")
+{
+    // A clip whose sound is shorter than its picture: a second of tone, then far more output
+    // asked for, at several rates. What is held is never dropped beyond what was pushed.
+    for (const double rate : {0.5, 1.0, 1.5, 3.0}) {
+        tve::dsp::TimeStretcher stretcher;
+        stretcher.reset(0, 0.0, rate);
+        std::vector<float> tone(48000 * 2);
+        for (std::size_t i = 0; i < tone.size() / 2; ++i)
+            tone[i * 2] = tone[i * 2 + 1] = float(0.5 * std::sin(2 * std::numbers::pi * 440 * double(i) / 48000));
+        stretcher.push(tone.data(), 48000);
+        stretcher.finish();
+        std::vector<float> out(512 * 2);
+        float loudest = 0.0f, lastLoudest = 1.0f;
+        for (int block = 0; block < 2000; ++block) {
+            stretcher.pull(out.data(), 512, rate);
+            lastLoudest = 0.0f;
+            for (const float v : out)
+                lastLoudest = std::max(lastLoudest, std::abs(v));
+            loudest = std::max(loudest, lastLoudest);
+            REQUIRE(stretcher.inputEnd() == 48000);
+        }
+        CHECK(loudest > 0.3f);      // the tone came out
+        CHECK(lastLoudest == 0.0f); // and then silence
+    }
 }

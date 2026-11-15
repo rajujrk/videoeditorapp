@@ -712,20 +712,40 @@ Rectangle {
                             color: stickerButton.hovered ? Theme.color.surfaceHover : Theme.color.surfaceRaised
                             border.color: stickerButton.hovered ? Theme.color.borderStrong : Theme.color.borderSubtle
                         }
-                        contentItem: Image {
-                            id: stickerPreview
-                            objectName: "stickerPreview:" + stickerTile.modelData.id
-                            fillMode: Image.PreserveAspectFit
-                            asynchronous: true
-                            property real seconds: 0.4
-                            source: "image://tvesticker/" + stickerTile.modelData.id + "@" + seconds.toFixed(3)
-                            anchors.margins: Theme.space.s
-                            Timer {
-                                running: stickerButton.hovered
-                                repeat: true
-                                interval: 66
-                                onTriggered: stickerPreview.seconds = (stickerPreview.seconds + 1 / 15) % 2
-                                onRunningChanged: if (!running) stickerPreview.seconds = 0.4
+                        // Yours are named under the picture (the built-in ones speak for themselves).
+                        contentItem: Item {
+                            readonly property bool named: stickerTile.modelData.category === "mine"
+                            Image {
+                                id: stickerPreview
+                                objectName: "stickerPreview:" + stickerTile.modelData.id
+                                anchors.fill: parent
+                                anchors.margins: Theme.space.s
+                                anchors.bottomMargin: parent.named ? stickerName.height + Theme.space.s : Theme.space.s
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                                property real seconds: 0.4
+                                source: "image://tvesticker/" + stickerTile.modelData.id + "@" + seconds.toFixed(3)
+                                Timer {
+                                    running: stickerButton.hovered
+                                    repeat: true
+                                    interval: 66
+                                    onTriggered: stickerPreview.seconds = (stickerPreview.seconds + 1 / 15) % 2
+                                    onRunningChanged: if (!running) stickerPreview.seconds = 0.4
+                                }
+                            }
+                            Text {
+                                id: stickerName
+                                objectName: "stickerName:" + stickerTile.modelData.id
+                                visible: parent.named
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                anchors.margins: Theme.space.xs
+                                horizontalAlignment: Text.AlignHCenter
+                                text: stickerTile.modelData.title
+                                font: Theme.type.caption
+                                color: Theme.color.textSecondary
+                                elide: Text.ElideMiddle
                             }
                         }
                     }

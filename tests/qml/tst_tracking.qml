@@ -136,7 +136,11 @@ Item {
             compare(tracks.length, 1)
             compare(tracks[0].kind, "plane")
             verify(!tracks[0].surface)
-            verify(settled(f.editor, "motionTrack:1").text.indexOf("Track 1 · plane") === 0)
+            const label = settled(f.editor, "motionTrack:1")
+            verify(label.text.indexOf("Track 1 · plane") === 0)
+            // Shown in full (its times too), with its buttons under it.
+            verify(!label.truncated)
+            verify(settled(f.editor, "holdStill:1").mapToItem(label, 0, 0).y >= label.height)
             verify(tracks[0].end > 1.5, "ended at " + tracks[0].end)
 
             // A picture pinned onto it: its corners on the plane's (the bars stand still).

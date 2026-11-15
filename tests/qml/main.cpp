@@ -570,6 +570,13 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("packSite"), packSite);
         engine->rootContext()->setContextProperty(QStringLiteral("samplesDir"), QStringLiteral(TVE_SAMPLES_DIR));
         engine->rootContext()->setContextProperty(QStringLiteral("tempDir"), QDir::tempPath());
+        // The screens suite (tests/screens, tools/make_screenshots.sh): where the pictures go,
+        // and the media they show.
+        engine->rootContext()->setContextProperty(QStringLiteral("screensDir"),
+                                                  qEnvironmentVariable("TVE_SCREENS_OUT", QDir::tempPath()));
+        engine->rootContext()->setContextProperty(
+            QStringLiteral("screensMediaDir"),
+            qEnvironmentVariable("TVE_SCREENS_MEDIA", QStringLiteral(TVE_SAMPLES_DIR "/screens")));
         engine->rootContext()->setContextProperty(QStringLiteral("recordingsDir"), qEnvironmentVariable("TVE_RECORDING_DIR"));
         engine->rootContext()->setContextProperty(QStringLiteral("fixturesDir"), QStringLiteral(TVE_QML_TESTS_DIR "/fixtures"));
         engine->rootContext()->setContextProperty(QStringLiteral("stillsDir"), qEnvironmentVariable("TVE_TEST_STILLS_DIR"));

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
+import TechieVideoEditor.Player
 
 // The shader editor: your own GPU effect, written as `vec4 effect(vec2 uv)` in GLSL with
 // settings of your own (sliders and colours, used in the code by their names). It compiles as
@@ -140,6 +141,16 @@ Popup {
                         color: Theme.color.textPrimary
                         background: Rectangle { color: Theme.color.surfaceSunken; radius: Theme.radius.m; border.color: Theme.color.borderSubtle }
                         onTextChanged: compileSoon.restart()
+                        // Keywords, types, numbers, comments and the functions you can use, in colour.
+                        GlslHighlighter {
+                            objectName: "shaderHighlighter"
+                            document: code.textDocument
+                            keyword: Theme.color.accentText
+                            type: Theme.color.success
+                            number: Theme.color.warning
+                            comment: Theme.color.textSecondary
+                            builtin: Theme.color.trackTitle
+                        }
                     }
                 }
             }

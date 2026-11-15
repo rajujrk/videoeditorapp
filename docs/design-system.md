@@ -333,8 +333,8 @@ Titles tab and a selected title over gradient footage, dark and light:
 ![Titles, light](images/titles-light.png)
 
 Markers, a group and a compound clip: chapter and range markers on the ruler, the marker
-editor open on the "Part two" chapter, the selected compound clip (a sticker over an image)
-and a sticker grouped with the last clip, dark and light:
+editor open on the "Part two" chapter, the selected compound clip (the first two shots,
+made one) and a sticker grouped with the last clip, dark and light:
 
 ![Markers, groups and compound clips, dark](images/structure-dark.png)
 ![Markers, groups and compound clips, light](images/structure-light.png)
@@ -699,8 +699,8 @@ The export dialog with the Vertical 9:16 preset on a marker's range, and the ren
 ![Render queue, light](images/render-queue-light.png)
 
 Missing media after a project's footage moved (the bar, red clips, Missing tiles), the relink
-dialog after a folder search found two of three (one renamed, found by content), and the
-keyboard shortcuts dialog asking before it moves ⌘G, dark and light:
+dialog listing what is missing and where it was (locate each file, or search a folder for them
+all), and the keyboard shortcuts dialog asking before it moves M from "Add a marker", dark and light:
 
 ![Missing media, dark](images/missing-media-dark.png)
 ![Missing media, light](images/missing-media-light.png)
@@ -778,7 +778,7 @@ Write with AI with five titles written from the captions, light and dark:
 ![Write with AI, light](images/ai-write-light.png)
 ![Write with AI, dark](images/ai-write-dark.png)
 
-The Templates tab browsing the built-in templates (previews rendered from each template), and a Postcard in template mode with two slots filled and its title changed, dark and light:
+The Templates tab browsing the built-in templates (previews rendered from each template), and a Postcard in template mode with three slots filled and its title changed, dark and light:
 
 ![Templates, dark](images/templates-dark.png)
 ![Templates, light](images/templates-light.png)
@@ -799,7 +799,7 @@ Drawing on the player — the tool strip over the picture, a brush stroke, an ar
 ![Overlays, dark](images/overlays-dark.png)
 ![Overlays, light](images/overlays-light.png)
 
-The Store tab with the catalogue checked — a pack to get, and an installed pack with a newer version to update or remove — dark and light:
+The Store tab with the catalogue checked — a pack just installed (to remove), and a pack of stickers to get — dark and light:
 
 ![Store, dark](images/store-dark.png)
 ![Store, light](images/store-light.png)
@@ -816,7 +816,7 @@ An OpenFX video plug-in (the test invert) on a clip in the Effects tab — its p
 ![Video plug-ins, dark](images/video-plugins-dark.png)
 ![Video plug-ins, light](images/video-plugins-light.png)
 
-Colour management: an HDR · PQ project in the Color tab — the Project colour buttons and note, the waveform of the PQ signal scaled in nits (SDR media at graphics white, 203 nits) — an HDR export in the library with its HDR · PQ badge, and the HDR viewer button in the transport bar, dark and light:
+Colour management: an HDR · PQ project in the Color tab — the Project colour buttons and note, the waveform of the PQ signal scaled in nits (SDR media at graphics white, 203 nits) — and the HDR viewer button in the transport bar, dark and light:
 
 ![Colour and HDR, dark](images/colour-hdr-dark.png)
 ![Colour and HDR, light](images/colour-hdr-light.png)
@@ -836,7 +836,7 @@ The Copilot tab: a request in words, Claude's answer, and the changes it propose
 ![Copilot, dark](images/copilot-dark.png)
 ![Copilot, light](images/copilot-light.png)
 
-Interchange: the Export timeline dialog's report after writing Final Cut Pro XML — what didn't carry over, by kind and how many clips — over an edit with a title and a dissolve, dark and light (the Export timeline button sits beside Save):
+Interchange: the Export timeline dialog's report after writing Final Cut Pro XML — what didn't carry over, by kind and how many clips — over an edit with a title, a colour grade and a marker, dark and light (the Export timeline button sits beside Save):
 
 ![Interchange, dark](images/interchange-dark.png)
 ![Interchange, light](images/interchange-light.png)

@@ -133,6 +133,10 @@ Item {
             dialog.openFor("")
             tryVerify(() => dialog.opened)
             tryVerify(() => dialog.previewId !== "", 5000, "the editor's effect never compiled: " + dialog.error)
+            // The code is coloured as GLSL.
+            const highlighter = findChild(dialog.contentItem, "shaderHighlighter")
+            verify(highlighter)
+            verify(highlighter.document !== null)
             compare(dialog.error, "")
             findChild(dialog.contentItem, "shaderTitle").text = "Warm wave"
             findChild(dialog.contentItem, "shaderSave").clicked()
@@ -204,6 +208,11 @@ Item {
             verify(entry.picture)
             openTab(f, "Stickers", "mine", "stickerCategory:")
             tryVerify(() => findChild(f.editor, "librarySticker:" + disc) !== null)
+            // Yours are named under the picture; the built-in ones are not.
+            tryVerify(() => findChild(f.editor, "stickerName:" + disc) !== null)
+            const name = findChild(f.editor, "stickerName:" + disc)
+            verify(name.visible)
+            compare(name.text, "disc")
             verify(findChild(f.editor, "mineStickersBar").visible)
             verify(p.addSticker(disc), p.lastError)
             compare(p.undoText, "Add Sticker")

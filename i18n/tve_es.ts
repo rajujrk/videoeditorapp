@@ -285,7 +285,7 @@
     </message>
     <message>
         <source>Stickers that follow the faces</source>
-        <translation>Pegatinas que siguen a las caras</translation>
+        <translation>Stickers que siguen a las caras</translation>
     </message>
     <message>
         <source>Head</source>
@@ -309,7 +309,7 @@
     </message>
     <message>
         <source>A sticker on each chosen face for as long as it is there, moving and growing with it</source>
-        <translation>Una pegatina en cada cara elegida mientras aparezca, que se mueve y crece con ella</translation>
+        <translation>Un sticker en cada cara elegida mientras aparezca, que se mueve y crece con ella</translation>
     </message>
     <message>
         <source>Make them tracks</source>
@@ -477,7 +477,7 @@
     </message>
     <message>
         <source>Follows something through the clip from the playhead, so titles and stickers can move with it, a picture can be pinned onto a surface, or the shot held still on it.</source>
-        <translation>Sigue algo en el clip desde el cabezal, para que títulos y pegatinas se muevan con ello, una imagen quede fijada sobre una superficie o el plano se mantenga quieto en ello.</translation>
+        <translation>Sigue algo en el clip desde el cabezal, para que títulos y stickers se muevan con ello, una imagen quede fijada sobre una superficie o el plano se mantenga quieto en ello.</translation>
     </message>
     <message>
         <source>Object</source>
@@ -1495,7 +1495,7 @@
     </message>
     <message>
         <source>OpenAI · pictures and stickers</source>
-        <translation>OpenAI · imágenes y pegatinas</translation>
+        <translation>OpenAI · imágenes y stickers</translation>
     </message>
     <message>
         <source>OpenAI</source>
@@ -2330,7 +2330,7 @@
     </message>
     <message>
         <source>Sticker</source>
-        <translation>Pegatina</translation>
+        <translation>Sticker</translation>
     </message>
     <message>
         <source>Video</source>
@@ -2402,7 +2402,7 @@
     </message>
     <message>
         <source>A sticker of… (one object, it is cut out)</source>
-        <translation>Una pegatina de… (un objeto, se recorta)</translation>
+        <translation>Un sticker de… (un objeto, se recorta)</translation>
     </message>
     <message>
         <source>What happens next (optional)</source>
@@ -2538,7 +2538,7 @@
     </message>
     <message>
         <source>Make the sticker</source>
-        <translation>Crear la pegatina</translation>
+        <translation>Crear el sticker</translation>
     </message>
     <message>
         <source>Make the video (%1 shots)</source>
@@ -5315,7 +5315,7 @@ Tercero, 4</translation>
     </message>
     <message>
         <source>The selected picture or animation, or a video&apos;s frame at the playhead, as a sticker</source>
-        <translation>La imagen o animación seleccionada, o el fotograma del vídeo en el cabezal, como pegatina</translation>
+        <translation>La imagen o animación seleccionada, o el fotograma del vídeo en el cabezal, como sticker</translation>
     </message>
     <message>
         <source>%1 — click to add at the playhead, or drag it onto the timeline</source>
@@ -5538,7 +5538,7 @@ Tercero, 4</translation>
     </message>
     <message>
         <source>Sticker</source>
-        <translation>Pegatina</translation>
+        <translation>Sticker</translation>
     </message>
     <message>
         <source>Image</source>
@@ -5778,7 +5778,7 @@ Tercero, 4</translation>
     </message>
     <message>
         <source>Choose a picture or animation for your stickers</source>
-        <translation>Elige una imagen o animación para tus pegatinas</translation>
+        <translation>Elige una imagen o animación para tus stickers</translation>
     </message>
     <message>
         <source>Pictures and animations (*.png *.jpg *.jpeg *.webp *.gif *.json)</source>
@@ -6629,7 +6629,7 @@ Tercero, 4</translation>
     </message>
     <message>
         <source>No such sticker of yours</source>
-        <translation>No tienes ninguna pegatina así</translation>
+        <translation>No tienes ningún sticker así</translation>
     </message>
     <message>
         <source>Select a picture, an animation or a video clip</source>
@@ -6637,7 +6637,7 @@ Tercero, 4</translation>
     </message>
     <message>
         <source>This picture&apos;s kind of file cannot be a sticker</source>
-        <translation>Este tipo de archivo de imagen no puede ser una pegatina</translation>
+        <translation>Este tipo de archivo de imagen no puede ser un sticker</translation>
     </message>
     <message>
         <source>Could not read the frame at the playhead</source>
@@ -8079,7 +8079,7 @@ Tercero, 4</translation>
     </message>
     <message>
         <source>A sticker is a picture (PNG, JPEG, WebP, GIF) or a Lottie animation (.json)</source>
-        <translation>Una pegatina es una imagen (PNG, JPEG, WebP, GIF) o una animación Lottie (.json)</translation>
+        <translation>Un sticker es una imagen (PNG, JPEG, WebP, GIF) o una animación Lottie (.json)</translation>
     </message>
     <message>
         <source>A LUT is a .cube or .3dl file</source>

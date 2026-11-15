@@ -57,7 +57,7 @@
     </message>
     <message>
         <source>Lines the %1 selected clips up by what they heard (cameras and a recorder at the same event). The first one selected stays; the others move on their tracks.</source>
-        <translation>Căn %1 clip đã chọn theo những gì chúng nghe được (máy quay và máy ghi âm ở cùng sự kiện). Clip chọn đầu tiên giữ nguyên; các clip khác dịch chuyển trên rãnh của chúng.</translation>
+        <translation>Căn %1 clip đã chọn theo những gì chúng nghe được (máy quay và máy ghi âm ở cùng sự kiện). Clip chọn đầu tiên giữ nguyên; các clip khác dịch chuyển trên track của chúng.</translation>
     </message>
     <message>
         <source>Line up by sound</source>
@@ -77,7 +77,7 @@
     </message>
     <message>
         <source>Keeps the person — or any subject you draw a box around — and makes the background transparent, so the tracks below show through, or blurs it (Vision, on this Mac).</source>
-        <translation>Giữ người — hoặc bất kỳ chủ thể nào bạn khoanh khung — và làm nền trong suốt để thấy các rãnh bên dưới, hoặc làm mờ nó (Vision, trên máy Mac này).</translation>
+        <translation>Giữ người — hoặc bất kỳ chủ thể nào bạn khoanh khung — và làm nền trong suốt để thấy các track bên dưới, hoặc làm mờ nó (Vision, trên máy Mac này).</translation>
     </message>
     <message>
         <source>Cut out the subject</source>
@@ -645,11 +645,11 @@
     </message>
     <message>
         <source>1 pause, %1 s in all (red on the timeline).</source>
-        <translation>1 khoảng lặng, tổng %1 giây (màu đỏ trên dòng thời gian).</translation>
+        <translation>1 khoảng lặng, tổng %1 giây (màu đỏ trên timeline).</translation>
     </message>
     <message>
         <source>%1 pauses, %2 s in all (red on the timeline).</source>
-        <translation>%1 khoảng lặng, tổng %2 giây (màu đỏ trên dòng thời gian).</translation>
+        <translation>%1 khoảng lặng, tổng %2 giây (màu đỏ trên timeline).</translation>
     </message>
     <message>
         <source>Remove them</source>
@@ -657,7 +657,7 @@
     </message>
     <message>
         <source>Cuts the pauses out and closes the gaps on this clip&apos;s track</source>
-        <translation>Cắt bỏ các khoảng lặng và khép các khoảng trống trên rãnh của clip này</translation>
+        <translation>Cắt bỏ các khoảng lặng và khép các khoảng trống trên track của clip này</translation>
     </message>
     <message>
         <source>Clear</source>
@@ -681,11 +681,11 @@
     </message>
     <message>
         <source>1 scene change (green on the timeline).</source>
-        <translation>1 thay đổi cảnh (màu xanh lá trên dòng thời gian).</translation>
+        <translation>1 thay đổi cảnh (màu xanh lá trên timeline).</translation>
     </message>
     <message>
         <source>%1 scene changes (green on the timeline).</source>
-        <translation>%1 thay đổi cảnh (màu xanh lá trên dòng thời gian).</translation>
+        <translation>%1 thay đổi cảnh (màu xanh lá trên timeline).</translation>
     </message>
     <message>
         <source>Split there</source>
@@ -1153,7 +1153,7 @@
     </message>
     <message>
         <source>Replaces the captions on the Captions track (one undo step)</source>
-        <translation>Thay thế phụ đề trên rãnh Phụ đề (một lần hoàn tác)</translation>
+        <translation>Thay thế phụ đề trên track Phụ đề (một lần hoàn tác)</translation>
     </message>
     <message>
         <source>Download the speech model first</source>
@@ -1173,11 +1173,11 @@
     </message>
     <message>
         <source>1 caption on the Captions track. Select one to change its words or look.</source>
-        <translation>1 phụ đề trên rãnh Phụ đề. Chọn nó để đổi lời hoặc giao diện.</translation>
+        <translation>1 phụ đề trên track Phụ đề. Chọn nó để đổi lời hoặc giao diện.</translation>
     </message>
     <message>
         <source>%1 captions on the Captions track. Select one to change its words or look.</source>
-        <translation>%1 phụ đề trên rãnh Phụ đề. Chọn một cái để đổi lời hoặc giao diện.</translation>
+        <translation>%1 phụ đề trên track Phụ đề. Chọn một cái để đổi lời hoặc giao diện.</translation>
     </message>
     <message>
         <source>Style</source>
@@ -1225,7 +1225,7 @@
     </message>
     <message>
         <source>Claude checks every title and caption on the timeline, each in its own language. Nothing changes until you apply a fix.</source>
-        <translation>Claude kiểm tra mọi tiêu đề và phụ đề trên dòng thời gian, mỗi cái theo ngôn ngữ của nó. Không có gì thay đổi cho đến khi bạn áp dụng một sửa lỗi.</translation>
+        <translation>Claude kiểm tra mọi tiêu đề và phụ đề trên timeline, mỗi cái theo ngôn ngữ của nó. Không có gì thay đổi cho đến khi bạn áp dụng một bản sửa.</translation>
     </message>
     <message>
         <source>Check the text</source>
@@ -1993,7 +1993,7 @@
     </message>
     <message>
         <source>Whole timeline</source>
-        <translation>Toàn bộ dòng thời gian</translation>
+        <translation>Toàn bộ timeline</translation>
     </message>
     <message>
         <source>Selected clips</source>
@@ -2157,11 +2157,11 @@
     </message>
     <message>
         <source>Include the mix as the sound track</source>
-        <translation>Đưa bản phối vào làm rãnh âm thanh</translation>
+        <translation>Đưa bản phối vào làm track âm thanh</translation>
     </message>
     <message>
         <source>No sound track</source>
-        <translation>Không có rãnh âm thanh</translation>
+        <translation>Không có track âm thanh</translation>
     </message>
     <message>
         <source>Loudness</source>
@@ -2598,7 +2598,7 @@
     </message>
     <message>
         <source>Add to the end of the main track</source>
-        <translation>Thêm vào cuối rãnh chính</translation>
+        <translation>Thêm vào cuối track chính</translation>
     </message>
 </context>
 <context>
@@ -2767,7 +2767,7 @@
     </message>
     <message>
         <source>A project, or a timeline from another editor (OpenTimelineIO, Final Cut Pro XML)</source>
-        <translation>Một dự án, hoặc dòng thời gian từ trình dựng khác (OpenTimelineIO, Final Cut Pro XML)</translation>
+        <translation>Một dự án, hoặc timeline từ trình dựng khác (OpenTimelineIO, Final Cut Pro XML)</translation>
     </message>
     <message>
         <source>Record screen</source>

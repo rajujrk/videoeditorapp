@@ -800,7 +800,7 @@
     </message>
     <message>
         <source>Transitions</source>
-        <translation>ทรานซิชัน</translation>
+        <translation>เปลี่ยนภาพ</translation>
     </message>
     <message>
         <source>Hits</source>
@@ -1674,11 +1674,11 @@
     </message>
     <message>
         <source>Remove the transition into %1</source>
-        <translation>ลบทรานซิชันเข้าสู่ %1</translation>
+        <translation>ลบการเปลี่ยนภาพเข้าสู่ %1</translation>
     </message>
     <message>
         <source>Add a %1 transition into %2 (%3 s)</source>
-        <translation>เพิ่มทรานซิชัน %1 เข้าสู่ %2 (%3 วิ)</translation>
+        <translation>เพิ่มการเปลี่ยนภาพ %1 เข้าสู่ %2 (%3 วิ)</translation>
     </message>
     <message>
         <source>Remove %1 from %2</source>
@@ -1737,7 +1737,7 @@
     </message>
     <message>
         <source>Ask for changes in your own words: trims and cuts, titles, transitions, effects, colour, captions. You&apos;ll see what it would change before anything happens.</source>
-        <translation>ขอการเปลี่ยนแปลงด้วยคำพูดของคุณ: ตัดแต่งและตัด ชื่อเรื่อง ทรานซิชัน เอฟเฟกต์ สี คำบรรยาย คุณจะเห็นว่าอะไรจะเปลี่ยนก่อนที่จะเกิดขึ้น</translation>
+        <translation>ขอการเปลี่ยนแปลงด้วยคำพูดของคุณ: ตัดแต่งและตัด ชื่อเรื่อง การเปลี่ยนภาพ เอฟเฟกต์ สี คำบรรยาย คุณจะเห็นว่าอะไรจะเปลี่ยนก่อนที่จะเกิดขึ้น</translation>
     </message>
     <message>
         <source>Each request sends Anthropic a description of the project — its clips&apos; names and timing, titles and captions, and what is said in transcribed media — not the pictures or sound.</source>
@@ -2554,7 +2554,7 @@
     </message>
     <message>
         <source>Make the transition</source>
-        <translation>สร้างทรานซิชัน</translation>
+        <translation>สร้างการเปลี่ยนภาพ</translation>
     </message>
     <message>
         <source>Generate</source>
@@ -2980,7 +2980,7 @@
     </message>
     <message>
         <source>Transition</source>
-        <translation>ทรานซิชัน</translation>
+        <translation>การเปลี่ยนภาพ</translation>
     </message>
     <message>
         <source>Remove</source>
@@ -2992,7 +2992,7 @@
     </message>
     <message>
         <source>Put this transition, this long, on every cut between clips</source>
-        <translation>ใส่ทรานซิชันนี้ด้วยความยาวนี้ให้ทุกจุดตัดระหว่างคลิป</translation>
+        <translation>ใส่การเปลี่ยนภาพนี้ด้วยความยาวนี้ให้ทุกจุดตัดระหว่างคลิป</translation>
     </message>
     <message>
         <source>Timing</source>
@@ -5207,7 +5207,7 @@ Third, 4</source>
     </message>
     <message>
         <source>Transitions</source>
-        <translation>ทรานซิชัน</translation>
+        <translation>เปลี่ยนภาพ</translation>
     </message>
     <message>
         <source>Effects</source>
@@ -8862,7 +8862,7 @@ Third, 4</source>
     </message>
     <message>
         <source>Transitions</source>
-        <translation>ทรานซิชัน</translation>
+        <translation>เปลี่ยนภาพ</translation>
     </message>
     <message>
         <source>Packs of templates, music, stickers and effects. Each is checked against our signature before it is installed.</source>
@@ -12164,7 +12164,7 @@ The Journey</source>
     </message>
     <message>
         <source>Transition</source>
-        <translation>ทรานซิชัน</translation>
+        <translation>การเปลี่ยนภาพ</translation>
     </message>
     <message>
         <source>VHS</source>

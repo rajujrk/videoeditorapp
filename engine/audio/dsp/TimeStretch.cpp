@@ -110,8 +110,10 @@ void TimeStretcher::addGrain(double rate)
     m_position += kHop * rate;
 
     // Forget input no grain can reach any more.
+    // (Never more than is held: when the sound runs out before the clip does — a file whose
+    // audio is shorter than its picture — the position moves on past the last input.)
     const std::int64_t keepFrom = std::min(std::int64_t(m_position) - kSearch, m_previous + kHop) - 16;
-    const std::int64_t drop = keepFrom - m_inputStart;
+    const std::int64_t drop = std::min(keepFrom - m_inputStart, std::int64_t(m_input.size() / 2));
     if (drop > 8192) {
         m_input.erase(m_input.begin(), m_input.begin() + std::ptrdiff_t(drop) * 2);
         m_inputStart += drop;
