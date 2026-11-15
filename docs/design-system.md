@@ -129,7 +129,9 @@ Sizes are `Theme.size.*` tokens.
 A 220 px navigation rail, then: "Start creating"; "Unsaved work" (only when there is
 some: one warning-bordered card per recoverable project, Discard and Recover); one card per canvas shape (16:9, 9:16,
 1:1, 4:3, 21:9; each card draws its own aspect), quick actions, and the recent-projects
-area (empty state with drop target until Phase 1 saves projects).
+area (still an empty state with a drop target: the recent-projects list isn't built yet; see
+§9.10 of the build plan). The rail's Projects, Templates and Recordings entries are placeholders
+too, drawn dimmed.
 
 ## Components
 

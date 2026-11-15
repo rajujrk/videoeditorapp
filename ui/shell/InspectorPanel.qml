@@ -4,8 +4,8 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import TechieVideoEditor.Theme
 
-// Right panel: properties of the selected clip. Effects are live today; the other tabs
-// show the planned layout with disabled controls until Phase 1–2 wires them.
+// Right panel: properties of the selected clip (or transition), in tabs: Video, Speed, Audio,
+// Color, Effects and Analyze.
 Rectangle {
     id: inspector
     required property var player
@@ -3163,23 +3163,5 @@ Rectangle {
             y: Theme.space.s
             spacing: Theme.space.s
         }
-    }
-
-    // Disabled control showing where a Phase 1–2 property will live.
-    component PlannedSlider: ColumnLayout {
-        property string label
-        property real value: 0
-        Layout.fillWidth: true
-        spacing: 0
-        Text { text: parent.label; font: Theme.type.label; color: Theme.color.textSecondary }
-        Slider { Layout.fillWidth: true; enabled: false; value: parent.value }
-    }
-
-    component PlannedRow: RowLayout {
-        property string label
-        property string detail
-        Layout.fillWidth: true
-        Text { text: parent.label; font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
-        Text { text: parent.detail; font: Theme.type.caption; color: Theme.color.textDisabled }
     }
 }

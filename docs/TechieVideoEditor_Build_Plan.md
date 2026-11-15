@@ -135,6 +135,13 @@ flowchart TB
 
 ## 5. Repository layout
 
+*This is the layout planned at the start. As built, the code is organised by layer —
+`core/`, `engine/` (decoding, playback, audio and its plug-in hosts, analysis, speech, capture,
+encoding, OpenFX, the GPU), `ui/theme`, `ui/player`, `ui/shell`, `app/` — and `ai/`, `plugins/` and
+`content-tools/` only point to where those parts went; the README's "Project layout" is current.
+`.tve` projects are JSON files (not zips), templates are `.tvet` folders, and "save with media" is
+**Archive…**, which copies a project and its media into a folder.*
+
 ```
 TechieVideoEditor/
 ├── CMakeLists.txt
@@ -670,6 +677,22 @@ everyday operations are missing (AI, account, cloud and store labels left out):
 
 ---
 
+### 9.10 Still open (checked against §7, November 2026)
+
+Every slice in §9.1–9.9 is done. Checking §7's tables against the app turned up these P0/P1
+items that no slice took on:
+
+| Item (§7) | Pri | Where things stand |
+|---|---|---|
+| Recent projects with covers on the Home screen (7.15) | P0 | Not built: Home shows an empty "Recent projects" area, and the rail's Projects, Templates and Recordings entries are placeholders (shown, not usable). Projects open with Open project…, Finder or the command line. |
+| Roll and slip edits (7.1) | P0 | Not built: ripple, blade, trim, extend, close gap and move are; roll (moving a cut between two clips) and slip (moving a clip's content inside it) are not. |
+| Undo history panel (7.2) | P0 | Undo and redo are built (every edit is one named step); a panel listing the steps is not. |
+| Preferences (7.15: performance, GPU, cache location, autosave interval, proxy rules) | P0 | No Preferences window. Some are elsewhere — proxies (on, off, making them), render files (and deleting them), half-resolution preview, the language and theme on Home — but not the cache location, autosave interval or proxy rules. |
+| Crash reporting, telemetry, auto-update (7.15) | P1 | Not built. Telemetry is out of scope (no backend; see §1); crash reports and updates would matter now that the app is shared as a disk image (`tools/make_dmg.sh`). |
+
+The P2/P3 items left — accounts and credits, cloud backup, hardware controllers, DVD authoring —
+are deferred as before (accounts and credits are out of scope: there is no backend).
+
 ## 10. Quality, performance & verification
 
 **Performance budgets (Apple M1, 16 GB; measured on an Apple M5 by `tve_perf_tests`, see 22c):**
@@ -704,7 +727,8 @@ everyday operations are missing (AI, account, cloud and store labels left out):
 
 ## 11. Feature traceability checklist
 
-Every feature area found in the REA scan, mapped to this plan. ✅ = planned, ⏸ = deferred/optional.
+Every feature area found in the REA scan, mapped to this plan. ✅ = built (all of Phases 1–5 and
+the slices after them are done; §9.10 lists what of §7 is still open), ⏸ = deferred/optional.
 
 | Reference feature area (from scan) | Count/notes observed | TVE section | Status |
 |---|---|---|---|
@@ -768,6 +792,8 @@ Every feature area found in the REA scan, mapped to this plan. ✅ = planned, �
 ---
 
 ## 13. Immediate next steps (first 2 weeks)
+
+*Done — these were the first steps, taken in Phase 0. What is still open is in §9.10.*
 
 1. Create the repo skeleton (§5), CMake + vcpkg manifest, CI for macOS arm64.
 2. Build LGPL FFmpeg via vcpkg with VideoToolbox; verify license flags in CI.

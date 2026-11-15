@@ -319,7 +319,8 @@ Rectangle {
                                  onClicked: home.instantRequested() }
                 }
 
-                // Recent projects (empty state until projects are saved in Phase 1)
+                // Recent projects: an empty state with a drop target; the list itself isn't built
+                // yet (the build plan's §9.10).
                 ColumnLayout {
                     spacing: Theme.space.m
                     Text { text: qsTr("Recent projects"); font: Theme.type.title; color: Theme.color.textPrimary }

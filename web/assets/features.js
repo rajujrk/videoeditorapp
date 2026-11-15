@@ -760,7 +760,7 @@ window.TVE = {
     // ---------- Projects and your setup ----------
     {
       id: "home", title: "Start a project", chapter: "setup", area: "home", where: ["Home"], image: "home",
-      summary: "Pick a canvas shape, open a recent project, or start straight into recording or an instant video.",
+      summary: "Pick a canvas shape, open a project with Open project…, or start straight into recording or an instant video.",
       steps: ["Click a canvas shape: 16:9, 9:16, 1:1, 4:3 or 21:9.", "Or use Record screen or Instant mode to open a new project with that tool ready.", "⌘S saves a .tve project file; double-click one in Finder to open it in the app.", "Videos, sounds and pictures open with the app too (Open With, or drop them on its Dock icon): they start a new project."],
       keys: ["⌘S"]
     },
