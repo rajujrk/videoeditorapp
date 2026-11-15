@@ -85,6 +85,9 @@ digits don't jitter as they change.
 - **Spacing** (4 px grid): `xxs 2 · xs 4 · s 8 · m 12 · l 16 · xl 24 · xxl 32`
 - **Radius**: `s 4` (small controls, clips) · `m 6` (buttons, cards, inputs) · `l 10` (large cards) · `round`
 - **Motion**: `fast 120 ms` (hover/press color) · `normal 200 ms` (panel transitions). No motion on playback-critical surfaces.
+  Menus, drop-down lists and dialogs open with a `fast` fade and a grow from 97 %; library and
+  inspector tabs cross-fade over `fast`; a `Section` turns its chevron and fades its content over
+  `normal`. Everything eases out (`Easing.OutCubic`).
 
 ## Layout
 
@@ -139,22 +142,26 @@ Module `TechieVideoEditor.Theme` (`ui/theme/`):
 | `IconButton` | 28 px square tool button: hover, pressed, checked (accent-subtle), focus ring, tooltip |
 | `TextButton` | `primary` / `secondary` / `ghost` labelled button with optional icon |
 | `ToggleSwitch` | On/off switch in theme colours, with an optional label (sized for the indicator alone when there is none) |
+| `AppComboBox` | Drop-down: an input-coloured box with the choice and a chevron that turns as it opens; the list opens like a menu, the current choice ticked |
+| `AppMenu` · `AppMenuItem` · `AppMenuSeparator` | Right-click and button menus (see below) |
+| `SearchField` | Text field with search icon and focus ring |
+| `PanelHeader` | Panel title bar with trailing actions |
+| `Section` | Collapsible inspector section; its chevron turns and its content fades as it opens |
+| `Divider` | 1 px separator |
+| `PlaceholderBox` | Dashed wireframe box naming the phase that fills it |
 
 The inspector's own `Swatches` component (colour row with the current colour ringed) is
 used for title colours.
-| `SearchField` | Text field with search icon and focus ring |
-| `PanelHeader` | Panel title bar with trailing actions |
-| `Section` | Collapsible inspector section |
-| `Divider` | 1 px separator |
-| `PlaceholderBox` | Dashed wireframe box naming the phase that fills it |
 
 Buttons own their tooltips (`ToolTip { }` children) rather than using Qt's attached
 `ToolTip`, which is one shared popup: if its button is destroyed while showing it, it stays
 open and swallows the next click.
 
-Stock Qt Quick Controls (Slider, ComboBox, ToolTip) use the **Basic** style, and
-`Main.qml` maps the theme tokens onto their palette, so they follow the theme too. Use
-`ToggleSwitch` rather than the stock `Switch`, whose label colour does not follow the theme.
+Stock Qt Quick Controls (Slider, ToolTip) use the **Basic** style, and `Main.qml` maps the
+theme tokens onto their palette, so they follow the theme too. Use `AppComboBox` rather than
+the stock `ComboBox`, so drop-downs look and open like the menus (raised list, accent row,
+the current choice ticked, a chevron that turns), and `ToggleSwitch` rather than the stock
+`Switch`, whose label colour does not follow the theme.
 
 Thumbnails come from `image://tvethumb/<url-encoded path>@<seconds>@<height>` (a leading
 `!` on the path puts the request ahead of the queue; the media bin uses it). Request about
@@ -855,6 +862,36 @@ The app in Tamil: the Home screen with the Language menu at the foot of the rail
 ![Tamil, Home, light](images/tamil-home-light.png)
 ![Tamil, editor, dark](images/tamil-editor-dark.png)
 ![Tamil, editor, light](images/tamil-editor-light.png)
+
+Eleven languages: the Home screen in Japanese with the Language list open (an `AppComboBox`), and the editor in French, dark and light:
+
+![Languages, Home, dark](images/languages-home-dark.png)
+![Languages, Home, light](images/languages-home-light.png)
+![French editor, dark](images/languages-editor-dark.png)
+![French editor, light](images/languages-editor-light.png)
+
+Track motion: a plane placed by its four corners (handles on the player, its diagonals drawn faintly) and tracked, with Object, Surface, Plane and Point as chips; then a picture pinned onto it under Follow a track, dark and light:
+
+![Plane tracking, dark](images/track-plane-dark.png)
+![Plane tracking, light](images/track-plane-light.png)
+![Pinned onto the plane, dark](images/track-pin-dark.png)
+![Pinned onto the plane, light](images/track-pin-light.png)
+
+Your own items under **Mine**: the Effects tab with an effect written in the shader editor and a saved stack (New effect… is the primary button, the others secondary); the shader editor (code on the left in the mono type, the preview and the settings on the right, the result of the last check in the success or danger colour); Filters › Mine; Stickers › Mine, dark and light:
+
+![My effects, dark](images/my-effects-dark.png)
+![My effects, light](images/my-effects-light.png)
+![Shader editor, dark](images/shader-editor-dark.png)
+![Shader editor, light](images/shader-editor-light.png)
+![My filters, dark](images/my-filters-dark.png)
+![My filters, light](images/my-filters-light.png)
+![My stickers, dark](images/my-stickers-dark.png)
+![My stickers, light](images/my-stickers-light.png)
+
+The transport bar with go to the start (⏮) and go to the end (⏭) at either end of the frame buttons; when the player is narrow the bar wraps onto two rows, the view tools below, dark and light:
+
+![Transport, dark](images/player-goto-dark.png)
+![Transport, light](images/player-goto-light.png)
 
 ### Icons
 

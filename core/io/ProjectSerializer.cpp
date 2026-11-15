@@ -282,15 +282,28 @@ void from_json(const nlohmann::json& j, CursorSample& c)
     c = {j.at(0).get<Ticks>(), j.at(1).get<double>(), j.at(2).get<double>()};
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CursorEffects, path, clicks, rings, highlight, spotlight, size)
+// [time, x, y, width, height, angle], and a plane's eight corner values after.
 void to_json(nlohmann::json& j, const TrackSample& s)
 {
     j = nlohmann::json::array({s.time, s.x, s.y, s.width, s.height, s.angle});
+    if (s.hasCorners())
+        for (const double c : s.corners)
+            j.push_back(c);
 }
 void from_json(const nlohmann::json& j, TrackSample& s)
 {
     s = {j.at(0).get<Ticks>(), j.at(1).get<double>(), j.at(2).get<double>(), j.at(3).get<double>(),
          j.at(4).get<double>(), j.at(5).get<double>()};
+    if (j.size() >= 14)
+        for (std::size_t i = 0; i < 8; ++i)
+            s.corners[i] = j.at(6 + i).get<double>();
 }
+NLOHMANN_JSON_SERIALIZE_ENUM(MotionTrackKind, {
+    {MotionTrackKind::Object, "object"},
+    {MotionTrackKind::Surface, "surface"},
+    {MotionTrackKind::Plane, "plane"},
+    {MotionTrackKind::Point, "point"},
+})
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PortraitCutout, enabled, invert, softness, shift, subject, blur)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FaceBeauty, enabled, smooth, brighten, teeth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(NightView, enabled, strength, denoise)
@@ -323,7 +336,7 @@ void from_json(const nlohmann::json& j, GainSample& g)
     g = {j.at(0).get<Ticks>(), j.at(1).get<float>()};
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Stabilization, enabled, smoothness, lock, maxZoom, zoom, samples)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MotionTrack, id, surface, samples)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MotionTrack, id, surface, kind, samples)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Deflicker, enabled, strength, samples)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Clip, id, mediaId, start, duration, sourceIn, audioEnabled, gainDb,
                                                 fadeIn, fadeOut, visual, effects, speed, reversed, freeze,

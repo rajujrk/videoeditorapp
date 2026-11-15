@@ -103,7 +103,7 @@ Rectangle {
                     font: Theme.type.label
                     color: Theme.color.textSecondary
                 }
-                ComboBox {
+                AppComboBox {
                     objectName: "languagePicker"
                     Layout.fillWidth: true
                     Layout.bottomMargin: Theme.space.s

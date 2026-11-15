@@ -20,6 +20,8 @@
 #include "gpu/EffectLibrary.h"
 #include "OverlayTransitions.h"
 #include "video/OfxHost.h"
+#include "MyItems.h"
+#include "ShaderEffects.h"
 #include "Stickers.h"
 #include "audio/AudioEffects.h"
 #include "decode/LottieAnimation.h"
@@ -72,6 +74,7 @@
 #include <QPointer>
 #include <numbers>
 #include <QSaveFile>
+#include <QTemporaryDir>
 #include <QStandardPaths>
 #include <QUuid>
 #include <QtGlobal>
@@ -150,6 +153,14 @@ Id toId(double value)
 {
     return value > 0 ? Id(std::llround(value)) : kNoId;
 }
+
+const std::array kMotionKindNames{QLatin1String("object"), QLatin1String("surface"), QLatin1String("plane"), QLatin1String("point")};
+
+QString motionKindName(MotionTrackKind kind)
+{
+    return kMotionKindNames[std::size_t(kind)];
+}
+
 
 QString fileName(const std::string& path)
 {
@@ -899,6 +910,18 @@ QVariantList keyframeTimes(const Clip& clip)
 ProjectController::ProjectController(QObject* parent)
     : QObject(parent), m_playback(std::make_shared<TimelinePlayback>())
 {
+    // Your own effects (the shader editor's), into the effect library once.
+    static const bool loaded = [] {
+        shadereffects::loadAll();
+        return true;
+    }();
+    Q_UNUSED(loaded);
+    connect(UserEffectsNotifier::instance(), &UserEffectsNotifier::changed, this, [this] {
+        // Your own effects changed: the frame on screen drawn again with them as they are now.
+        if (!playing())
+            m_playback->seek(ticks(m_playhead));
+        emit myItemsChanged();
+    });
     // TVE_AUDIO=null renders sound without a device (tests, CI); =none disables output.
     const QByteArray mode = qgetenv("TVE_AUDIO");
     const auto backend = mode == "null" ? AudioOutput::Backend::Null
@@ -2629,6 +2652,7 @@ QVariantMap ProjectController::selectedClipInfo() const
                      };
                      list << QVariantMap{{QStringLiteral("id"), t.id},
                                          {QStringLiteral("surface"), t.surface},
+                                         {QStringLiteral("kind"), motionKindName(t.type())},
                                          {QStringLiteral("start"), t.samples.empty() ? 0.0 : timelineAt(t.samples.front().time)},
                                          {QStringLiteral("end"), t.samples.empty() ? 0.0 : timelineAt(t.samples.back().time)}};
                  }
@@ -3407,6 +3431,243 @@ bool ProjectController::applyColorPreset(double clipId, const QString& name)
         return false;
     }
     return apply(std::make_unique<SetClipColorCommand>(std::vector<Id>{toId(clipId)}, grade, TVE_TR("core", "Apply Color Preset")));
+}
+
+bool ProjectController::importLutAsFilter(const QUrl& file, const QString& name)
+{
+    if (name.trimmed().isEmpty()) {
+        reportError(tr("Name the filter"));
+        return false;
+    }
+    QString why;
+    const QString kept = myitems::keepLut(file.isLocalFile() ? file.toLocalFile() : file.toString(), &why);
+    if (kept.isEmpty()) {
+        reportError(why);
+        return false;
+    }
+    ColorGrade grade;
+    grade.lutPath = kept.toStdString();
+    grade.lutIntensity = 1.0;
+    if (!QDir().mkpath(colorPresetDirectory())) {
+        reportError(tr("Could not create %1").arg(colorPresetDirectory()));
+        return false;
+    }
+    const nlohmann::json json{{"name", name.trimmed().toStdString()}, {"grade", gradeToJson(grade)}};
+    QSaveFile out(colorPresetPath(name));
+    if (!out.open(QIODevice::WriteOnly) || out.write(QByteArray::fromStdString(json.dump(2))) < 0 || !out.commit()) {
+        reportError(tr("Could not save the preset %1").arg(name));
+        return false;
+    }
+    emit colorPresetsChanged();
+    return true;
+}
+
+QVariantList ProjectController::myEffects() const
+{
+    QVariantList list;
+    for (const QVariant& v : shadereffects::list()) {
+        QVariantMap m = v.toMap();
+        m.insert(QStringLiteral("kind"), QStringLiteral("shader"));
+        list << m;
+    }
+    for (const QVariant& v : myitems::stacks()) {
+        const QVariantMap s = v.toMap();
+        list << QVariantMap{{QStringLiteral("id"), s.value(QStringLiteral("id"))},
+                            {QStringLiteral("title"), s.value(QStringLiteral("title"))},
+                            {QStringLiteral("kind"), QStringLiteral("stack")},
+                            {QStringLiteral("count"), s.value(QStringLiteral("effects")).toList().size()}};
+    }
+    return list;
+}
+
+QString ProjectController::saveEffectStack(double clipId, const QString& name)
+{
+    const Clip* clip = findClip(toId(clipId));
+    if (!clip) {
+        reportError(tr("Select a clip"));
+        return {};
+    }
+    if (name.trimmed().isEmpty()) {
+        reportError(tr("Name your effect"));
+        return {};
+    }
+    QVariantList effects;
+    for (const ClipEffect& effect : clip->effects) {
+        if (isPluginEffect(effect.effectId) || !EffectLibrary::builtIn().find(effect.effectId))
+            continue; // (the picture's effects only)
+        QVariantMap values;
+        for (const auto& [param, numbers] : effect.values) {
+            QVariantList list;
+            for (const float n : numbers)
+                list << double(n);
+            values.insert(QString::fromStdString(param), list);
+        }
+        effects << QVariantMap{{QStringLiteral("effectId"), QString::fromStdString(effect.effectId)},
+                               {QStringLiteral("enabled"), effect.enabled},
+                               {QStringLiteral("values"), values}};
+    }
+    if (effects.isEmpty()) {
+        reportError(tr("This clip has no effects to save"));
+        return {};
+    }
+    const QString id = myitems::saveStack(name, effects);
+    if (id.isEmpty()) {
+        reportError(tr("Could not save your effect"));
+        return {};
+    }
+    emit myItemsChanged();
+    return id;
+}
+
+bool ProjectController::applyEffectStack(double clipId, const QString& stackId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    const MediaItem* clipMedia = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+    if (!clip || (clipMedia && !clipMedia->hasVideo)) {
+        reportError(tr("Select a clip with a picture"));
+        return false;
+    }
+    const QVariantMap stack = myitems::stack(stackId);
+    if (stack.isEmpty()) {
+        reportError(tr("No such effect of yours"));
+        return false;
+    }
+    std::vector<ClipEffect> effects = clip->effects;
+    for (const QVariant& v : stack.value(QStringLiteral("effects")).toList()) {
+        const QVariantMap m = v.toMap();
+        ClipEffect effect{.effectId = m.value(QStringLiteral("effectId")).toString().toStdString(),
+                          .enabled = m.value(QStringLiteral("enabled"), true).toBool()};
+        if (!EffectLibrary::builtIn().find(effect.effectId))
+            continue; // (one of yours since removed)
+        const QVariantMap values = m.value(QStringLiteral("values")).toMap();
+        for (auto it = values.begin(); it != values.end(); ++it) {
+            std::vector<float> numbers;
+            for (const QVariant& n : it.value().toList())
+                numbers.push_back(float(n.toDouble()));
+            effect.values[it.key().toStdString()] = numbers;
+        }
+        effects.push_back(std::move(effect));
+    }
+    if (effects.size() == clip->effects.size()) {
+        reportError(tr("None of its effects are there any more"));
+        return false;
+    }
+    return apply(std::make_unique<SetClipEffectsCommand>(clip->id, std::move(effects), TVE_TR("core", "Add My Effect")));
+}
+
+bool ProjectController::removeMyEffect(const QString& id)
+{
+    const bool removed = id.startsWith(QLatin1String("stack.")) ? myitems::removeStack(id) : shadereffects::remove(id);
+    if (!removed) {
+        reportError(tr("No such effect of yours"));
+        return false;
+    }
+    emit UserEffectsNotifier::instance()->changed();
+    emit myItemsChanged();
+    return true;
+}
+
+QVariantMap ProjectController::compileShaderEffect(const QVariantMap& spec)
+{
+    QString error;
+    const QString id = shadereffects::preview(spec, &error);
+    return {{QStringLiteral("ok"), !id.isEmpty()}, {QStringLiteral("error"), error}, {QStringLiteral("previewId"), id}};
+}
+
+QString ProjectController::saveShaderEffect(const QVariantMap& spec)
+{
+    QString error;
+    const QString id = shadereffects::save(spec, &error);
+    if (id.isEmpty()) {
+        reportError(error);
+        return {};
+    }
+    emit UserEffectsNotifier::instance()->changed();
+    return id;
+}
+
+QVariantMap ProjectController::shaderEffectSpec(const QString& id) const
+{
+    return shadereffects::specOf(id);
+}
+
+bool ProjectController::exportMyEffect(const QString& id, const QUrl& file)
+{
+    QString error;
+    if (!shadereffects::exportTo(id, file.isLocalFile() ? file.toLocalFile() : file.toString(), &error)) {
+        reportError(error);
+        return false;
+    }
+    return true;
+}
+
+QString ProjectController::importMyEffect(const QUrl& file)
+{
+    QString error;
+    const QString id = shadereffects::importFrom(file.isLocalFile() ? file.toLocalFile() : file.toString(), &error);
+    if (id.isEmpty()) {
+        reportError(error);
+        return {};
+    }
+    emit UserEffectsNotifier::instance()->changed();
+    return id;
+}
+
+QString ProjectController::addMySticker(const QUrl& file)
+{
+    QString error;
+    const QString id = myitems::addSticker(file.isLocalFile() ? file.toLocalFile() : file.toString(), &error);
+    if (id.isEmpty()) {
+        reportError(error);
+        return {};
+    }
+    stickers::reload();
+    emit stickersChanged();
+    return id;
+}
+
+bool ProjectController::removeMySticker(const QString& id)
+{
+    if (!myitems::removeSticker(id)) {
+        reportError(tr("No such sticker of yours"));
+        return false;
+    }
+    stickers::reload();
+    emit stickersChanged();
+    return true;
+}
+
+QString ProjectController::saveClipAsSticker(double clipId)
+{
+    const Clip* clip = findClip(toId(clipId));
+    const MediaItem* media = clip ? m_project.findMedia(clip->mediaId) : nullptr;
+    if (!media || !media->hasVideo) {
+        reportError(tr("Select a picture, an animation or a video clip"));
+        return {};
+    }
+    const QString path = QString::fromStdString(media->path);
+    if (media->lottie || (media->still && myitems::isStickerFile(path)))
+        return addMySticker(QUrl::fromLocalFile(path));
+    if (media->still) {
+        reportError(tr("This picture's kind of file cannot be a sticker"));
+        return {};
+    }
+    // A video: the frame at the playhead, as a picture.
+    const Ticks at = std::clamp(ticks(m_playhead), clip->start, clip->end() - 1);
+    const auto picture = tve::extractThumbnail(media->path, clip->sourceTimeBeyond(at), std::min(1080, std::max(16, media->height)));
+    if (!picture) {
+        reportError(tr("Could not read the frame at the playhead"));
+        return {};
+    }
+    const QImage image(picture->pixels.data(), picture->width, picture->height, picture->width * 4, QImage::Format_RGBA8888);
+    QTemporaryDir scratch;
+    const QString file = QDir(scratch.path()).filePath(QStringLiteral("%1 %2.png").arg(QFileInfo(path).completeBaseName(),
+                                                                                    timecode(seconds(at)).replace(QLatin1Char(':'), QLatin1Char('.'))));
+    if (!scratch.isValid() || !image.save(file)) {
+        reportError(tr("Could not keep the frame"));
+        return {};
+    }
+    return addMySticker(QUrl::fromLocalFile(file));
 }
 
 QVariantList ProjectController::sampleColorCurve(const QVariantList& points, int count) const
@@ -8689,6 +8950,18 @@ Id ProjectController::stickerMedia(const QString& stickerId)
     }
     // Its media, once (a resource path, not a URL).
     auto media = std::ranges::find(m_project.media, path.toStdString(), &MediaItem::path);
+    if (media == m_project.media.end() && myitems::isPictureFile(path)) {
+        // A picture of your own: a still, its transparency kept.
+        QString why;
+        auto item = describeMedia(path.toStdString(), &why);
+        if (!item) {
+            reportError(why);
+            return kNoId;
+        }
+        if (!apply(std::make_unique<ImportMediaCommand>(std::move(*item))))
+            return kNoId;
+        media = std::ranges::find(m_project.media, path.toStdString(), &MediaItem::path);
+    }
     if (media == m_project.media.end()) {
         const auto animation = stickers::open(path);
         if (!animation
@@ -8722,11 +8995,15 @@ bool ProjectController::dropOnClip(const QString& kind, const QString& itemId, d
             if (at >= c.start && at < c.start + c.duration)
                 clip = &c;
     if (!clip) {
-        reportError(kind == QLatin1String("look") ? tr("Drop the filter on a clip") : tr("Drop the effect on a clip"));
+        reportError(kind == QLatin1String("look") || kind == QLatin1String("preset") ? tr("Drop the filter on a clip")
+                                                                                      : tr("Drop the effect on a clip"));
         return false;
     }
     const double id = double(clip->id);
-    const bool ok = kind == QLatin1String("look") ? applyLook(id, itemId) : addClipEffect(id, itemId);
+    const bool ok = kind == QLatin1String("look")     ? applyLook(id, itemId)
+                  : kind == QLatin1String("stack")    ? applyEffectStack(id, itemId)
+                  : kind == QLatin1String("preset")   ? applyColorPreset(id, itemId)
+                                                      : addClipEffect(id, itemId);
     if (ok)
         setSelectedClip(id);
     return ok;
@@ -10042,11 +10319,52 @@ void ProjectController::setPinningCorners(bool pinning)
     emit editingChanged();
 }
 
-bool ProjectController::setTrackArea(double clipId, const QVariantMap& box)
+void ProjectController::setTrackAreaKind(const QString& kind)
+{
+    if (kind == m_trackAreaKind || std::ranges::find(kMotionKindNames, kind) == kMotionKindNames.end())
+        return;
+    m_trackAreaKind = kind;
+    // What was drawn for another kind (a box, corners, a point) does not carry over.
+    m_trackArea.clear();
+    emit editingChanged();
+}
+
+bool ProjectController::setTrackArea(double clipId, const QVariantMap& given)
 {
     const Clip* clip = peopleClip(toId(clipId), false);
     if (!clip)
         return false;
+    QVariantMap box = given;
+    if (box.value(QStringLiteral("point")).toBool()) {
+        // A point: a small spot round it (as a box for the tracker), square in the picture.
+        const MediaItem* media = m_project.findMedia(clip->mediaId);
+        const double aspect = media && media->height > 0 ? double(media->width) / double(media->height) : 16.0 / 9.0;
+        box.insert(QStringLiteral("width"), 0.04);
+        box.insert(QStringLiteral("height"), 0.04 * aspect);
+    } else if (box.contains(QStringLiteral("corners"))) {
+        // A plane: four corners (and the box round them, for showing).
+        const QVariantList list = box.value(QStringLiteral("corners")).toList();
+        Quad q{};
+        if (list.size() != 8) {
+            reportError(tr("Place all four corners"));
+            return false;
+        }
+        for (int i = 0; i < 8; ++i)
+            q[std::size_t(i)] = list[i].toDouble();
+        if (!squareToQuad(q)) {
+            reportError(tr("The four corners must make a shape with four sides"));
+            return false;
+        }
+        double minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+        for (std::size_t i = 0; i < 4; ++i) {
+            minX = std::min(minX, q[i * 2]), maxX = std::max(maxX, q[i * 2]);
+            minY = std::min(minY, q[i * 2 + 1]), maxY = std::max(maxY, q[i * 2 + 1]);
+        }
+        box.insert(QStringLiteral("x"), (minX + maxX) / 2);
+        box.insert(QStringLiteral("y"), (minY + maxY) / 2);
+        box.insert(QStringLiteral("width"), maxX - minX);
+        box.insert(QStringLiteral("height"), maxY - minY);
+    }
     const double w = box.value(QStringLiteral("width")).toDouble(), h = box.value(QStringLiteral("height")).toDouble();
     if (w <= 0.005 || h <= 0.005) {
         reportError(tr("Draw a larger box"));
@@ -10076,24 +10394,41 @@ bool ProjectController::trackMotion(double clipId, const QVariantMap& options)
         reportError(tr("Draw a box around what to follow first"));
         return false;
     }
+    QString kindName = options.value(QStringLiteral("kind"), m_trackAreaKind).toString();
+    if (options.contains(QStringLiteral("surface")) && !options.contains(QStringLiteral("kind")))
+        kindName = options.value(QStringLiteral("surface")).toBool() ? QStringLiteral("surface") : QStringLiteral("object");
+    const auto kindAt = std::ranges::find(kMotionKindNames, kindName);
+    if (kindAt == kMotionKindNames.end()) {
+        reportError(tr("No such kind of tracking"));
+        return false;
+    }
+    const auto kind = MotionTrackKind(kindAt - kMotionKindNames.begin());
+    const bool hasCorners = m_trackArea.contains(QStringLiteral("corners"));
+    if (kind == MotionTrackKind::Plane && !hasCorners) {
+        reportError(tr("Place the four corners on the flat surface first"));
+        return false;
+    }
     const MediaItem& media = *m_project.findMedia(clip->mediaId);
     const Ticks now = std::clamp(ticks(m_playhead), clip->start, clip->end() - 1);
     const Ticks from = clip->sourceTimeBeyond(now);
     const Ticks to = clip->sourceIn + Ticks(std::llround(double(clip->duration) * clip->speed));
     const TrackSample box = drawnBox(*clip, from);
-    const bool surface = options.value(QStringLiteral("surface")).toBool();
+    const Quad corners = hasCorners ? drawnCorners(*clip, from) : Quad{};
+    const bool surface = kind == MotionTrackKind::Surface;
     const Id id = clip->id;
     auto found = std::make_shared<std::vector<TrackSample>>();
     runInBackground(QStringLiteral("Following"),
-                    [path = media.path, from, to, box, surface, found](const tve::AnalysisProgress& progress) -> std::string {
+                    [path = media.path, from, to, box, corners, kind, surface, found](const tve::AnalysisProgress& progress) -> std::string {
                         std::string error;
-                        auto samples = tve::trackRegion(path, from, to, box, surface, progress, &error);
+                        auto samples = kind == MotionTrackKind::Plane
+                                           ? tve::trackPlane(path, from, to, corners, progress, &error)
+                                           : tve::trackRegion(path, from, to, box, surface, progress, &error);
                         if (!samples)
                             return error.empty() ? std::string("cancelled") : error;
                         *found = tve::thinTrack(*samples);
                         return {};
                     },
-                    [this, id, surface, found] {
+                    [this, id, surface, kind, found] {
                         const Clip* clip = findClip(id);
                         if (!clip)
                             return;
@@ -10101,7 +10436,7 @@ bool ProjectController::trackMotion(double clipId, const QVariantMap& options)
                         int next = 1;
                         for (const MotionTrack& t : tracks)
                             next = std::max(next, t.id + 1);
-                        tracks.push_back({next, surface, std::move(*found)});
+                        tracks.push_back({next, surface, std::move(*found), kind});
                         if (apply(std::make_unique<SetClipTracksCommand>(id, std::move(tracks), TVE_TR("core", "Track Motion")))) {
                             m_trackArea.clear();
                             emit editingChanged();
@@ -10111,6 +10446,21 @@ bool ProjectController::trackMotion(double clipId, const QVariantMap& options)
                         }
                     });
     return true;
+}
+
+Quad ProjectController::drawnCorners(const Clip& clip, Ticks mediaTime) const
+{
+    // The corners as placed are in the picture as shown: back into the shaky frame, if steadied.
+    const MediaItem& media = *m_project.findMedia(clip.mediaId);
+    const double w = std::max(1, media.width), h = std::max(1, media.height);
+    const QVariantList list = m_trackArea.value(QStringLiteral("corners")).toList();
+    Quad q{};
+    for (int i = 0; i + 1 < list.size() && i < 8; i += 2) {
+        const auto raw = steadyToRaw(clip.stabilization, mediaTime, w, h, list[i].toDouble(), list[i + 1].toDouble());
+        q[std::size_t(i)] = raw[0];
+        q[std::size_t(i + 1)] = raw[1];
+    }
+    return q;
 }
 
 TrackSample ProjectController::drawnBox(const Clip& clip, Ticks mediaTime) const
@@ -10205,12 +10555,18 @@ QVariantList ProjectController::tracksToFollow(double clipId) const
             for (const MotionTrack& t : clip.motionTracks)
                 list << QVariantMap{{QStringLiteral("clipId"), double(clip.id)},
                                     {QStringLiteral("trackId"), t.id},
+                                    {QStringLiteral("kind"), motionKindName(t.type())},
                                     {QStringLiteral("label"), (media ? mediaName(*media) : QStringLiteral("Clip"))
                                                                   + QStringLiteral(" · track %1 (%2)").arg(t.id).arg(
-                                                                      t.surface ? QStringLiteral("surface") : QStringLiteral("object"))}};
+                                                                      motionKindName(t.type()))}};
         }
     }
     return list;
+}
+
+bool ProjectController::holdStill(double clipId, int trackId)
+{
+    return followTrack(clipId, clipId, trackId, {{QStringLiteral("hold"), true}});
 }
 
 bool ProjectController::followTrack(double clipId, double sourceClipId, int trackId, const QVariantMap& options)
@@ -10218,8 +10574,10 @@ bool ProjectController::followTrack(double clipId, double sourceClipId, int trac
     const auto location = m_project.locateClip(toId(clipId));
     const Clip* follower = location ? location->clip : nullptr;
     const Clip* source = findClip(toId(sourceClipId));
-    if (!follower || follower->adjustment || !source || source == follower) {
-        reportError(tr("Select the clip that should follow"));
+    // Holding still: the clip moves against its own track.
+    const bool hold = options.value(QStringLiteral("hold")).toBool();
+    if (!follower || follower->adjustment || !source || (source == follower) != hold) {
+        reportError(hold ? tr("Select the clip whose track to hold still") : tr("Select the clip that should follow"));
         return false;
     }
     const auto track = std::ranges::find(source->motionTracks, trackId, &MotionTrack::id);
@@ -10228,15 +10586,19 @@ bool ProjectController::followTrack(double clipId, double sourceClipId, int trac
         reportError(tr("No such track"));
         return false;
     }
-    const bool withScale = options.value(QStringLiteral("scale")).toBool();
-    const bool withRotation = options.value(QStringLiteral("rotation")).toBool() && track->surface;
+    const bool withScale = options.value(QStringLiteral("scale")).toBool() && !hold;
+    const MotionTrackKind trackKind = track->type();
+    const bool withRotation = options.value(QStringLiteral("rotation")).toBool() && !hold
+                           && (trackKind == MotionTrackKind::Surface || trackKind == MotionTrackKind::Plane);
     // Each sample on the canvas: through the source clip's stabilization and placement.
     const double cw = m_project.settings.width, ch = m_project.settings.height;
     const double w = media->width, h = media->height;
     struct Point {
         Ticks time; // on the timeline
         double x, y, size, angle;
+        Quad corners{}; // a plane's, on the canvas
     };
+    const bool plane = track->type() == MotionTrackKind::Plane;
     std::vector<Point> points;
     for (const TrackSample& s : track->samples) {
         const Ticks at = source->start + Ticks(std::llround(double(s.time - source->sourceIn) / source->speed));
@@ -10245,7 +10607,15 @@ bool ProjectController::followTrack(double clipId, double sourceClipId, int trac
         const auto shown = rawToSteady(source->stabilization, s.time, w, h, s.x, s.y);
         const LayerPlacement placement = placeLayer(source->visualAt(at), cw, ch, w, h);
         const auto [u, v] = placement.toCanvas(shown[0], shown[1]);
-        points.push_back({at, u, v, std::sqrt(std::max(1e-9, s.width * s.height)), s.angle});
+        Point p{at, u, v, std::sqrt(std::max(1e-9, s.width * s.height)), s.angle};
+        if (plane && s.hasCorners())
+            for (std::size_t i = 0; i < 4; ++i) {
+                const auto c = rawToSteady(source->stabilization, s.time, w, h, s.corners[i * 2], s.corners[i * 2 + 1]);
+                const auto [cu, cv] = placement.toCanvas(c[0], c[1]);
+                p.corners[i * 2] = cu;
+                p.corners[i * 2 + 1] = cv;
+            }
+        points.push_back(p);
     }
     const Ticks first = std::max(follower->start, points.empty() ? follower->end() : points.front().time);
     const Ticks last = std::min(follower->end(), points.empty() ? follower->start : points.back().time);
@@ -10264,8 +10634,11 @@ bool ProjectController::followTrack(double clipId, double sourceClipId, int trac
         const Point& q = *next;
         const Point& p = *(next - 1);
         const double k = double(t - p.time) / double(std::max<Ticks>(1, q.time - p.time));
-        return Point{t, p.x + (q.x - p.x) * k, p.y + (q.y - p.y) * k, p.size + (q.size - p.size) * k,
-                     p.angle + (q.angle - p.angle) * k};
+        Point mixed{t, p.x + (q.x - p.x) * k, p.y + (q.y - p.y) * k, p.size + (q.size - p.size) * k,
+                    p.angle + (q.angle - p.angle) * k};
+        for (std::size_t i = 0; i < mixed.corners.size(); ++i)
+            mixed.corners[i] = p.corners[i] + (q.corners[i] - p.corners[i]) * k;
+        return mixed;
     };
     const Point origin = pointAt(anchor);
     const ClipVisual start = follower->visualAt(anchor);
@@ -10274,13 +10647,46 @@ bool ProjectController::followTrack(double clipId, double sourceClipId, int trac
     for (const Point& p : points)
         if (p.time >= follower->start && p.time <= follower->end())
             times.push_back(p.time);
-    if (times.empty() || times.front() > follower->start)
-        times.insert(times.begin(), std::max(follower->start, first));
+    // (From where both begin: a track started later than the clip already has that time.)
+    if (times.empty() || times.front() > first)
+        times.insert(times.begin(), first);
+    // Pinned onto a plane: the clip's corners on the plane's, frame by frame (corner pin), the
+    // rest of its placement as it is.
+    if (options.value(QStringLiteral("pin")).toBool() && !hold) {
+        if (!plane) {
+            reportError(tr("Only a plane's track can have something pinned onto it"));
+            return false;
+        }
+        const MediaItem* own = m_project.findMedia(follower->mediaId);
+        const double fw = own && own->width > 0 ? own->width : cw, fh = own && own->height > 0 ? own->height : ch;
+        std::array<Keyframes, 8> pins;
+        for (const Ticks t : times) {
+            const Point p = pointAt(t);
+            ClipVisual bare = follower->visualAt(t);
+            bare.pin = {};
+            const LayerPlacement placed = placeLayer(bare, cw, ch, fw, fh);
+            const std::array<std::array<double, 2>, 4> square{{{0, 0}, {1, 0}, {1, 1}, {0, 1}}};
+            for (std::size_t i = 0; i < 4; ++i) {
+                const auto [u, v] = placed.toCanvas(square[i][0], square[i][1]);
+                pins[i * 2].push_back({t - follower->start, std::clamp(p.corners[i * 2] - u, -5.0, 5.0)});
+                pins[i * 2 + 1].push_back({t - follower->start, std::clamp(p.corners[i * 2 + 1] - v, -5.0, 5.0)});
+            }
+        }
+        const std::array names{property::kPinTopLeftX,     property::kPinTopLeftY,     property::kPinTopRightX,
+                               property::kPinTopRightY,    property::kPinBottomRightX, property::kPinBottomRightY,
+                               property::kPinBottomLeftX,  property::kPinBottomLeftY};
+        std::map<std::string, Keyframes> changes;
+        for (std::size_t i = 0; i < names.size(); ++i)
+            changes.emplace(std::string(names[i]), std::move(pins[i]));
+        return apply(std::make_unique<SetClipKeyframesCommand>(follower->id, std::move(changes), TVE_TR("core", "Pin to Plane")));
+    }
+    // Following moves with the track; holding still moves against it.
+    const double sign = hold ? -1.0 : 1.0;
     for (const Ticks t : times) {
         const Point p = pointAt(t);
         const Ticks at = t - follower->start;
-        xs.push_back({at, std::clamp(start.transform.x + (p.x - origin.x), -10.0, 10.0)});
-        ys.push_back({at, std::clamp(start.transform.y + (p.y - origin.y), -10.0, 10.0)});
+        xs.push_back({at, std::clamp(start.transform.x + sign * (p.x - origin.x), -10.0, 10.0)});
+        ys.push_back({at, std::clamp(start.transform.y + sign * (p.y - origin.y), -10.0, 10.0)});
         if (withScale)
             scales.push_back({at, std::clamp(start.transform.scale * p.size / origin.size, 0.01, 20.0)});
         if (withRotation)
@@ -10292,7 +10698,8 @@ bool ProjectController::followTrack(double clipId, double sourceClipId, int trac
         changes.emplace(std::string(tve::property::kScale), scales);
     if (withRotation)
         changes.emplace(std::string(tve::property::kRotation), turns);
-    return apply(std::make_unique<SetClipKeyframesCommand>(follower->id, std::move(changes), TVE_TR("core", "Follow Track")));
+    return apply(std::make_unique<SetClipKeyframesCommand>(follower->id, std::move(changes),
+                                                           hold ? TVE_TR("core", "Hold Still") : TVE_TR("core", "Follow Track")));
 }
 
 // --- Processed pictures ---

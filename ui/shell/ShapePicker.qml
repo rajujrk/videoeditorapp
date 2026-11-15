@@ -6,6 +6,13 @@ import TechieVideoEditor.Theme
 // Using a template: which shape to make it in (six, drawn to scale), then a new project.
 Popup {
     id: picker
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
     property var template: ({})
     property string shape: "16:9"

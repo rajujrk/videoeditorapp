@@ -8,6 +8,13 @@ import TechieVideoEditor.Theme
 // track. The microphone is open only while this panel is.
 Popup {
     id: panel
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
 
     // "idle" → "countdown" → "recording" → "idle"
@@ -108,7 +115,7 @@ Popup {
             rowSpacing: Theme.space.s
 
             Text { text: qsTr("Microphone"); font: Theme.type.label; color: Theme.color.textSecondary }
-            ComboBox {
+            AppComboBox {
                 id: devicePicker
                 objectName: "inputDevicePicker"
                 Layout.fillWidth: true

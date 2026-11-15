@@ -17,4 +17,11 @@ std::optional<std::vector<TrackSample>> trackRegion(const std::string& path, Tic
                                                     bool surface, const AnalysisProgress& progress = {},
                                                     std::string* error = nullptr);
 
+// Follows a flat textured surface (a poster, a wall, a screen, a table top) in perspective
+// from `corners` (picture fractions, in the frame shown at `from`) until `to` or until it is
+// lost: each frame the picture inside it is registered against the frame before (Apple's
+// Vision, a projective map), and the corners carried along. Samples carry the corners.
+std::optional<std::vector<TrackSample>> trackPlane(const std::string& path, Ticks from, Ticks to, const Quad& corners,
+                                                   const AnalysisProgress& progress = {}, std::string* error = nullptr);
+
 } // namespace tve

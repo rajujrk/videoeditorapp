@@ -627,7 +627,7 @@ ScrollView {
                     font: Theme.type.label
                     color: Theme.color.textSecondary
                 }
-                ComboBox {
+                AppComboBox {
                     id: faceSticker
                     objectName: "faceSticker"
                     Layout.fillWidth: true
@@ -938,46 +938,72 @@ ScrollView {
             readonly property bool hasArea: page.project.trackArea.clipId === page.clipInfo.id
 
             Finding {
-                text: qsTr("Follows something through the clip from the playhead, so titles and stickers can move with it.")
+                text: qsTr("Follows something through the clip from the playhead, so titles and stickers can move with it, a picture can be pinned onto a surface, or the shot held still on it.")
                 color: Theme.color.textSecondary
+            }
+            // What to follow: each asks for something different on the player.
+            Flow {
+                Layout.fillWidth: true
+                spacing: Theme.space.xs
+                Repeater {
+                    model: [{ id: "object", label: qsTr("Object"), tip: qsTr("Something that moves and may change shape: a person, a car, a ball") },
+                            { id: "surface", label: qsTr("Surface"), tip: qsTr("A flat rectangle that also turns: a screen, a sign, a page") },
+                            { id: "plane", label: qsTr("Plane"), tip: qsTr("Any flat textured surface in perspective, by its four corners: pin a picture or video onto it") },
+                            { id: "point", label: qsTr("Point"), tip: qsTr("One small spot, for its position: to hold the shot still on it, or pin something there") }]
+                    delegate: TextButton {
+                        required property var modelData
+                        objectName: "trackKind:" + modelData.id
+                        text: modelData.label
+                        tip: modelData.tip
+                        variant: page.project.trackAreaKind === modelData.id ? "primary" : "secondary"
+                        onClicked: page.project.trackAreaKind = modelData.id
+                    }
+                }
             }
             TextButton {
                 objectName: "chooseTrackArea"
-                text: page.project.pickingTrackArea ? qsTr("Drag a box on the player…") : tracking.hasArea ? qsTr("Draw again") : qsTr("Choose what to follow")
+                readonly property string kind: page.project.trackAreaKind
+                text: page.project.pickingTrackArea
+                      ? (kind === "point" ? qsTr("Click the point on the player…")
+                         : kind === "plane" ? qsTr("Drag a box on the player, then its corners…") : qsTr("Drag a box on the player…"))
+                      : tracking.hasArea ? qsTr("Draw again")
+                      : kind === "point" ? qsTr("Choose the point") : kind === "plane" ? qsTr("Place the corners") : qsTr("Choose what to follow")
                 variant: "secondary"
                 onClicked: page.project.pickingTrackArea = !page.project.pickingTrackArea
             }
-            RowLayout {
+            TextButton {
+                objectName: "trackMotion"
                 visible: tracking.hasArea
-                TextButton {
-                    objectName: "trackObject"
-                    text: qsTr("Track object")
-                    variant: "primary"
-                    enabled: !page.project.analyzing && page.steady
-                    tip: qsTr("Something that moves and may change shape: a person, a car, a ball")
-                    onClicked: page.project.trackMotion(page.clipInfo.id, { surface: false })
-                }
-                TextButton {
-                    objectName: "trackSurface"
-                    text: qsTr("Track surface")
-                    variant: "secondary"
-                    enabled: !page.project.analyzing && page.steady
-                    tip: qsTr("A flat rectangle that also turns: a screen, a sign, a page")
-                    onClicked: page.project.trackMotion(page.clipInfo.id, { surface: true })
-                }
+                text: qsTr("Track")
+                iconName: "play"
+                variant: "primary"
+                enabled: !page.project.analyzing && page.steady
+                tip: qsTr("Follows it from the playhead to the end of the clip, in the background")
+                onClicked: page.project.trackMotion(page.clipInfo.id, { kind: page.project.trackAreaKind })
             }
             Repeater {
                 model: page.clipInfo.motionTracks || []
                 delegate: RowLayout {
                     required property var modelData
                     Layout.fillWidth: true
+                    readonly property string kindLabel: modelData.kind === "plane" ? qsTr("plane")
+                                                      : modelData.kind === "point" ? qsTr("point")
+                                                      : modelData.kind === "surface" ? qsTr("surface") : qsTr("object")
                     Text {
                         objectName: "motionTrack:" + modelData.id
                         Layout.fillWidth: true
-                        text: (modelData.surface ? qsTr("Track %1 · surface · %2–%3 s") : qsTr("Track %1 · object · %2–%3 s"))
-                              .arg(modelData.id).arg(Fmt.num(modelData.start, 1)).arg(Fmt.num(modelData.end, 1))
+                        text: qsTr("Track %1 · %2 · %3–%4 s").arg(modelData.id).arg(parent.kindLabel)
+                              .arg(Fmt.num(modelData.start, 1)).arg(Fmt.num(modelData.end, 1))
                         font: Theme.type.body
                         color: Theme.color.textPrimary
+                        elide: Text.ElideRight
+                    }
+                    TextButton {
+                        objectName: "holdStill:" + modelData.id
+                        text: qsTr("Hold still")
+                        variant: "ghost"
+                        tip: qsTr("Keeps what this track follows still in the picture: the clip moves the other way, as keyframes")
+                        onClicked: page.project.holdStill(page.clipInfo.id, modelData.id)
                     }
                     TextButton {
                         objectName: "deleteTrack:" + modelData.id
@@ -1002,7 +1028,7 @@ ScrollView {
             Layout.fillWidth: true
             title: qsTr("Follow a track")
 
-            ComboBox {
+            AppComboBox {
                 id: followChoice
                 objectName: "followChoice"
                 Layout.fillWidth: true
@@ -1017,17 +1043,28 @@ ScrollView {
             ToggleSwitch {
                 id: followTurn
                 objectName: "followTurn"
-                text: qsTr("Turn with it (surfaces)")
+                text: qsTr("Turn with it (surfaces and planes)")
+            }
+            // A plane: the clip's corners pinned onto its corners (a picture onto a screen).
+            ToggleSwitch {
+                id: followPin
+                objectName: "followPin"
+                readonly property var chosen: follow.choices[followChoice.currentIndex]
+                visible: chosen !== undefined && chosen.kind === "plane"
+                text: qsTr("Pin onto the plane (its corners)")
             }
             TextButton {
                 objectName: "followTrack"
-                text: qsTr("Follow")
+                text: followPin.visible && followPin.checked ? qsTr("Pin") : qsTr("Follow")
                 variant: "primary"
-                tip: qsTr("Moves this clip with the track from where it is at the playhead, as keyframes")
+                tip: followPin.visible && followPin.checked
+                     ? qsTr("Pins this clip's corners onto the plane's in every frame, as corner pin keyframes")
+                     : qsTr("Moves this clip with the track from where it is at the playhead, as keyframes")
                 onClicked: {
                     const c = follow.choices[followChoice.currentIndex]
                     page.project.followTrack(page.clipInfo.id, c.clipId, c.trackId,
-                                             { scale: followScale.checked, rotation: followTurn.checked })
+                                             { scale: followScale.checked, rotation: followTurn.checked,
+                                               pin: followPin.visible && followPin.checked })
                 }
             }
         }
@@ -1045,7 +1082,7 @@ ScrollView {
             Layout.fillWidth: true
             title: qsTr("Follow a drawn path")
 
-            ComboBox {
+            AppComboBox {
                 id: pathChoice
                 objectName: "pathChoice"
                 Layout.fillWidth: true

@@ -30,13 +30,14 @@ void EffectChain::setInstances(std::vector<EffectInstance> instances)
         }
         return ids;
     };
-    if (structure(instances) != structure(m_instances))
+    if (structure(instances) != structure(m_instances) || EffectLibrary::userRevision() != m_userRevision)
         m_passesDirty = true;
     m_instances = std::move(instances);
 }
 
 void EffectChain::rebuildPasses()
 {
+    m_userRevision = EffectLibrary::userRevision(); // (your own effects as they are now)
     m_passes.clear();
     for (std::size_t i = 0; i < m_instances.size(); ++i) {
         if (!m_instances[i].enabled)
@@ -135,7 +136,7 @@ void EffectChain::writeUniforms(const Pass& pass, QRhiResourceUpdateBatch* updat
 QRhiTexture* EffectChain::process(QRhiCommandBuffer* cb, QRhiTexture* source, float timeSeconds,
                                   const EffectBounds& bounds)
 {
-    if (m_passesDirty)
+    if (m_passesDirty || EffectLibrary::userRevision() != m_userRevision)
         rebuildPasses();
     if (m_passes.empty())
         return source;

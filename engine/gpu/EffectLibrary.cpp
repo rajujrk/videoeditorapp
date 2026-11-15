@@ -11,6 +11,10 @@
 #include <span>
 #include <stdexcept>
 
+#include <atomic>
+#include <deque>
+#include <shared_mutex>
+
 namespace tve {
 
 namespace {
@@ -80,13 +84,21 @@ UniformSlot slotFor(const EffectParamSpec& param, const Desc::BlockVariable& mem
          + " param");
 }
 
+LoadedEffectPass checkPass(const EffectManifest& manifest, QShader fragment, const EffectPassSpec& spec);
+
 LoadedEffectPass loadPass(const EffectManifest& manifest, const QString& folder, const EffectPassSpec& spec)
+{
+    QShader fragment = readShader(folder + QLatin1Char('/') + QString::fromStdString(spec.fragment) + QStringLiteral(".qsb"));
+    if (!fragment.isValid())
+        fail(spec.fragment + ": compiled shader not found (is it listed in effects/CMakeLists.txt?)");
+    return checkPass(manifest, std::move(fragment), spec);
+}
+
+LoadedEffectPass checkPass(const EffectManifest& manifest, QShader fragment, const EffectPassSpec& spec)
 {
     const std::string where = spec.fragment;
     LoadedEffectPass pass;
-    pass.fragment = readShader(folder + QLatin1Char('/') + QString::fromStdString(spec.fragment) + QStringLiteral(".qsb"));
-    if (!pass.fragment.isValid())
-        fail(where + ": compiled shader not found (is it listed in effects/CMakeLists.txt?)");
+    pass.fragment = std::move(fragment);
 
     const Desc description = pass.fragment.description();
     const auto blocks = description.uniformBlocks();
@@ -150,6 +162,19 @@ LoadedEffectPass loadPass(const EffectManifest& manifest, const QString& folder,
     return pass;
 }
 
+// Every manifest param must be declared by some pass.
+void checkDeclared(const LoadedEffect& effect)
+{
+    std::set<std::string> declared;
+    for (const LoadedEffectPass& pass : effect.passes)
+        for (const auto& [id, slot] : pass.uniformSlots)
+            declared.insert(id);
+    for (const EffectParamSpec& param : effect.manifest.params) {
+        if (!declared.contains(param.id))
+            fail("param \"" + param.id + "\" is not declared by any pass shader");
+    }
+}
+
 LoadedEffect loadEffect(const QString& folder)
 {
     QFile file(folder + QStringLiteral("/manifest.json"));
@@ -158,16 +183,9 @@ LoadedEffect loadEffect(const QString& folder)
     const QByteArray bytes = file.readAll();
 
     LoadedEffect effect{parseEffectManifest(std::string_view(bytes.constData(), std::size_t(bytes.size()))), {}};
-    std::set<std::string> declared;
-    for (const EffectPassSpec& spec : effect.manifest.passes) {
+    for (const EffectPassSpec& spec : effect.manifest.passes)
         effect.passes.push_back(loadPass(effect.manifest, folder, spec));
-        for (const auto& [id, slot] : effect.passes.back().uniformSlots)
-            declared.insert(id);
-    }
-    for (const EffectParamSpec& param : effect.manifest.params) {
-        if (!declared.contains(param.id))
-            fail("param \"" + param.id + "\" is not declared by any pass shader");
-    }
+    checkDeclared(effect);
     return effect;
 }
 
@@ -275,7 +293,92 @@ void EffectLibrary::loadFolder(const QString& rootPath, const char* kind, std::v
 const LoadedEffect* EffectLibrary::find(std::string_view id) const
 {
     auto it = std::ranges::find_if(m_effects, [&](const LoadedEffect& e) { return e.manifest.id == id; });
-    return it == m_effects.end() ? nullptr : &*it;
+    return it == m_effects.end() ? findUserEffect(id) : &*it;
+}
+
+// --- Your own effects ---
+
+namespace {
+
+struct UserEffects {
+    std::shared_mutex mutex;
+    std::deque<LoadedEffect> all;       // every one added (never freed: renderers may hold them)
+    std::map<std::string, std::size_t> current; // id → its latest in `all`
+    std::atomic<int> revision{0};
+};
+
+UserEffects& userStore()
+{
+    static UserEffects store;
+    return store;
+}
+
+} // namespace
+
+LoadedEffect EffectLibrary::fromShaders(std::string_view manifestJson, const std::vector<QShader>& fragments)
+{
+    LoadedEffect effect{parseEffectManifest(manifestJson), {}};
+    if (effect.manifest.passes.size() != fragments.size())
+        fail("the manifest lists " + std::to_string(effect.manifest.passes.size()) + " passes, but "
+             + std::to_string(fragments.size()) + " shaders were given");
+    for (std::size_t i = 0; i < fragments.size(); ++i) {
+        if (!fragments[i].isValid())
+            fail(effect.manifest.passes[i].fragment + ": not a compiled shader");
+        effect.passes.push_back(checkPass(effect.manifest, fragments[i], effect.manifest.passes[i]));
+    }
+    checkDeclared(effect);
+    return effect;
+}
+
+std::string EffectLibrary::addUserEffect(const QString& folder)
+{
+    try {
+        LoadedEffect effect = loadEffect(folder);
+        if (effect.manifest.kind != kVideoEffectKind)
+            fail("only video effects can be added");
+        if (std::ranges::any_of(builtIn().effects(), [&](const LoadedEffect& e) { return e.manifest.id == effect.manifest.id; }))
+            fail("the id \"" + effect.manifest.id + "\" is a built-in effect's");
+        UserEffects& store = userStore();
+        std::unique_lock lock(store.mutex);
+        const std::string id = effect.manifest.id;
+        store.all.push_back(std::move(effect));
+        store.current[id] = store.all.size() - 1;
+        ++store.revision;
+        return {};
+    } catch (const std::exception& e) {
+        return e.what();
+    }
+}
+
+void EffectLibrary::removeUserEffect(std::string_view id)
+{
+    UserEffects& store = userStore();
+    std::unique_lock lock(store.mutex);
+    if (store.current.erase(std::string(id)))
+        ++store.revision;
+}
+
+std::vector<const LoadedEffect*> EffectLibrary::userEffects()
+{
+    UserEffects& store = userStore();
+    std::shared_lock lock(store.mutex);
+    std::vector<const LoadedEffect*> list;
+    for (const auto& [id, index] : store.current)
+        list.push_back(&store.all[index]);
+    return list;
+}
+
+const LoadedEffect* EffectLibrary::findUserEffect(std::string_view id)
+{
+    UserEffects& store = userStore();
+    std::shared_lock lock(store.mutex);
+    const auto found = store.current.find(std::string(id));
+    return found == store.current.end() ? nullptr : &store.all[found->second];
+}
+
+int EffectLibrary::userRevision()
+{
+    return userStore().revision.load();
 }
 
 const LoadedEffect* EffectLibrary::findTransition(std::string_view id) const

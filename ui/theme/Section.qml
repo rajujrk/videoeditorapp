@@ -15,15 +15,19 @@ ColumnLayout {
         implicitHeight: Theme.size.control + Theme.space.s
         color: mouse.containsMouse ? Theme.color.surfaceHover : "transparent"
         radius: Theme.radius.s
+        Behavior on color { ColorAnimation { duration: Theme.motion.fast } }
 
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: Theme.space.xs
             spacing: Theme.space.xs
 
+            // One chevron, turning as the section opens and closes.
             Icon {
-                name: section.expanded ? "chevron-down" : "chevron-right"
+                name: "chevron-right"
                 size: Theme.size.iconSmall
+                rotation: section.expanded ? 90 : 0
+                Behavior on rotation { NumberAnimation { duration: Theme.motion.normal; easing.type: Easing.OutCubic } }
             }
             Text {
                 text: section.title
@@ -45,6 +49,9 @@ ColumnLayout {
     ColumnLayout {
         id: body
         visible: section.expanded
+        // Its content fades in as it opens.
+        opacity: section.expanded ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.motion.normal; easing.type: Easing.OutCubic } }
         Layout.fillWidth: true
         Layout.leftMargin: Theme.space.l
         Layout.rightMargin: Theme.space.xs

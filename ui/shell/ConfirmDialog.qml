@@ -7,6 +7,13 @@ import TechieVideoEditor.Theme
 // timeline uses): ask(title, message, button, action) runs `action` on the button.
 Popup {
     id: dialog
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     property string title
     property string message
     property string button

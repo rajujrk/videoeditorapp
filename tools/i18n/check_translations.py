@@ -18,7 +18,11 @@ def problems(ts):
         for message in context.iter("message"):
             source = message.findtext("source") or ""
             translation = message.find("translation")
-            text = translation.text or ""
+            # (A plural message: its forms, each checked.)
+            forms = [f.text or "" for f in translation.iter("numerusform")]
+            text = " ".join(forms) if forms else (translation.text or "")
+            if forms and not all(forms):
+                text = ""
             where = f"{ts.name} [{name}] {source!r}"
             if translation.get("type") in ("unfinished", "obsolete", "vanished") or not text:
                 yield f"{where}: not translated"

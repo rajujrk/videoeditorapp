@@ -302,18 +302,33 @@ Rectangle {
             }
         }
 
-        // Transport bar
+        // Transport bar: the time and the transport, then the view tools — on one row, or,
+        // when the player is too narrow for both, the view tools on a row of their own below.
         Rectangle {
+            id: transportBar
             Layout.fillWidth: true
-            implicitHeight: Theme.size.toolBar + Theme.space.xs
+            readonly property real rowHeight: Theme.size.toolBar + Theme.space.xs
+            readonly property bool wrapped: width - Theme.space.m - Theme.space.s
+                                            < transportRow.implicitWidth + viewTools.implicitWidth + Theme.space.l
+            implicitHeight: wrapped ? rowHeight * 2 - Theme.space.xs : rowHeight
             color: Theme.color.surface
+            Behavior on implicitHeight { NumberAnimation { duration: Theme.motion.normal; easing.type: Easing.OutCubic } }
 
             Divider { anchors.top: parent.top; width: parent.width }
 
-            RowLayout {
+            GridLayout {
+                objectName: "transportLayout"
                 anchors.fill: parent
                 anchors.leftMargin: Theme.space.m
                 anchors.rightMargin: Theme.space.s
+                columns: transportBar.wrapped ? 1 : 2
+                rowSpacing: 0
+                columnSpacing: Theme.space.xs
+
+            RowLayout {
+                id: transportRow
+                Layout.fillWidth: true
+                Layout.preferredHeight: transportBar.rowHeight - Theme.space.xs
                 spacing: Theme.space.xs
 
                 // The playhead's timecode; click it to type a time to go to.
@@ -366,6 +381,13 @@ Rectangle {
 
                 Item { Layout.fillWidth: true }
 
+                IconButton {
+                    objectName: "goToStartButton"
+                    iconName: "to-start"
+                    tip: qsTr("Go to the start") + KeyMap.hints["goToStart"]
+                    enabled: panel.transport.duration > 0 && panel.transport.playhead > 0
+                    onClicked: panel.transport.seek(0)
+                }
                 IconButton { objectName: "markInButton"; iconName: "mark-in"; tip: qsTr("Mark In") + KeyMap.hints["markIn"]; enabled: panel.transport.duration > 0; onClicked: panel.transport.setMarkIn() }
                 IconButton { iconName: "skip-back"; tip: qsTr("Previous frame") + KeyMap.hints["frameBack"]; enabled: panel.transport.duration > 0; onClicked: panel.transport.stepFrames(-1) }
                 IconButton {
@@ -378,6 +400,13 @@ Rectangle {
                 }
                 IconButton { iconName: "skip-forward"; tip: qsTr("Next frame") + KeyMap.hints["frameForward"]; enabled: panel.transport.duration > 0; onClicked: panel.transport.stepFrames(1) }
                 IconButton { objectName: "markOutButton"; iconName: "mark-out"; tip: qsTr("Mark Out") + KeyMap.hints["markOut"]; enabled: panel.transport.duration > 0; onClicked: panel.transport.setMarkOut() }
+                IconButton {
+                    objectName: "goToEndButton"
+                    iconName: "to-end"
+                    tip: qsTr("Go to the end") + KeyMap.hints["goToEnd"]
+                    enabled: panel.transport.duration > 0 && panel.transport.playhead < panel.transport.duration
+                    onClicked: panel.transport.seek(panel.transport.duration)
+                }
                 IconButton {
                     objectName: "loopButton"
                     iconName: "loop"
@@ -397,6 +426,15 @@ Rectangle {
                 }
 
                 Item { Layout.fillWidth: true }
+            }
+
+            // The view tools.
+            RowLayout {
+                id: viewTools
+                objectName: "viewTools"
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                Layout.preferredHeight: transportBar.rowHeight - Theme.space.xs
+                spacing: Theme.space.xs
 
                 // Output level meter (peak, per channel)
                 Column {
@@ -568,7 +606,7 @@ Rectangle {
                         }
                     }
                 }
-                ComboBox {
+                AppComboBox {
                     objectName: "playerZoom"
                     readonly property var zooms: [0, 0.25, 0.5, 1, 2, 4]
                     model: [qsTr("Fit"), "25%", "50%", "100%", "200%", "400%"]
@@ -579,6 +617,7 @@ Rectangle {
                     ToolTip.delay: 600
                     ToolTip.text: qsTr("Zoom the player (100 %: a pixel of the picture to a pixel of the screen); scroll to look around")
                 }
+                        }
             }
         }
     }

@@ -12,7 +12,31 @@
 
 namespace {
 
-const QStringList kLanguages{QStringLiteral("en"), QStringLiteral("ta")};
+// The languages the app speaks: their codes, their names in themselves, and their locales.
+struct Spoken {
+    const char* code;
+    const char* name;
+    const char* locale;
+};
+constexpr Spoken kSpoken[] = {
+    {"en", "English", "en_US"},     {"ta", "தமிழ்", "ta_IN"},       {"fr", "Français", "fr_FR"},
+    {"de", "Deutsch", "de_DE"},     {"es", "Español", "es_ES"},     {"hi", "हिन्दी", "hi_IN"},
+    {"ja", "日本語", "ja_JP"},       {"ko", "한국어", "ko_KR"},       {"th", "ไทย", "th_TH"},
+    {"vi", "Tiếng Việt", "vi_VN"},  {"zh_CN", "简体中文", "zh_CN"},
+};
+const QStringList kLanguages = [] {
+    QStringList codes;
+    for (const Spoken& s : kSpoken)
+        codes << QString::fromLatin1(s.code);
+    return codes;
+}();
+const Spoken* spoken(const QString& code)
+{
+    for (const Spoken& s : kSpoken)
+        if (code == QLatin1String(s.code))
+            return &s;
+    return nullptr;
+}
 
 } // namespace
 
@@ -80,9 +104,10 @@ void Language::save() const
 
 QVariantList Language::languages() const
 {
-    return {QVariantMap{{QStringLiteral("id"), QStringLiteral("auto")}, {QStringLiteral("label"), tr("Same as this Mac")}},
-            QVariantMap{{QStringLiteral("id"), QStringLiteral("en")}, {QStringLiteral("label"), QStringLiteral("English")}},
-            QVariantMap{{QStringLiteral("id"), QStringLiteral("ta")}, {QStringLiteral("label"), QStringLiteral("தமிழ்")}}};
+    QVariantList list{QVariantMap{{QStringLiteral("id"), QStringLiteral("auto")}, {QStringLiteral("label"), tr("Same as this Mac")}}};
+    for (const Spoken& s : kSpoken)
+        list << QVariantMap{{QStringLiteral("id"), QString::fromLatin1(s.code)}, {QStringLiteral("label"), QString::fromUtf8(s.name)}};
+    return list;
 }
 
 void Language::setLanguage(const QString& language)
@@ -102,8 +127,10 @@ void Language::apply()
         wanted = QStringLiteral("en");
         for (const QString& name : QLocale::system().uiLanguages()) {
             const QString code = name.section(QLatin1Char('-'), 0, 0).section(QLatin1Char('_'), 0, 0).toLower();
-            if (kLanguages.contains(code)) {
-                wanted = code;
+            // (Chinese: the simplified one, for zh-Hans and plain zh.)
+            const QString mapped = code == QLatin1String("zh") ? QStringLiteral("zh_CN") : code;
+            if (kLanguages.contains(mapped)) {
+                wanted = mapped;
                 break;
             }
         }
@@ -123,7 +150,8 @@ void Language::apply()
     }
     // Numbers and dates the language's way (without thousands separators in what the editor
     // shows: sizes, frame counts and the like read better whole).
-    QLocale locale(wanted == QLatin1String("ta") ? QStringLiteral("ta_IN") : QStringLiteral("en_US"));
+    const Spoken* language = spoken(wanted);
+    QLocale locale(QString::fromLatin1(language ? language->locale : "en_US"));
     locale.setNumberOptions(QLocale::OmitGroupSeparator);
     QLocale::setDefault(locale);
     m_current = wanted;

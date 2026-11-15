@@ -20,6 +20,7 @@ qt_add_qml_module(tve_theme
         Section.qml
         PlaceholderBox.qml
         ToggleSwitch.qml
+        AppComboBox.qml
         AppMenu.qml
         AppMenuItem.qml
         AppMenuSeparator.qml

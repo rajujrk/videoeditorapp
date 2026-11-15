@@ -8,6 +8,13 @@ import TechieVideoEditor.Theme
 // short-term and integrated since play started) and peak. Meters move while playing.
 Popup {
     id: mixer
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
 
     readonly property var tracks: project.tracks.filter((t) => t.kind !== "title")
@@ -295,7 +302,7 @@ Popup {
             }
             RowLayout {
                 Layout.fillWidth: true
-                ComboBox {
+                AppComboBox {
                     id: trackPicker
                     objectName: "trackEffectPicker"
                     Layout.fillWidth: true

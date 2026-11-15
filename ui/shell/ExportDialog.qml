@@ -11,6 +11,13 @@ import TechieVideoEditor.Theme
 // lists them.
 Popup {
     id: dialog
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
 
     // "settings" → "exporting" → "done" or "failed"
@@ -259,7 +266,7 @@ Popup {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
-                ComboBox {
+                AppComboBox {
                     id: presetPicker
                     objectName: "exportPreset"
                     Layout.fillWidth: true
@@ -354,7 +361,7 @@ Popup {
             }
 
             Text { text: qsTr("Format"); font: Theme.type.label; color: Theme.color.textSecondary }
-            ComboBox {
+            AppComboBox {
                 id: formatPicker
                 objectName: "exportFormat"
                 Layout.fillWidth: true
@@ -417,7 +424,7 @@ Popup {
             }
 
             Text { visible: dialog.format.video; text: qsTr("Size"); font: Theme.type.label; color: Theme.color.textSecondary }
-            ComboBox {
+            AppComboBox {
                 id: sizePicker
                 objectName: "exportSize"
                 visible: dialog.format.video
@@ -428,7 +435,7 @@ Popup {
             }
 
             Text { visible: dialog.format.video; text: qsTr("Frame rate"); font: Theme.type.label; color: Theme.color.textSecondary }
-            ComboBox {
+            AppComboBox {
                 id: ratePicker
                 objectName: "exportFrameRate"
                 visible: dialog.format.video
@@ -552,7 +559,7 @@ Popup {
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Measure the mix and set its volume to the target (peaks limited to −1 dBFS)")
                 }
-                ComboBox {
+                AppComboBox {
                     id: loudnessPicker
                     objectName: "exportLoudnessTarget"
                     Layout.fillWidth: true
@@ -602,7 +609,7 @@ Popup {
                 visible: !dialog.format.livePhoto
                 Layout.fillWidth: true
                 spacing: Theme.space.xs
-                ComboBox {
+                AppComboBox {
                     id: rangePicker
                     objectName: "exportRange"
                     Layout.fillWidth: true

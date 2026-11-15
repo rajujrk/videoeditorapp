@@ -174,6 +174,8 @@ Item {
             const card = withSample(f, "card.mp4")
             p.seek(0)
             // Draw a box around the card (centre 0.375, 0.528; about 0.23 × 0.28) on the player.
+            click(f.editor, "trackKind:surface")
+            compare(p.trackAreaKind, "surface")
             click(f.editor, "chooseTrackArea")
             verify(p.pickingTrackArea)
             const overlay = findChild(f.editor, "trackOverlay")
@@ -189,12 +191,13 @@ Item {
             fuzzyCompare(p.trackArea.x, 0.375, 0.01)
             verify(settled(f.editor, "trackBox"))
 
-            click(f.editor, "trackSurface")
+            click(f.editor, "trackMotion")
             waitFinished(1)
             compare(p.undoText, "Track Motion")
             const tracks = p.selectedClipInfo.motionTracks
             compare(tracks.length, 1)
             verify(tracks[0].surface)
+            compare(tracks[0].kind, "surface")
             fuzzyCompare(tracks[0].start, 0, 0.05)
             verify(tracks[0].end > 2.5, tracks[0].end)
             verify(settled(f.editor, "motionTrack:1").text.indexOf("Track 1 · surface") === 0)

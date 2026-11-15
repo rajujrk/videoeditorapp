@@ -206,6 +206,10 @@ class ProjectController : public QObject {
     // Drawing over the player (brush, line, arrow, rectangle, ellipse).
     Q_PROPERTY(bool drawingMode READ drawingMode WRITE setDrawingMode NOTIFY editingChanged)
     Q_PROPERTY(QVariantMap trackArea READ trackArea NOTIFY editingChanged)
+    // What is being tracked, so the player asks for the right thing: "object" or "surface" (a
+    // box), "plane" (four corners, placed by dragging a box then moving each corner) or
+    // "point" (a click). trackArea then also has corners [8] (plane) or point true.
+    Q_PROPERTY(QString trackAreaKind READ trackAreaKind WRITE setTrackAreaKind NOTIFY editingChanged)
 
     // Captions: the speech models ({id, title, size, englishOnly, downloaded}), a download in
     // progress ({id, received, total, progress}), and the languages captions can be made in.
@@ -408,6 +412,8 @@ public:
     bool pinningCorners() const { return m_pinningCorners; }
     void setPinningCorners(bool pinning);
     QVariantMap trackArea() const { return m_trackArea; }
+    QString trackAreaKind() const { return m_trackAreaKind; }
+    void setTrackAreaKind(const QString& kind);
     QVariantMap scenes() const { return m_scenes; }
     QVariantMap beats() const { return m_beats; }
     QVariantList speechModels() const { return m_speechModels.list(); }
@@ -620,6 +626,34 @@ public:
     Q_INVOKABLE bool saveColorPreset(double clipId, const QString& name);
     Q_INVOKABLE bool applyColorPreset(double clipId, const QString& name);
     Q_INVOKABLE bool deleteColorPreset(const QString& name);
+    // A LUT (.cube, .3dl) kept as a filter of your own: a colour preset of that name using it
+    // (Filters tab › Mine).
+    Q_INVOKABLE bool importLutAsFilter(const QUrl& file, const QString& name);
+
+    // Your own effects (Effects tab › Mine): effects written in the shader editor, and effect
+    // stacks (a clip's effects saved under a name): [{id, title, kind "shader"/"stack", count}].
+    Q_INVOKABLE QVariantList myEffects() const;
+    // The selected clip's video effects, with their settings, saved as a stack; its id ("" with
+    // lastError). A stack's effects added to a clip (after its own), one undo step.
+    Q_INVOKABLE QString saveEffectStack(double clipId, const QString& name);
+    Q_INVOKABLE bool applyEffectStack(double clipId, const QString& stackId);
+    // Removes a stack or a shader effect of yours (clips using it keep its settings, but draw
+    // without it until one of that id is made again).
+    Q_INVOKABLE bool removeMyEffect(const QString& id);
+    // The shader editor: compile a spec (shadereffects::Spec) for a preview: {ok, error,
+    // previewId}; save it (its id; "" with lastError); a saved one's spec; share one as a
+    // file and read one back.
+    Q_INVOKABLE QVariantMap compileShaderEffect(const QVariantMap& spec);
+    Q_INVOKABLE QString saveShaderEffect(const QVariantMap& spec);
+    Q_INVOKABLE QVariantMap shaderEffectSpec(const QString& id) const;
+    Q_INVOKABLE bool exportMyEffect(const QString& id, const QUrl& file);
+    Q_INVOKABLE QString importMyEffect(const QUrl& file);
+    // Stickers of your own (Stickers tab › Mine): a picture or Lottie file brought in; one taken
+    // away; a clip made into one (a picture's file, an animation's, or a video's frame at the
+    // playhead). Each the sticker's id, or "" with lastError.
+    Q_INVOKABLE QString addMySticker(const QUrl& file);
+    Q_INVOKABLE bool removeMySticker(const QString& id);
+    Q_INVOKABLE QString saveClipAsSticker(double clipId);
     // Masks, chroma key and track matte (applied after colour, before effects).
     // selectedClipInfo has masks [{shape, x, y, width, height, rotation, roundness, feather,
     // invert, points [[x, y]]}], chromaKey {enabled, color [r, g, b], tolerance, softness,
@@ -1096,15 +1130,22 @@ public:
     Q_INVOKABLE bool setDenoise(double clipId, double strength);
     // Tracking. The box to follow, drawn on the player (picture fractions, as shown).
     Q_INVOKABLE bool setTrackArea(double clipId, const QVariantMap& box);
-    // Follows the box from the playhead to the clip's end in the background (options:
-    // surface — a flat rectangle, which turns too); the track is added to the clip.
+    // Follows what was chosen from the playhead to the clip's end in the background (options:
+    // kind "object", "surface" (a flat rectangle, which turns too), "plane" (the four corners
+    // in perspective) or "point"; default trackAreaKind; surface true: as "surface"); the
+    // track is added to the clip.
     Q_INVOKABLE bool trackMotion(double clipId, const QVariantMap& options = {});
+    // Keeps what a track of the clip follows still in the picture: the clip moves the other
+    // way as position keyframes (from where it is at the playhead). One undo step.
+    Q_INVOKABLE bool holdStill(double clipId, int trackId);
     Q_INVOKABLE bool deleteTrack(double clipId, int trackId);
     // The tracks another clip can follow: on video clips on screen at the same time.
     // [{clipId, trackId, label}].
     Q_INVOKABLE QVariantList tracksToFollow(double clipId) const;
     // Makes a clip (a title, a sticker…) follow a track from where it is at the playhead:
     // position keyframes, and with options scale / rotation (a surface's turn) those too.
+    // Option pin (a plane's track): the clip's corners pinned onto the plane's, as corner pin
+    // keyframes — a picture or video onto a screen, a poster, a wall.
     Q_INVOKABLE bool followTrack(double clipId, double sourceClipId, int trackId, const QVariantMap& options = {});
 
     // Drawings: a drawing clip at the playhead (5 s, on the lowest free picture track above
@@ -1326,6 +1367,7 @@ signals:
     void timelineOpened(const QStringList& notes, const QString& fileName);
     void viewChanged();
     void projectChanged();
+    void myItemsChanged(); // your own effects, stacks or filters
     // Another project took this one's place (new, opened, recovered): what the editor showed of
     // the last one (the source monitor, a comparison) goes.
     void projectReplaced();
@@ -1672,6 +1714,7 @@ private:
     std::map<std::string, std::vector<tve::SubjectSample>> m_subjects;
     std::map<std::string, tve::MotionAnalysis> m_motion; // per media fingerprint
     bool m_pickingTrackArea = false;
+    QString m_trackAreaKind = QStringLiteral("object");
     bool m_pinningCorners = false;
     bool m_drawingMode = false;
     QTimer* m_upscaleWatch = nullptr; // polls the model's download
@@ -1679,6 +1722,7 @@ private:
     // The file's motion measured (now, or in the background first), then `then`.
     // The box drawn on the player (trackArea), in the clip's own frame at a media time.
     tve::TrackSample drawnBox(const tve::Clip& clip, tve::Ticks mediaTime) const;
+    tve::Quad drawnCorners(const tve::Clip& clip, tve::Ticks mediaTime) const;
     void withMotion(tve::Id clipId, const QString& task, std::function<void(const tve::MotionAnalysis&)> then);
     QVariantMap m_scenes;
     QVariantMap m_beats;

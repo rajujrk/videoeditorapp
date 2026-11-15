@@ -21,6 +21,13 @@ Menu {
     leftPadding: Theme.space.xs
     rightPadding: Theme.space.xs
     delegate: AppMenuItem {}
+    // Opens with a quick fade and grow from where it was asked for.
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.fast; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.97; to: 1; duration: Theme.motion.fast; easing.type: Easing.OutCubic }
+        }
+    }
     background: Rectangle {
         implicitWidth: 220
         radius: Theme.radius.m

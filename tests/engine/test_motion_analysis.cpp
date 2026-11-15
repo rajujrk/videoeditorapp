@@ -1,11 +1,13 @@
 #include "analysis/MotionAnalysis.h"
 #include "analysis/Tracking.h"
+#include "encode/MediaWriter.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
 #include <filesystem>
+#include <random>
 
 #include <unistd.h>
 
@@ -118,4 +120,91 @@ TEST_CASE("an object and a flat surface are followed", "[apple]")
     CHECK_FALSE(trackRegion(people, 0, kTicksPerSecond, {0, 0.03, 0.5, 0.04, 0.1, 0.0}, true, {}, &error));
     CHECK(error.find("rectangle") != std::string::npos);
     CHECK_FALSE(trackRegion(people, 0, kTicksPerSecond, {0, 0.5, 0.5, 0.0, 0.0, 0.0}, false, {}, &error));
+}
+
+namespace {
+
+// A plane in perspective over a still background, moving and turning: its corners at frame n
+// (pixels of 640 × 360), and the video of it written to `path`.
+Quad planeCorners(int n)
+{
+    const double t = n / 30.0;
+    return {180 + 60 * t, 90 + 10 * t, 440 + 40 * t, 100 + 25 * t, 460 + 20 * t, 280 - 15 * t, 170 + 45 * t, 270 + 5 * t};
+}
+
+std::string writePlaneVideo(int frames)
+{
+    const std::string path = (fs::temp_directory_path() / ("tve_plane_" + std::to_string(::getpid()) + ".mov")).string();
+    MediaSettings settings;
+    settings.container = Container::Mov;
+    settings.codec = VideoCodec::ProRes; // (takes RGBA)
+    settings.width = 640;
+    settings.height = 360;
+    settings.frameRate = {30, 1};
+    settings.audio = false;
+    auto writer = MediaWriter::open(path, settings);
+    REQUIRE(writer);
+    // A blotchy texture on the plane, a softer one behind it.
+    std::mt19937 random(7);
+    std::uniform_int_distribution<int> shade(20, 235);
+    std::vector<std::array<std::uint8_t, 3>> texture(32 * 32), background(40 * 23);
+    for (auto& c : texture)
+        c = {std::uint8_t(shade(random)), std::uint8_t(shade(random)), std::uint8_t(shade(random))};
+    for (auto& c : background) {
+        const auto g = std::uint8_t(60 + shade(random) / 4);
+        c = {g, g, std::uint8_t(g + 10)};
+    }
+    std::vector<std::uint8_t> rgba(640 * 360 * 4);
+    for (int n = 0; n < frames; ++n) {
+        const Quad px = planeCorners(n);
+        Quad q{};
+        for (std::size_t i = 0; i < 8; ++i)
+            q[i] = px[i];
+        const auto toPlane = squareToQuad(q)->inverse();
+        for (int y = 0; y < 360; ++y)
+            for (int x = 0; x < 640; ++x) {
+                const auto [u, v] = toPlane->apply(x + 0.5, y + 0.5);
+                const auto& c = (u >= 0 && u < 1 && v >= 0 && v < 1)
+                                    ? texture[std::size_t(int(v * 32) * 32 + int(u * 32))]
+                                    : background[std::size_t((y / 16) * 40 + x / 16)];
+                std::uint8_t* p = &rgba[std::size_t(y * 640 + x) * 4];
+                p[0] = c[0], p[1] = c[1], p[2] = c[2], p[3] = 255;
+            }
+        REQUIRE(writer->writeVideoRgba(rgba.data(), 640 * 4));
+    }
+    REQUIRE(writer->finish());
+    return path;
+}
+
+} // namespace
+
+TEST_CASE("a plane is followed in perspective, its four corners", "[apple]")
+{
+    const int frames = 45;
+    const std::string path = writePlaneVideo(frames);
+    const Quad start = planeCorners(0);
+    Quad fractions{};
+    for (std::size_t i = 0; i < 8; ++i)
+        fractions[i] = start[i] / (i % 2 == 0 ? 640.0 : 360.0);
+    const auto plane = trackPlane(path, 0, 2 * kTicksPerSecond, fractions);
+    REQUIRE(plane);
+    CHECK(int(plane->size()) >= frames - 2);
+    // Each corner within a few pixels of where it really is, frame after frame.
+    double worst = 0.0;
+    for (std::size_t n = 0; n < plane->size(); ++n) {
+        const Quad truth = planeCorners(int(n));
+        REQUIRE((*plane)[n].hasCorners());
+        for (std::size_t i = 0; i < 8; ++i)
+            worst = std::max(worst, std::abs((*plane)[n].corners[i] * (i % 2 == 0 ? 640.0 : 360.0) - truth[i]));
+    }
+    INFO("worst corner error " << worst << " px");
+    CHECK(worst < 3.0);
+    // The sample's centre and turn follow the corners.
+    const TrackSample& last = plane->back();
+    CHECK(last.x == Approx((last.corners[0] + last.corners[2] + last.corners[4] + last.corners[6]) / 4));
+    // No surface to follow: said so.
+    std::string error;
+    CHECK_FALSE(trackPlane(path, 0, kTicksPerSecond, {0.1, 0.1, 0.5, 0.1, 0.9, 0.1, 0.1, 0.5}, {}, &error));
+    CHECK_FALSE(error.empty());
+    fs::remove(path);
 }

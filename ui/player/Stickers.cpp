@@ -1,5 +1,9 @@
 #include "Stickers.h"
 
+#include "MyItems.h"
+
+#include <QDir>
+
 #include "Language.h"
 #include "PackStore.h"
 
@@ -66,6 +70,18 @@ void reload()
         readStickers(pack + QStringLiteral("/stickers/"), QStringLiteral("pack.") + QFileInfo(pack).fileName() + QLatin1Char('/'),
                      title, result);
     }
+    // Your own: every picture or Lottie file in your stickers folder ("Mine").
+    const QDir mine(myitems::stickersFolder());
+    for (const QFileInfo& info : mine.entryInfoList(QDir::Files, QDir::Name | QDir::IgnoreCase)) {
+        if (!myitems::isStickerFile(info.fileName()))
+            continue;
+        result << QVariantMap{{QStringLiteral("id"), QStringLiteral("mine/") + info.fileName()},
+                              {QStringLiteral("title"), info.completeBaseName()},
+                              {QStringLiteral("category"), QStringLiteral("mine")},
+                              {QStringLiteral("path"), info.absoluteFilePath()},
+                              {QStringLiteral("picture"), myitems::isPictureFile(info.fileName())},
+                              {QStringLiteral("pack"), QString()}};
+    }
     list() = result;
 }
 
@@ -125,9 +141,19 @@ QImage StickerPreviewProvider::requestImage(const QString& id, QSize* size, cons
     const qsizetype at = id.lastIndexOf(QLatin1Char('@'));
     const QString sticker = at < 0 ? id : id.left(at);
     const double seconds = at < 0 ? 0.5 : id.mid(at + 1).toDouble();
+    // A picture of your own: itself, the preview's height.
+    const QString path = stickers::pathOf(sticker);
+    if (myitems::isPictureFile(path)) {
+        const QImage picture = QImage(path).scaledToHeight(kSize, Qt::SmoothTransformation);
+        if (picture.isNull())
+            return {};
+        cache.insert(id, new QImage(picture));
+        *size = picture.size();
+        return picture;
+    }
     auto& animation = animations[sticker];
     if (!animation)
-        animation = stickers::open(stickers::pathOf(sticker));
+        animation = stickers::open(path);
     if (!animation)
         return {};
     const QImage image = stickers::frame(*animation, seconds, kSize);

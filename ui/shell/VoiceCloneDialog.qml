@@ -8,6 +8,13 @@ import TechieVideoEditor.Theme
 // Mac that it says the statement, and only then the copy at ElevenLabs.
 Popup {
     id: dialog
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
     readonly property var cloning: project.voiceCloning
     readonly property string stage: cloning.stage

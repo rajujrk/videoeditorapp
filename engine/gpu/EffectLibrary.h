@@ -66,7 +66,22 @@ public:
                               const QString& transitionsRoot = {});
 
     const std::vector<LoadedEffect>& effects() const { return m_effects; }
+    // Built-in (and pack) effects first, then your own (addUserEffect).
     const LoadedEffect* find(std::string_view id) const;
+
+    // Your own effects (made in the shader editor), added while the app runs and found by
+    // every library's find() after its own. Loads <folder>/manifest.json with its compiled
+    // passes (<pass>.frag.qsb), checked like the built-in ones; "" when added, else why not.
+    // A later one with the same id takes its place; none is ever freed (renderers may still
+    // hold one), and userRevision() counts the changes so effect chains rebuild.
+    static std::string addUserEffect(const QString& folder);
+    static void removeUserEffect(std::string_view id);
+    static std::vector<const LoadedEffect*> userEffects();
+    static const LoadedEffect* findUserEffect(std::string_view id);
+    static int userRevision();
+    // An effect from a manifest (JSON) and its passes' compiled fragment shaders, in order,
+    // checked; throws std::runtime_error with what is wrong.
+    static LoadedEffect fromShaders(std::string_view manifestJson, const std::vector<QShader>& fragments);
     const std::vector<LoadedEffect>& transitions() const { return m_transitions; }
     const LoadedEffect* findTransition(std::string_view id) const;
     const QShader& vertexShader() const { return m_vertexShader; }

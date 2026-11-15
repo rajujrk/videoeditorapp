@@ -44,7 +44,7 @@ add_subdirectory(engine)
 add_subdirectory(tools)
 
 if(TVE_BUILD_APP)
-    find_package(Qt6 6.7 REQUIRED COMPONENTS Core Gui GuiPrivate Quick QuickControls2 ShaderTools Network)
+    find_package(Qt6 6.7 REQUIRED COMPONENTS Core Gui GuiPrivate Quick QuickControls2 ShaderTools ShaderToolsPrivate Network)
     qt_standard_project_setup(REQUIRES 6.7)
     add_subdirectory(effects)
     add_subdirectory(engine/gpu)
@@ -61,7 +61,17 @@ if(TVE_BUILD_APP)
     # Extracting strings needs every target; the compiled .qm is built into tve_player's
     # resources from ui/player (where its other resources live).
     qt_add_lupdate(
-        TS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_ta.ts
+        TS_FILES
+            ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_ta.ts
+            ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_fr.ts
+            ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_de.ts
+            ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_es.ts
+            ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_hi.ts
+            ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_ja.ts
+            ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_ko.ts
+            ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_th.ts
+            ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_vi.ts
+            ${CMAKE_CURRENT_SOURCE_DIR}/i18n/tve_zh_CN.ts
         SOURCE_TARGETS tve_player tve_shell tve_theme TechieVideoEditor tve_core tve_engine
         LUPDATE_TARGET update_translations
         OPTIONS -no-obsolete -locations none -tr-function-alias QT_TRANSLATE_NOOP+=TVE_TR)

@@ -12,6 +12,13 @@ import TechieVideoEditor.Player
 // undo step.
 Popup {
     id: panel
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
 
     property var screens: []
@@ -252,7 +259,7 @@ Popup {
                 }
             }
         }
-        ComboBox {
+        AppComboBox {
             id: screenChoice
             objectName: "screenChoice"
             Layout.fillWidth: true
@@ -306,7 +313,7 @@ Popup {
         Text { text: qsTr("Camera"); font: Theme.type.label; color: Theme.color.textSecondary }
         RowLayout {
             Layout.fillWidth: true
-            ComboBox {
+            AppComboBox {
                 id: cameraChoice
                 objectName: "cameraChoice"
                 Layout.fillWidth: true

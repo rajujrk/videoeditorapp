@@ -6,7 +6,8 @@ import TechieVideoEditor.Shell
 
 // More tracks than the timeline shows: headers and lanes scroll up and down together (wheel,
 // trackpad, the scroll bar), the ruler stays; a new track is scrolled into view; clicks and
-// drops land on the track under the pointer, scrolled or not.
+// drops land on the track under the pointer, scrolled or not. The player's go-to-start and
+// go-to-end buttons, the timeline following the playhead there.
 Item {
     id: root
     width: 1400
@@ -173,6 +174,43 @@ Item {
             tryVerify(() => laneMenu.opened)
             compare(laneMenu.track.id, last.id)
             laneMenu.close()
+        }
+    
+        function test_go_to_start_and_end_buttons() {
+            const f = createEditor()
+            const p = f.project
+            for (let i = 0; i < 3; ++i)
+                verify(p.importAndAppend("file://" + samplesDir + "/test_av_1080p30.mp4"))
+            const timeline = findChild(f.editor, "timelinePanel")
+            const lanes = findChild(f.editor, "timelineLanes")
+            timeline.pixelsPerSecond = 600 // (the timeline far wider than its view)
+            waitForRendering(f.editor)
+            const toStart = findChild(f.editor, "goToStartButton")
+            const toEnd = findChild(f.editor, "goToEndButton")
+            compare(p.playhead, 0)
+            verify(!toStart.enabled) // at the start already
+            verify(toEnd.enabled)
+            compare(toStart.iconName, "to-start")
+
+            // To the end: the playhead there, the timeline scrolled to show it.
+            mouseClick(toEnd)
+            fuzzyCompare(p.playhead, p.duration, 0.05)
+            const endX = p.playhead * timeline.pixelsPerSecond
+            tryVerify(() => endX >= lanes.contentX && endX <= lanes.contentX + lanes.width, 3000, "the end is out of view")
+            verify(lanes.contentX > 0)
+            verify(!toEnd.enabled)
+            verify(toStart.enabled)
+
+            // Back to the start: the playhead at 0, the timeline scrolled back.
+            mouseClick(toStart)
+            compare(p.playhead, 0)
+            tryCompare(lanes, "contentX", 0)
+            verify(!toStart.enabled)
+            // From the middle too.
+            p.seek(3)
+            verify(toStart.enabled)
+            mouseClick(toStart)
+            compare(p.playhead, 0)
         }
     }
 }

@@ -79,6 +79,7 @@ private:
     std::vector<EffectInstance> m_instances;
     std::vector<Pass> m_passes;
     bool m_passesDirty = true;
+    int m_userRevision = -1; // EffectLibrary::userRevision() when the passes were built
 
     std::unique_ptr<QRhiSampler> m_sampler;
     std::array<std::unique_ptr<QRhiTexture>, 3> m_textures;

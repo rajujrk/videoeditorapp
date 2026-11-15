@@ -8,6 +8,13 @@ import TechieVideoEditor.Theme
 // bin (Photos and devices copy them into the project's Imports folder first).
 Popup {
     id: panel
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
     readonly property var imports: project.imports
 

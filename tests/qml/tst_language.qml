@@ -40,7 +40,7 @@ Item {
             waitForRendering(home)
             const picker = findChild(home, "languagePicker")
             compare(picker.currentValue, "en")
-            compare(Language.languages.map((l) => l.id), ["auto", "en", "ta"])
+            compare(Language.languages.map((l) => l.id), ["auto", "en", "ta", "fr", "de", "es", "hi", "ja", "ko", "th", "vi", "zh_CN"])
             compare(Language.languages[2].label, "தமிழ்")
 
             picker.currentIndex = 2
@@ -53,7 +53,7 @@ Item {
             compare(Language.languages[0].label, "இந்த Mac-இன் மொழி")
 
             Language.language = "auto"
-            verify(["en", "ta"].indexOf(Language.current) >= 0)
+            verify(Language.languages.some((l) => l.id === Language.current))
             compare(settings().language, "auto")
         }
 
@@ -86,6 +86,35 @@ Item {
             tryVerify(() => f.editor.player.availableEffects.some((e) => e.title === "Black & White"))
             compare(p.undoText, "Add Title")
             verify(KeyMap.actions.some((a) => a.title === "Undo"))
+        }
+
+        // Every other language: the Home screen, the editor's QML text, an effect name from
+        // the catalogue and an undo step named in the core, each in that language.
+        function test_every_other_language() {
+            const expected = {
+                fr: ["Nouveau projet", "Exporter", "Noir et blanc", "Ajouter un titre"],
+                de: ["Neues Projekt", "Exportieren", "Schwarzweiß", "Titel hinzufügen"],
+                es: ["Nuevo proyecto", "Exportar", "Blanco y negro", "Añadir título"],
+                hi: ["नया प्रोजेक्ट", "एक्सपोर्ट करें", "श्वेत-श्याम", "टाइटल जोड़ें"],
+                ja: ["新規プロジェクト", "書き出す", "白黒", "タイトルを追加"],
+                ko: ["새 프로젝트", "내보내기", "흑백", "제목 추가"],
+                th: ["โปรเจกต์ใหม่", "ส่งออก", "ขาวดำ", "เพิ่มชื่อเรื่อง"],
+                vi: ["Dự án mới", "Xuất", "Đen trắng", "Thêm tiêu đề"],
+                zh_CN: ["新建项目", "导出", "黑白", "添加标题"],
+            }
+            const home = createTemporaryObject(homeComponent, root)
+            const f = createTemporaryObject(editorComponent, root)
+            waitForRendering(f)
+            verify(f.project.addTitle({ text: "Hello" }))
+            for (const id in expected) {
+                Language.language = id
+                compare(Language.current, id)
+                const [heading, exportText, effect, undo] = expected[id]
+                compare(findChild(home, "newProjectHeading").text, heading, id)
+                compare(findChild(f.editor, "exportButton").text, exportText, id)
+                tryVerify(() => f.editor.player.availableEffects.some((e) => e.title === effect), 2000, id)
+                compare(f.project.undoText, undo, id)
+            }
         }
 
         function test_numbers_dates_and_timecode() {

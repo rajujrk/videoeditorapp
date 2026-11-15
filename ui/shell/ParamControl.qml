@@ -63,7 +63,7 @@ ColumnLayout {
         onToggled: { control.valueEdited(checked ? 1 : 0); control.valueCommitted(checked ? 1 : 0) }
     }
 
-    ComboBox {
+    AppComboBox {
         Layout.fillWidth: true
         visible: control.param.type === "enum"
         model: control.param.values

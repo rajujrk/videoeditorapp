@@ -7,6 +7,13 @@ import TechieVideoEditor.Theme
 // (pictures and videos), which titles stay editable, and which sound is the music.
 Popup {
     id: dialog
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
     property var candidates: []
     property var slotIds: []
@@ -73,7 +80,7 @@ Popup {
                     border.color: parent.activeFocus ? Theme.color.accent : Theme.color.borderSubtle
                 }
             }
-            ComboBox {
+            AppComboBox {
                 id: category
                 objectName: "templateCategory"
                 model: dialog.project.templates.categories.filter((c) => c.id !== "" && c.id !== "favorites")

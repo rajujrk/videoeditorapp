@@ -139,6 +139,13 @@ window.TVE = {
       keys: ["⇧X", "↓", "↑", "⌥⇧→", "⌥⇧←"]
     },
     {
+      id: "go-to-start-end", title: "Go to the start or the end", chapter: "edit", area: "player", focus: [36, 40, 42, 24],
+      where: ["Player", "⏮ / ⏭"], image: "player-goto",
+      summary: "Send the playhead to the start or the end of the timeline in one click; the timeline scrolls to it.",
+      steps: ["Click ⏮ in the player's transport bar, or press Home.", "Click ⏭, or press End."],
+      keys: ["Home", "End"]
+    },
+    {
       id: "match-frame", title: "Match frame", chapter: "edit", area: "menus", focus: [52, 20, 48, 50],
       where: ["Right-click a clip", "Match frame"], image: "timeline-handling",
       summary: "Open the media under the playhead in the source monitor at exactly the same frame, to take more of it.",
@@ -385,6 +392,31 @@ window.TVE = {
       steps: ["Open the Stickers tab; previews play on hover.", "Click one to put it at the playhead, small and in the middle, on a free track, or drag it onto a video track at the time you want.", "Place, grade, mask and give it effects like any picture."]
     },
     {
+      id: "my-effects", title: "Effects of your own", chapter: "effects", area: "library",
+      where: ["Library", "Effects", "Mine"], image: "my-effects",
+      summary: "Keep a clip's effects and their settings as one effect, or write a new one, and put it on any clip with a click.",
+      steps: ["Select a clip with effects, open Effects › Mine and click Save the clip's effects…; name it.", "Click your effect (or drag it onto a clip) to give another clip the same effects and settings.", "Right-click one of yours to edit, export or delete it; Import… reads a .tveeffect file."],
+      note: "Your effects, stickers and filters are kept in the app's data folder, for every project."
+    },
+    {
+      id: "shader-editor", title: "Shader editor", chapter: "effects", area: "library", focus: [14, 5, 72, 90],
+      where: ["Library", "Effects", "Mine", "New effect…"], image: "shader-editor",
+      summary: "Write an effect for the GPU in GLSL, with sliders and colours of your own, checked and previewed on a sample scene as you type.",
+      steps: ["Click New effect… under Effects › Mine.", "Edit vec4 effect(vec2 uv): the picture is tve_source; tve_time, tve_texelSize, tveLuma, tveNoise and tveSample are there for you.", "Add settings (a slider with its range and starting value, or a colour) and use them by name.", "Click Check; errors name the line. Save puts it in the library, where it keyframes, masks and exports like any effect."]
+    },
+    {
+      id: "my-filters", title: "Filters of your own", chapter: "colour", area: "library",
+      where: ["Library", "Filters", "Mine"], image: "my-filters",
+      summary: "Keep a clip's colour grade, or a .cube or .3dl LUT, as a filter you can put on any clip.",
+      steps: ["Grade a clip, open Filters › Mine and click Save the clip's grade…; name it.", "Or click Import a LUT… and choose a .cube or .3dl file.", "Click a filter of yours, or drag it onto a clip in the timeline."]
+    },
+    {
+      id: "my-stickers", title: "Stickers of your own", chapter: "effects", area: "library",
+      where: ["Library", "Stickers", "Mine"], image: "my-stickers",
+      summary: "Turn your pictures, GIFs and Lottie animations, or a frame of a clip, into stickers.",
+      steps: ["Open Stickers › Mine and click Add your own… to choose a PNG with transparency, JPEG, WebP, GIF or Lottie .json.", "Or select a clip and click From the selected clip: a picture, or a video's frame at the playhead.", "Click a sticker of yours to put it at the playhead; right-click it to delete it."]
+    },
+    {
       id: "alpha-video", title: "Video with transparency", chapter: "effects", area: "library",
       where: ["Library", "Media"], image: "alpha-video",
       summary: "ProRes 4444, WebM VP9 with alpha, HEVC with alpha, GIF and animated PNG or WebP keep their transparency and play over what is below.",
@@ -617,9 +649,21 @@ window.TVE = {
       note: "What is said is searched in media you have transcribed. Labels are in English whatever the app's language."
     },
     {
-      id: "motion-analysis", title: "Stabilize, flicker, denoise and tracking", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Steady and clean"], image: "motion", privacy: "mac",
-      summary: "Smooth shaky footage, remove flicker and grain, and track an object or a surface so titles and stickers can follow it.",
-      steps: ["Click Stabilize (or Lock the camera) under Steady and clean.", "Use Remove flicker and Denoise over time as needed.", "Under Track motion, drag a box around something, then Track object or Track surface; other clips can Follow it."]
+      id: "motion-analysis", title: "Stabilize, flicker and denoise", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Steady and clean"], image: "motion", privacy: "mac",
+      summary: "Smooth shaky footage or lock the camera like a tripod, and remove flicker and grain.",
+      steps: ["Click Stabilize (or Lock the camera) under Steady and clean.", "Use Remove flicker and Denoise over time as needed."]
+    },
+    {
+      id: "motion-tracking", title: "Motion, object, planar and point tracking", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Track motion"], image: "track-plane", privacy: "mac", focus: [22, 4, 78, 52],
+      summary: "Follow an object, a turning surface, a flat plane in perspective by its four corners, or a single point, from the playhead to the clip's end.",
+      steps: ["Select the clip and put the playhead where to start.", "Under Track motion, choose Object, Surface, Plane or Point.", "Drag a box around it (for a plane, then drag its four corners onto the surface; for a point, click it) and click Track.", "Hold still on a track keeps that spot still in the picture: the clip moves the other way, as keyframes."],
+      note: "A plane is matched against its first frame straightened out, so it does not drift; frames hidden for a moment are left out and filled in."
+    },
+    {
+      id: "follow-pin", title: "Follow a track, or pin onto a plane", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Follow a track"], image: "track-pin", privacy: "mac", focus: [22, 4, 78, 52],
+      summary: "Make a title, sticker or picture move with a track, or pin a picture or video onto a tracked plane, such as a screen or a wall.",
+      steps: ["Put the clip on a track above the tracked one and select it.", "Under Follow a track, choose the track; turn on Grow and shrink with it or Turn with it.", "For a plane, turn on Pin onto the plane and click Pin: the clip's corners follow the plane's, frame by frame."],
+      note: "It is all keyframes (position, size, turn, or corner pin) you can still edit."
     },
     {
       id: "vision", title: "Upscale, slow motion and object removal", chapter: "local", area: "inspector", where: ["Inspector", "Analyze", "Picture"], image: "vision", privacy: "mac",
@@ -726,9 +770,10 @@ window.TVE = {
       steps: ["Watch for Autosaved hh:mm in the top bar.", "After a crash, find the project on Home under Unsaved work.", "Click Recover to open it, or Discard to delete the copy."]
     },
     {
-      id: "languages", title: "English and Tamil", chapter: "setup", area: "home", where: ["Home", "Language"], image: "tamil-home",
-      summary: "The app speaks English and Tamil (தமிழ்); it follows your Mac's language or the one you choose.",
-      steps: ["Open the Language menu on the Home screen.", "Choose English or தமிழ்; the change shows at once, everywhere."]
+      id: "languages", title: "Eleven languages", chapter: "setup", area: "home", where: ["Home", "Language"], image: "languages-home",
+      summary: "English, தமிழ், Français, Deutsch, Español, हिन्दी, 日本語, 한국어, ไทย, Tiếng Việt and 简体中文; the app follows your Mac's language or the one you choose.",
+      steps: ["Open the Language menu at the bottom left of the Home screen.", "Choose a language; menus, messages, effect names, undo steps, numbers and dates change at once, everywhere."],
+      note: "Names of other products, file formats and what is sent to cloud services stay as they are."
     },
     {
       id: "shortcuts", title: "Keyboard shortcuts and presets", chapter: "setup", area: "topbar", where: ["Top bar", "Keyboard"], image: "shortcuts",

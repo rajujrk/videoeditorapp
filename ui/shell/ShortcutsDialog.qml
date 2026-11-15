@@ -11,6 +11,13 @@ import TechieVideoEditor.Player
 // takes them to another Mac and back. Changes save at once (KeyMap's keymap file).
 Popup {
     id: dialog
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
 
     property string recording       // the action waiting for a key press
     property string pendingKey      // a key in use elsewhere, waiting for Replace
@@ -130,7 +137,7 @@ Popup {
             Layout.fillWidth: true
             spacing: Theme.space.s
             Text { text: qsTr("Keys"); font: Theme.type.label; color: Theme.color.textSecondary }
-            ComboBox {
+            AppComboBox {
                 id: presetPicker
                 objectName: "shortcutPreset"
                 Layout.fillWidth: true

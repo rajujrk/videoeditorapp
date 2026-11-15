@@ -99,7 +99,7 @@ std::optional<FaceBox> PortraitCutout::subjectAt(Ticks mediaTime) const
 {
     if (subject.empty())
         return std::nullopt;
-    const MotionTrack track{0, false, subject};
+    const MotionTrack track{.id = 0, .samples = subject};
     TrackSample s = mediaTime <= subject.front().time ? subject.front()
                   : mediaTime >= subject.back().time  ? subject.back()
                                                       : *track.at(mediaTime);

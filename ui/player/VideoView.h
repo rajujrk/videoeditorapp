@@ -83,7 +83,7 @@ class VideoView : public QQuickRhiItem {
     Q_PROPERTY(double presentFps READ presentFps NOTIFY statsChanged)
     Q_PROPERTY(qint64 skippedFrames READ skippedFrames NOTIFY statsChanged)
     Q_PROPERTY(bool hardwareAccelerated READ hardwareAccelerated NOTIFY statsChanged)
-    Q_PROPERTY(QVariantList availableEffects READ availableEffects NOTIFY languageChanged)
+    Q_PROPERTY(QVariantList availableEffects READ availableEffects NOTIFY availableEffectsChanged)
     Q_PROPERTY(int enabledEffectCount READ enabledEffectCount NOTIFY effectsChanged)
     // While true, a small copy of each new preview frame (at most ~15 a second) goes to
     // scopeFrame() for the scopes; off, it costs nothing.
@@ -132,8 +132,8 @@ public:
     qint64 skippedFrames() const { return m_skipped; }
     bool hardwareAccelerated() const { return m_hardware; }
 
-    // One entry per built-in effect, overlays last: {id, title, categories, params: [{id,
-    // title, type, min, max, default, values, keyframable}]}.
+    // One entry per built-in effect, overlays last, then your own (category "mine"): {id, title,
+    // categories, params: [{id, title, type, min, max, default, values, keyframable}]}.
     QVariantList availableEffects() const;
     int enabledEffectCount() const;
 
@@ -193,6 +193,7 @@ public:
 
 signals:
     void languageChanged(); // the effects' names are read again
+    void availableEffectsChanged();
     void sourceChanged();
     void statsChanged();
     void effectsChanged();

@@ -108,11 +108,16 @@ Rectangle {
         const track = trackAtY(y)
         let at = Math.max(0, x / pixelsPerSecond)
         if (goesOnClip(key, value)) {
-            if (!track) {
-                project.dropOnClip(key === "application/x-tve-look" ? "look" : "effect", value, -1, at) // (says why)
-                return false
+            // Your own: an effect stack ("stack.<n>"), a saved filter ("preset:<name>").
+            let kind = key === "application/x-tve-look" ? "look" : "effect"
+            let id = value
+            if (kind === "effect" && value.startsWith("stack.")) {
+                kind = "stack"
+            } else if (kind === "look" && value.startsWith("preset:")) {
+                kind = "preset"
+                id = value.substring(7)
             }
-            return project.dropOnClip(key === "application/x-tve-look" ? "look" : "effect", value, track.id, at)
+            return project.dropOnClip(kind, id, track ? track.id : -1, at) // (no track: says why)
         }
         if (snapToggle.checked)
             at = project.snap(at, snapPixels / pixelsPerSecond)
@@ -625,11 +630,16 @@ Rectangle {
                 Connections {
                     target: timeline.project
                     function onPlayheadChanged() {
-                        if (!timeline.project.playing)
-                            return
                         const x = timeline.project.playhead * timeline.pixelsPerSecond
-                        if (x > lanes.contentX + lanes.width - 60 || x < lanes.contentX)
-                            lanes.contentX = Math.max(0, x - 120)
+                        if (timeline.project.playing) {
+                            if (x > lanes.contentX + lanes.width - 60 || x < lanes.contentX)
+                                lanes.contentX = Math.max(0, x - 120)
+                            return
+                        }
+                        // A jump out of view (to the start or end, a marker, the next edit): the
+                        // timeline follows. (Dragging on the ruler stays in view by itself.)
+                        if (x > lanes.contentX + lanes.width || x < lanes.contentX)
+                            lanes.contentX = Math.max(0, Math.min(Math.max(0, lanes.contentWidth - lanes.width), x - lanes.width / 3))
                     }
                 }
 

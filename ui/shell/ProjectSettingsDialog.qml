@@ -9,6 +9,13 @@ import TechieVideoEditor.Player
 // fit the new shape), and the whole project archived with its media into one folder.
 Popup {
     id: dialog
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     objectName: "projectSettingsDialog"
     required property var project
 
@@ -81,7 +88,7 @@ Popup {
             columnSpacing: Theme.space.m
             rowSpacing: Theme.space.s
             Text { text: qsTr("Size"); font: Theme.type.label; color: Theme.color.textSecondary }
-            ComboBox {
+            AppComboBox {
                 id: sizePicker
                 objectName: "canvasSize"
                 Layout.fillWidth: true
@@ -113,7 +120,7 @@ Popup {
                 Text { text: qsTr("pixels"); font: Theme.type.caption; color: Theme.color.textSecondary }
             }
             Text { text: qsTr("Frame rate"); font: Theme.type.label; color: Theme.color.textSecondary }
-            ComboBox {
+            AppComboBox {
                 id: ratePicker
                 objectName: "canvasRate"
                 Layout.fillWidth: true

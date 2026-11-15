@@ -476,8 +476,92 @@
         <translation>இயக்கத்தைப் பின்தொடர்</translation>
     </message>
     <message>
-        <source>Follows something through the clip from the playhead, so titles and stickers can move with it.</source>
-        <translation>இயக்கக்குறியிலிருந்து கிளிப் முழுவதும் ஒன்றைப் பின்தொடர்கிறது, அதனால் தலைப்புகளும் ஸ்டிக்கர்களும் அதனுடன் நகரலாம்.</translation>
+        <source>Follows something through the clip from the playhead, so titles and stickers can move with it, a picture can be pinned onto a surface, or the shot held still on it.</source>
+        <translation>இயக்கக்குறியிலிருந்து கிளிப் முழுவதும் ஒன்றைப் பின்தொடரும்; தலைப்புகளும் ஸ்டிக்கர்களும் அதனுடன் நகரலாம், ஒரு படத்தை ஒரு பரப்பில் பொருத்தலாம், அல்லது ஷாட்டை அதில் அசையாமல் வைக்கலாம்.</translation>
+    </message>
+    <message>
+        <source>Object</source>
+        <translation>பொருள்</translation>
+    </message>
+    <message>
+        <source>Surface</source>
+        <translation>பரப்பு</translation>
+    </message>
+    <message>
+        <source>Plane</source>
+        <translation>தளம்</translation>
+    </message>
+    <message>
+        <source>Any flat textured surface in perspective, by its four corners: pin a picture or video onto it</source>
+        <translation>தோற்றக்கோணத்தில் உள்ள எந்தத் தட்டையான அமைப்புள்ள பரப்பும், அதன் நான்கு மூலைகளால்: அதன் மேல் ஒரு படம் அல்லது வீடியோவைப் பொருத்தவும்</translation>
+    </message>
+    <message>
+        <source>Point</source>
+        <translation>புள்ளி</translation>
+    </message>
+    <message>
+        <source>One small spot, for its position: to hold the shot still on it, or pin something there</source>
+        <translation>ஒரு சிறிய இடம், அதன் நிலைக்காக: ஷாட்டை அதில் அசையாமல் வைக்க, அல்லது அங்கே எதையாவது பொருத்த</translation>
+    </message>
+    <message>
+        <source>Click the point on the player…</source>
+        <translation>பிளேயரில் புள்ளியைச் சொடுக்கவும்…</translation>
+    </message>
+    <message>
+        <source>Drag a box on the player, then its corners…</source>
+        <translation>பிளேயரில் ஒரு பெட்டியை இழுக்கவும், பின் அதன் மூலைகளை…</translation>
+    </message>
+    <message>
+        <source>Choose the point</source>
+        <translation>புள்ளியைத் தேர்ந்தெடு</translation>
+    </message>
+    <message>
+        <source>Place the corners</source>
+        <translation>மூலைகளை வை</translation>
+    </message>
+    <message>
+        <source>Track</source>
+        <translation>பின்தொடர்</translation>
+    </message>
+    <message>
+        <source>Follows it from the playhead to the end of the clip, in the background</source>
+        <translation>இயக்கக்குறியிலிருந்து கிளிப்பின் இறுதி வரை பின்னணியில் பின்தொடரும்</translation>
+    </message>
+    <message>
+        <source>plane</source>
+        <translation>தளம்</translation>
+    </message>
+    <message>
+        <source>point</source>
+        <translation>புள்ளி</translation>
+    </message>
+    <message>
+        <source>surface</source>
+        <translation>பரப்பு</translation>
+    </message>
+    <message>
+        <source>object</source>
+        <translation>பொருள்</translation>
+    </message>
+    <message>
+        <source>Track %1 · %2 · %3–%4 s</source>
+        <translation>தடம் %1 · %2 · %3–%4 வி</translation>
+    </message>
+    <message>
+        <source>Hold still</source>
+        <translation>அசையாமல் வை</translation>
+    </message>
+    <message>
+        <source>Keeps what this track follows still in the picture: the clip moves the other way, as keyframes</source>
+        <translation>இந்தத் தடம் பின்தொடர்வதைப் படத்தில் அசையாமல் வைக்கும்: கிளிப் எதிர்த் திசையில் நகரும், கீஃப்ரேம்களாக</translation>
+    </message>
+    <message>
+        <source>Turn with it (surfaces and planes)</source>
+        <translation>அதனுடன் சுழல் (பரப்புகளும் தளங்களும்)</translation>
+    </message>
+    <message>
+        <source>Pin onto the plane (its corners)</source>
+        <translation>தளத்தின் மேல் பொருத்து (அதன் மூலைகள்)</translation>
     </message>
     <message>
         <source>Draw again</source>
@@ -488,28 +572,12 @@
         <translation>பின்தொடர வேண்டியதைத் தேர்ந்தெடுக்கவும்</translation>
     </message>
     <message>
-        <source>Track object</source>
-        <translation>பொருளைப் பின்தொடர்</translation>
-    </message>
-    <message>
         <source>Something that moves and may change shape: a person, a car, a ball</source>
         <translation>நகர்ந்து வடிவம் மாறக்கூடிய ஒன்று: ஒரு நபர், ஒரு கார், ஒரு பந்து</translation>
     </message>
     <message>
-        <source>Track surface</source>
-        <translation>பரப்பைப் பின்தொடர்</translation>
-    </message>
-    <message>
         <source>A flat rectangle that also turns: a screen, a sign, a page</source>
         <translation>சுழலவும் செய்யும் ஒரு தட்டையான செவ்வகம்: ஒரு திரை, ஒரு பலகை, ஒரு பக்கம்</translation>
-    </message>
-    <message>
-        <source>Track %1 · surface · %2–%3 s</source>
-        <translation>பின்தொடர்வு %1 · பரப்பு · %2–%3 வி</translation>
-    </message>
-    <message>
-        <source>Track %1 · object · %2–%3 s</source>
-        <translation>பின்தொடர்வு %1 · பொருள் · %2–%3 வி</translation>
     </message>
     <message>
         <source>Delete</source>
@@ -524,12 +592,16 @@
         <translation>அதனுடன் பெரிதாகி சிறிதாகு</translation>
     </message>
     <message>
-        <source>Turn with it (surfaces)</source>
-        <translation>அதனுடன் சுழல் (பரப்புகள்)</translation>
-    </message>
-    <message>
         <source>Follow</source>
         <translation>பின்பற்று</translation>
+    </message>
+    <message>
+        <source>Pin</source>
+        <translation>பொருத்து</translation>
+    </message>
+    <message>
+        <source>Pins this clip&apos;s corners onto the plane&apos;s in every frame, as corner pin keyframes</source>
+        <translation>ஒவ்வொரு சட்டத்திலும் இந்தக் கிளிப்பின் மூலைகளைத் தளத்தின் மூலைகளில் பொருத்தும், மூலைப் பொருத்தக் கீஃப்ரேம்களாக</translation>
     </message>
     <message>
         <source>Moves this clip with the track from where it is at the playhead, as keyframes</source>
@@ -5022,6 +5094,10 @@ Third, 4</source>
         <translation>மேலடுக்கு</translation>
     </message>
     <message>
+        <source>Mine</source>
+        <translation>என்னுடையவை</translation>
+    </message>
+    <message>
         <source>Every tag</source>
         <translation>எல்லாக் குறிச்சொற்களும்</translation>
     </message>
@@ -5228,6 +5304,77 @@ Third, 4</source>
     <message>
         <source>s</source>
         <translation>வி</translation>
+    </message>
+    <message>
+        <source>Add your own…</source>
+        <translation>உங்களுடையதைச் சேர்…</translation>
+    </message>
+    <message>
+        <source>A picture (PNG with transparency, JPEG, WebP, GIF) or a Lottie animation</source>
+        <translation>ஒரு படம் (ஒளிபுகும் PNG, JPEG, WebP, GIF) அல்லது ஒரு Lottie அசைவூட்டம்</translation>
+    </message>
+    <message>
+        <source>From the selected clip</source>
+        <translation>தேர்ந்தெடுத்த கிளிப்பிலிருந்து</translation>
+    </message>
+    <message>
+        <source>The selected picture or animation, or a video&apos;s frame at the playhead, as a sticker</source>
+        <translation>தேர்ந்தெடுத்த படம் அல்லது அசைவூட்டம், அல்லது இயக்கக்குறியில் உள்ள வீடியோ சட்டம், ஸ்டிக்கராக</translation>
+    </message>
+    <message>
+        <source>New effect…</source>
+        <translation>புதிய விளைவு…</translation>
+    </message>
+    <message>
+        <source>Write your own effect for the GPU, with sliders of your own, and see it as you type</source>
+        <translation>GPU-க்கு உங்கள் சொந்த விளைவை எழுதுங்கள், உங்கள் சொந்த ஸ்லைடர்களுடன், தட்டச்சு செய்யும்போதே பாருங்கள்</translation>
+    </message>
+    <message>
+        <source>Save the clip&apos;s effects…</source>
+        <translation>கிளிப்பின் விளைவுகளைச் சேமி…</translation>
+    </message>
+    <message>
+        <source>Keeps the selected clip&apos;s effects and their settings as one effect of yours</source>
+        <translation>தேர்ந்தெடுத்த கிளிப்பின் விளைவுகளையும் அவற்றின் அமைப்புகளையும் உங்களின் ஒரே விளைவாக வைக்கும்</translation>
+    </message>
+    <message>
+        <source>Name your effect</source>
+        <translation>உங்கள் விளைவுக்குப் பெயரிடுங்கள்</translation>
+    </message>
+    <message>
+        <source>Import…</source>
+        <translation>இறக்கு…</translation>
+    </message>
+    <message>
+        <source>An effect someone made in the shader editor (.tveeffect)</source>
+        <translation>ஷேடர் எடிட்டரில் ஒருவர் செய்த விளைவு (.tveeffect)</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n effect(s)</source>
+        <translation>
+            <numerusform>%n விளைவு</numerusform>
+            <numerusform>%n விளைவுகள்</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Save the clip&apos;s grade…</source>
+        <translation>கிளிப்பின் நிறத் திருத்தத்தைச் சேமி…</translation>
+    </message>
+    <message>
+        <source>Keeps the selected clip&apos;s colour grade (and its LUT) as a filter of yours</source>
+        <translation>தேர்ந்தெடுத்த கிளிப்பின் நிறத் திருத்தத்தை (அதன் LUT-உடன்) உங்கள் வடிகட்டியாக வைக்கும்</translation>
+    </message>
+    <message>
+        <source>Name your filter</source>
+        <translation>உங்கள் வடிகட்டிக்குப் பெயரிடுங்கள்</translation>
+    </message>
+    <message>
+        <source>Import a LUT…</source>
+        <translation>ஒரு LUT-ஐ இறக்கு…</translation>
+    </message>
+    <message>
+        <source>A .cube or .3dl LUT as a filter of yours</source>
+        <translation>ஒரு .cube அல்லது .3dl LUT உங்கள் வடிகட்டியாக</translation>
     </message>
     <message>
         <source>Adjustment layer</source>
@@ -5480,6 +5627,54 @@ Third, 4</source>
     <message>
         <source>Delete this preset</source>
         <translation>இந்த முன்னமைவை நீக்கு</translation>
+    </message>
+    <message>
+        <source>Edit in the shader editor…</source>
+        <translation>ஷேடர் எடிட்டரில் திருத்து…</translation>
+    </message>
+    <message>
+        <source>Export…</source>
+        <translation>ஏற்றுமதி…</translation>
+    </message>
+    <message>
+        <source>Delete “%1”</source>
+        <translation>“%1”-ஐ நீக்கு</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>பெயர்</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>சேமி</translation>
+    </message>
+    <message>
+        <source>Choose a picture or animation for your stickers</source>
+        <translation>உங்கள் ஸ்டிக்கர்களுக்கு ஒரு படம் அல்லது அசைவூட்டத்தைத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>Pictures and animations (*.png *.jpg *.jpeg *.webp *.gif *.json)</source>
+        <translation>படங்களும் அசைவூட்டங்களும் (*.png *.jpg *.jpeg *.webp *.gif *.json)</translation>
+    </message>
+    <message>
+        <source>Choose a LUT to keep as a filter</source>
+        <translation>வடிகட்டியாக வைக்க ஒரு LUT-ஐத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>LUTs (*.cube *.3dl)</source>
+        <translation>LUTகள் (*.cube *.3dl)</translation>
+    </message>
+    <message>
+        <source>Choose an effect to bring in</source>
+        <translation>கொண்டுவர ஒரு விளைவைத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>Effects (*.tveeffect)</source>
+        <translation>விளைவுகள் (*.tveeffect)</translation>
+    </message>
+    <message>
+        <source>Export your effect</source>
+        <translation>உங்கள் விளைவை ஏற்றுமதி செய்</translation>
     </message>
     <message>
         <source>Choose your logo</source>
@@ -6055,6 +6250,10 @@ Third, 4</source>
         <translation>தவிர்த்தவை %1 · விளைவுகள் %2</translation>
     </message>
     <message>
+        <source>Go to the start</source>
+        <translation>தொடக்கத்துக்குச் செல்</translation>
+    </message>
+    <message>
         <source>Mark In</source>
         <translation>தொடக்கக்குறி இடு</translation>
     </message>
@@ -6077,6 +6276,10 @@ Third, 4</source>
     <message>
         <source>Mark Out</source>
         <translation>முடிவுக்குறி இடு</translation>
+    </message>
+    <message>
+        <source>Go to the end</source>
+        <translation>இறுதிக்குச் செல்</translation>
     </message>
     <message>
         <source>Loop: play round again from the start (of In to Out, when marked)</source>
@@ -6395,6 +6598,54 @@ Third, 4</source>
     <message>
         <source>The preset %1 is damaged</source>
         <translation>%1 முன்னமைவு சேதமடைந்துள்ளது</translation>
+    </message>
+    <message>
+        <source>Name the filter</source>
+        <translation>வடிகட்டிக்குப் பெயரிடுங்கள்</translation>
+    </message>
+    <message>
+        <source>Name your effect</source>
+        <translation>உங்கள் விளைவுக்குப் பெயரிடுங்கள்</translation>
+    </message>
+    <message>
+        <source>This clip has no effects to save</source>
+        <translation>இந்தக் கிளிப்பில் சேமிக்க விளைவுகள் இல்லை</translation>
+    </message>
+    <message>
+        <source>Could not save your effect</source>
+        <translation>உங்கள் விளைவைச் சேமிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Select a clip with a picture</source>
+        <translation>படமுள்ள ஒரு கிளிப்பைத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>No such effect of yours</source>
+        <translation>அப்படி உங்கள் விளைவு எதுவும் இல்லை</translation>
+    </message>
+    <message>
+        <source>None of its effects are there any more</source>
+        <translation>அதன் விளைவுகளில் எதுவும் இப்போது இல்லை</translation>
+    </message>
+    <message>
+        <source>No such sticker of yours</source>
+        <translation>அப்படி உங்கள் ஸ்டிக்கர் எதுவும் இல்லை</translation>
+    </message>
+    <message>
+        <source>Select a picture, an animation or a video clip</source>
+        <translation>ஒரு படம், அசைவூட்டம் அல்லது வீடியோ கிளிப்பைத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>This picture&apos;s kind of file cannot be a sticker</source>
+        <translation>இந்த வகைப் படக் கோப்பு ஸ்டிக்கராக முடியாது</translation>
+    </message>
+    <message>
+        <source>Could not read the frame at the playhead</source>
+        <translation>இயக்கக்குறியில் உள்ள சட்டத்தைப் படிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Could not keep the frame</source>
+        <translation>சட்டத்தை வைக்க முடியவில்லை</translation>
     </message>
     <message>
         <source>Select a clip to animate</source>
@@ -7093,6 +7344,30 @@ Third, 4</source>
         <translation>இயல்பான வேகத்தில் இயங்கும் கிளிப்புகளில் மட்டுமே பகுப்பாய்வு செயல்படும்</translation>
     </message>
     <message>
+        <source>Place all four corners</source>
+        <translation>நான்கு மூலைகளையும் வையுங்கள்</translation>
+    </message>
+    <message>
+        <source>The four corners must make a shape with four sides</source>
+        <translation>நான்கு மூலைகளும் நான்கு பக்கங்கள் கொண்ட வடிவத்தை உருவாக்க வேண்டும்</translation>
+    </message>
+    <message>
+        <source>No such kind of tracking</source>
+        <translation>அப்படி ஒரு பின்தொடர்வு வகை இல்லை</translation>
+    </message>
+    <message>
+        <source>Place the four corners on the flat surface first</source>
+        <translation>முதலில் தட்டையான பரப்பில் நான்கு மூலைகளையும் வையுங்கள்</translation>
+    </message>
+    <message>
+        <source>Select the clip whose track to hold still</source>
+        <translation>தடத்தை அசையாமல் வைக்க வேண்டிய கிளிப்பைத் தேர்ந்தெடுங்கள்</translation>
+    </message>
+    <message>
+        <source>Only a plane&apos;s track can have something pinned onto it</source>
+        <translation>ஒரு தளத்தின் தடத்தில் மட்டுமே எதையாவது பொருத்த முடியும்</translation>
+    </message>
+    <message>
         <source>The new media is shorter, so the clip is shorter too</source>
         <translation>புதிய ஊடகம் சிறியது, அதனால் கிளிப்பும் சிறியதாகிறது</translation>
     </message>
@@ -7758,6 +8033,58 @@ Third, 4</source>
         <source>Could not write %1</source>
         <translation>%1 ஐ எழுத முடியவில்லை</translation>
     </message>
+    <message>
+        <source>Could not make %1</source>
+        <translation>%1-ஐ உருவாக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>Could not save the effect in %1</source>
+        <translation>விளைவை %1-இல் சேமிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>“%1” cannot name a setting: use small letters, digits and _, starting with a letter</source>
+        <translation>“%1” ஒரு அமைப்புக்குப் பெயராக முடியாது: சிறிய எழுத்துகள், எண்கள், _ ஆகியவற்றைப் பயன்படுத்துங்கள், ஒரு எழுத்தில் தொடங்கி</translation>
+    </message>
+    <message>
+        <source>Two settings are called “%1”</source>
+        <translation>இரண்டு அமைப்புகளுக்கு “%1” என்று பெயர்</translation>
+    </message>
+    <message>
+        <source>Write a function vec4 effect(vec2 uv) that returns the colour at uv</source>
+        <translation>uv-இல் உள்ள நிறத்தைத் தரும் vec4 effect(vec2 uv) என்ற செயற்கூற்றை எழுதுங்கள்</translation>
+    </message>
+    <message>
+        <source>Line \1:</source>
+        <translation>வரி \1:</translation>
+    </message>
+    <message>
+        <source>The shader could not be compiled</source>
+        <translation>ஷேடரைத் தொகுக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>No such effect of yours</source>
+        <translation>அப்படி உங்கள் விளைவு எதுவும் இல்லை</translation>
+    </message>
+    <message>
+        <source>Cannot read %1</source>
+        <translation>%1-ஐப் படிக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>%1 is not an effect made in the shader editor</source>
+        <translation>%1 ஷேடர் எடிட்டரில் செய்த விளைவு அல்ல</translation>
+    </message>
+    <message>
+        <source>Could not copy %1</source>
+        <translation>%1-ஐ நகலெடுக்க முடியவில்லை</translation>
+    </message>
+    <message>
+        <source>A sticker is a picture (PNG, JPEG, WebP, GIF) or a Lottie animation (.json)</source>
+        <translation>ஸ்டிக்கர் என்பது ஒரு படம் (PNG, JPEG, WebP, GIF) அல்லது ஒரு Lottie அசைவூட்டம் (.json)</translation>
+    </message>
+    <message>
+        <source>A LUT is a .cube or .3dl file</source>
+        <translation>LUT என்பது ஒரு .cube அல்லது .3dl கோப்பு</translation>
+    </message>
 </context>
 <context>
     <name>RecordCountdown</name>
@@ -8102,6 +8429,101 @@ Third, 4</source>
     <message>
         <source>Use this area</source>
         <translation>இந்தப் பகுதியைப் பயன்படுத்து</translation>
+    </message>
+</context>
+<context>
+    <name>ShaderEditor</name>
+    <message>
+        <source>My effect</source>
+        <translation>என் விளைவு</translation>
+    </message>
+    <message>
+        <source>Amount</source>
+        <translation>அளவு</translation>
+    </message>
+    <message>
+        <source>Tint</source>
+        <translation>சாயல்</translation>
+    </message>
+    <message>
+        <source>New effect</source>
+        <translation>புதிய விளைவு</translation>
+    </message>
+    <message>
+        <source>Edit your effect</source>
+        <translation>உங்கள் விளைவைத் திருத்து</translation>
+    </message>
+    <message>
+        <source>Its name</source>
+        <translation>அதன் பெயர்</translation>
+    </message>
+    <message>
+        <source>GLSL: tve_source, tve_time, tve_texelSize, and tveLuma, tveNoise, tveSample are there for you.</source>
+        <translation>GLSL: tve_source, tve_time, tve_texelSize, மற்றும் tveLuma, tveNoise, tveSample உங்களுக்காக உள்ளன.</translation>
+    </message>
+    <message>
+        <source>Compiling…</source>
+        <translation>தொகுக்கிறது…</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>அமைப்புகள்</translation>
+    </message>
+    <message>
+        <source>name</source>
+        <translation>பெயர்</translation>
+    </message>
+    <message>
+        <source>Title</source>
+        <translation>தலைப்பு</translation>
+    </message>
+    <message>
+        <source>Slider</source>
+        <translation>ஸ்லைடர்</translation>
+    </message>
+    <message>
+        <source>Colour</source>
+        <translation>நிறம்</translation>
+    </message>
+    <message>
+        <source>Remove this setting</source>
+        <translation>இந்த அமைப்பை நீக்கு</translation>
+    </message>
+    <message>
+        <source>From</source>
+        <translation>இருந்து</translation>
+    </message>
+    <message>
+        <source>to</source>
+        <translation>வரை</translation>
+    </message>
+    <message>
+        <source>starts at</source>
+        <translation>தொடக்கம்</translation>
+    </message>
+    <message>
+        <source>Add a setting</source>
+        <translation>ஒரு அமைப்பைச் சேர்</translation>
+    </message>
+    <message>
+        <source>Value %1</source>
+        <translation>மதிப்பு %1</translation>
+    </message>
+    <message>
+        <source>Compiles: the preview is your effect on the sample scene.</source>
+        <translation>தொகுக்கப்படுகிறது: முன்னோட்டம் மாதிரிக் காட்சியில் உங்கள் விளைவு.</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>சரிபார்</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>ரத்துசெய்</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>சேமி</translation>
     </message>
 </context>
 <context>
@@ -9953,6 +10375,14 @@ The Journey</source>
 </context>
 <context>
     <name>TrackOverlay</name>
+    <message>
+        <source>Click the point to follow</source>
+        <translation>பின்தொடர வேண்டிய புள்ளியைச் சொடுக்கவும்</translation>
+    </message>
+    <message>
+        <source>Drag a box over the flat surface; then move each corner onto its corners</source>
+        <translation>தட்டையான பரப்பின் மேல் ஒரு பெட்டியை இழுக்கவும்; பின் ஒவ்வொரு மூலையையும் அதன் மூலைகளுக்கு நகர்த்தவும்</translation>
+    </message>
     <message>
         <source>Drag a box around what to follow</source>
         <translation>பின்தொடர வேண்டியதைச் சுற்றி ஒரு பெட்டியை இழுக்கவும்</translation>
@@ -12565,6 +12995,10 @@ The Journey</source>
         <translation>நிற முன்னமைவைப் பயன்படுத்து</translation>
     </message>
     <message>
+        <source>Add My Effect</source>
+        <translation>என் விளைவைச் சேர்</translation>
+    </message>
+    <message>
         <source>Add Keyframe</source>
         <translation>கீஃப்ரேமைச் சேர்</translation>
     </message>
@@ -12909,8 +13343,16 @@ The Journey</source>
         <translation>பின்தொடர்வை நீக்கு</translation>
     </message>
     <message>
+        <source>Pin to Plane</source>
+        <translation>தளத்தில் பொருத்து</translation>
+    </message>
+    <message>
         <source>Follow Track</source>
         <translation>பின்தொடர்வைப் பின்பற்று</translation>
+    </message>
+    <message>
+        <source>Hold Still</source>
+        <translation>அசையாமல் வை</translation>
     </message>
     <message>
         <source>Upscale</source>
@@ -14087,6 +14529,10 @@ The Journey</source>
     <message>
         <source>Nothing to follow there.</source>
         <translation>அங்கே பின்தொடர எதுவும் இல்லை.</translation>
+    </message>
+    <message>
+        <source>Place the four corners on the flat surface to follow first.</source>
+        <translation>முதலில் பின்தொடர வேண்டிய தட்டையான பரப்பில் நான்கு மூலைகளையும் வையுங்கள்.</translation>
     </message>
     <message>
         <source>The model&apos;s settings could not be read.</source>

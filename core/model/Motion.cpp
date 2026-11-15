@@ -274,8 +274,205 @@ std::optional<TrackSample> MotionTrack::at(Ticks mediaTime) const
     const TrackSample& a = *(next - 1);
     const double u = double(mediaTime - a.time) / double(std::max<Ticks>(1, b.time - a.time));
     const auto mix = [u](double p, double q) { return p + (q - p) * u; };
-    return TrackSample{mediaTime, mix(a.x, b.x), mix(a.y, b.y), mix(a.width, b.width), mix(a.height, b.height),
-                       mix(a.angle, b.angle)};
+    TrackSample out{mediaTime, mix(a.x, b.x), mix(a.y, b.y), mix(a.width, b.width), mix(a.height, b.height),
+                    mix(a.angle, b.angle)};
+    if (a.hasCorners() && b.hasCorners())
+        for (std::size_t i = 0; i < out.corners.size(); ++i)
+            out.corners[i] = mix(a.corners[i], b.corners[i]);
+    return out;
+}
+
+bool TrackSample::hasCorners() const
+{
+    return std::ranges::any_of(corners, [](double c) { return c != 0.0; });
+}
+
+TrackSample sampleOfQuad(Ticks time, const Quad& c)
+{
+    const double cx = (c[0] + c[2] + c[4] + c[6]) / 4, cy = (c[1] + c[3] + c[5] + c[7]) / 4;
+    const double top = std::hypot(c[2] - c[0], c[3] - c[1]), bottom = std::hypot(c[4] - c[6], c[5] - c[7]);
+    const double left = std::hypot(c[6] - c[0], c[7] - c[1]), right = std::hypot(c[4] - c[2], c[5] - c[3]);
+    const double angle = std::atan2((c[3] - c[1]) + (c[5] - c[7]), (c[2] - c[0]) + (c[4] - c[6]));
+    TrackSample s{time, cx, cy, (top + bottom) / 2, (left + right) / 2, angle};
+    s.corners = c;
+    return s;
+}
+
+// --- Homographies ---
+
+std::pair<double, double> Homography::apply(double x, double y) const
+{
+    const double w = m[6] * x + m[7] * y + m[8];
+    const double d = std::abs(w) < 1e-12 ? 1e-12 : w;
+    return {(m[0] * x + m[1] * y + m[2]) / d, (m[3] * x + m[4] * y + m[5]) / d};
+}
+
+Quad Homography::apply(const Quad& q) const
+{
+    Quad out{};
+    for (std::size_t i = 0; i < 4; ++i) {
+        const auto [x, y] = apply(q[i * 2], q[i * 2 + 1]);
+        out[i * 2] = x;
+        out[i * 2 + 1] = y;
+    }
+    return out;
+}
+
+std::optional<Homography> Homography::inverse() const
+{
+    const auto& a = m;
+    const double c00 = a[4] * a[8] - a[5] * a[7], c01 = a[5] * a[6] - a[3] * a[8], c02 = a[3] * a[7] - a[4] * a[6];
+    const double det = a[0] * c00 + a[1] * c01 + a[2] * c02;
+    if (std::abs(det) < 1e-15)
+        return std::nullopt;
+    Homography h;
+    h.m = {c00 / det,
+           (a[2] * a[7] - a[1] * a[8]) / det,
+           (a[1] * a[5] - a[2] * a[4]) / det,
+           c01 / det,
+           (a[0] * a[8] - a[2] * a[6]) / det,
+           (a[2] * a[3] - a[0] * a[5]) / det,
+           c02 / det,
+           (a[1] * a[6] - a[0] * a[7]) / det,
+           (a[0] * a[4] - a[1] * a[3]) / det};
+    return h;
+}
+
+Homography Homography::then(const Homography& next) const
+{
+    // next × this
+    Homography h;
+    for (int r = 0; r < 3; ++r)
+        for (int c = 0; c < 3; ++c) {
+            double v = 0.0;
+            for (int k = 0; k < 3; ++k)
+                v += next.m[std::size_t(r * 3 + k)] * m[std::size_t(k * 3 + c)];
+            h.m[std::size_t(r * 3 + c)] = v;
+        }
+    return h;
+}
+
+namespace {
+
+// Solves a small dense system A x = b (n unknowns, least squares when more rows) by the normal
+// equations and Gaussian elimination with partial pivoting.
+std::optional<std::vector<double>> solveLeastSquares(const std::vector<std::vector<double>>& rows, const std::vector<double>& b,
+                                                     std::size_t n)
+{
+    std::vector<std::vector<double>> ata(n, std::vector<double>(n + 1, 0.0));
+    for (std::size_t r = 0; r < rows.size(); ++r)
+        for (std::size_t i = 0; i < n; ++i) {
+            for (std::size_t j = 0; j < n; ++j)
+                ata[i][j] += rows[r][i] * rows[r][j];
+            ata[i][n] += rows[r][i] * b[r];
+        }
+    for (std::size_t col = 0; col < n; ++col) {
+        std::size_t pivot = col;
+        for (std::size_t r = col + 1; r < n; ++r)
+            if (std::abs(ata[r][col]) > std::abs(ata[pivot][col]))
+                pivot = r;
+        if (std::abs(ata[pivot][col]) < 1e-14)
+            return std::nullopt;
+        std::swap(ata[col], ata[pivot]);
+        for (std::size_t r = 0; r < n; ++r) {
+            if (r == col)
+                continue;
+            const double f = ata[r][col] / ata[col][col];
+            for (std::size_t c = col; c <= n; ++c)
+                ata[r][c] -= f * ata[col][c];
+        }
+    }
+    std::vector<double> x(n);
+    for (std::size_t i = 0; i < n; ++i)
+        x[i] = ata[i][n] / ata[i][i];
+    return x;
+}
+
+} // namespace
+
+std::optional<Homography> fitHomography(const std::vector<std::pair<double, double>>& from,
+                                        const std::vector<std::pair<double, double>>& to)
+{
+    if (from.size() < 4 || from.size() != to.size())
+        return std::nullopt;
+    // Normalised (centred, unit spread) for a well-conditioned solve, then undone.
+    const auto normaliser = [](const std::vector<std::pair<double, double>>& pts) {
+        double cx = 0, cy = 0;
+        for (const auto& [x, y] : pts)
+            cx += x, cy += y;
+        cx /= double(pts.size());
+        cy /= double(pts.size());
+        double spread = 0;
+        for (const auto& [x, y] : pts)
+            spread += std::hypot(x - cx, y - cy);
+        spread = std::max(1e-12, spread / double(pts.size()));
+        const double s = std::sqrt(2.0) / spread;
+        Homography t;
+        t.m = {s, 0, -s * cx, 0, s, -s * cy, 0, 0, 1};
+        return t;
+    };
+    const Homography tf = normaliser(from), tt = normaliser(to);
+    std::vector<std::vector<double>> rows;
+    std::vector<double> b;
+    for (std::size_t i = 0; i < from.size(); ++i) {
+        const auto [x, y] = tf.apply(from[i].first, from[i].second);
+        const auto [u, v] = tt.apply(to[i].first, to[i].second);
+        rows.push_back({x, y, 1, 0, 0, 0, -u * x, -u * y});
+        b.push_back(u);
+        rows.push_back({0, 0, 0, x, y, 1, -v * x, -v * y});
+        b.push_back(v);
+    }
+    const auto h = solveLeastSquares(rows, b, 8);
+    if (!h)
+        return std::nullopt;
+    Homography n;
+    n.m = {(*h)[0], (*h)[1], (*h)[2], (*h)[3], (*h)[4], (*h)[5], (*h)[6], (*h)[7], 1.0};
+    const auto back = tt.inverse();
+    if (!back)
+        return std::nullopt;
+    return tf.then(n).then(*back);
+}
+
+namespace {
+
+// Whether a quad is usable: no three corners (nearly) in a line.
+bool properQuad(const Quad& q)
+{
+    double scale = 0.0;
+    for (std::size_t i = 0; i < 4; ++i)
+        for (std::size_t j = i + 1; j < 4; ++j)
+            scale = std::max(scale, std::hypot(q[i * 2] - q[j * 2], q[i * 2 + 1] - q[j * 2 + 1]));
+    if (scale <= 0.0)
+        return false;
+    for (std::size_t skip = 0; skip < 4; ++skip) {
+        std::array<std::size_t, 3> c{};
+        std::size_t n = 0;
+        for (std::size_t i = 0; i < 4; ++i)
+            if (i != skip)
+                c[n++] = i;
+        const double area = (q[c[1] * 2] - q[c[0] * 2]) * (q[c[2] * 2 + 1] - q[c[0] * 2 + 1])
+                          - (q[c[2] * 2] - q[c[0] * 2]) * (q[c[1] * 2 + 1] - q[c[0] * 2 + 1]);
+        if (std::abs(area) < 1e-6 * scale * scale)
+            return false;
+    }
+    return true;
+}
+
+} // namespace
+
+std::optional<Homography> squareToQuad(const Quad& q)
+{
+    if (!properQuad(q))
+        return std::nullopt;
+    return fitHomography({{0, 0}, {1, 0}, {1, 1}, {0, 1}}, {{q[0], q[1]}, {q[2], q[3]}, {q[4], q[5]}, {q[6], q[7]}});
+}
+
+std::optional<Homography> quadToQuad(const Quad& from, const Quad& to)
+{
+    if (!properQuad(from) || !properQuad(to))
+        return std::nullopt;
+    return fitHomography({{from[0], from[1]}, {from[2], from[3]}, {from[4], from[5]}, {from[6], from[7]}},
+                         {{to[0], to[1]}, {to[2], to[3]}, {to[4], to[5]}, {to[6], to[7]}});
 }
 
 std::vector<TrackSample> thinTrack(const std::vector<TrackSample>& samples, double tolerance)
@@ -307,6 +504,15 @@ std::vector<TrackSample> thinTrack(const std::vector<TrackSample>& samples, doub
                     at = i;
                 }
             }
+            // A plane's corners too (its perspective can change while its centre does not).
+            if (s.hasCorners() && p.hasCorners() && q.hasCorners())
+                for (std::size_t c = 0; c < s.corners.size(); ++c) {
+                    const double d = s.corners[c] - (p.corners[c] + (q.corners[c] - p.corners[c]) * u);
+                    if (std::abs(d) > worst) {
+                        worst = std::abs(d);
+                        at = i;
+                    }
+                }
         }
         if (worst > tolerance) {
             keep[at] = true;

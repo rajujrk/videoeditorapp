@@ -35,7 +35,7 @@ ColumnLayout {
     }
 
     Text { text: qsTr("Voice"); font: Theme.type.label; color: Theme.color.textSecondary }
-    ComboBox {
+    AppComboBox {
         id: voiceChoice
         objectName: "voiceChoice"
         Layout.fillWidth: true

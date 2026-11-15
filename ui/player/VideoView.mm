@@ -1,4 +1,6 @@
 #include "VideoView.h"
+
+#include "ShaderEffects.h"
 #include "Language.h"
 
 #include "EffectInfo.h"
@@ -453,6 +455,8 @@ void VideoRenderer::render(QRhiCommandBuffer* cb)
 VideoView::VideoView(QQuickItem* parent) : QQuickRhiItem(parent), m_mirrors(std::make_shared<tve::FrameMirrors>())
 {
     connect(Language::instance(), &Language::changed, this, &VideoView::languageChanged);
+    connect(this, &VideoView::languageChanged, this, &VideoView::availableEffectsChanged);
+    connect(UserEffectsNotifier::instance(), &UserEffectsNotifier::changed, this, &VideoView::availableEffectsChanged);
     // Every built-in effect starts in the stack, disabled, at its default values.
     for (const tve::LoadedEffect& effect : tve::EffectLibrary::builtIn().effects())
         m_effects.push_back(tve::EffectInstance{effect.manifest.id, false, {}});
@@ -568,6 +572,14 @@ QVariantList VideoView::availableEffects() const
     });
     QVariantList effects;
     for (const tve::LoadedEffect* effect : sorted)
+        effects << describeEffect(*effect);
+    // Your own (not the editor's drafts), by title.
+    std::vector<const tve::LoadedEffect*> mine;
+    for (const tve::LoadedEffect* effect : tve::EffectLibrary::userEffects())
+        if (!effect->manifest.id.starts_with("user.draft_"))
+            mine.push_back(effect);
+    std::ranges::sort(mine, {}, [](const tve::LoadedEffect* e) { return e->manifest.displayTitle(); });
+    for (const tve::LoadedEffect* effect : mine)
         effects << describeEffect(*effect);
     return effects;
 }

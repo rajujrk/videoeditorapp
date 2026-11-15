@@ -296,3 +296,82 @@ TEST_CASE("a recording's takes go on new tracks in one step, with the cursor and
     CHECK(const_cast<Project&>(loaded).locateClip(raw->clipIds()[0])->clip->cursor.spotlight);
     CHECK(thinCursorPath({{0, 0, 0}, {1, 0.5, 0.5}, {2, 1, 1}}).size() == 2);
 }
+
+TEST_CASE("homographies carry a square onto a quad and back, and fit points", "[motion]")
+{
+    const Quad quad{0.2, 0.1, 0.8, 0.15, 0.9, 0.9, 0.1, 0.8};
+    const auto h = squareToQuad(quad);
+    REQUIRE(h);
+    const Quad square{0, 0, 1, 0, 1, 1, 0, 1};
+    const Quad mapped = h->apply(square);
+    for (std::size_t i = 0; i < 8; ++i)
+        CHECK(mapped[i] == Catch::Approx(quad[i]).margin(1e-9));
+    // The centre of the square lands where the quad's diagonals cross (not its corners' mean).
+    const auto [cx, cy] = h->apply(0.5, 0.5);
+    CHECK(cx != Catch::Approx((0.2 + 0.8 + 0.9 + 0.1) / 4).margin(1e-3));
+    // Back again.
+    const auto back = h->inverse();
+    REQUIRE(back);
+    const auto [u, v] = back->apply(cx, cy);
+    CHECK(u == Catch::Approx(0.5).margin(1e-9));
+    CHECK(v == Catch::Approx(0.5).margin(1e-9));
+    // One quad onto another, and composed maps.
+    const Quad other{0.3, 0.3, 0.6, 0.25, 0.65, 0.7, 0.28, 0.66};
+    const auto between = quadToQuad(quad, other);
+    REQUIRE(between);
+    const Quad moved = between->apply(quad);
+    for (std::size_t i = 0; i < 8; ++i)
+        CHECK(moved[i] == Catch::Approx(other[i]).margin(1e-9));
+    const Quad viaSquare = h->then(*between).apply(square);
+    for (std::size_t i = 0; i < 8; ++i)
+        CHECK(viaSquare[i] == Catch::Approx(other[i]).margin(1e-9));
+    // Fitted to many noisy-free points: the same map.
+    std::vector<std::pair<double, double>> from, to;
+    for (int i = 0; i < 5; ++i)
+        for (int j = 0; j < 5; ++j) {
+            from.emplace_back(i / 4.0, j / 4.0);
+            to.push_back(h->apply(i / 4.0, j / 4.0));
+        }
+    const auto fitted = fitHomography(from, to);
+    REQUIRE(fitted);
+    const auto [fx, fy] = fitted->apply(0.37, 0.61);
+    const auto [ex, ey] = h->apply(0.37, 0.61);
+    CHECK(fx == Catch::Approx(ex).margin(1e-9));
+    CHECK(fy == Catch::Approx(ey).margin(1e-9));
+    // Degenerate: three corners in a line.
+    CHECK_FALSE(squareToQuad({0, 0, 0.5, 0, 1, 0, 0, 1}));
+    CHECK_FALSE(fitHomography({{0, 0}, {1, 1}}, {{0, 0}, {1, 1}}));
+}
+
+TEST_CASE("a plane's samples keep their corners, mix between frames and are saved", "[motion]")
+{
+    const Quad a{0.2, 0.2, 0.6, 0.2, 0.6, 0.5, 0.2, 0.5};
+    const Quad b{0.3, 0.2, 0.7, 0.25, 0.7, 0.55, 0.3, 0.5};
+    MotionTrack track{.id = 1, .samples = {sampleOfQuad(0, a), sampleOfQuad(kTicksPerSecond, b)}, .kind = MotionTrackKind::Plane};
+    CHECK(track.type() == MotionTrackKind::Plane);
+    const TrackSample& first = track.samples.front();
+    CHECK(first.hasCorners());
+    CHECK(first.x == Catch::Approx(0.4));
+    CHECK(first.y == Catch::Approx(0.35));
+    CHECK(first.width == Catch::Approx(0.4));
+    CHECK(first.height == Catch::Approx(0.3));
+    CHECK(first.angle == Catch::Approx(0.0));
+    const auto mid = track.at(kTicksPerSecond / 2);
+    REQUIRE(mid);
+    CHECK(mid->corners[0] == Catch::Approx(0.25));
+    CHECK(mid->corners[3] == Catch::Approx(0.225));
+    // Saved and opened again with its corners and kind.
+    Project project;
+    const Id media = project.allocateId(), trackId = project.allocateId(), clipId = project.allocateId();
+    project.media.push_back({.id = media, .path = "/m/a.mov", .duration = 2 * kTicksPerSecond});
+    project.tracks.push_back({.id = trackId, .kind = TrackKind::Video, .name = "Video 1"});
+    project.tracks[0].insertClip({.id = clipId, .mediaId = media, .duration = kTicksPerSecond});
+    project.tracks[0].clips[0].motionTracks.push_back(track);
+    const Project reopened = projectFromJson(projectToJson(project));
+    REQUIRE(reopened.tracks[0].clips[0].motionTracks.size() == 1);
+    CHECK(reopened.tracks[0].clips[0].motionTracks[0] == track);
+    // An older surface track (no kind saved) is a surface.
+    MotionTrack old{.id = 2, .surface = true};
+    CHECK(old.type() == MotionTrackKind::Surface);
+    CHECK_FALSE(TrackSample{}.hasCorners());
+}

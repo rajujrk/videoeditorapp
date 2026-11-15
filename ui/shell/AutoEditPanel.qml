@@ -9,6 +9,13 @@ import TechieVideoEditor.Theme
 // following the subject, with captions). Each is a new project; the media is measured first.
 Popup {
     id: panel
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     signal importRequested() // (no media yet: the panel's Import button)
     required property var project
     property string mode: "instant" // "instant", "montage", "shorts"

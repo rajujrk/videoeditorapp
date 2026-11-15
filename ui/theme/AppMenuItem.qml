@@ -50,5 +50,6 @@ MenuItem {
     background: Rectangle {
         radius: Theme.radius.s
         color: entry.highlighted && entry.enabled ? Theme.color.accent : "transparent"
+        Behavior on color { ColorAnimation { duration: Theme.motion.fast } }
     }
 }

@@ -142,7 +142,7 @@ ScrollView {
             font: Theme.type.label
             color: Theme.color.textSecondary
         }
-        ComboBox {
+        AppComboBox {
             id: language
             objectName: "captionLanguage"
             visible: !page.modelInfo.englishOnly
@@ -220,7 +220,7 @@ ScrollView {
             visible: page.project.captionCount > 0
             Layout.fillWidth: true
             spacing: Theme.space.s
-            ComboBox {
+            AppComboBox {
                 id: translateLanguage
                 objectName: "translateLanguage"
                 Layout.fillWidth: true

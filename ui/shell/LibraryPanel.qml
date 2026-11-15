@@ -22,6 +22,7 @@ Rectangle {
     signal momentRequested(var media, real start, real end) // the same, In and Out around a moment
     signal cloudSettingsRequested()
     onCurrentTabChanged: {
+        tabFade.restart()
         searchField.text = ""
         favouriteTag = ""
     }
@@ -29,6 +30,31 @@ Rectangle {
     // the Filters tab's choice ("" or "favourites"), and the tile whose tags are being edited.
     property string favouriteTag: ""
     property string lookCategory: ""
+    // Your own effects (shader effects and stacks) and filters (saved grades), read again when
+    // they change.
+    property int mineRevision: 0
+    Connections {
+        target: library.project
+        function onMyItemsChanged() { library.mineRevision++ }
+        function onColorPresetsChanged() { library.mineRevision++ }
+    }
+    readonly property var myStacks: {
+        library.mineRevision
+        return library.project.myEffects().filter((e) => e.kind === "stack")
+                   .map((e) => ({ id: e.id, title: e.title, categories: ["mine"], stack: true, count: e.count, params: [] }))
+    }
+    readonly property var myFilters: {
+        library.mineRevision
+        return library.project.colorPresets.map((name) => ({ id: "preset:" + name, title: name, category: "mine", preset: true }))
+    }
+    // A name asked for, then `action(name)`.
+    function askName(title, action) {
+        mineNameBox.title = title
+        mineNameBox.action = action
+        mineNameField.text = ""
+        mineNameBox.open()
+        mineNameField.forceActiveFocus()
+    }
     // Whether a tile shows: among the favourites (with the tag) when "favourites" is chosen,
     // else in its category; and found by the search in its title or its tags.
     function shows(kind, id, chosen, inCategory, title) {
@@ -64,7 +90,8 @@ Rectangle {
     readonly property var effectCategories: [
         { id: "", label: qsTr("All") }, { id: "favourites", label: "★" }, { id: "blur", label: qsTr("Blur") }, { id: "color", label: qsTr("Colour") },
         { id: "stylize", label: qsTr("Stylize") }, { id: "distort", label: qsTr("Distort") }, { id: "glitch", label: qsTr("Glitch") },
-        { id: "light", label: qsTr("Light") }, { id: "frame", label: qsTr("Frame") }, { id: "overlay", label: qsTr("Overlay") }
+        { id: "light", label: qsTr("Light") }, { id: "frame", label: qsTr("Frame") }, { id: "overlay", label: qsTr("Overlay") },
+        { id: "mine", label: qsTr("Mine") }
     ]
     function matchesSearch(title) {
         const text = searchField.text.trim().toLowerCase()
@@ -133,7 +160,8 @@ Rectangle {
     property string stickerCategory: ""
     readonly property var stickerCategories: [
         { id: "", label: qsTr("All") }, { id: "favourites", label: "★" }, { id: "shapes", label: qsTr("Shapes") }, { id: "marks", label: qsTr("Arrows & marks") },
-        { id: "nature", label: qsTr("Nature") }, { id: "emoji", label: qsTr("Emoji") }, { id: "party", label: qsTr("Party") }
+        { id: "nature", label: qsTr("Nature") }, { id: "emoji", label: qsTr("Emoji") }, { id: "party", label: qsTr("Party") },
+        { id: "mine", label: qsTr("Mine") }
     ]
     // The Transitions tab's category ("" for all).
     // The media library: the folder open (0: the top), a colour label to show only, and what
@@ -318,11 +346,20 @@ Rectangle {
 
         Divider { Layout.fillHeight: true; implicitWidth: 1 }
 
-        // Browser for the selected tab
+        // Browser for the selected tab (fading in when the tab changes)
         ColumnLayout {
+            id: tabBrowser
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 0
+            NumberAnimation on opacity {
+                id: tabFade
+                running: false
+                from: 0.25
+                to: 1
+                duration: Theme.motion.normal
+                easing.type: Easing.OutCubic
+            }
 
             PanelHeader {
                 Layout.fillWidth: true
@@ -578,6 +615,31 @@ Rectangle {
                 kind: "sticker"
                 shown: stickersGrid.visible && library.stickerCategory === "favourites"
             }
+            // Your own: making and bringing in.
+            Flow {
+                objectName: "mineStickersBar"
+                visible: stickersGrid.visible && library.stickerCategory === "mine"
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.space.m
+                Layout.rightMargin: Theme.space.m
+                spacing: Theme.space.xs
+                TextButton {
+                    objectName: "addMySticker"
+                    text: qsTr("Add your own…")
+                    iconName: "plus"
+                    variant: "primary"
+                    tip: qsTr("A picture (PNG with transparency, JPEG, WebP, GIF) or a Lottie animation")
+                    onClicked: myStickerDialog.open()
+                }
+                TextButton {
+                    objectName: "stickerFromClip"
+                    text: qsTr("From the selected clip")
+                    iconName: "snapshot"
+                    variant: "secondary"
+                    tip: qsTr("The selected picture or animation, or a video's frame at the playhead, as a sticker")
+                    onClicked: library.project.saveClipAsSticker(library.project.selectedClip)
+                }
+            }
             GridView {
                 id: stickersGrid
                 objectName: "stickersGrid"
@@ -630,8 +692,16 @@ Rectangle {
                         MouseArea {
                             id: stickerDrag
                             anchors.fill: parent
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             drag.target: stickerDragProxy
-                            onClicked: stickerButton.clicked()
+                            onClicked: (mouse) => {
+                                if (mouse.button === Qt.RightButton) {
+                                    if (stickerTile.modelData.category === "mine")
+                                        mineMenu.openFor(stickerTile.modelData.id, stickerTile.modelData.title, "sticker")
+                                    return
+                                }
+                                stickerButton.clicked()
+                            }
                         }
                         Item { id: stickerDragProxy }
                         ToolTip.visible: hovered && !stickerDrag.drag.active
@@ -751,6 +821,39 @@ Rectangle {
                 kind: "effect"
                 shown: effectsGrid.visible && library.effectCategory === "favourites"
             }
+            // Your own: making and bringing in.
+            Flow {
+                objectName: "mineEffectsBar"
+                visible: effectsGrid.visible && library.effectCategory === "mine"
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.space.m
+                Layout.rightMargin: Theme.space.m
+                spacing: Theme.space.xs
+                TextButton {
+                    objectName: "newShaderEffect"
+                    text: qsTr("New effect…")
+                    iconName: "plus"
+                    variant: "primary"
+                    tip: qsTr("Write your own effect for the GPU, with sliders of your own, and see it as you type")
+                    onClicked: shaderEditor.openFor("")
+                }
+                TextButton {
+                    objectName: "saveEffectStack"
+                    text: qsTr("Save the clip's effects…")
+                    iconName: "save"
+                    variant: "secondary"
+                    tip: qsTr("Keeps the selected clip's effects and their settings as one effect of yours")
+                    onClicked: library.askName(qsTr("Name your effect"), (name) => library.project.saveEffectStack(library.project.selectedClip, name))
+                }
+                TextButton {
+                    objectName: "importShaderEffect"
+                    text: qsTr("Import…")
+                    iconName: "import"
+                    variant: "ghost"
+                    tip: qsTr("An effect someone made in the shader editor (.tveeffect)")
+                    onClicked: effectImportDialog.open()
+                }
+            }
             GridView {
                 id: effectsGrid
                 objectName: "effectsGrid"
@@ -761,7 +864,7 @@ Rectangle {
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: (library.player ? library.player.availableEffects : []).filter(
+                model: (library.player ? library.player.availableEffects : []).concat(library.myStacks).filter(
                            (e) => library.shows("effect", e.id, library.effectCategory,
                                                 library.effectCategory === "" || e.categories.indexOf(library.effectCategory) >= 0, e.title))
 
@@ -802,13 +905,23 @@ Rectangle {
                         anchors.bottomMargin: Theme.space.m
                         hoverEnabled: true
                         objectName: "libraryEffect:" + tile.modelData.id
-                        onClicked: library.project.addClipEffect(library.project.selectedClip, tile.modelData.id)
+                        onClicked: tile.modelData.stack ? library.project.applyEffectStack(library.project.selectedClip, tile.modelData.id)
+                                                        : library.project.addClipEffect(library.project.selectedClip, tile.modelData.id)
                         // Dragged out to the timeline (a click is still a click).
                         MouseArea {
                             id: effectDrag
                             anchors.fill: parent
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             drag.target: effectDragProxy
-                            onClicked: tileButton.clicked()
+                            onClicked: (mouse) => {
+                                // Your own: edit, share or delete it.
+                                if (mouse.button === Qt.RightButton) {
+                                    if ((tile.modelData.categories || []).indexOf("mine") >= 0)
+                                        mineMenu.openFor(tile.modelData.id, tile.modelData.title, tile.modelData.stack ? "stack" : "shader")
+                                    return
+                                }
+                                tileButton.clicked()
+                            }
                         }
                         Item { id: effectDragProxy }
                         ToolTip {
@@ -833,11 +946,20 @@ Rectangle {
                                 radius: Theme.radius.s
                                 color: Theme.color.surfaceSunken
                                 clip: true
-                                Icon { anchors.centerIn: parent; name: "effects"; color: Theme.color.textDisabled }
+                                Icon { anchors.centerIn: parent; name: "effects"; color: tile.modelData.stack ? Theme.color.accentText : Theme.color.textDisabled }
+                                // A stack of your own: how many effects it puts on.
+                                Text {
+                                    visible: tile.modelData.stack === true
+                                    anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: Theme.space.xs }
+                                    text: qsTr("%n effect(s)", "", tile.modelData.count || 0)
+                                    font: Theme.type.caption
+                                    color: Theme.color.textSecondary
+                                }
                                 // The effect on a sample scene (rendered on the GPU); animates on hover.
                                 Image {
                                     id: effectPreview
                                     objectName: "effectPreview:" + tile.modelData.id
+                                    visible: tile.modelData.stack !== true
                                     anchors.fill: parent
                                     asynchronous: true
                                     fillMode: Image.PreserveAspectCrop
@@ -893,7 +1015,7 @@ Rectangle {
                 Layout.bottomMargin: Theme.space.s
                 spacing: Theme.space.xs
                 Repeater {
-                    model: [{ id: "", label: qsTr("All") }, { id: "favourites", label: qsTr("★ Favourites") }]
+                    model: [{ id: "", label: qsTr("All") }, { id: "favourites", label: qsTr("★ Favourites") }, { id: "mine", label: qsTr("Mine") }]
                     delegate: AbstractButton {
                         id: lookChip
                         required property var modelData
@@ -925,6 +1047,31 @@ Rectangle {
                 kind: "look"
                 shown: looksGrid.visible && library.lookCategory === "favourites"
             }
+            // Your own: making and bringing in.
+            Flow {
+                objectName: "mineFiltersBar"
+                visible: looksGrid.visible && library.lookCategory === "mine"
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.space.m
+                Layout.rightMargin: Theme.space.m
+                spacing: Theme.space.xs
+                TextButton {
+                    objectName: "saveClipFilter"
+                    text: qsTr("Save the clip's grade…")
+                    iconName: "save"
+                    variant: "primary"
+                    tip: qsTr("Keeps the selected clip's colour grade (and its LUT) as a filter of yours")
+                    onClicked: library.askName(qsTr("Name your filter"), (name) => library.project.saveColorPreset(library.project.selectedClip, name))
+                }
+                TextButton {
+                    objectName: "importLutFilter"
+                    text: qsTr("Import a LUT…")
+                    iconName: "import"
+                    variant: "secondary"
+                    tip: qsTr("A .cube or .3dl LUT as a filter of yours")
+                    onClicked: lutFilterDialog.open()
+                }
+            }
             GridView {
                 id: looksGrid
                 objectName: "looksGrid"
@@ -935,7 +1082,8 @@ Rectangle {
                 clip: true
                 cellWidth: Math.floor(width / 2)
                 cellHeight: 112
-                model: (library.lookCategory === "favourites" ? [] : [{ id: "", title: qsTr("Adjustment layer"), category: "Layer" }])
+                model: library.lookCategory === "mine" ? library.myFilters.filter((l) => library.shows("look", l.id, "", true, l.title))
+                     : (library.lookCategory === "favourites" ? [] : [{ id: "", title: qsTr("Adjustment layer"), category: "Layer" }])
                        .concat(library.project.looks.filter((l) => library.shows("look", l.id, library.lookCategory, true, l.title)))
 
                 delegate: Item {
@@ -977,13 +1125,22 @@ Rectangle {
                         hoverEnabled: true
                         objectName: lookTile.adjustment ? "libraryAdjustmentLayer" : "libraryLook:" + lookTile.modelData.id
                         onClicked: lookTile.adjustment ? library.project.addAdjustmentLayer()
-                                                       : library.project.applyLook(library.project.selectedClip, lookTile.modelData.id)
+                                 : lookTile.modelData.preset ? library.project.applyColorPreset(library.project.selectedClip, lookTile.modelData.title)
+                                 : library.project.applyLook(library.project.selectedClip, lookTile.modelData.id)
                         // Dragged out to the timeline (a click is still a click).
                         MouseArea {
                             id: lookDrag
                             anchors.fill: parent
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             drag.target: lookDragProxy
-                            onClicked: lookButton.clicked()
+                            onClicked: (mouse) => {
+                                if (mouse.button === Qt.RightButton) {
+                                    if (lookTile.modelData.preset)
+                                        mineMenu.openFor(lookTile.modelData.title, lookTile.modelData.title, "filter")
+                                    return
+                                }
+                                lookButton.clicked()
+                            }
                         }
                         Item { id: lookDragProxy }
                         ToolTip {
@@ -1010,11 +1167,17 @@ Rectangle {
                                 clip: true
                                 Image {
                                     objectName: "lookPreview:" + lookTile.modelData.id
-                                    visible: !lookTile.adjustment
+                                    visible: !lookTile.adjustment && !lookTile.modelData.preset
                                     anchors.fill: parent
                                     fillMode: Image.PreserveAspectCrop
                                     asynchronous: true
-                                    source: lookTile.adjustment ? "" : "image://tvelook/" + lookTile.modelData.id
+                                    source: lookTile.adjustment || lookTile.modelData.preset ? "" : "image://tvelook/" + lookTile.modelData.id
+                                }
+                                Icon { // a filter of your own (a saved grade)
+                                    visible: lookTile.modelData.preset === true
+                                    anchors.centerIn: parent
+                                    name: "filters"
+                                    color: Theme.color.accentText
                                 }
                                 Rectangle { // an adjustment layer: a band over the layers below
                                     visible: lookTile.adjustment
@@ -2273,6 +2436,118 @@ Rectangle {
             onTriggered: library.project.deleteTitlePreset(titlePresetMenu.preset)
         }
     }
+    // Your own effects, filters and stickers: right-click one to edit, share or delete it.
+    AppMenu {
+        id: mineMenu
+        objectName: "mineMenu"
+        property string itemId: ""
+        property string itemTitle: ""
+        property string kind: "" // "shader", "stack", "filter", "sticker"
+        function openFor(id, title, what) {
+            itemId = id
+            itemTitle = title
+            kind = what
+            popup()
+        }
+        AppMenuItem {
+            objectName: "mineMenu:edit"
+            visible: mineMenu.kind === "shader"
+            height: visible ? implicitHeight : 0
+            text: qsTr("Edit in the shader editor…")
+            onTriggered: shaderEditor.openFor(mineMenu.itemId)
+        }
+        AppMenuItem {
+            objectName: "mineMenu:export"
+            visible: mineMenu.kind === "shader"
+            height: visible ? implicitHeight : 0
+            text: qsTr("Export…")
+            onTriggered: effectExportDialog.open()
+        }
+        AppMenuItem {
+            objectName: "mineMenu:delete"
+            text: qsTr("Delete “%1”").arg(mineMenu.itemTitle)
+            onTriggered: mineMenu.kind === "filter" ? library.project.deleteColorPreset(mineMenu.itemId)
+                       : mineMenu.kind === "sticker" ? library.project.removeMySticker(mineMenu.itemId)
+                       : library.project.removeMyEffect(mineMenu.itemId)
+        }
+    }
+    // A name for something of yours.
+    Popup {
+        id: mineNameBox
+        objectName: "mineNameBox"
+        property string title: ""
+        property var action: null
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        padding: Theme.space.l
+        width: 320
+        background: Rectangle { radius: Theme.radius.l; color: Theme.color.surfaceRaised; border.color: Theme.color.borderStrong }
+        contentItem: ColumnLayout {
+            spacing: Theme.space.m
+            Text { text: mineNameBox.title; font: Theme.type.title; color: Theme.color.textPrimary }
+            TextField {
+                id: mineNameField
+                objectName: "mineNameField"
+                Layout.fillWidth: true
+                placeholderText: qsTr("Name")
+                onAccepted: mineNameOk.clicked()
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                TextButton { text: qsTr("Cancel"); variant: "ghost"; onClicked: mineNameBox.close() }
+                TextButton {
+                    id: mineNameOk
+                    objectName: "mineNameOk"
+                    text: qsTr("Save")
+                    variant: "primary"
+                    enabled: mineNameField.text.trim() !== ""
+                    onClicked: {
+                        if (mineNameBox.action)
+                            mineNameBox.action(mineNameField.text.trim())
+                        mineNameBox.close()
+                    }
+                }
+            }
+        }
+    }
+    FileDialog {
+        id: myStickerDialog
+        title: qsTr("Choose a picture or animation for your stickers")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("Pictures and animations (*.png *.jpg *.jpeg *.webp *.gif *.json)")]
+        onAccepted: library.project.addMySticker(selectedFile)
+    }
+    FileDialog {
+        id: lutFilterDialog
+        title: qsTr("Choose a LUT to keep as a filter")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("LUTs (*.cube *.3dl)")]
+        onAccepted: {
+            const file = selectedFile
+            library.askName(qsTr("Name your filter"), (name) => library.project.importLutAsFilter(file, name))
+        }
+    }
+    FileDialog {
+        id: effectImportDialog
+        title: qsTr("Choose an effect to bring in")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [qsTr("Effects (*.tveeffect)")]
+        onAccepted: library.project.importMyEffect(selectedFile)
+    }
+    FileDialog {
+        id: effectExportDialog
+        title: qsTr("Export your effect")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "tveeffect"
+        nameFilters: [qsTr("Effects (*.tveeffect)")]
+        onAccepted: library.project.exportMyEffect(mineMenu.itemId, selectedFile)
+    }
+    ShaderEditor {
+        id: shaderEditor
+        objectName: "shaderEditor"
+        project: library.project
+    }
+    readonly property var shaderEditorDialog: shaderEditor
     // The logo for a logo reveal.
     FileDialog {
         id: logoDialog

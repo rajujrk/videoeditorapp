@@ -28,6 +28,10 @@ qt_add_qml_module(tve_player
         VoiceCloning.cpp
         KeyMap.h
         KeyMap.cpp
+        ShaderEffects.h
+        ShaderEffects.cpp
+        MyItems.h
+        MyItems.cpp
         Favourites.h
         Favourites.cpp
         Workspaces.h
@@ -128,7 +132,17 @@ qt_add_resources(tve_player "tve_player_data"
 # built in at :/i18n/.
 find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
 qt_add_lrelease(
-    TS_FILES ${CMAKE_SOURCE_DIR}/i18n/tve_ta.ts
+    TS_FILES
+        ${CMAKE_SOURCE_DIR}/i18n/tve_ta.ts
+        ${CMAKE_SOURCE_DIR}/i18n/tve_fr.ts
+        ${CMAKE_SOURCE_DIR}/i18n/tve_de.ts
+        ${CMAKE_SOURCE_DIR}/i18n/tve_es.ts
+        ${CMAKE_SOURCE_DIR}/i18n/tve_hi.ts
+        ${CMAKE_SOURCE_DIR}/i18n/tve_ja.ts
+        ${CMAKE_SOURCE_DIR}/i18n/tve_ko.ts
+        ${CMAKE_SOURCE_DIR}/i18n/tve_th.ts
+        ${CMAKE_SOURCE_DIR}/i18n/tve_vi.ts
+        ${CMAKE_SOURCE_DIR}/i18n/tve_zh_CN.ts
     LRELEASE_TARGET tve_translations
     QM_FILES_OUTPUT_VARIABLE TVE_QM_FILES)
 qt_add_resources(tve_player "tve_translations" PREFIX "/i18n" BASE ${CMAKE_CURRENT_BINARY_DIR} FILES ${TVE_QM_FILES})
@@ -142,6 +156,7 @@ target_link_libraries(tve_player
         tve::gpu # VideoView.h exposes tve::EffectInstance
     PRIVATE
         Qt6::GuiPrivate
+        Qt6::ShaderToolsPrivate # (QShaderBaker: your own effects compiled in the app)
         Qt6::Network
         tve::engine
         "-framework Metal"

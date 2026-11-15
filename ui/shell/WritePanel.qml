@@ -7,6 +7,13 @@ import TechieVideoEditor.Theme
 // Claude as it streams in; titles can go on the timeline one by one.
 Popup {
     id: panel
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
     readonly property var cloud: project.cloud
     readonly property bool writing: cloud.job === "write"
@@ -80,7 +87,7 @@ readonly property var toneNames: [qsTr("Any tone"), qsTr("Friendly"), qsTr("Prof
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.space.s
-            ComboBox { id: tone; objectName: "writeTone"; model: panel.toneNames; enabled: !panel.writing }
+            AppComboBox { id: tone; objectName: "writeTone"; model: panel.toneNames; enabled: !panel.writing }
             TextField {
                 id: notes
                 objectName: "writeNotes"

@@ -7,6 +7,13 @@ import TechieVideoEditor.Theme
 // shot_0002.png…) played as one video, at a chosen frame rate.
 Popup {
     id: dialog
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
     property url frame
     property var found: ({})
@@ -118,7 +125,7 @@ Popup {
             Text { text: qsTr("Frame rate"); font: Theme.type.label; color: Theme.color.textSecondary }
             RowLayout {
                 spacing: Theme.space.s
-                ComboBox {
+                AppComboBox {
                     id: rateBox
                     objectName: "imageSequenceRate"
                     model: dialog.rates

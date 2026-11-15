@@ -2,7 +2,9 @@
 
 #include "model/Time.h"
 
+#include <array>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace tve {
@@ -92,8 +94,33 @@ struct Deflicker {
     friend bool operator==(const Deflicker&, const Deflicker&) = default;
 };
 
+// Four corners of a quadrilateral, picture fractions: top left, top right, bottom right,
+// bottom left (x, y each).
+using Quad = std::array<double, 8>;
+
+// A projective map of the plane (a 3 × 3 matrix, rows first): what carries a flat surface
+// from one view to another.
+struct Homography {
+    std::array<double, 9> m{1, 0, 0, 0, 1, 0, 0, 0, 1};
+
+    std::pair<double, double> apply(double x, double y) const;
+    Quad apply(const Quad& quad) const;
+    std::optional<Homography> inverse() const;
+    Homography then(const Homography& next) const; // this, then `next`
+};
+// The map from the unit square (0,0)–(1,1) onto a quad (corners in the order above), or
+// nullopt when the quad is degenerate (three corners in a line).
+std::optional<Homography> squareToQuad(const Quad& quad);
+// The map carrying one quad's corners onto another's.
+std::optional<Homography> quadToQuad(const Quad& from, const Quad& to);
+// The best map carrying `from` points onto `to` points (least squares over four or more),
+// or nullopt when they cannot fix one.
+std::optional<Homography> fitHomography(const std::vector<std::pair<double, double>>& from,
+                                        const std::vector<std::pair<double, double>>& to);
+
 // Something followed through a shot (tracking): where it is in each frame, as picture
-// fractions (origin top left), and — a flat surface — how it is turned.
+// fractions (origin top left), and — a flat surface — how it is turned; a plane tracked in
+// perspective also has its four corners.
 struct TrackSample {
     Ticks time = 0; // media time
     double x = 0.0; // centre
@@ -101,14 +128,27 @@ struct TrackSample {
     double width = 0.0;
     double height = 0.0;
     double angle = 0.0; // radians, clockwise (surfaces; objects: 0)
+    Quad corners{};     // a plane's corners (all zero for other tracks)
 
+    bool hasCorners() const;
     friend bool operator==(const TrackSample&, const TrackSample&) = default;
 };
+// A plane's sample: its corners, and the centre, size and turn they make.
+TrackSample sampleOfQuad(Ticks time, const Quad& corners);
+
+// What a track follows: an object (a box that may change shape), a flat rectangle found in
+// the box (which turns too), a plane in perspective (four corners, any flat textured
+// surface: corner-pin something onto it), or a single point (a small spot followed for its
+// position: to steady the shot on it, or to pin something there).
+enum class MotionTrackKind { Object, Surface, Plane, Point };
 
 struct MotionTrack {
     int id = 0;           // 1, 2… on its clip
     bool surface = false; // a flat rectangle (turns too) rather than an object
     std::vector<TrackSample> samples;
+    MotionTrackKind kind = MotionTrackKind::Object; // (older projects: only `surface`)
+
+    MotionTrackKind type() const { return surface ? MotionTrackKind::Surface : kind; }
 
     // Where it is at a media time (between samples: mixed); nullopt outside its span.
     std::optional<TrackSample> at(Ticks mediaTime) const;

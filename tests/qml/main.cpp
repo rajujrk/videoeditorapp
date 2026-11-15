@@ -709,6 +709,13 @@ int main(int argc, char** argv)
     qputenv("TVE_WORKSPACES_FILE", (appSettings.path() + QStringLiteral("/workspaces.json")).toLocal8Bit());
     qputenv("TVE_EDITING_FILE", (appSettings.path() + QStringLiteral("/editing.json")).toLocal8Bit());
     qputenv("TVE_EXPORT_PRESETS_FILE", (appSettings.path() + QStringLiteral("/export-presets.json")).toLocal8Bit());
+    // Your own effects, stacks, stickers, LUTs and colour presets in scratch folders too.
+    qputenv("TVE_MY_SHADERS_DIR", (appSettings.path() + QStringLiteral("/My Effects")).toLocal8Bit());
+    qputenv("TVE_MY_EFFECTS_FILE", (appSettings.path() + QStringLiteral("/my-effect-stacks.json")).toLocal8Bit());
+    qputenv("TVE_MY_STICKERS_DIR", (appSettings.path() + QStringLiteral("/My Stickers")).toLocal8Bit());
+    qputenv("TVE_MY_LUTS_DIR", (appSettings.path() + QStringLiteral("/My LUTs")).toLocal8Bit());
+    if (qEnvironmentVariableIsEmpty("TVE_COLOR_PRESET_DIR"))
+        qputenv("TVE_COLOR_PRESET_DIR", (appSettings.path() + QStringLiteral("/Color Presets")).toLocal8Bit());
     qputenv("TVE_PREVIEW_WINDOWED", "1"); // the full-screen preview as a plain window
     QTemporaryDir livePhotoLibrary; // Live Photos "added to Photos" land here, not in the library
     qputenv("TVE_LIVE_PHOTO_LIBRARY", QDir(livePhotoLibrary.path()).canonicalPath().toLocal8Bit());

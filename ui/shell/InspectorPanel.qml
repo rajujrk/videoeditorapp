@@ -124,7 +124,7 @@ Rectangle {
                                                                   || inspector.transitionInfo.duration)
             }
 
-            ComboBox {
+            AppComboBox {
                 id: transitionPicker
                 objectName: "transitionPicker"
                 Layout.fillWidth: true
@@ -198,6 +198,16 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: inspector.currentTab
+            // A new tab fades in.
+            onCurrentIndexChanged: inspectorFade.restart()
+            NumberAnimation on opacity {
+                id: inspectorFade
+                running: false
+                from: 0.25
+                to: 1
+                duration: Theme.motion.normal
+                easing.type: Easing.OutCubic
+            }
 
             // Video: placement, crop and compositing of the selected clip
             InspectorPage {
@@ -273,7 +283,7 @@ Rectangle {
                             visible: inspector.keyHere
                             Layout.fillWidth: true
                             Text { text: qsTr("Easing"); font: Theme.type.label; color: Theme.color.textSecondary }
-                            ComboBox {
+                            AppComboBox {
                                 objectName: "keyframeEasing"
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1 // shares the row instead of asking for its longest item
@@ -447,7 +457,7 @@ Rectangle {
                             }
                         }
 
-                        ComboBox {
+                        AppComboBox {
                             objectName: "titleFont"
                             Layout.fillWidth: true
                             model: inspector.project.titleFonts
@@ -575,7 +585,7 @@ Rectangle {
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: qsTr("Letters"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
-                            ComboBox {
+                            AppComboBox {
                                 objectName: "titleFillKind"
                                 readonly property var kinds: ["solid", "linear", "radial", "image"]
                                 model: [qsTr("Colour"), qsTr("Linear gradient"), qsTr("Radial gradient"), qsTr("Picture")]
@@ -863,7 +873,7 @@ Rectangle {
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: qsTr("Moves"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
-                            ComboBox {
+                            AppComboBox {
                                 objectName: "titleReactKind"
                                 model: [qsTr("Not at all"), qsTr("Pulse"), qsTr("Bouncing letters"), qsTr("Flash"), qsTr("Shake")]
                                 currentIndex: Math.max(0, musicSection.kinds.indexOf(musicSection.react.kind))
@@ -918,7 +928,7 @@ Rectangle {
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: Theme.space.xs
-                            ComboBox {
+                            AppComboBox {
                                 id: titlePresetPicker
                                 objectName: "titlePresetPicker"
                                 Layout.fillWidth: true
@@ -978,7 +988,7 @@ Rectangle {
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: qsTr("Behind the text"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
-                            ComboBox {
+                            AppComboBox {
                                 objectName: "titleShapeKind"
                                 readonly property var kinds: ["none", "box", "rounded", "pill", "speech", "thought", "banner",
                                                               "underline", "circle", "arrow", "tag"]
@@ -1108,7 +1118,7 @@ Rectangle {
                                 RowLayout {
                                     Layout.fillWidth: true
                                     Text { text: motionRow.modelData.label; font: Theme.type.label; color: Theme.color.textSecondary; Layout.preferredWidth: 36 }
-                                    ComboBox {
+                                    AppComboBox {
                                         objectName: "titleAnimation:" + motionRow.modelData.key
                                         Layout.fillWidth: true
                                         model: motionRow.presets
@@ -1117,7 +1127,7 @@ Rectangle {
                                         currentIndex: Math.max(0, motionRow.presets.findIndex((p) => p.id === motionRow.animation.preset))
                                         onActivated: (index) => motionRow.change({ preset: motionRow.presets[index].id })
                                     }
-                                    ComboBox {
+                                    AppComboBox {
                                         objectName: "titleAnimationUnit:" + motionRow.modelData.key
                                         visible: motionRow.animation.preset !== ""
                                         Layout.preferredWidth: 100
@@ -1152,7 +1162,7 @@ Rectangle {
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: qsTr("Scroll"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
-                            ComboBox {
+                            AppComboBox {
                                 objectName: "titleScroll"
                                 readonly property var modes: ["none", "rollUp", "crawlLeft"]
                                 model: [qsTr("None"), qsTr("Roll up (credits)"), qsTr("Crawl left (ticker)")]
@@ -1324,7 +1334,7 @@ Rectangle {
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: qsTr("Camera"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
-                            ComboBox {
+                            AppComboBox {
                                 objectName: "lensPreset"
                                 Layout.preferredWidth: 220
                                 model: [qsTr("Choose…")].concat(lensSection.presets.map((p) => p.title))
@@ -1375,7 +1385,7 @@ Rectangle {
                                 Layout.fillWidth: true
                                 readonly property var choices: clipAnimation.presets.filter((p) => p.kind === modelData.kind)
                                 Text { text: animationRow.modelData.label; font: Theme.type.label; color: Theme.color.textSecondary; Layout.preferredWidth: 56 }
-                                ComboBox {
+                                AppComboBox {
                                     objectName: "animation:" + animationRow.modelData.kind
                                     Layout.fillWidth: true
                                     model: [qsTr("Choose…")].concat(animationRow.choices.map((p) => p.title))
@@ -1446,7 +1456,7 @@ Rectangle {
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: qsTr("Fill"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
-                            ComboBox {
+                            AppComboBox {
                                 objectName: "colourFillKind"
                                 readonly property var kinds: ["solid", "linear", "radial"]
                                 model: [qsTr("One colour"), qsTr("Linear gradient"), qsTr("Radial gradient")]
@@ -1494,7 +1504,7 @@ Rectangle {
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: qsTr("Blend mode"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
-                            ComboBox {
+                            AppComboBox {
                                 objectName: "blendMode"
                                 readonly property var modes: ["normal", "multiply", "screen", "overlay", "add", "darken", "lighten"]
                                 model: [qsTr("Normal"), qsTr("Multiply"), qsTr("Screen"), qsTr("Overlay"), qsTr("Add", "blend mode"), qsTr("Darken"), qsTr("Lighten")]
@@ -1613,7 +1623,7 @@ Rectangle {
                             RowLayout {
                                 Layout.fillWidth: true
                                 Text { text: qsTr("Applies to"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
-                                ComboBox {
+                                AppComboBox {
                                     objectName: "maskTarget"
                                     readonly property var targets: ["picture", "effects", "colour"]
                                     model: [qsTr("The picture"), qsTr("Effects only"), qsTr("Colour only")]
@@ -1713,7 +1723,7 @@ Rectangle {
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: qsTr("Shape from above"); font: Theme.type.label; color: Theme.color.textSecondary; Layout.fillWidth: true }
-                            ComboBox {
+                            AppComboBox {
                                 objectName: "matteMode"
                                 readonly property var modes: ["none", "alpha", "invertedAlpha", "luma", "invertedLuma"]
                                 model: [qsTr("None"), qsTr("Alpha"), qsTr("Alpha inverted"), qsTr("Luma"), qsTr("Luma inverted")]
@@ -2022,7 +2032,7 @@ Rectangle {
                             onClicked: inspector.project.changeClipsGain(batchGainSection.ids, batchGainAmount.value, true)
                         }
                     }
-                    ComboBox {
+                    AppComboBox {
                         id: batchLoudnessTarget
                         objectName: "batchLoudnessTarget"
                         Layout.fillWidth: true
@@ -2264,7 +2274,7 @@ Rectangle {
                                                             modulation: qsTr("Modulation"), pitch: qsTr("Pitch"), voice: qsTr("Voice"), cleanup: qsTr("Clean-up") })
                     RowLayout {
                         Layout.fillWidth: true
-                        ComboBox {
+                        AppComboBox {
                             id: audioEffectPicker
                             objectName: "audioEffectPicker"
                             Layout.fillWidth: true
@@ -2323,7 +2333,7 @@ Rectangle {
                     readonly property var loudness: inspector.clipInfo.loudness || null
                     RowLayout {
                         Layout.fillWidth: true
-                        ComboBox {
+                        AppComboBox {
                             id: loudnessTarget
                             objectName: "loudnessTarget"
                             Layout.fillWidth: true
@@ -2557,7 +2567,7 @@ Rectangle {
                     RowLayout {
                         Layout.fillWidth: true
                         visible: autoColourSection.others.length > 0
-                        ComboBox {
+                        AppComboBox {
                             id: matchReference
                             objectName: "matchReference"
                             Layout.fillWidth: true
@@ -2862,7 +2872,7 @@ Rectangle {
                         Layout.fillWidth: true
                         spacing: Theme.space.xs
                         Text { text: qsTr("Built-in"); font: Theme.type.label; color: Theme.color.textSecondary }
-                        ComboBox {
+                        AppComboBox {
                             objectName: "lutLibraryPicker"
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
@@ -2890,7 +2900,7 @@ Rectangle {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Theme.space.xs
-                        ComboBox {
+                        AppComboBox {
                             id: presetPicker
                             objectName: "colorPresetPicker"
                             Layout.fillWidth: true
@@ -2957,7 +2967,7 @@ Rectangle {
                     visible: inspector.clipIsVideo
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.space.s
-                    ComboBox {
+                    AppComboBox {
                         id: effectPicker
                         objectName: "effectPicker"
                         Layout.fillWidth: true

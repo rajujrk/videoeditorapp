@@ -10,6 +10,13 @@ import TechieVideoEditor.Theme
 // timeline from another editor is opened (Open project…), the same report for it.
 Popup {
     id: dialog
+    // Comes in with a short fade and grow (closing is at once).
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Theme.motion.normal; easing.type: Easing.OutCubic }
+        }
+    }
     required property var project
 
     // "export" → "done" (or "failed"); "opened" after a timeline was opened

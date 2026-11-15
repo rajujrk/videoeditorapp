@@ -158,6 +158,7 @@ target_link_libraries(tve_engine
         "-framework Accelerate"
         "-framework Foundation"
         "-framework Vision"
+        "-framework CoreImage"
         "-framework CoreML"
         "-framework CoreGraphics"
         "-framework ScreenCaptureKit"
